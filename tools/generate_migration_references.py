@@ -271,11 +271,39 @@ def _run_scenario_4(qc_module: Any) -> dict[str, np.ndarray]:
     raise NotImplementedError("scenario 4 (stroboscopic AC-π/2) not yet ported")
 
 
+# ----------------------------------------------------------------------------
+# Scenario 5 — single-mode squeezing + displacement
+# ----------------------------------------------------------------------------
+#
+# Regime: on-resonance carrier drive on a squeezed + displaced initial
+# motional state (no thermal admixture, no Fock offset). The non-trivial
+# sq_ampl and dis_ampl put the motional state away from vacuum with both
+# a first-moment (⟨X⟩, ⟨P⟩) and second-moment (Var_x, Var_p) signature,
+# so the reference exercises the squeezing and displacement operators
+# that Phase 1 state-prep builders will provide. The workplan §0.B entry
+# for this scenario reads "single-mode squeezing + displacement".
+
+SCENARIO_5_PARAMETERS: dict[str, Any] = {
+    "Omega_over_2pi_MHz": 0.05,
+    "omega_mode_over_2pi_MHz": 2.2,
+    "omega_spin_over_2pi_MHz": 0.0,    # on-resonance carrier
+    "r_spin_rad": [0.0, 0.0, 0.0],
+    "n_thermal": 0.0,                  # pure vacuum baseline before sq/dis
+    "Fck": 0,
+    "sq_ampl": 0.5,                    # moderate squeezing (r = 0.5)
+    "sq_phi_rad": 0.0,
+    "dis_ampl": 1.0,                   # displace by α = 1 → coherent ⟨n⟩ = 1
+    "dis_phi_rad": 0.0,
+    "phi_drive_rad": 0.0,
+    "tmax_periods": 1,
+    "nosteps": 1,
+    "FockPrec": 0.005,
+    "LD_regime": True,
+}
+
+
 def _run_scenario_5(qc_module: Any) -> dict[str, np.ndarray]:
-    # TODO: single-mode squeezing + displacement. Invokes
-    # qc.squeeze_to_entangle_singleSpin_singleMode with non-trivial sq_a
-    # and dis_a; drive off-resonance so the squeezing is observable.
-    raise NotImplementedError("scenario 5 (squeeze+displace) not yet ported")
+    return _run_single_spin_single_mode(qc_module, SCENARIO_5_PARAMETERS)
 
 
 # ----------------------------------------------------------------------------
@@ -311,7 +339,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "index": 5,
         "description": "Single-mode squeezing + displacement of a single spin",
         "runner": _run_scenario_5,
-        "parameters": {},
+        "parameters": SCENARIO_5_PARAMETERS,
     },
 }
 
