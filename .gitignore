@@ -1,0 +1,39 @@
+# Byte-compiled / cache artefacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+site/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code per-user settings (absolute-path permissions; do not share)
+.claude/
+
+# Local copies of upstream assets — fetched via tools/fetch_assets.sh
+# from the commit pinned in assets/SOURCE.md. Only the provenance record
+# and the per-folder LICENCE are tracked.
+assets/*.svg
+assets/*.css

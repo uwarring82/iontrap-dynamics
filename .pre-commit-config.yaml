@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: MIT
+#
+# Pre-commit hooks for iontrap-dynamics.
+#
+# Setup (once):    pip install -e ".[dev]" && pre-commit install
+# Run on all:      pre-commit run --all-files
+# Skip a hook:     SKIP=mypy git commit ...   (don't make a habit of it)
+#
+# Hook ladder (cheapest first, so failures surface fast):
+#   1. Hygiene      — whitespace, EOF, large files, merge markers, YAML/TOML syntax
+#   2. Ruff         — lint + format (mirrors pyproject.toml config)
+#   3. SPDX         — D9 licence-header enforcement on Python and shell files
+#   4. MyPy         — strict type-check (slowest; runs last)
+
+default_language_version:
+  python: python3.11
+
+repos:
+
+  # ---------------------------------------------------------------------------
+  # Standard hygiene hooks.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ---------------------------------------------------------------------------
+  # Ruff — pinned to the same rule set as pyproject.toml [tool.ruff].
+  # --fix applies safe autofixes; use `--no-fix` in CI invocations.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ---------------------------------------------------------------------------
+  # Local hooks — project-specific tools that must use the project's env.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+
+      # D9: SPDX-License-Identifier must appear in the first 10 lines of
+      # Python source, shell scripts, and GitHub Actions workflow YAML.
+      - id: check-spdx
+        name: SPDX-License-Identifier header present
+        entry: python tools/check_spdx.py
+        language: system
+        files: ^(src|tests|tools|\.github/workflows)/.*\.(py|sh|yml|yaml)$
+        exclude: ^.*/__pycache__/
+
+      # MyPy runs against the installed project, not a pre-commit-managed
+      # virtualenv, so the QuTiP/JAX stub overrides in pyproject.toml apply.
+      # Passes no filenames; mypy config in pyproject.toml selects targets.
+      - id: mypy
+        name: mypy (strict, per pyproject.toml)
+        entry: mypy
+        language: system
+        types_or: [python]
+        pass_filenames: false
+        require_serial: true

@@ -1,0 +1,44 @@
+MIT License
+
+Copyright (c) threehouse-plus-ec contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Scope of this licence
+
+This licence applies to the design assets distributed in this folder:
+
+- `emblem-16.svg`, `emblem-32.svg`, `emblem-64.svg`
+- `wordmark-full.svg`, `wordmark-silent.svg`
+- `tokens.css`
+
+These files are distributed copies from the upstream `threehouse-plus-ec/cd-rules`
+repository under Model B propagation (CD 0.10). The upstream declaration of
+MIT for these specific files appears in `blueprint-threehouse-CD.md` Section
+0.3 ("Licence matrix", row "Design assets") and Section "Asset registry"
+(table naming each file as MIT). Provenance, commit SHA, and per-file SHA-256
+checksums are recorded in `SOURCE.md`.
+
+The MIT grant here is a downstream restatement of the upstream-declared
+licence for convenience and clarity at the folder boundary; the authoritative
+licence declaration remains the cd-rules blueprint.
+
+SPDX-License-Identifier: MIT

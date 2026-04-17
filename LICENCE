@@ -1,0 +1,53 @@
+# LICENCE
+
+`iontrap-dynamics` uses a **split-licence architecture**, in line with T(h)reehouse +EC Corporate Design rule CD 0.3 and Design Principle 12 of [`WORKPLAN_v0.3.md`](WORKPLAN_v0.3.md). Different layers of the repository carry different licences; this file declares the split and points to the per-folder `LICENCE` files that carry the canonical terms.
+
+## Summary of layers
+
+| Path | Layer | Licence | SPDX |
+|---|---|---|---|
+| `WORKPLAN_v0.3.md`, `CONVENTIONS.md` (repo root) | Coastline docs | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| `docs/` — coastline material | Coastline docs | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| `docs/tutorials/` | Authored tutorials (Sail) | CC BY-NC-SA 4.0 | `CC-BY-NC-SA-4.0` |
+| `src/`, `tests/`, `.github/`, build scripts | Code & tooling | MIT | `MIT` |
+| `tools/` | Build / maintenance scripts | MIT | `MIT` |
+| `assets/` | Design assets (consumed upstream) | MIT | `MIT` |
+
+External fonts referenced by the docs site (IBM Plex Mono, Crimson Pro) are distributed under SIL OFL 1.1 (`OFL-1.1`) by their respective upstreams; they are not vendored in this repository.
+
+## Coastline / Sail semantics
+
+Per CD 0.9, `iontrap-dynamics` distinguishes:
+
+- **Coastline** material — testable, binding constraints (this workplan, `CONVENTIONS.md`, architectural specs, the Boundary Decision Tree, result-schema documents) — licensed **CC BY-SA 4.0**.
+- **Sail** material — authored, adaptive guidance (tutorials, pedagogical essays, Clock-School teaching material, worked-example narratives) — licensed **CC BY-NC-SA 4.0**.
+
+The licence distinction is deliberate: Coastline is copy-left and non-commercial-permissive (reuse and adaptation encouraged, including in commercial teaching contexts); Sail is copy-left and non-commercial (authored teaching material should not be monetised by third parties without negotiation).
+
+## Authoritative licence-text files
+
+This file (`LICENCE`) declares the split; it is **not itself** a licence grant. Canonical licence text for each layer lives in the file named below. Any layer not explicitly delegating to its own folder-level file is governed by the corresponding canonical text at the repository root.
+
+- [`LICENCE-MIT`](LICENCE-MIT) — canonical MIT grant covering `src/`, `tests/`, `tools/`, and `.github/`. Source files in these paths SHOULD carry an `SPDX-License-Identifier: MIT` header so the effective terms are machine-readable.
+- [`assets/LICENCE`](assets/LICENCE) — MIT grant for the design assets in that folder (distributed from upstream `threehouse-plus-ec/cd-rules` under Model B, per the blueprint's prescribed per-folder declaration). Provenance recorded in [`assets/SOURCE.md`](assets/SOURCE.md).
+- `docs/LICENCE` *(pending — Phase 0.C / Phase 1)* — will declare the internal CC BY-SA 4.0 / CC BY-NC-SA 4.0 split between Coastline docs and Sail tutorials within `docs/`. Until this file exists, Coastline material at the repository root (this file, `WORKPLAN_v0.3.md`, `CONVENTIONS.md`) is CC BY-SA 4.0 by its own frontmatter, and Sail material does not yet exist.
+
+## Precedence
+
+When folder content is mixed, the more restrictive licence applies unless an individual file declares otherwise via an `SPDX-License-Identifier` header. Coastline documents at the repository root (`WORKPLAN_v0.3.md`, `CONVENTIONS.md`) declare their own CC BY-SA 4.0 terms in their frontmatter; those declarations are authoritative for those files.
+
+## Asset provenance (Model B, CD 0.10)
+
+Design assets in `assets/` are distributed copies of material authored by `threehouse-plus-ec/cd-rules`, propagated under Model B: distributed copy with SHA-256 checksum and byte-size verification against the pinned upstream commit. See [`assets/SOURCE.md`](assets/SOURCE.md) for the full provenance record. Upstream licence (MIT) is preserved; no re-licensing occurs at the boundary.
+
+## Changes and re-licensing
+
+Changes to this split require a CHANGELOG entry and a migration note. Re-licensing of already-published material (e.g. narrowing a layer's terms) requires consent of all contributors to that layer, consistent with the copy-left obligations of CC BY-SA 4.0 and CC BY-NC-SA 4.0.
+
+## Maintainer
+
+U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg).
+
+---
+
+**Endorsement Marker.** Local candidate framework under active stewardship. No parity implied with externally validated laws. The licence split here is a downstream adoption of the T(h)reehouse +EC Corporate Design blueprint (`cd-rules` v1.7.0 consumed via Model B) and reflects the epistemic structure of the project — not a claim of institutional authority.

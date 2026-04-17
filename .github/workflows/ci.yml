@@ -1,0 +1,257 @@
+# SPDX-License-Identifier: MIT
+#
+# CI for iontrap-dynamics.
+#
+# Jobs are staged from cheapest to most expensive. Each job runs only when
+# its preconditions are satisfied (file existence checks via `hashFiles`),
+# so the pipeline stays green as the repository fills out during Phase 0.
+#
+# Gate ladder for a green PR:
+#   lint → typecheck → install-smoke → (test) → (cd-local-integrity) →
+#   cd-upstream-drift → (accessibility, docs)
+#
+# Jobs marked (…) activate only when their target files land. Until then
+# they are skipped, not failing.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # Lint — ruff check + format-check across source, tests, tools, examples.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+  # ---------------------------------------------------------------------------
+  # Typecheck — mypy strict on the package only (tests/examples are relaxed
+  # via pyproject.toml overrides).
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Typecheck (mypy strict)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: mypy
+        run: mypy
+
+  # ---------------------------------------------------------------------------
+  # Install smoke — fresh install, import the package, sanity-check the
+  # exception hierarchy matches CONVENTIONS.md §15. Runs on every supported
+  # Python version.
+  # ---------------------------------------------------------------------------
+  install-smoke:
+    name: Install smoke (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Editable install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Import smoke + exception hierarchy sanity
+        run: |
+          python - <<'PY'
+          from iontrap_dynamics import (
+              IonTrapError, ConventionError, BackendError,
+              IntegrityError, ConvergenceError,
+          )
+          # CONVENTIONS.md §15: base inherits Exception (not RuntimeError);
+          # four subclasses all inherit the base.
+          assert issubclass(IonTrapError, Exception)
+          assert not issubclass(IonTrapError, RuntimeError)
+          for sub in (ConventionError, BackendError, IntegrityError, ConvergenceError):
+              assert issubclass(sub, IonTrapError), sub
+          print("exception hierarchy: OK")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Test — pytest. Activates once tests/ contains at least one collectable
+  # test file. Separate matrix so a bad test on one Python version doesn't
+  # mask a clean run on the other.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test (pytest, py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: install-smoke
+    if: hashFiles('tests/**/test_*.py') != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: pytest
+        run: pytest --cov --cov-report=term-missing
+
+  # ---------------------------------------------------------------------------
+  # CD — local integrity. Verifies that files in assets/ match the SHA-256
+  # table in assets/SOURCE.md. Activates once fetch_assets.sh has been run
+  # and the six files are committed.
+  # ---------------------------------------------------------------------------
+  cd-local-integrity:
+    name: CD · local asset integrity
+    runs-on: ubuntu-latest
+    if: hashFiles('assets/emblem-16.svg') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify local SHA-256 against SOURCE.md
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in emblem-16.svg emblem-32.svg emblem-64.svg tokens.css wordmark-full.svg wordmark-silent.svg; do
+            if [[ ! -f "assets/$f" ]]; then
+              echo "::error file=assets/$f::missing"
+              fail=1
+              continue
+            fi
+            local_hash=$(sha256sum "assets/$f" | awk '{print $1}')
+            recorded=$(grep -oE "\`$f\` \| \`[a-f0-9]{64}\`" assets/SOURCE.md | grep -oE "[a-f0-9]{64}")
+            if [[ "$local_hash" != "$recorded" ]]; then
+              echo "::error file=assets/$f::hash mismatch — local $local_hash, recorded $recorded"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  # ---------------------------------------------------------------------------
+  # CD — upstream drift. Re-fetches the six assets from the pinned upstream
+  # commit and rewrites the checksum table. If git diff reports any change,
+  # the upstream commit produced different bytes than recorded — which on a
+  # fixed SHA should never happen. Catches tampering or regex/script drift
+  # in tools/hash_assets.sh itself.
+  # ---------------------------------------------------------------------------
+  cd-upstream-drift:
+    name: CD · upstream drift at pinned commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # git diff needs a real history, not a shallow
+
+      - name: Re-run hash_assets.sh
+        run: bash tools/hash_assets.sh
+
+      - name: Fail if SOURCE.md drifted
+        run: |
+          if ! git diff --exit-code -- assets/SOURCE.md; then
+            echo "::error::assets/SOURCE.md drifted after re-running hash_assets.sh against the pinned commit."
+            echo "::error::This should never happen on a fixed commit SHA. Check upstream, tampering, or tools/hash_assets.sh regex."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Docs — mkdocs strict build. Activates once docs/ exists.
+  # ---------------------------------------------------------------------------
+  docs:
+    name: Docs (mkdocs strict)
+    runs-on: ubuntu-latest
+    needs: lint
+    if: hashFiles('docs/**/*.md') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install docs extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,docs]"
+
+      - name: mkdocs build --strict
+        run: mkdocs build --strict
+
+  # ---------------------------------------------------------------------------
+  # Accessibility — WCAG 2.2 AA rules A1–A29 (CD 12A) per workplan 0.H.
+  # D3 staging: A1–A5 mandatory, A6–A29 stretch. Activates with docs site.
+  # TODO(0.H.5): wire up pa11y or axe-core once mkdocs build produces site/.
+  # ---------------------------------------------------------------------------
+  accessibility:
+    name: Accessibility (WCAG 2.2 AA, A1–A5 mandatory)
+    runs-on: ubuntu-latest
+    needs: docs
+    if: hashFiles('docs/**/*.md') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Placeholder — D3 staging
+        run: |
+          echo "::notice::Accessibility job is a placeholder."
+          echo "::notice::Wire up pa11y or axe-core against site/ after mkdocs build."
+          echo "::notice::D3 staging: A1–A5 mandatory gates, A6–A29 stretch goals."

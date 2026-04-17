@@ -1,0 +1,231 @@
+# =============================================================================
+# pyproject.toml — iontrap-dynamics
+#
+# Status: Phase 0 scaffold (pre-org). Some URLs below are placeholders that
+# resolve only once the GitHub organisation `open-iontrap` exists and this
+# repository is initialised there. Fields marked `# TODO(org):` must be
+# reviewed at that point; no other metadata should change.
+#
+# Build backend: hatchling (PEP 517, supports PEP 639 licence-files).
+# Licence model: MIT for the distributable Python package; the repository as
+# a whole uses a split-licence architecture declared in /LICENCE.
+# =============================================================================
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+# -----------------------------------------------------------------------------
+# Project metadata
+# -----------------------------------------------------------------------------
+
+[project]
+name = "iontrap-dynamics"
+version = "0.1.0.dev0"
+description = "Open-system quantum dynamics of trapped-ion spin–motion systems"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENCE-MIT"]
+authors = [
+    { name = "U. Warring", email = "ulrich.warring@physik.uni-freiburg.de" },
+]
+maintainers = [
+    { name = "U. Warring", email = "ulrich.warring@physik.uni-freiburg.de" },
+]
+keywords = [
+    "trapped-ions",
+    "quantum-dynamics",
+    "quantum-optics",
+    "open-quantum-systems",
+    "qutip",
+    "spin-motion",
+    "molmer-sorensen",
+    "lamb-dicke",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "qutip>=5.0,<6",
+    "numpy>=1.24,<3",
+    "scipy>=1.10,<2",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Developer toolchain — lint, type-check, test, pre-commit.
+dev = [
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pre-commit>=3.7",
+]
+
+# Documentation build. mkdocs-material consumes tokens.css from assets/.
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
+
+# JAX/Dynamiqs backend — Phase 2 target. Listed for completeness; not
+# exercised by CI until 0.F performance work elevates a JAX example.
+jax = [
+    "jax>=0.4",
+    "jaxlib>=0.4",
+    "dynamiqs>=0.2",
+]
+
+# Plotting helpers used by examples and tutorials (not by the solver core).
+plot = [
+    "matplotlib>=3.8",
+]
+
+[project.urls]
+# TODO(org): set to https://github.com/open-iontrap/iontrap-dynamics after the
+# GitHub organisation is created and this repository initialised there.
+Homepage      = "https://github.com/open-iontrap/iontrap-dynamics"
+Repository    = "https://github.com/open-iontrap/iontrap-dynamics"
+Issues        = "https://github.com/open-iontrap/iontrap-dynamics/issues"
+Changelog     = "https://github.com/open-iontrap/iontrap-dynamics/blob/main/CHANGELOG.md"
+Documentation = "https://open-iontrap.github.io/iontrap-dynamics/"   # TODO(org): activate Pages
+"Corporate Design Source" = "https://github.com/threehouse-plus-ec/cd-rules"
+
+# -----------------------------------------------------------------------------
+# Hatch build configuration
+# -----------------------------------------------------------------------------
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/iontrap_dynamics"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/docs",
+    "/examples",
+    "/assets",
+    "/tools",
+    "/LICENCE",
+    "/LICENCE-MIT",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/CONVENTIONS.md",
+    "/WORKPLAN_v0.3.md",
+    "/pyproject.toml",
+]
+
+# -----------------------------------------------------------------------------
+# Ruff — lint + format. Physics code favours longer lines for formula clarity.
+# -----------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["archive"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "NPY", # numpy-specific rules
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line-too-long — enforced softly by formatter; physics formulae occasionally exceed
+    "N803",  # variable names like `k_vec` should allow single-letter physics conventions
+    "N806",  # same: variables like `H`, `N`, `U` inside functions are physics notation
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802", "N803", "N806"]   # test functions mirror physics notation freely
+"examples/**" = ["N802", "N803", "N806"]
+"src/iontrap_dynamics/analytic.py" = ["RUF002", "RUF003"]
+"tests/regression/analytic/test_analytic.py" = ["RUF002", "RUF003"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# -----------------------------------------------------------------------------
+# MyPy — strict but physics-aware. Relaxed on tests and examples.
+# -----------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_reexport = true
+show_error_codes = true
+files = ["src/iontrap_dynamics"]
+
+[[tool.mypy.overrides]]
+module = ["qutip", "qutip.*", "dynamiqs", "dynamiqs.*", "jax", "jax.*", "jaxlib.*", "scipy", "scipy.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "examples.*"]
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+# -----------------------------------------------------------------------------
+# Pytest — test layering matches workplan 0.B (regression, unit, conventions).
+# -----------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+]
+markers = [
+    "regression_migration: legacy qc.py reference comparison (Phase 0 only, retired after Phase 1)",
+    "regression_analytic: closed-form physics limits (permanent)",
+    "regression_invariant: trace / norm / hermiticity / positivity (permanent)",
+    "convention: convention-enforcement tests (0.D)",
+    "slow: runs longer than the 0.F performance smoke thresholds",
+    "gpu: requires JAX/GPU backend (Phase 2)",
+]
+
+# -----------------------------------------------------------------------------
+# Coverage — measured only on the package, not tests.
+# -----------------------------------------------------------------------------
+
+[tool.coverage.run]
+branch = true
+source = ["src/iontrap_dynamics"]
+omit = ["*/backends/_*.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.$",
+]
