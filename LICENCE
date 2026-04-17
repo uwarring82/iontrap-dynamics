@@ -30,7 +30,7 @@ This file (`LICENCE`) declares the split; it is **not itself** a licence grant. 
 
 - [`LICENCE-MIT`](LICENCE-MIT) — canonical MIT grant covering `src/`, `tests/`, `tools/`, and `.github/`. Source files in these paths SHOULD carry an `SPDX-License-Identifier: MIT` header so the effective terms are machine-readable.
 - [`assets/LICENCE`](assets/LICENCE) — MIT grant for the design assets in that folder (distributed from upstream `threehouse-plus-ec/cd-rules` under Model B, per the blueprint's prescribed per-folder declaration). Provenance recorded in [`assets/SOURCE.md`](assets/SOURCE.md).
-- `docs/LICENCE` *(pending — Phase 0.C / Phase 1)* — will declare the internal CC BY-SA 4.0 / CC BY-NC-SA 4.0 split between Coastline docs and Sail tutorials within `docs/`. Until this file exists, Coastline material at the repository root (this file, `WORKPLAN_v0.3.md`, `CONVENTIONS.md`) is CC BY-SA 4.0 by its own frontmatter, and Sail material does not yet exist.
+- [`docs/LICENCE`](docs/LICENCE) — declares the internal CC BY-SA 4.0 / CC BY-NC-SA 4.0 split between Coastline docs and Sail tutorials within `docs/`. At present, the folder contains Coastline-facing entry pages only.
 
 ## Precedence
 

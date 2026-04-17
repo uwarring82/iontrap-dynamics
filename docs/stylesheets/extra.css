@@ -1,0 +1,206 @@
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+  --md-primary-fg-color: #12303b;
+  --md-primary-fg-color--light: #1d4f60;
+  --md-primary-fg-color--dark: #0b1d24;
+  --md-accent-fg-color: #b84d20;
+  --site-ink: #13242b;
+  --site-muted: #51636a;
+  --site-sand: #f3eee5;
+  --site-paper: #fffdf9;
+  --site-line: rgba(18, 48, 59, 0.12);
+  --site-shadow: 0 18px 50px rgba(18, 48, 59, 0.12);
+  --site-gradient:
+    radial-gradient(circle at top right, rgba(184, 77, 32, 0.16), transparent 32%),
+    radial-gradient(circle at left 18% top 12%, rgba(29, 79, 96, 0.12), transparent 28%),
+    linear-gradient(180deg, #fffdf9 0%, #f8f3eb 100%);
+}
+
+body {
+  background: var(--site-gradient);
+  color: var(--site-ink);
+}
+
+[data-md-color-scheme="default"] {
+  --md-typeset-font: "IBM Plex Sans", sans-serif;
+  --md-code-font: "IBM Plex Mono", monospace;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--site-ink);
+  font-family: "Crimson Pro", serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.md-typeset h1 {
+  font-size: clamp(2.5rem, 7vw, 4.8rem);
+  line-height: 0.95;
+  margin-bottom: 1rem;
+}
+
+.md-typeset h2 {
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  margin-top: 3rem;
+}
+
+.md-main__inner {
+  margin-top: 0;
+}
+
+.md-content__inner {
+  padding-bottom: 4rem;
+}
+
+.hero-panel {
+  background:
+    linear-gradient(135deg, rgba(18, 48, 59, 0.95), rgba(29, 79, 96, 0.9)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.8rem;
+  box-shadow: var(--site-shadow);
+  color: #f7f2ea;
+  margin: 0 0 2.5rem;
+  overflow: hidden;
+  padding: clamp(1.6rem, 4vw, 3rem);
+  position: relative;
+}
+
+.hero-panel::after {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 58%);
+  content: "";
+  height: 18rem;
+  pointer-events: none;
+  position: absolute;
+  right: -5rem;
+  top: -6rem;
+  width: 18rem;
+}
+
+.hero-kicker {
+  color: rgba(247, 242, 234, 0.78);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  margin: 0 0 0.8rem;
+  text-transform: uppercase;
+}
+
+.hero-lede,
+.hero-meta {
+  max-width: 48rem;
+}
+
+.hero-lede {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  margin: 0 0 1.4rem;
+}
+
+.hero-meta {
+  color: rgba(247, 242, 234, 0.72);
+  font-size: 0.95rem;
+  margin-top: 1.25rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 1.6rem;
+}
+
+.hero-button {
+  border: 1px solid rgba(247, 242, 234, 0.24);
+  border-radius: 999px;
+  color: #f7f2ea;
+  display: inline-block;
+  font-weight: 600;
+  padding: 0.8rem 1.2rem;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.hero-button:hover {
+  border-color: rgba(247, 242, 234, 0.4);
+  transform: translateY(-1px);
+}
+
+.hero-button-primary {
+  background: linear-gradient(135deg, #d87b46, #b84d20);
+  border-color: transparent;
+}
+
+.hero-button-primary:hover {
+  background: linear-gradient(135deg, #df8853, #c45625);
+}
+
+.landing-cards {
+  margin-top: 1.5rem;
+}
+
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li {
+  background: rgba(255, 253, 249, 0.78);
+  border: 1px solid var(--site-line);
+  border-radius: 1.2rem;
+  box-shadow: 0 12px 36px rgba(18, 48, 59, 0.08);
+  padding: 1.1rem 1.2rem;
+}
+
+.md-typeset .grid.cards strong {
+  color: var(--site-ink);
+}
+
+.status-strip {
+  background: rgba(184, 77, 32, 0.08);
+  border: 1px solid rgba(184, 77, 32, 0.15);
+  border-radius: 1rem;
+  color: var(--site-ink);
+  margin: 1.2rem 0 1.8rem;
+  padding: 1rem 1.1rem;
+}
+
+.md-typeset p,
+.md-typeset li {
+  color: var(--site-ink);
+}
+
+.md-typeset a {
+  text-decoration-thickness: 0.08em;
+}
+
+.md-header {
+  backdrop-filter: blur(18px);
+  background: rgba(18, 48, 59, 0.92);
+}
+
+.md-tabs {
+  background: rgba(11, 29, 36, 0.88);
+}
+
+.md-footer {
+  background: #10262f;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .hero-panel {
+    border-radius: 1.3rem;
+    padding: 1.35rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+  }
+
+  .hero-button {
+    text-align: center;
+    width: 100%;
+  }
+}

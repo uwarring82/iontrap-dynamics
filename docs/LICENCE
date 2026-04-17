@@ -1,0 +1,40 @@
+# LICENCE — docs/
+
+This folder contains the documentation layer for `iontrap-dynamics`.
+
+## Licence split inside `docs/`
+
+- Coastline material in `docs/` root is licensed under **CC BY-SA 4.0**
+  (`CC-BY-SA-4.0`).
+- Sail material under `docs/tutorials/` is licensed under
+  **CC BY-NC-SA 4.0** (`CC-BY-NC-SA-4.0`).
+
+At present, this folder contains Coastline-facing entry pages only. No Sail
+tutorials are present yet.
+
+## Scope
+
+Covered by CC BY-SA 4.0 in this folder today:
+
+- `index.md`
+- `getting-started.md`
+- `framework.md`
+- presentation assets authored locally for the docs site, unless a file states
+  otherwise
+
+## Upstream assets and fonts
+
+- If files from `assets/` are referenced here, they retain the MIT licence and
+  provenance declared in `../assets/LICENCE` and `../assets/SOURCE.md`.
+- External fonts referenced by the docs site remain under their upstream SIL
+  OFL 1.1 terms and are not redistributed here unless explicitly vendored.
+
+## Precedence
+
+If an individual file inside `docs/` declares a different SPDX identifier, that
+file-level declaration takes precedence over this folder-level default.
+
+## Endorsement Marker
+
+Local candidate framework under active stewardship. No external endorsement is
+implied.

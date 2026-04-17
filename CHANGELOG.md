@@ -19,3 +19,5 @@ Versioning once the public package surface reaches its first alpha release.
 - Hash-verified cache I/O for `TrajectoryResult` (`.npz` + JSON manifest)
 - Permanent `regression_invariant` tests for trace, Hermiticity, positivity,
   norm conservation, and swap symmetry
+- MkDocs landing site scaffold with a styled welcome page and first
+  navigation layer under `docs/`

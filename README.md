@@ -15,8 +15,8 @@ This repository is in Phase 0 scaffold work.
 - Public conventions are locked in `CONVENTIONS.md` v0.1-draft.
 - The package scaffold, result schema, and cache-integrity contract are in
   place; invariant and analytic regression tiers are populated.
-- Core solver builders, observables, worked examples, and the docs site
-  follow next.
+- Core solver builders, observables, and worked examples follow next; the docs
+  landing site scaffold is now in place.
 
 Today the importable code surface covers:
 
@@ -32,6 +32,13 @@ Today the importable code surface covers:
   Rabi, sideband rates, Lamb–Dicke parameter, coherent-state occupation)
 
 Test suite: 80 tests pass (20 schema, 24 cache, 9 invariants, 27 analytic).
+
+Docs site scaffold:
+
+- `mkdocs.yml` configures the public-facing documentation build
+- `docs/index.md` provides the welcome page
+- `docs/getting-started.md` and `docs/framework.md` give the first navigation
+  layer
 
 The authoritative project documents are:
 
