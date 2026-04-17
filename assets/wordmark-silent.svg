@@ -1,0 +1,6 @@
+<svg width="150" height="44" viewBox="0 0 150 44" xmlns="http://www.w3.org/2000/svg">
+  <text x="0" y="32" font-family="'IBM Plex Mono', monospace" font-size="28" font-weight="400" fill="#1a1a1a">T</text>
+  <rect x="18" y="7" width="30" height="30" rx="2" fill="none" stroke="#2c5f7c" stroke-width="1.2"/>
+  <text x="21" y="32" font-family="'IBM Plex Mono', monospace" font-size="28" font-weight="500" fill="#2c5f7c">h</text>
+  <text x="54" y="32" font-family="'IBM Plex Mono', monospace" font-size="28" font-weight="400" fill="#1a1a1a">ree</text>
+</svg>

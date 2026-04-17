@@ -54,4 +54,12 @@ nav:
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:
+  # tokens.css is vendored from threehouse-plus-ec/cd-rules at the commit
+  # pinned in assets/SOURCE.md (Model B propagation per CD 0.10). The copy
+  # under docs/stylesheets/ is maintained by tools/fetch_assets.sh and must
+  # stay byte-identical to assets/tokens.css — the hash is verified against
+  # assets/ only, so drifting the docs copy by hand is unsupported.
+  - stylesheets/tokens.css
+  # Local docs-site styling. Consumes custom properties from tokens.css
+  # above; keep the order — tokens.css must load first for cascade.
   - stylesheets/extra.css

@@ -56,24 +56,36 @@ FILES=(
 )
 
 mkdir -p assets
+mkdir -p docs/stylesheets
 
 echo "Fetching from ${REPO_SLUG}..."
 for f in "${FILES[@]}"; do
     dest="assets/${f}"
     if [[ -f "$dest" && $FORCE -eq 0 ]]; then
         echo "  $f: already present, skipping (use --force to overwrite)"
-        continue
+    else
+        url="https://raw.githubusercontent.com/${REPO_SLUG}/${COMMIT_SHA}/${f}"
+        if ! curl -sSfL --max-redirs 5 -o "$dest" "$url"; then
+            echo "  $f: FETCH FAILED from $url" >&2
+            exit 2
+        fi
+        echo "  $f: fetched"
     fi
-    url="https://raw.githubusercontent.com/${REPO_SLUG}/${COMMIT_SHA}/${f}"
-    if ! curl -sSfL --max-redirs 5 -o "$dest" "$url"; then
-        echo "  $f: FETCH FAILED from $url" >&2
-        exit 2
+
+    # tokens.css is also consumed by the docs site (workplan §0.H step 4).
+    # Maintain a second vendored copy under docs/stylesheets/ so mkdocs,
+    # which only serves files from docs_dir, can load it via extra_css.
+    # The hash check in tools/hash_assets.sh operates on assets/ only; if
+    # the docs copy drifts from the assets copy, fetch_assets.sh (or a
+    # small CI step) will restore it at its next run.
+    if [[ "$f" == "tokens.css" ]]; then
+        cp -f "assets/$f" "docs/stylesheets/$f"
+        echo "    -> mirrored to docs/stylesheets/$f for mkdocs consumption"
     fi
-    echo "  $f: fetched"
 done
 
 echo ""
-echo "SUCCESS: assets placed in assets/."
+echo "SUCCESS: assets placed in assets/ (tokens.css also mirrored to docs/stylesheets/)."
 echo ""
 echo "Next: run tools/hash_assets.sh to verify integrity against SOURCE.md,"
 echo "      then review each file visually before committing."

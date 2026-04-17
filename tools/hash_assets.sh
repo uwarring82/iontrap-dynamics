@@ -113,11 +113,8 @@ if count != 1:
     sys.stderr.write("ERROR: could not locate checksum table in SOURCE.md\n")
     sys.exit(1)
 
-# Strip the "Status: PROVISIONAL" banner ONLY if both:
-#   - all hashes are now present (no <pending>)
-#   - user passes --finalise
-# Otherwise keep the banner; this script only fills in hashes, and a separate
-# review decides when to remove the PROVISIONAL banner.
+# This script only fills in hashes. The removal of the 'Status: PROVISIONAL'
+# banner is a manual governance action performed when the upstream tag is cut.
 with open(path, "w") as fh:
     fh.write(new_content)
 print(f"Updated {path}")
