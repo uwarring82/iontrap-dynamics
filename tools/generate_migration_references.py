@@ -265,10 +265,41 @@ def _run_scenario_3(qc_module: Any) -> dict[str, np.ndarray]:
 
 
 def _run_scenario_4(qc_module: Any) -> dict[str, np.ndarray]:
-    # TODO: single-ion stroboscopic AC-π/2. Invokes
-    # qc.single_spin_and_mode_ACpi2 with mod_on=True and the canonical
-    # strobo_dur.
-    raise NotImplementedError("scenario 4 (stroboscopic AC-π/2) not yet ported")
+    # BLOCKED on QuTiP 4 → 5 coefficient-callable semantics.
+    #
+    # qc.single_spin_and_mode_ACpi2 with mod_on=True, mod_type=0 (stroboscopic)
+    # builds a time-dependent Hamiltonian H = H0 + mod(t) · HI where
+    # mod(t) = spline_mod_fct_fil(t) — a scipy.interpolate.CubicSpline over
+    # a filtered square-wave pulse train. In QuTiP 4 this worked because
+    # coefficient callables could return a 0-d numpy array; QuTiP 5.1+
+    # enforces:
+    #
+    #     TypeError: The coefficient function must return a number
+    #
+    # Two resolution paths (neither pure-invoke — both require re-wrapping
+    # legacy logic in this generator):
+    #
+    #   (A) Duplicate `single_spin_and_mode_ACpi2`'s body here and change
+    #       `return cs(t)` to `return float(cs(t))` inside spline_mod_fct_fil.
+    #       Preserves exact stroboscopic envelope behaviour.
+    #
+    #   (B) Precompute mod_values = np.array([mod(t, []) for t in tlist])
+    #       and pass H = [H0, [HI, mod_values]] to mesolve — the QuTiP 5
+    #       idiomatic array-coefficient form. Uses QuTiP's internal
+    #       interpolation rather than scipy's CubicSpline; small numerical
+    #       drift possible but the physics is the same.
+    #
+    # Either choice crosses from "faithful legacy replay" into "legacy with
+    # fixes". Deferring until the user picks (A) vs (B).
+    #
+    # Sinusoidal mode (mod_type=1) does NOT trigger the bug — its mod(t) is
+    # a scalar-returning cosine — but that's different physics from what
+    # workplan §0.B item 4 specifies ("stroboscopic AC-π/2"), so using it as
+    # a substitute would mislabel the regression target.
+    raise NotImplementedError(
+        "scenario 4 (stroboscopic AC-π/2) blocked on QuTiP 5 coefficient-callable "
+        "compat; see comments in _run_scenario_4 for resolution paths A/B."
+    )
 
 
 # ----------------------------------------------------------------------------
