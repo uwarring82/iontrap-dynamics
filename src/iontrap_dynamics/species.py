@@ -36,17 +36,16 @@ in kg, wavelength in m, linewidth in rad·s⁻¹.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from .exceptions import ConventionError
-
 
 # ----------------------------------------------------------------------------
 # Multipole order
 # ----------------------------------------------------------------------------
 
 
-class TransitionType(str, Enum):
+class TransitionType(StrEnum):
     """Electromagnetic multipole order of an optical transition.
 
     * ``E1`` — electric dipole (the "strong" lines: D1, D2 in alkali-like
@@ -93,9 +92,7 @@ class Transition:
 
     def __post_init__(self) -> None:
         if self.wavelength_m <= 0.0:
-            raise ConventionError(
-                f"wavelength_m must be positive; got {self.wavelength_m!r}"
-            )
+            raise ConventionError(f"wavelength_m must be positive; got {self.wavelength_m!r}")
         if self.linewidth_rad_s is not None and self.linewidth_rad_s < 0.0:
             raise ConventionError(
                 f"linewidth_rad_s must be non-negative; got {self.linewidth_rad_s!r}"
@@ -147,9 +144,7 @@ class IonSpecies:
                 f"mass_number must be a positive integer; got {self.mass_number!r}"
             )
         if self.mass_kg <= 0.0:
-            raise ConventionError(
-                f"mass_kg must be positive; got {self.mass_kg!r}"
-            )
+            raise ConventionError(f"mass_kg must be positive; got {self.mass_kg!r}")
         labels = [t.label for t in self.transitions]
         if len(labels) != len(set(labels)):
             duplicates = sorted({lab for lab in labels if labels.count(lab) > 1})
@@ -174,10 +169,7 @@ class IonSpecies:
             if t.label == label:
                 return t
         available = [t.label for t in self.transitions]
-        raise ConventionError(
-            f"unknown transition label: {label!r}. "
-            f"Available: {available!r}"
-        )
+        raise ConventionError(f"unknown transition label: {label!r}. Available: {available!r}")
 
     @property
     def name(self) -> str:

@@ -133,9 +133,7 @@ class TestValidation:
             ModeConfig(
                 label="com",
                 frequency_rad_s=1.0,
-                eigenvector_per_ion=np.array(
-                    [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]
-                ),  # unnormalised
+                eigenvector_per_ion=np.array([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]),  # unnormalised
             )
 
     def test_validation_errors_subclass_iontraperror(self) -> None:
@@ -173,9 +171,7 @@ class TestEigenvectorAccessors:
         b0 = mode.eigenvector_at_ion(0)
         b0[2] = 999.0  # tamper
         # The stored mode must be unaffected.
-        np.testing.assert_allclose(
-            mode.eigenvector_at_ion(0), [0.0, 0.0, 1.0 / np.sqrt(2.0)]
-        )
+        np.testing.assert_allclose(mode.eigenvector_at_ion(0), [0.0, 0.0, 1.0 / np.sqrt(2.0)])
 
     def test_eigenvector_at_ion_out_of_range_raises(self) -> None:
         mode = ModeConfig(

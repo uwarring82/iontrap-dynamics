@@ -124,7 +124,10 @@ class IonSystem:
             for t in sp.transitions:
                 all_transition_labels.add(t.label)
         for i, drv in enumerate(self.drives):
-            if drv.transition_label is not None and drv.transition_label not in all_transition_labels:
+            if (
+                drv.transition_label is not None
+                and drv.transition_label not in all_transition_labels
+            ):
                 raise ConventionError(
                     f"drives[{i}].transition_label = {drv.transition_label!r} is not "
                     f"carried by any species in the crystal. Available: "
@@ -176,9 +179,7 @@ class IonSystem:
             if m.label == label:
                 return m
         available = [m.label for m in self.modes]
-        raise ConventionError(
-            f"unknown mode label: {label!r}. Available: {available!r}"
-        )
+        raise ConventionError(f"unknown mode label: {label!r}. Available: {available!r}")
 
     @property
     def is_homogeneous(self) -> bool:

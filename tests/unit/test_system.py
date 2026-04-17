@@ -13,14 +13,10 @@ from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.species import (
-    IonSpecies,
-    Transition,
-    TransitionType,
     ca40_plus,
     mg25_plus,
 )
 from iontrap_dynamics.system import IonSystem
-
 
 # ----------------------------------------------------------------------------
 # Fixture helpers

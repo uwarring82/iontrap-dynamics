@@ -23,7 +23,6 @@ from iontrap_dynamics.species import (
     mg25_plus,
 )
 
-
 # ----------------------------------------------------------------------------
 # Transition
 # ----------------------------------------------------------------------------
@@ -216,19 +215,28 @@ class TestSpeciesName:
 
     def test_doubly_charged_cation(self) -> None:
         s = IonSpecies(
-            element="Ba", mass_number=138, mass_kg=138 * ATOMIC_MASS_UNIT_KG, charge=+2,
+            element="Ba",
+            mass_number=138,
+            mass_kg=138 * ATOMIC_MASS_UNIT_KG,
+            charge=+2,
         )
         assert s.name == "138Ba2+"
 
     def test_neutral_atom(self) -> None:
         s = IonSpecies(
-            element="Rb", mass_number=87, mass_kg=87 * ATOMIC_MASS_UNIT_KG, charge=0,
+            element="Rb",
+            mass_number=87,
+            mass_kg=87 * ATOMIC_MASS_UNIT_KG,
+            charge=0,
         )
         assert s.name == "87Rb"
 
     def test_singly_charged_anion(self) -> None:
         s = IonSpecies(
-            element="H", mass_number=1, mass_kg=1 * ATOMIC_MASS_UNIT_KG, charge=-1,
+            element="H",
+            mass_number=1,
+            mass_kg=1 * ATOMIC_MASS_UNIT_KG,
+            charge=-1,
         )
         assert s.name == "1H-"
 

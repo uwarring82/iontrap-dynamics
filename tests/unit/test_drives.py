@@ -11,7 +11,6 @@ import pytest
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 
-
 # ----------------------------------------------------------------------------
 # Construction happy paths
 # ----------------------------------------------------------------------------

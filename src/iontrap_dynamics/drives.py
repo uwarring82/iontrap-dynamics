@@ -22,7 +22,7 @@ with the transition frequency from the associated ``IonSpecies``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -32,7 +32,9 @@ from .exceptions import ConventionError
 _VECTOR_SHAPE_TOLERANCE = 1e-10
 
 
-def _as_3_vector(name: str, value: NDArray[np.floating] | tuple[float, ...] | list[float]) -> NDArray[np.floating]:
+def _as_3_vector(
+    name: str, value: NDArray[np.floating] | tuple[float, ...] | list[float]
+) -> NDArray[np.floating]:
     """Coerce and validate a 3-vector input.
 
     Shared helper — used by both :class:`DriveConfig` (wavevector,
@@ -41,9 +43,7 @@ def _as_3_vector(name: str, value: NDArray[np.floating] | tuple[float, ...] | li
     """
     array = np.asarray(value, dtype=np.float64)
     if array.shape != (3,):
-        raise ConventionError(
-            f"{name} must be a length-3 vector; got shape {array.shape}"
-        )
+        raise ConventionError(f"{name} must be a length-3 vector; got shape {array.shape}")
     return array
 
 

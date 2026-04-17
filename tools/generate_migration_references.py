@@ -450,7 +450,7 @@ def _run_scenario_4(qc_module: Any) -> dict[str, np.ndarray]:
         omega_1 * cst.mega,
         25 * cst.atomic_mass,
     )
-    Omega_eff = np.exp(-eta_1**2 / 2) * Omega
+    Omega_eff = np.exp(-(eta_1**2) / 2) * Omega
 
     # Initial state (qc.py helpers — deterministic and QuTiP-5 clean)
     rho_spin_0, _ps = q.initialise_spins(no=1, angle=r_spin, verbose=False)
