@@ -1,0 +1,63 @@
+{
+  "description": "Two-ion MS-like gate (single-tone blue-sideband drive)",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-17T16:40:40.606310+00:00",
+  "n_samples": 247,
+  "observable_keys": [
+    "bell_fidelity",
+    "eof",
+    "mode_P",
+    "mode_X",
+    "mode_entropy",
+    "n_mode",
+    "p_down_down",
+    "p_single_flip",
+    "p_up_up",
+    "sigma_x_A",
+    "sigma_x_B",
+    "sigma_y_A",
+    "sigma_y_B",
+    "sigma_z_A",
+    "sigma_z_B",
+    "spin_entropy_A",
+    "spin_entropy_B",
+    "spin_joint_entropy",
+    "times",
+    "var_p",
+    "var_x"
+  ],
+  "parameters": {
+    "Fck": 0,
+    "FockPrec": 0.0025,
+    "LD_regime": true,
+    "Omega_over_2pi_MHz": 1.0,
+    "dis_ampl": 0.0,
+    "dis_phi_rad": 0.0,
+    "n_thermal": 0.001,
+    "nosteps": 50,
+    "omega_mode_over_2pi_MHz": 2.5,
+    "omega_spin_over_2pi_MHz": 2.5,
+    "phi_drive_rad": 0.0,
+    "r_spin_rad": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "sq_ampl": 0.0,
+    "sq_phi_rad": 0.0,
+    "tmax_periods": 1
+  },
+  "parameters_hash": "e7d695d0e83548a33fe3ac2e75ef69baa51cf79eb61e0a216063394174b58555",
+  "qc_legacy_tag": "qc-legacy-v1.0",
+  "qc_module_path": "legacy/qc.py",
+  "scenario_index": 3,
+  "scenario_name": "03_two_ion_ms_gate",
+  "schema_version": 1
+}

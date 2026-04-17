@@ -257,11 +257,107 @@ def _run_scenario_2(qc_module: Any) -> dict[str, np.ndarray]:
 # Scenarios 3–5 — stubbed (one-PR-per-scenario activation plan)
 # ----------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------
+# Scenario 3 — two-ion MS-like gate (blue-sideband single-tone drive)
+# ----------------------------------------------------------------------------
+#
+# Note on nomenclature: the qc.py method `squeeze_to_entangle_twoSpins_singleMode`
+# drives both spins with a single laser tone at omega_z = +omega_mode (blue
+# sideband). A proper Mølmer–Sørensen gate uses two tones at omega_atom ± δ,
+# with δ ≈ omega_mode — the single-tone version here is a simplified
+# relative of MS that still produces spin–motion entanglement via the
+# sideband coupling. The workplan §0.B entry calls this the "two-ion MS
+# gate" scenario and treats qc.py's output as the regression target; the
+# labelling is looser than the textbook definition but matches the
+# legacy script's intent.
+
+SCENARIO_3_PARAMETERS: dict[str, Any] = {
+    "Omega_over_2pi_MHz": 1.0,
+    "omega_mode_over_2pi_MHz": 2.5,
+    "omega_spin_over_2pi_MHz": 2.5,  # blue sideband (omega_z = +omega_mode)
+    "r_spin_rad": [0.0, 0.0, 0.0],
+    "n_thermal": 0.001,
+    "Fck": 0,
+    "sq_ampl": 0.0,
+    "sq_phi_rad": 0.0,
+    "dis_ampl": 0.0,
+    "dis_phi_rad": 0.0,
+    "phi_drive_rad": 0.0,
+    "tmax_periods": 1,
+    "nosteps": 50,                   # 50 samples / μs → ~250 samples over tend
+    "FockPrec": 0.0025,
+    "LD_regime": True,
+}
+
+
 def _run_scenario_3(qc_module: Any) -> dict[str, np.ndarray]:
-    # TODO: two-ion Mølmer–Sørensen gate. Invokes
-    # qc.squeeze_to_entangle_twoSpins_singleMode with symmetric red/blue
-    # detunings producing the MS interaction.
-    raise NotImplementedError("scenario 3 (two-ion MS gate) not yet ported")
+    """Two-spin, one-mode scenario. Output has 21 arrays:
+
+    * ``times`` — 1-D, μs.
+    * Joint-spin: ``spin_joint_entropy``, ``eof``.
+    * Per-ion spin: ``sigma_{x,y,z}_A``, ``spin_entropy_A``, ``sigma_{x,y,z}_B``,
+      ``spin_entropy_B``.
+    * Two-ion populations: ``p_down_down``, ``p_single_flip``, ``p_up_up``.
+    * Bell fidelity: ``bell_fidelity`` (qc.py's ``(|dd⟩ + i|uu⟩)/√2``
+      convention — see CONVENTIONS.md §9 for the adoption note).
+    * Mode: ``n_mode``, ``var_x``, ``var_p``, ``mode_entropy``, ``mode_X``,
+      ``mode_P``.
+    """
+    q = qc_module.QC()
+    p = SCENARIO_3_PARAMETERS
+    output, _mS, _mM = q.squeeze_to_entangle_twoSpins_singleMode(
+        Omega=p["Omega_over_2pi_MHz"] * 2 * np.pi,
+        omega_1=p["omega_mode_over_2pi_MHz"] * 2 * np.pi,
+        omega_z=p["omega_spin_over_2pi_MHz"] * 2 * np.pi,
+        r_spin=p["r_spin_rad"],
+        n_th=p["n_thermal"],
+        Fck=p["Fck"],
+        sq_a=p["sq_ampl"],
+        sq_phi=p["sq_phi_rad"],
+        dis_a=p["dis_ampl"],
+        dis_phi=p["dis_phi_rad"],
+        phi_drive=p["phi_drive_rad"],
+        tmax=p["tmax_periods"],
+        nosteps=p["nosteps"],
+        FockPrec=p["FockPrec"],
+        state_in=None,
+        do_plot=False,
+        LD_regime=p["LD_regime"],
+    )
+
+    spin_props, _ = q.trace_spin_props(output, ptrace_sel=[1, 2], verbose=False)
+    mode_props, _ = q.trace_motional_props(output, ptrace_sel=[0], verbose=False)
+    spin_props = np.asarray(spin_props, dtype=np.complex128)
+    mode_props = np.asarray(mode_props, dtype=np.complex128)
+
+    # Spin columns (2 spins, 14 total):
+    # [S, EoF, <sx>_A, <sy>_A, <sz>_A, S_A, <sx>_B, <sy>_B, <sz>_B, S_B,
+    #  P(|dd>), P(|du>+|ud>), P(|uu>), Bell-state fidelity]
+    # Mode columns (1 mode): [n_cut, <n>, Var_x, Var_p, S, <X>, <P>]
+    times = np.asarray(output.times, dtype=np.float64)
+    return {
+        "times": times,
+        "spin_joint_entropy": np.real(spin_props[:, 0]),
+        "eof":                np.real(spin_props[:, 1]),
+        "sigma_x_A":          np.real(spin_props[:, 2]),
+        "sigma_y_A":          np.real(spin_props[:, 3]),
+        "sigma_z_A":          np.real(spin_props[:, 4]),
+        "spin_entropy_A":     np.real(spin_props[:, 5]),
+        "sigma_x_B":          np.real(spin_props[:, 6]),
+        "sigma_y_B":          np.real(spin_props[:, 7]),
+        "sigma_z_B":          np.real(spin_props[:, 8]),
+        "spin_entropy_B":     np.real(spin_props[:, 9]),
+        "p_down_down":        np.real(spin_props[:, 10]),
+        "p_single_flip":      np.real(spin_props[:, 11]),
+        "p_up_up":            np.real(spin_props[:, 12]),
+        "bell_fidelity":      np.real(spin_props[:, 13]),
+        "n_mode":             np.real(mode_props[:, 1]),
+        "var_x":              np.real(mode_props[:, 2]),
+        "var_p":              np.real(mode_props[:, 3]),
+        "mode_entropy":       np.real(mode_props[:, 4]),
+        "mode_X":             np.real(mode_props[:, 5]),
+        "mode_P":             np.real(mode_props[:, 6]),
+    }
 
 
 def _run_scenario_4(qc_module: Any) -> dict[str, np.ndarray]:
@@ -356,9 +452,9 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     },
     "03_two_ion_ms_gate": {
         "index": 3,
-        "description": "Two-ion Mølmer–Sørensen gate (bichromatic MS interaction)",
+        "description": "Two-ion MS-like gate (single-tone blue-sideband drive)",
         "runner": _run_scenario_3,
-        "parameters": {},
+        "parameters": SCENARIO_3_PARAMETERS,
     },
     "04_single_ion_stroboscopic_ac_halfpi": {
         "index": 4,
