@@ -116,37 +116,25 @@ def _parameters_hash(parameters: dict[str, Any]) -> str:
 
 
 # ----------------------------------------------------------------------------
-# Scenario 1 — single-ion carrier flopping, thermal
+# Shared helper: single-spin, single-mode scenarios
 # ----------------------------------------------------------------------------
 #
-# qc.py method: `QC.squeeze_to_entangle_singleSpin_singleMode`
-# Regime: on-resonance carrier drive (omega_z = 0), thermal initial motion,
-# Lamb–Dicke regime expansion. The workplan §0.B entry for this scenario
-# reads "single-ion carrier flopping (thermal)".
-
-SCENARIO_1_PARAMETERS: dict[str, Any] = {
-    "Omega_over_2pi_MHz": 0.05,
-    "omega_mode_over_2pi_MHz": 2.2,
-    "omega_spin_over_2pi_MHz": 0.0,
-    "r_spin_rad": [0.0, 0.0, 0.0],
-    "n_thermal": 0.5,
-    "Fck": 0,
-    "sq_ampl": 0.0,
-    "sq_phi_rad": 0.0,
-    "dis_ampl": 0.0,
-    "dis_phi_rad": 0.0,
-    "phi_drive_rad": 0.0,
-    "tmax_periods": 1,
-    "nosteps": 1,
-    "FockPrec": 0.005,
-    "LD_regime": True,
-}
+# Scenarios 1, 2, and (eventually) 5 all drive a single spin against a single
+# motional mode with different regimes (on-resonance carrier; red-sideband
+# from Fock |1⟩; squeeze + displace off-resonance). They share:
+#
+#   - the qc.py method `squeeze_to_entangle_singleSpin_singleMode`
+#   - the same reduced-state tracing (1 spin + 1 mode) and therefore the
+#     same 11 observable keys in the output bundle
+#
+# The regime-specific choices live in each scenario's parameters dict.
 
 
-def _run_scenario_1(qc_module: Any) -> dict[str, np.ndarray]:
-    """Invoke qc.py for scenario 1 and return arrays keyed by observable.
+def _run_single_spin_single_mode(qc_module: Any, p: dict[str, Any]) -> dict[str, np.ndarray]:
+    """Run one single-spin / single-mode scenario through qc.py and return
+    an arrays-by-observable dict.
 
-    Output keys:
+    Output keys (same for every single-spin single-mode scenario):
 
     * ``times`` — 1-D, μs (qc.py's native time units).
     * ``sigma_x``, ``sigma_y``, ``sigma_z`` — spin expectations.
@@ -157,7 +145,6 @@ def _run_scenario_1(qc_module: Any) -> dict[str, np.ndarray]:
     * ``mode_X``, ``mode_P`` — ⟨X⟩ and ⟨P⟩ quadratures.
     """
     q = qc_module.QC()
-    p = SCENARIO_1_PARAMETERS
     output, _mS, _mM = q.squeeze_to_entangle_singleSpin_singleMode(
         Omega=p["Omega_over_2pi_MHz"] * 2 * np.pi,
         omega_1=p["omega_mode_over_2pi_MHz"] * 2 * np.pi,
@@ -202,15 +189,73 @@ def _run_scenario_1(qc_module: Any) -> dict[str, np.ndarray]:
 
 
 # ----------------------------------------------------------------------------
-# Scenarios 2–5 — stubbed (one-PR-per-scenario activation plan)
+# Scenario 1 — single-ion carrier flopping, thermal
 # ----------------------------------------------------------------------------
+#
+# Regime: on-resonance carrier drive (omega_z = 0), thermal initial motion,
+# Lamb–Dicke regime expansion. The workplan §0.B entry for this scenario
+# reads "single-ion carrier flopping (thermal)".
+
+SCENARIO_1_PARAMETERS: dict[str, Any] = {
+    "Omega_over_2pi_MHz": 0.05,
+    "omega_mode_over_2pi_MHz": 2.2,
+    "omega_spin_over_2pi_MHz": 0.0,
+    "r_spin_rad": [0.0, 0.0, 0.0],
+    "n_thermal": 0.5,
+    "Fck": 0,
+    "sq_ampl": 0.0,
+    "sq_phi_rad": 0.0,
+    "dis_ampl": 0.0,
+    "dis_phi_rad": 0.0,
+    "phi_drive_rad": 0.0,
+    "tmax_periods": 1,
+    "nosteps": 1,
+    "FockPrec": 0.005,
+    "LD_regime": True,
+}
+
+
+def _run_scenario_1(qc_module: Any) -> dict[str, np.ndarray]:
+    return _run_single_spin_single_mode(qc_module, SCENARIO_1_PARAMETERS)
+
+
+# ----------------------------------------------------------------------------
+# Scenario 2 — single-ion red-sideband flopping, Fock |1⟩
+# ----------------------------------------------------------------------------
+#
+# Regime: laser red-detuned by one mode frequency (omega_z = −omega_1),
+# near-vacuum thermal occupation so the Fock |1⟩ state dominates, no
+# squeezing or displacement. Couples |↓, 1⟩ ↔ |↑, 0⟩ at leading-order
+# rate |η|·Ω (analytic/formula in src/iontrap_dynamics/analytic.py,
+# verified there at pytest-approx). The workplan §0.B entry for this
+# scenario reads "red-sideband flopping (Fock |1⟩)".
+
+SCENARIO_2_PARAMETERS: dict[str, Any] = {
+    "Omega_over_2pi_MHz": 0.05,
+    "omega_mode_over_2pi_MHz": 2.2,
+    "omega_spin_over_2pi_MHz": -2.2,  # red-detuned by one mode frequency
+    "r_spin_rad": [0.0, 0.0, 0.0],
+    "n_thermal": 0.001,               # near-vacuum to isolate the Fock state
+    "Fck": 1,                         # initial motional state |1⟩
+    "sq_ampl": 0.0,
+    "sq_phi_rad": 0.0,
+    "dis_ampl": 0.0,
+    "dis_phi_rad": 0.0,
+    "phi_drive_rad": 0.0,
+    "tmax_periods": 1,
+    "nosteps": 1,
+    "FockPrec": 0.005,
+    "LD_regime": True,
+}
+
 
 def _run_scenario_2(qc_module: Any) -> dict[str, np.ndarray]:
-    # TODO: red-sideband flopping from Fock |1⟩. Invokes
-    # qc.squeeze_to_entangle_singleSpin_singleMode with Fck=1,
-    # omega_z = -omega_1 (red detune), n_th ≈ 0.
-    raise NotImplementedError("scenario 2 (red-sideband Fock|1⟩) not yet ported")
+    return _run_single_spin_single_mode(qc_module, SCENARIO_2_PARAMETERS)
 
+
+# ----------------------------------------------------------------------------
+# Scenarios 3–5 — stubbed (one-PR-per-scenario activation plan)
+# ----------------------------------------------------------------------------
 
 def _run_scenario_3(qc_module: Any) -> dict[str, np.ndarray]:
     # TODO: two-ion Mølmer–Sørensen gate. Invokes
@@ -248,7 +293,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "index": 2,
         "description": "Single-ion red-sideband flopping from Fock |1⟩",
         "runner": _run_scenario_2,
-        "parameters": {},
+        "parameters": SCENARIO_2_PARAMETERS,
     },
     "03_two_ion_ms_gate": {
         "index": 3,
