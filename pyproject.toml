@@ -1,10 +1,10 @@
 # =============================================================================
 # pyproject.toml — iontrap-dynamics
 #
-# Status: Phase 0 scaffold (pre-org). Some URLs below are placeholders that
-# resolve only once the GitHub organisation `open-iontrap` exists and this
-# repository is initialised there. Fields marked `# TODO(org):` must be
-# reviewed at that point; no other metadata should change.
+# Status: Phase 0 scaffold (pre-org). URLs below reflect the repository's
+# current location at github.com/uwarring82/iontrap-dynamics. Workplan §4
+# plans a migration to the neutral `open-iontrap` community org; see the
+# [project.urls] block for the swap-points when that happens.
 #
 # Build backend: hatchling (PEP 517, supports PEP 639 licence-files).
 # Licence model: MIT for the distributable Python package; the repository as
@@ -93,13 +93,16 @@ plot = [
 ]
 
 [project.urls]
-# TODO(org): set to https://github.com/open-iontrap/iontrap-dynamics after the
-# GitHub organisation is created and this repository initialised there.
-Homepage      = "https://github.com/open-iontrap/iontrap-dynamics"
-Repository    = "https://github.com/open-iontrap/iontrap-dynamics"
-Issues        = "https://github.com/open-iontrap/iontrap-dynamics/issues"
-Changelog     = "https://github.com/open-iontrap/iontrap-dynamics/blob/main/CHANGELOG.md"
-Documentation = "https://open-iontrap.github.io/iontrap-dynamics/"   # TODO(org): activate Pages
+# URLs reflect the current repository location. Workplan §4 plans a future
+# migration to the neutral `open-iontrap` community organisation; until that
+# org is created and this repo initialised there, URLs point to reality.
+# When migrating: swap `uwarring82` → `open-iontrap` in all five entries and
+# activate GitHub Pages at the new location.
+Homepage      = "https://github.com/uwarring82/iontrap-dynamics"
+Repository    = "https://github.com/uwarring82/iontrap-dynamics"
+Issues        = "https://github.com/uwarring82/iontrap-dynamics/issues"
+Changelog     = "https://github.com/uwarring82/iontrap-dynamics/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/uwarring82/iontrap-dynamics"   # no Pages deploy yet
 "Corporate Design Source" = "https://github.com/threehouse-plus-ec/cd-rules"
 
 # -----------------------------------------------------------------------------

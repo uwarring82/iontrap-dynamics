@@ -31,7 +31,8 @@ Today the importable code surface covers:
 - `iontrap_dynamics.analytic` — closed-form reference formulas (carrier
   Rabi, sideband rates, Lamb–Dicke parameter, coherent-state occupation)
 
-Test suite: 80 tests pass (20 schema, 24 cache, 9 invariants, 27 analytic).
+Test suite: 87 tests pass (20 schema, 24 cache, 9 invariants, 27 analytic,
+7 static convention-enforcement).
 
 Docs site scaffold:
 

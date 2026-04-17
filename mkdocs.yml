@@ -1,8 +1,10 @@
 site_name: iontrap-dynamics
 site_description: Open-system quantum dynamics of trapped-ion spin-motion systems
-site_url: https://open-iontrap.github.io/iontrap-dynamics/
-repo_url: https://github.com/open-iontrap/iontrap-dynamics
-repo_name: open-iontrap/iontrap-dynamics
+# URLs reflect the current repo. On migration to `open-iontrap` (workplan §4),
+# swap `uwarring82` → `open-iontrap` in the next three lines.
+site_url: https://github.com/uwarring82/iontrap-dynamics
+repo_url: https://github.com/uwarring82/iontrap-dynamics
+repo_name: uwarring82/iontrap-dynamics
 
 theme:
   name: material
@@ -38,6 +40,12 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  # Material icon shortcodes (e.g. :material-telescope:) used on the
+  # welcome page. Depends on mkdocs-material's own icon set being on the
+  # Python path at build time — supplied by the `docs` extra.
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
   - Welcome: index.md
