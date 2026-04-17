@@ -12,14 +12,26 @@ as the Phase 0 reference backend.
 
 This repository is in Phase 0 scaffold work.
 
-- Public conventions are being locked before solver code lands.
-- The package metadata and exception hierarchy are in place.
-- Core dynamics modules, tests, examples, and docs site scaffolding follow next.
+- Public conventions are locked in `CONVENTIONS.md` v0.1-draft.
+- The package scaffold, result schema, and cache-integrity contract are in
+  place; invariant and analytic regression tiers are populated.
+- Core solver builders, observables, worked examples, and the docs site
+  follow next.
 
-Today the importable code surface is intentionally small:
+Today the importable code surface covers:
 
-- `iontrap_dynamics.exceptions` provides the canonical exception hierarchy named
-  in `CONVENTIONS.md`.
+- `iontrap_dynamics.exceptions` — canonical exception hierarchy
+  (`IonTrapError`, `ConventionError`, `BackendError`, `IntegrityError`,
+  `ConvergenceError`)
+- `iontrap_dynamics.results` — frozen `TrajectoryResult` schema with
+  storage-mode consistency enforcement
+- `iontrap_dynamics.cache` — hash-verified `.npz` + JSON persistence
+- `iontrap_dynamics.conventions` — `CONVENTION_VERSION` marker
+- `iontrap_dynamics.invariants` — density-matrix / state-vector validators
+- `iontrap_dynamics.analytic` — closed-form reference formulas (carrier
+  Rabi, sideband rates, Lamb–Dicke parameter, coherent-state occupation)
+
+Test suite: 80 tests pass (20 schema, 24 cache, 9 invariants, 27 analytic).
 
 The authoritative project documents are:
 
