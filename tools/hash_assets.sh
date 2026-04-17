@@ -99,7 +99,6 @@ with open(path) as fh:
     content = fh.read()
 
 # Match from the table header "| File | SHA-256 | Size (bytes) |" through the
-# end of the last row (a line starting with '| \`' and ending with ' |').
 # end of the last row.
 pattern = re.compile(
     r"\| File \| SHA-256 \| Size \(bytes\) \|.*?(?=\n\nUpstream path)",

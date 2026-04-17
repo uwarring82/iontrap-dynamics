@@ -245,14 +245,14 @@ Copied on:         2026-04-XX
 
 ## Files and checksums
 
-| File | SHA-256 |
-|---|---|
-| emblem-16.svg | <hash> |
-| emblem-32.svg | <hash> |
-| emblem-64.svg | <hash> |
-| tokens.css | <hash> |
-| wordmark-full.svg | <hash> |
-| wordmark-silent.svg | <hash> |
+| File | SHA-256 | Size (bytes) |
+|---|---|---|
+| emblem-16.svg | <hash> | <size> |
+| emblem-32.svg | <hash> | <size> |
+| emblem-64.svg | <hash> | <size> |
+| tokens.css | <hash> | <size> |
+| wordmark-full.svg | <hash> | <size> |
+| wordmark-silent.svg | <hash> | <size> |
 ```
 
 CI performs periodic hash comparison against the declared `cd-vX.Y.Z` tag. Drift is flagged, not silently tolerated. Updates happen within one release cycle of upstream.
