@@ -1,0 +1,53 @@
+{
+  "description": "Single-ion carrier flopping from thermal motion (on-resonance)",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-17T15:39:03.342871+00:00",
+  "n_samples": 65,
+  "observable_keys": [
+    "mode_P",
+    "mode_X",
+    "mode_entropy",
+    "n_mode",
+    "sigma_x",
+    "sigma_y",
+    "sigma_z",
+    "spin_entropy",
+    "times",
+    "var_p",
+    "var_x"
+  ],
+  "parameters": {
+    "Fck": 0,
+    "FockPrec": 0.005,
+    "LD_regime": true,
+    "Omega_over_2pi_MHz": 0.05,
+    "dis_ampl": 0.0,
+    "dis_phi_rad": 0.0,
+    "n_thermal": 0.5,
+    "nosteps": 1,
+    "omega_mode_over_2pi_MHz": 2.2,
+    "omega_spin_over_2pi_MHz": 0.0,
+    "phi_drive_rad": 0.0,
+    "r_spin_rad": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "sq_ampl": 0.0,
+    "sq_phi_rad": 0.0,
+    "tmax_periods": 1
+  },
+  "parameters_hash": "65a04a220251d35b4c082e007ccb1e3028337406bdb0cd09d7f9bdab863bb1a1",
+  "qc_legacy_tag": "qc-legacy-v1.0",
+  "qc_module_path": "legacy/qc.py",
+  "scenario_index": 1,
+  "scenario_name": "01_single_ion_carrier_thermal",
+  "schema_version": 1
+}
