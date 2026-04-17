@@ -121,7 +121,10 @@ class ModeConfig:
             raise IndexError(
                 f"ion_index {ion_index} out of range for a mode with {self.n_ions} ions"
             )
-        return self.eigenvector_per_ion[ion_index].copy()
+        # Explicit annotation needed: numpy stubs type .copy() as Any, which
+        # mypy --strict rejects against the NDArray[np.floating] return.
+        result: NDArray[np.floating] = self.eigenvector_per_ion[ion_index].copy()
+        return result
 
 
 __all__ = [
