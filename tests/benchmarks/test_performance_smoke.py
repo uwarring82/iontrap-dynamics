@@ -41,9 +41,9 @@ pytestmark = [pytest.mark.benchmark, pytest.mark.slow]
 # the workplan to find the number.
 CANONICAL_HARDWARE = "2023 MacBook Air M2 or equivalent"
 
-T_SINGLE_ION_SIDEBAND = 5.0   # seconds
-T_TWO_ION_MS_GATE = 30.0      # seconds
-T_STROBOSCOPIC_AC = 60.0      # seconds
+T_SINGLE_ION_SIDEBAND = 5.0  # seconds
+T_TWO_ION_MS_GATE = 30.0  # seconds
+T_STROBOSCOPIC_AC = 60.0  # seconds
 
 
 @pytest.mark.skip(

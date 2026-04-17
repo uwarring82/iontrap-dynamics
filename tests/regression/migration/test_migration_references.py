@@ -49,14 +49,13 @@ CANONICAL_SCENARIOS = (
 # Which scenarios currently have reference bundles. Extend as new scenarios
 # land in tools/generate_migration_references.py.
 AVAILABLE_SCENARIOS = tuple(
-    name for name in CANONICAL_SCENARIOS
+    name
+    for name in CANONICAL_SCENARIOS
     if (REFERENCES_DIR / name / "metadata.json").is_file()
     and (REFERENCES_DIR / name / "arrays.npz").is_file()
 )
 
-PENDING_SCENARIOS = tuple(
-    name for name in CANONICAL_SCENARIOS if name not in AVAILABLE_SCENARIOS
-)
+PENDING_SCENARIOS = tuple(name for name in CANONICAL_SCENARIOS if name not in AVAILABLE_SCENARIOS)
 
 
 # ----------------------------------------------------------------------------
@@ -81,7 +80,11 @@ class TestReferenceInventory:
         )
 
 
-@pytest.mark.parametrize("scenario", AVAILABLE_SCENARIOS or [pytest.param("<none>", marks=pytest.mark.skip(reason="no references generated yet"))])
+@pytest.mark.parametrize(
+    "scenario",
+    AVAILABLE_SCENARIOS
+    or [pytest.param("<none>", marks=pytest.mark.skip(reason="no references generated yet"))],
+)
 class TestReferenceBundle:
     """Per-scenario bundle validation: metadata schema, array consistency."""
 
@@ -94,10 +97,17 @@ class TestReferenceBundle:
     def test_metadata_has_required_fields(self, scenario: str) -> None:
         meta = self._load_metadata(scenario)
         required = {
-            "scenario_name", "scenario_index", "description",
-            "qc_legacy_tag", "parameters", "parameters_hash",
-            "environment", "generated_at", "schema_version",
-            "observable_keys", "n_samples",
+            "scenario_name",
+            "scenario_index",
+            "description",
+            "qc_legacy_tag",
+            "parameters",
+            "parameters_hash",
+            "environment",
+            "generated_at",
+            "schema_version",
+            "observable_keys",
+            "n_samples",
         }
         missing = required - meta.keys()
         assert not missing, f"metadata.json missing fields: {missing}"
@@ -159,40 +169,49 @@ def _activation_template_reason(scenario: str, blocking_builder: str) -> str:
     )
 
 
-@pytest.mark.skip(reason=_activation_template_reason(
-    "01_single_ion_carrier_thermal", "red_sideband / carrier_flopping builder"))
+@pytest.mark.skip(
+    reason=_activation_template_reason(
+        "01_single_ion_carrier_thermal", "red_sideband / carrier_flopping builder"
+    )
+)
 def test_builder_matches_scenario_1() -> None:
     """Compare Phase 1 carrier-flopping builder output against the qc.py
     reference for scenario 1 (thermal, on-resonance)."""
     raise AssertionError("unreachable — skipped until builder lands")
 
 
-@pytest.mark.skip(reason=_activation_template_reason(
-    "02_single_ion_red_sideband_fock1", "red_sideband builder"))
+@pytest.mark.skip(
+    reason=_activation_template_reason("02_single_ion_red_sideband_fock1", "red_sideband builder")
+)
 def test_builder_matches_scenario_2() -> None:
     """Compare Phase 1 red-sideband builder output (Fock |1⟩ initial state)
     against the qc.py reference for scenario 2."""
     raise AssertionError("unreachable — skipped until builder lands")
 
 
-@pytest.mark.skip(reason=_activation_template_reason(
-    "03_two_ion_ms_gate", "MS gate builder"))
+@pytest.mark.skip(reason=_activation_template_reason("03_two_ion_ms_gate", "MS gate builder"))
 def test_builder_matches_scenario_3() -> None:
     """Compare Phase 1 Mølmer–Sørensen gate builder output against the
     qc.py reference for scenario 3 (two ions, single mode)."""
     raise AssertionError("unreachable — skipped until builder lands")
 
 
-@pytest.mark.skip(reason=_activation_template_reason(
-    "04_single_ion_stroboscopic_ac_halfpi", "stroboscopic-AC builder"))
+@pytest.mark.skip(
+    reason=_activation_template_reason(
+        "04_single_ion_stroboscopic_ac_halfpi", "stroboscopic-AC builder"
+    )
+)
 def test_builder_matches_scenario_4() -> None:
     """Compare Phase 1 stroboscopic AC-π/2 builder output against the qc.py
     reference for scenario 4."""
     raise AssertionError("unreachable — skipped until builder lands")
 
 
-@pytest.mark.skip(reason=_activation_template_reason(
-    "05_single_mode_squeeze_displace", "squeeze + displace state-prep"))
+@pytest.mark.skip(
+    reason=_activation_template_reason(
+        "05_single_mode_squeeze_displace", "squeeze + displace state-prep"
+    )
+)
 def test_builder_matches_scenario_5() -> None:
     """Compare Phase 1 squeeze + displacement output against the qc.py
     reference for scenario 5."""

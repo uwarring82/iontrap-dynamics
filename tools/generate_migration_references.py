@@ -52,11 +52,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
 import platform
 import sys
 import warnings
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -78,12 +79,13 @@ REFERENCES_DIR = REPO_ROOT / "tests" / "regression" / "migration" / "references"
 # QuTiP-5 compat shim for the legacy qc.py
 # ----------------------------------------------------------------------------
 
+
 def _load_qc_module() -> Any:
     """Import ``legacy/qc.py`` and patch the QuTiP-5 compat gap."""
     sys.path.insert(0, str(LEGACY_DIR))
     from qutip.core.gates import rx, ry, rz
 
-    import qc  # noqa: PLC0415 — deferred import is deliberate
+    qc = importlib.import_module("qc")
     qc.rx = rx
     qc.ry = ry
     qc.rz = rz
@@ -93,6 +95,7 @@ def _load_qc_module() -> Any:
 # ----------------------------------------------------------------------------
 # Environment capture (platform-identifying context for the metadata)
 # ----------------------------------------------------------------------------
+
 
 def _environment_context() -> dict[str, str]:
     import qutip
@@ -175,16 +178,16 @@ def _run_single_spin_single_mode(qc_module: Any, p: dict[str, Any]) -> dict[str,
     times = np.asarray(output.times, dtype=np.float64)
     return {
         "times": times,
-        "sigma_x":      np.real(spin_props[:, 0]),
-        "sigma_y":      np.real(spin_props[:, 1]),
-        "sigma_z":      np.real(spin_props[:, 2]),
+        "sigma_x": np.real(spin_props[:, 0]),
+        "sigma_y": np.real(spin_props[:, 1]),
+        "sigma_z": np.real(spin_props[:, 2]),
         "spin_entropy": np.real(spin_props[:, 3]),
-        "n_mode":       np.real(mode_props[:, 1]),
-        "var_x":        np.real(mode_props[:, 2]),
-        "var_p":        np.real(mode_props[:, 3]),
+        "n_mode": np.real(mode_props[:, 1]),
+        "var_x": np.real(mode_props[:, 2]),
+        "var_p": np.real(mode_props[:, 3]),
         "mode_entropy": np.real(mode_props[:, 4]),
-        "mode_X":       np.real(mode_props[:, 5]),
-        "mode_P":       np.real(mode_props[:, 6]),
+        "mode_X": np.real(mode_props[:, 5]),
+        "mode_P": np.real(mode_props[:, 6]),
     }
 
 
@@ -235,8 +238,8 @@ SCENARIO_2_PARAMETERS: dict[str, Any] = {
     "omega_mode_over_2pi_MHz": 2.2,
     "omega_spin_over_2pi_MHz": -2.2,  # red-detuned by one mode frequency
     "r_spin_rad": [0.0, 0.0, 0.0],
-    "n_thermal": 0.001,               # near-vacuum to isolate the Fock state
-    "Fck": 1,                         # initial motional state |1⟩
+    "n_thermal": 0.001,  # near-vacuum to isolate the Fock state
+    "Fck": 1,  # initial motional state |1⟩
     "sq_ampl": 0.0,
     "sq_phi_rad": 0.0,
     "dis_ampl": 0.0,
@@ -284,7 +287,7 @@ SCENARIO_3_PARAMETERS: dict[str, Any] = {
     "dis_phi_rad": 0.0,
     "phi_drive_rad": 0.0,
     "tmax_periods": 1,
-    "nosteps": 50,                   # 50 samples / μs → ~250 samples over tend
+    "nosteps": 50,  # 50 samples / μs → ~250 samples over tend
     "FockPrec": 0.0025,
     "LD_regime": True,
 }
@@ -338,64 +341,193 @@ def _run_scenario_3(qc_module: Any) -> dict[str, np.ndarray]:
     return {
         "times": times,
         "spin_joint_entropy": np.real(spin_props[:, 0]),
-        "eof":                np.real(spin_props[:, 1]),
-        "sigma_x_A":          np.real(spin_props[:, 2]),
-        "sigma_y_A":          np.real(spin_props[:, 3]),
-        "sigma_z_A":          np.real(spin_props[:, 4]),
-        "spin_entropy_A":     np.real(spin_props[:, 5]),
-        "sigma_x_B":          np.real(spin_props[:, 6]),
-        "sigma_y_B":          np.real(spin_props[:, 7]),
-        "sigma_z_B":          np.real(spin_props[:, 8]),
-        "spin_entropy_B":     np.real(spin_props[:, 9]),
-        "p_down_down":        np.real(spin_props[:, 10]),
-        "p_single_flip":      np.real(spin_props[:, 11]),
-        "p_up_up":            np.real(spin_props[:, 12]),
-        "bell_fidelity":      np.real(spin_props[:, 13]),
-        "n_mode":             np.real(mode_props[:, 1]),
-        "var_x":              np.real(mode_props[:, 2]),
-        "var_p":              np.real(mode_props[:, 3]),
-        "mode_entropy":       np.real(mode_props[:, 4]),
-        "mode_X":             np.real(mode_props[:, 5]),
-        "mode_P":             np.real(mode_props[:, 6]),
+        "eof": np.real(spin_props[:, 1]),
+        "sigma_x_A": np.real(spin_props[:, 2]),
+        "sigma_y_A": np.real(spin_props[:, 3]),
+        "sigma_z_A": np.real(spin_props[:, 4]),
+        "spin_entropy_A": np.real(spin_props[:, 5]),
+        "sigma_x_B": np.real(spin_props[:, 6]),
+        "sigma_y_B": np.real(spin_props[:, 7]),
+        "sigma_z_B": np.real(spin_props[:, 8]),
+        "spin_entropy_B": np.real(spin_props[:, 9]),
+        "p_down_down": np.real(spin_props[:, 10]),
+        "p_single_flip": np.real(spin_props[:, 11]),
+        "p_up_up": np.real(spin_props[:, 12]),
+        "bell_fidelity": np.real(spin_props[:, 13]),
+        "n_mode": np.real(mode_props[:, 1]),
+        "var_x": np.real(mode_props[:, 2]),
+        "var_p": np.real(mode_props[:, 3]),
+        "mode_entropy": np.real(mode_props[:, 4]),
+        "mode_X": np.real(mode_props[:, 5]),
+        "mode_P": np.real(mode_props[:, 6]),
     }
 
 
+# ----------------------------------------------------------------------------
+# Scenario 4 — single-ion stroboscopic AC-π/2  (Path-A QuTiP-5 compat duplicate)
+# ----------------------------------------------------------------------------
+#
+# Background: qc.py's single_spin_and_mode_ACpi2 builds a time-dependent
+# Hamiltonian whose modulation coefficient is a scipy CubicSpline. On QuTiP
+# 5.1+ the callable's 0-d-array return is rejected with
+# "TypeError: The coefficient function must return a number". Since the
+# offending `mod(t, args)` function is a closure inside the legacy method,
+# there is no external-patch fix; the only way to invoke the stroboscopic
+# path is to re-author the body here.
+#
+# This implementation is a byte-for-byte duplicate of the legacy code
+# flow, with ONE minimal change: the spline wrapper returns float(cs(t))
+# instead of cs(t) directly. Everything else — Butterworth low-pass
+# filter, filtered-square-wave pulse shape, scipy CubicSpline
+# interpolation, Lamb-Dicke operator, Hamiltonian structure, mesolve
+# invocation — matches qc.py exactly. Reusable qc.py helpers
+# (initialise_spins, initialise_single_mode, trace_{spin,motional}_props)
+# are still called on the passed QC instance; only the evolution loop
+# whose callable semantics changed is re-authored.
+#
+# Per the previous dispatch, scenario 4 sits on the "legacy with fixes"
+# side of the faithful-replay boundary. Scenarios 1, 2, 3, 5 still
+# dispatch straight into qc.py methods unchanged.
+
+SCENARIO_4_PARAMETERS: dict[str, Any] = {
+    # Spin initial rotation (qc.py convention: [s_ini, s_phs] in units of 2π,
+    # applied through initialise_spins).
+    "spin_initial_rotation": 0.0,
+    "spin_initial_phase": 0.0,
+    # Motion (qc.py mode_para unpacked)
+    "n_thermal": 0.001,
+    "dis_ampl": 0.0,
+    "dis_phi_fraction": 0.0,
+    "sq_ampl": 0.0,
+    "sq_phi_fraction": 0.0,
+    "mode_freq_MHz": 1.3,
+    "theta_m_deg": 0.0,
+    # Drive (qc.py drive_para unpacked)
+    "Omega_over_2pi_MHz": 0.125,
+    "detuning_fraction": 0.0,  # omega_z = detuning_fraction · omega_mode; 0 = on resonance
+    # Stroboscopic modulation (qc.py: mod_on=True, mod_type=0)
+    "mod_fac": 1,  # modulation frequency as multiple of omega_mode
+    "mod_amp": 1.0,
+    "strobo_dur_us": 0.1,  # pulse length inside each mod period
+}
+
+
 def _run_scenario_4(qc_module: Any) -> dict[str, np.ndarray]:
-    # BLOCKED on QuTiP 4 → 5 coefficient-callable semantics.
-    #
-    # qc.single_spin_and_mode_ACpi2 with mod_on=True, mod_type=0 (stroboscopic)
-    # builds a time-dependent Hamiltonian H = H0 + mod(t) · HI where
-    # mod(t) = spline_mod_fct_fil(t) — a scipy.interpolate.CubicSpline over
-    # a filtered square-wave pulse train. In QuTiP 4 this worked because
-    # coefficient callables could return a 0-d numpy array; QuTiP 5.1+
-    # enforces:
-    #
-    #     TypeError: The coefficient function must return a number
-    #
-    # Two resolution paths (neither pure-invoke — both require re-wrapping
-    # legacy logic in this generator):
-    #
-    #   (A) Duplicate `single_spin_and_mode_ACpi2`'s body here and change
-    #       `return cs(t)` to `return float(cs(t))` inside spline_mod_fct_fil.
-    #       Preserves exact stroboscopic envelope behaviour.
-    #
-    #   (B) Precompute mod_values = np.array([mod(t, []) for t in tlist])
-    #       and pass H = [H0, [HI, mod_values]] to mesolve — the QuTiP 5
-    #       idiomatic array-coefficient form. Uses QuTiP's internal
-    #       interpolation rather than scipy's CubicSpline; small numerical
-    #       drift possible but the physics is the same.
-    #
-    # Either choice crosses from "faithful legacy replay" into "legacy with
-    # fixes". Deferring until the user picks (A) vs (B).
-    #
-    # Sinusoidal mode (mod_type=1) does NOT trigger the bug — its mod(t) is
-    # a scalar-returning cosine — but that's different physics from what
-    # workplan §0.B item 4 specifies ("stroboscopic AC-π/2"), so using it as
-    # a substitute would mislabel the regression target.
-    raise NotImplementedError(
-        "scenario 4 (stroboscopic AC-π/2) blocked on QuTiP 5 coefficient-callable "
-        "compat; see comments in _run_scenario_4 for resolution paths A/B."
+    """Path-A QuTiP-5-compat duplicate of qc.single_spin_and_mode_ACpi2.
+
+    Produces the 11-observable single-spin / single-mode layout (identical
+    keys to scenarios 1, 2, 5).
+    """
+    import qutip
+    import scipy.constants as cst
+    from scipy.interpolate import CubicSpline
+    from scipy.signal import butter, filtfilt, square
+
+    q = qc_module.QC()
+    p = SCENARIO_4_PARAMETERS
+
+    # Parameter unpacking — mirrors qc.py
+    omega_1 = 2 * np.pi * p["mode_freq_MHz"]
+    omega_z = p["detuning_fraction"] * omega_1
+    Omega = p["Omega_over_2pi_MHz"] * 2 * np.pi
+
+    s_ini = p["spin_initial_rotation"]
+    s_phs = p["spin_initial_phase"]
+    r_spin = [s_ini * 2 * np.pi, 0.0, (0.677 / 2 + s_phs) * 2 * np.pi]
+
+    n_th = p["n_thermal"]
+    Fck = 0
+    dis_a = p["dis_ampl"]
+    dis_phs = p["dis_phi_fraction"] * 2 * np.pi
+    sq_a = p["sq_ampl"]
+    sq_phs = p["sq_phi_fraction"] * 2 * np.pi
+
+    Degree = np.pi / 180
+    theta_m = p["theta_m_deg"]
+    eta_1 = q.lamb_dicke(
+        [0, -np.sqrt(2) / np.sqrt(2), np.sqrt(2) / np.sqrt(2)],
+        [0, -np.sin(theta_m * Degree), np.cos(theta_m * Degree)],
+        omega_1 * cst.mega,
+        25 * cst.atomic_mass,
     )
+    Omega_eff = np.exp(-eta_1**2 / 2) * Omega
+
+    # Initial state (qc.py helpers — deterministic and QuTiP-5 clean)
+    rho_spin_0, _ps = q.initialise_spins(no=1, angle=r_spin, verbose=False)
+    rho_motion_0, props_m = q.initialise_single_mode(
+        n_th=n_th,
+        Fck=Fck,
+        sq_ampl=sq_a,
+        sq_phi=sq_phs,
+        dis_ampl=dis_a,
+        dis_phi=dis_phs,
+        Prec=1e-10,
+        Ncut=int(2 * dis_a**2 + 10),
+        verbose=False,
+    )
+    N = props_m[0]
+    rho_0 = qutip.tensor(rho_motion_0, rho_spin_0)
+
+    # Operators
+    a = qutip.tensor(qutip.destroy(N), qutip.qeye(2))
+    sm = qutip.tensor(qutip.qeye(N), qutip.destroy(2))
+    sz = qutip.tensor(qutip.qeye(N), qutip.sigmaz())
+
+    # Hamiltonian (full-exponential, non-LD-truncated — matches qc.py)
+    H0 = omega_z / 2 * sz + omega_1 * a.dag() * a
+    C = (1j * eta_1 * (a.dag() + a) + 1j).expm()
+    HI = Omega / 2 * (sm.dag() * C + sm * C.dag())
+
+    # Time grid for the stroboscopic branch
+    omega_mod = p["mod_fac"] * omega_1
+    strobo_dur = p["strobo_dur_us"]
+    duty_cycle = strobo_dur / (2 * np.pi / omega_mod)
+    tend = 0.925 * 2 * np.pi / Omega_eff / 4 / duty_cycle
+    tlist = np.linspace(0, tend, int(tend * 200))
+
+    # Stroboscopic envelope — identical to qc.py except for the float() fix
+    def mod_fct(t: np.ndarray) -> np.ndarray:
+        t_off = 2 * np.pi / omega_mod / 4 - strobo_dur / 2
+        return (square(omega_mod * (t - t_off), duty=duty_cycle) + 1) / 2
+
+    def aom_filter(data: np.ndarray, cutoff: float, fs: float, order: int) -> np.ndarray:
+        nyq = 3
+        normal_cutoff = cutoff / nyq
+        b, a_coef = butter(order, normal_cutoff, btype="low", analog=False)
+        return filtfilt(b, a_coef, data)
+
+    f_sampl = 1 / (tend / len(tlist))
+    spline_samples = np.abs(aom_filter(mod_fct(tlist), cutoff=0.2, fs=f_sampl, order=1))
+    cs = CubicSpline(tlist, spline_samples)
+
+    def mod_coeff(t: float, args: Any) -> float:
+        # Path-A compat fix: float() wraps the 0-d ndarray that CubicSpline
+        # returns on scalar input so QuTiP 5 accepts it as a coefficient.
+        return float(cs(t))
+
+    H = [H0, [HI, mod_coeff]]
+
+    output = qutip.mesolve(H, rho_0, tlist, [], [], options={"progress_bar": False})
+
+    spin_props, _ = q.trace_spin_props(output, ptrace_sel=[1], verbose=False)
+    mode_props, _ = q.trace_motional_props(output, ptrace_sel=[0], verbose=False)
+    spin_props = np.asarray(spin_props, dtype=np.complex128)
+    mode_props = np.asarray(mode_props, dtype=np.complex128)
+
+    times = np.asarray(output.times, dtype=np.float64)
+    return {
+        "times": times,
+        "sigma_x": np.real(spin_props[:, 0]),
+        "sigma_y": np.real(spin_props[:, 1]),
+        "sigma_z": np.real(spin_props[:, 2]),
+        "spin_entropy": np.real(spin_props[:, 3]),
+        "n_mode": np.real(mode_props[:, 1]),
+        "var_x": np.real(mode_props[:, 2]),
+        "var_p": np.real(mode_props[:, 3]),
+        "mode_entropy": np.real(mode_props[:, 4]),
+        "mode_X": np.real(mode_props[:, 5]),
+        "mode_P": np.real(mode_props[:, 6]),
+    }
 
 
 # ----------------------------------------------------------------------------
@@ -413,13 +545,13 @@ def _run_scenario_4(qc_module: Any) -> dict[str, np.ndarray]:
 SCENARIO_5_PARAMETERS: dict[str, Any] = {
     "Omega_over_2pi_MHz": 0.05,
     "omega_mode_over_2pi_MHz": 2.2,
-    "omega_spin_over_2pi_MHz": 0.0,    # on-resonance carrier
+    "omega_spin_over_2pi_MHz": 0.0,  # on-resonance carrier
     "r_spin_rad": [0.0, 0.0, 0.0],
-    "n_thermal": 0.0,                  # pure vacuum baseline before sq/dis
+    "n_thermal": 0.0,  # pure vacuum baseline before sq/dis
     "Fck": 0,
-    "sq_ampl": 0.5,                    # moderate squeezing (r = 0.5)
+    "sq_ampl": 0.5,  # moderate squeezing (r = 0.5)
     "sq_phi_rad": 0.0,
-    "dis_ampl": 1.0,                   # displace by α = 1 → coherent ⟨n⟩ = 1
+    "dis_ampl": 1.0,  # displace by α = 1 → coherent ⟨n⟩ = 1
     "dis_phi_rad": 0.0,
     "phi_drive_rad": 0.0,
     "tmax_periods": 1,
@@ -458,9 +590,9 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     },
     "04_single_ion_stroboscopic_ac_halfpi": {
         "index": 4,
-        "description": "Single-ion stroboscopic AC-π/2 drive",
+        "description": "Single-ion stroboscopic AC-π/2 drive (Path-A QuTiP-5 compat)",
         "runner": _run_scenario_4,
-        "parameters": {},
+        "parameters": SCENARIO_4_PARAMETERS,
     },
     "05_single_mode_squeeze_displace": {
         "index": 5,
@@ -474,6 +606,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
 # ----------------------------------------------------------------------------
 # Main operations: stability check + reference generation
 # ----------------------------------------------------------------------------
+
 
 def _arrays_are_bit_identical(a: dict[str, np.ndarray], b: dict[str, np.ndarray]) -> bool:
     if a.keys() != b.keys():
@@ -494,7 +627,9 @@ def stability_check(qc_module: Any, scenario_name: str, *, runs: int = 3) -> boo
     for i in range(1, runs):
         again = spec["runner"](qc_module)
         if not _arrays_are_bit_identical(first, again):
-            print(f"  stability: FAIL on run {i + 1} — outputs drift between runs.", file=sys.stderr)
+            print(
+                f"  stability: FAIL on run {i + 1} — outputs drift between runs.", file=sys.stderr
+            )
             return False
     print(f"  stability: OK — {runs} identical runs")
     return True
@@ -521,7 +656,7 @@ def generate_reference(qc_module: Any, scenario_name: str) -> Path:
         "parameters": spec["parameters"],
         "parameters_hash": _parameters_hash(spec["parameters"]),
         "environment": _environment_context(),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "schema_version": 1,
         "observable_keys": sorted(arrays.keys()),
         "n_samples": int(arrays["times"].size),
@@ -530,7 +665,9 @@ def generate_reference(qc_module: Any, scenario_name: str) -> Path:
         json.dumps(metadata, indent=2, sort_keys=True),
         encoding="utf-8",
     )
-    print(f"  wrote {target.relative_to(REPO_ROOT)} ({len(arrays)} arrays, {metadata['n_samples']} samples)")
+    print(
+        f"  wrote {target.relative_to(REPO_ROOT)} ({len(arrays)} arrays, {metadata['n_samples']} samples)"
+    )
     return target
 
 
@@ -538,14 +675,21 @@ def generate_reference(qc_module: Any, scenario_name: str) -> Path:
 # CLI
 # ----------------------------------------------------------------------------
 
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--stability-check", action="store_true",
+        "--stability-check",
+        action="store_true",
         help="Run each scenario 3 times and verify bit-identical output. Does not write references.",
     )
     parser.add_argument(
-        "--scenario", type=int, default=None, choices=[1, 2, 3, 4, 5],
+        "--scenario",
+        type=int,
+        default=None,
+        choices=[1, 2, 3, 4, 5],
         help="Restrict to one scenario (default: all implemented).",
     )
     args = parser.parse_args(argv)
@@ -553,13 +697,13 @@ def main(argv: list[str] | None = None) -> int:
     qc_module = _load_qc_module()
 
     scenarios = [
-        name for name, spec in SCENARIOS.items()
+        name
+        for name, spec in SCENARIOS.items()
         if args.scenario is None or spec["index"] == args.scenario
     ]
 
     exit_code = 0
     for name in scenarios:
-        spec = SCENARIOS[name]
         try:
             if args.stability_check:
                 ok = stability_check(qc_module, name, runs=3)
@@ -569,7 +713,7 @@ def main(argv: list[str] | None = None) -> int:
                 generate_reference(qc_module, name)
         except NotImplementedError as exc:
             print(f"  SKIP {name}: {exc}")
-        except Exception as exc:  # noqa: BLE001 — summarise per-scenario failures
+        except Exception as exc:
             print(f"  FAIL {name}: {type(exc).__name__}: {exc}", file=sys.stderr)
             exit_code = 1
 

@@ -44,11 +44,7 @@ _PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "src" / "iontrap_dynamics"
 
 def _package_source_files() -> list[Path]:
     """Every ``.py`` file under the package, excluding ``__pycache__``."""
-    return sorted(
-        path
-        for path in _PACKAGE_ROOT.rglob("*.py")
-        if "__pycache__" not in path.parts
-    )
+    return sorted(path for path in _PACKAGE_ROOT.rglob("*.py") if "__pycache__" not in path.parts)
 
 
 def _parse(path: Path) -> ast.Module:
@@ -74,12 +70,16 @@ class TestQutipDiscipline:
         for path in _package_source_files():
             tree = _parse(path)
             for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and node.module == "qutip":
-                    if any(alias.name == "*" for alias in node.names):
-                        violations.append(f"{path.relative_to(_PACKAGE_ROOT.parent.parent)}:{node.lineno}")
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module == "qutip"
+                    and any(alias.name == "*" for alias in node.names)
+                ):
+                    violations.append(
+                        f"{path.relative_to(_PACKAGE_ROOT.parent.parent)}:{node.lineno}"
+                    )
         assert not violations, (
-            "wildcard qutip imports (CONVENTIONS.md §3 forbids):"
-            + _format_violations(violations)
+            "wildcard qutip imports (CONVENTIONS.md §3 forbids):" + _format_violations(violations)
         )
 
     def test_no_named_qutip_sigmaz_import(self) -> None:

@@ -1,0 +1,48 @@
+{
+  "description": "Single-ion stroboscopic AC-\u03c0/2 drive (Path-A QuTiP-5 compat)",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-17T16:51:25.380152+00:00",
+  "n_samples": 3078,
+  "observable_keys": [
+    "mode_P",
+    "mode_X",
+    "mode_entropy",
+    "n_mode",
+    "sigma_x",
+    "sigma_y",
+    "sigma_z",
+    "spin_entropy",
+    "times",
+    "var_p",
+    "var_x"
+  ],
+  "parameters": {
+    "Omega_over_2pi_MHz": 0.125,
+    "detuning_fraction": 0.0,
+    "dis_ampl": 0.0,
+    "dis_phi_fraction": 0.0,
+    "mod_amp": 1.0,
+    "mod_fac": 1,
+    "mode_freq_MHz": 1.3,
+    "n_thermal": 0.001,
+    "spin_initial_phase": 0.0,
+    "spin_initial_rotation": 0.0,
+    "sq_ampl": 0.0,
+    "sq_phi_fraction": 0.0,
+    "strobo_dur_us": 0.1,
+    "theta_m_deg": 0.0
+  },
+  "parameters_hash": "7bbfbc762f9c7ee94e851bd6b2371ae6840d7bb5e6d0193524780e84d0bd7ba5",
+  "qc_legacy_tag": "qc-legacy-v1.0",
+  "qc_module_path": "legacy/qc.py",
+  "scenario_index": 4,
+  "scenario_name": "04_single_ion_stroboscopic_ac_halfpi",
+  "schema_version": 1
+}
