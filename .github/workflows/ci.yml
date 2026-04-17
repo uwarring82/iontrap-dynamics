@@ -2,13 +2,18 @@
 #
 # CI for iontrap-dynamics.
 #
-# Jobs are staged from cheapest to most expensive. Each job runs only when
-# its preconditions are satisfied (file existence checks via `hashFiles`),
-# so the pipeline stays green as the repository fills out during Phase 0.
+# Jobs are staged from cheapest to most expensive. Each conditional job
+# runs only when its preconditions are satisfied — the `detect` job
+# checks which targets exist in the checked-out workspace and publishes
+# booleans as outputs that downstream jobs gate on. (GitHub Actions does
+# not allow `hashFiles` in job-level `if:` expressions because evaluation
+# happens before any workspace is available.)
 #
 # Gate ladder for a green PR:
-#   lint → typecheck → install-smoke → (test) → (cd-local-integrity) →
-#   cd-upstream-drift → (accessibility, docs)
+#   detect ─┬─ lint → typecheck → install-smoke → (test)
+#           ├─ cd-upstream-drift
+#           ├─ (cd-local-integrity)
+#           └─ (docs → accessibility)
 #
 # Jobs marked (…) activate only when their target files land. Until then
 # they are skipped, not failing.
@@ -29,6 +34,36 @@ permissions:
   contents: read
 
 jobs:
+
+  # ---------------------------------------------------------------------------
+  # Detect — check which Phase 0 targets exist in the current tree. Downstream
+  # jobs gate on the boolean outputs. This replaces the `hashFiles(...)` calls
+  # that GitHub Actions rejects at job-level `if:` (no workspace yet).
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect project state
+    runs-on: ubuntu-latest
+    outputs:
+      has_tests:  ${{ steps.check.outputs.has_tests }}
+      has_assets: ${{ steps.check.outputs.has_assets }}
+      has_docs:   ${{ steps.check.outputs.has_docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          set -euo pipefail
+          n_tests=$(find tests -type f -name 'test_*.py' 2>/dev/null | wc -l | tr -d ' ')
+          n_docs=$(find docs   -type f -name '*.md'     2>/dev/null | wc -l | tr -d ' ')
+          has_assets=false
+          [[ -f assets/emblem-16.svg ]] && has_assets=true
+          has_tests=false; [[ "$n_tests" -gt 0 ]] && has_tests=true
+          has_docs=false;  [[ "$n_docs"  -gt 0 ]] && has_docs=true
+          {
+            echo "has_tests=$has_tests"
+            echo "has_assets=$has_assets"
+            echo "has_docs=$has_docs"
+          } >> "$GITHUB_OUTPUT"
+          echo "::notice::detect: tests=$n_tests files, docs=$n_docs files, assets=$has_assets"
 
   # ---------------------------------------------------------------------------
   # Lint — ruff check + format-check across source, tests, tools, examples.
@@ -132,8 +167,8 @@ jobs:
   test:
     name: Test (pytest, py${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    needs: install-smoke
-    if: hashFiles('tests/**/test_*.py') != ''
+    needs: [install-smoke, detect]
+    if: needs.detect.outputs.has_tests == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -163,7 +198,8 @@ jobs:
   cd-local-integrity:
     name: CD · local asset integrity
     runs-on: ubuntu-latest
-    if: hashFiles('assets/emblem-16.svg') != ''
+    needs: detect
+    if: needs.detect.outputs.has_assets == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -218,8 +254,8 @@ jobs:
   docs:
     name: Docs (mkdocs strict)
     runs-on: ubuntu-latest
-    needs: lint
-    if: hashFiles('docs/**/*.md') != ''
+    needs: [lint, detect]
+    if: needs.detect.outputs.has_docs == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -245,8 +281,8 @@ jobs:
   accessibility:
     name: Accessibility (WCAG 2.2 AA, A1–A5 mandatory)
     runs-on: ubuntu-latest
-    needs: docs
-    if: hashFiles('docs/**/*.md') != ''
+    needs: [docs, detect]
+    if: needs.detect.outputs.has_docs == 'true'
     steps:
       - uses: actions/checkout@v4
 
