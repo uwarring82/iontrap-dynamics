@@ -167,6 +167,7 @@ ignore = [
 "src/iontrap_dynamics/modes.py" = ["RUF002", "RUF003"]
 "src/iontrap_dynamics/operators.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/species.py" = ["RUF002", "RUF003"]
+"src/iontrap_dynamics/states.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/system.py" = ["RUF002", "RUF003"]
 "tests/conventions/test_operators.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/conventions/test_static_conventions.py" = ["RUF002"]
@@ -176,6 +177,7 @@ ignore = [
 "tests/unit/test_drives.py" = ["RUF002", "RUF003"]
 "tests/unit/test_hilbert.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_species.py" = ["RUF002", "RUF003"]
+"tests/unit/test_states.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_system.py" = ["RUF002", "RUF003"]
 "tools/generate_migration_references.py" = ["RUF002", "RUF003"]
 
