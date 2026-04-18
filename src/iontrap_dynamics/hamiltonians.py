@@ -39,8 +39,12 @@ Follow-on builders (one per dispatch):
   symmetric detuning around the sideband; time-dependent list format
   required to close a phase-space loop at ``t_gate = 2π/δ``. Future
   dispatch.
-- **Stroboscopic AC drive** — time-modulated carrier per the qc.py
-  scenario 4 envelope.
+- **Modulated carrier** — on-resonance carrier whose amplitude is
+  shaped by a user-supplied envelope ``f(t)``. First builder to
+  return QuTiP's time-dependent list format. Landed via
+  :func:`modulated_carrier_hamiltonian`; covers pulse-shaped π
+  pulses (Gaussian/Blackman), stroboscopic AC drives, and
+  amplitude-modulated carriers.
 
 Frame / convention note
 -----------------------
@@ -59,6 +63,8 @@ from __future__ import annotations
 
 import cmath
 import math
+from collections.abc import Callable
+from typing import Any
 
 import qutip
 
@@ -417,9 +423,121 @@ def ms_gate_hamiltonian(
     return _single_ion_term(i) + _single_ion_term(j)
 
 
+# ----------------------------------------------------------------------------
+# Modulated carrier (time-dependent envelope, QuTiP list-format)
+# ----------------------------------------------------------------------------
+
+
+def modulated_carrier_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    *,
+    ion_index: int,
+    envelope: Callable[[float], float],
+) -> list[object]:
+    """Return an on-resonance carrier Hamiltonian with a time-dependent
+    envelope, in QuTiP's time-dependent list format.
+
+    .. math::
+        H(t) / \\hbar = f(t) \\cdot \\tfrac{\\Omega}{2}
+        \\left[ \\sigma_+ e^{i\\phi}
+              + \\sigma_- e^{-i\\phi} \\right]
+
+    where ``f(t) = envelope(t)`` is a dimensionless amplitude-scale
+    factor supplied by the caller. The *instantaneous* Rabi frequency
+    is ``Ω(t) = Ω · f(t)`` — so ``envelope(t) = 1`` reproduces the
+    static :func:`carrier_hamiltonian`.
+
+    Primitive, not a preset
+    -----------------------
+
+    This builder is deliberately the generic pulse-envelope primitive
+    rather than a named scenario. It composes cleanly with whichever
+    envelope the caller wants:
+
+    - **Stroboscopic AC drive.** Square-wave ``envelope`` on for a
+      fraction of each mode period. The workplan §0.F benchmark 3
+      exercises this regime.
+    - **Gaussian / Blackman π-pulse.** Smooth ``envelope``; pulse area
+      ``∫ Ω·f(t) dt = π`` delivers a π-rotation.
+    - **Adiabatic amplitude ramp.** Slowly-varying ``envelope`` for
+      soft turn-on/turn-off to suppress leakage.
+    - **Constant envelope (==1).** Equivalent to the static carrier
+      but routed through the list-format path; useful as a regression
+      anchor for the time-dependent solver.
+
+    Scope (v0.1)
+    ------------
+
+    The envelope modulates only the amplitude; frequency modulation
+    (chirped / detuning-swept drives) lands in the detuned-carrier
+    dispatch. The envelope is applied to the on-resonance carrier
+    form only — Lamb–Dicke sideband corrections (spin–motion
+    coupling excited by modulating at ``ω_mode``) are not restored
+    here; the interaction-picture + RWA reduction has already
+    projected those out. A caller who wants the full
+    frequency-modulated physics (e.g. the Silveri 2017 regime used by
+    legacy ``qc.py`` scenario 4) should compose this builder with a
+    sideband builder in a follow-on dispatch.
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space.
+    drive
+        :class:`DriveConfig` for the carrier. Must be on-resonance
+        (``detuning_rad_s == 0`` exactly).
+    ion_index
+        Zero-based index of the ion the drive couples to.
+        Keyword-only.
+    envelope
+        Callable ``t -> float`` returning the dimensionless amplitude
+        at time ``t`` (SI seconds). Pure-Python; no QuTiP
+        ``(t, args)`` signature required — the wrapping is handled
+        internally. Must be deterministic (the solver samples it
+        at every sub-step).
+
+    Returns
+    -------
+    list[object]
+        QuTiP time-dependent list-format Hamiltonian
+        ``[[H_carrier, coeff_fn]]`` ready to pass to
+        :func:`iontrap_dynamics.sequences.solve` or ``qutip.mesolve``.
+        The single-term list (no constant ``H_0`` piece) is intentional
+        — the envelope can legally pass through zero, so there is no
+        always-on contribution to hoist out.
+
+    Raises
+    ------
+    ConventionError
+        If ``drive.detuning_rad_s != 0``. Detuned modulated carriers
+        require the detuned-carrier dispatch.
+    IndexError
+        If ``ion_index`` is out of range.
+    """
+    if drive.detuning_rad_s != 0.0:
+        raise ConventionError(
+            f"modulated_carrier_hamiltonian currently supports only on-resonance "
+            f"drives (detuning_rad_s == 0); got {drive.detuning_rad_s!r}. A detuned "
+            "modulated carrier requires the detuned-carrier dispatch."
+        )
+
+    base_H = carrier_hamiltonian(hilbert, drive, ion_index=ion_index)
+
+    def coeff(t: float, args: Any) -> float:
+        # QuTiP 5 passes (t, args) to coefficient callables; args is unused
+        # because the envelope closes over its own parameters at the call
+        # site (see stroboscopic / Gaussian examples in the module
+        # docstring).
+        return envelope(t)
+
+    return [[base_H, coeff]]
+
+
 __all__ = [
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
+    "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",
     "red_sideband_hamiltonian",
 ]

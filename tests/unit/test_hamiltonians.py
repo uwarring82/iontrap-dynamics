@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 import qutip
@@ -18,6 +20,7 @@ from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.hamiltonians import (
     blue_sideband_hamiltonian,
     carrier_hamiltonian,
+    modulated_carrier_hamiltonian,
     ms_gate_hamiltonian,
     red_sideband_hamiltonian,
 )
@@ -748,3 +751,155 @@ class TestMSGateCoherentDisplacement:
         n_op = h.number_for_mode("com")
         occupations = np.array([qutip.expect(n_op, s) for s in result.states])
         np.testing.assert_allclose(occupations, np.zeros_like(occupations), atol=1e-8)
+
+
+# ============================================================================
+# Modulated carrier (time-dependent envelope, list-format)
+# ============================================================================
+
+
+class TestModulatedCarrierStructure:
+    def test_returns_qutip_list_format(self) -> None:
+        """Returns [[H_carrier, coeff_fn]] — a one-entry list of list pairs."""
+        h = _single_ion_hilbert(fock=3)
+        H = modulated_carrier_hamiltonian(h, _simple_drive(), ion_index=0, envelope=lambda t: 1.0)
+        assert isinstance(H, list)
+        assert len(H) == 1
+        inner = H[0]
+        assert isinstance(inner, list)
+        assert len(inner) == 2
+        assert isinstance(inner[0], qutip.Qobj)
+        assert callable(inner[1])
+
+    def test_base_hamiltonian_matches_static_carrier(self) -> None:
+        """The [0][0] Qobj is byte-identical to what carrier_hamiltonian
+        returns for the same (hilbert, drive, ion_index). The envelope
+        lives entirely in the callable coefficient."""
+        h = _single_ion_hilbert(fock=3)
+        drive = _simple_drive()
+        static_H = carrier_hamiltonian(h, drive, ion_index=0)
+        modulated_H = modulated_carrier_hamiltonian(h, drive, ion_index=0, envelope=lambda t: 1.0)
+        embedded_qobj = modulated_H[0][0]
+        assert isinstance(embedded_qobj, qutip.Qobj)
+        assert (embedded_qobj - static_H).norm() < 1e-14
+
+    def test_envelope_is_evaluated_through_coeff_fn(self) -> None:
+        """The coefficient callable forwards t → envelope(t) and ignores
+        the QuTiP ``args`` dict. Structural check only: pure-Python
+        invocation of the inner callable."""
+        h = _single_ion_hilbert(fock=3)
+        H = modulated_carrier_hamiltonian(
+            h,
+            _simple_drive(),
+            ion_index=0,
+            envelope=lambda t: 3.7 * t,
+        )
+        coeff = H[0][1]
+        assert coeff(2.0, {}) == pytest.approx(7.4)
+        assert coeff(0.0, {}) == pytest.approx(0.0)
+
+
+class TestModulatedCarrierValidation:
+    def test_detuned_drive_rejected(self) -> None:
+        h = _single_ion_hilbert(fock=3)
+        drive = DriveConfig(
+            k_vector_m_inv=[1.0, 0.0, 0.0],
+            carrier_rabi_frequency_rad_s=1.0,
+            detuning_rad_s=1e3,
+        )
+        with pytest.raises(ConventionError, match="on-resonance"):
+            modulated_carrier_hamiltonian(h, drive, ion_index=0, envelope=lambda t: 1.0)
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _single_ion_hilbert(fock=3)
+        with pytest.raises(IndexError):
+            modulated_carrier_hamiltonian(h, _simple_drive(), ion_index=1, envelope=lambda t: 1.0)
+
+    def test_validation_errors_subclass_iontraperror(self) -> None:
+        h = _single_ion_hilbert(fock=3)
+        drive = DriveConfig(
+            k_vector_m_inv=[1.0, 0.0, 0.0],
+            carrier_rabi_frequency_rad_s=1.0,
+            detuning_rad_s=-1.0,
+        )
+        with pytest.raises(IonTrapError):
+            modulated_carrier_hamiltonian(h, drive, ion_index=0, envelope=lambda t: 1.0)
+
+
+class TestModulatedCarrierDynamics:
+    """End-to-end checks routing the list-format Hamiltonian through mesolve."""
+
+    def test_constant_envelope_matches_static_carrier_evolution(self) -> None:
+        """``envelope(t) = 1`` should reproduce the same ⟨σ_z⟩(t) trajectory
+        as the static :func:`carrier_hamiltonian`, modulo integrator noise."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=3)
+        rabi = 2 * np.pi * 1e6
+        drive = _simple_drive(rabi=rabi)
+
+        H_static = carrier_hamiltonian(h, drive, ion_index=0)
+        H_modulated = modulated_carrier_hamiltonian(h, drive, ion_index=0, envelope=lambda t: 1.0)
+
+        psi_0 = ground_state(h)
+        tlist = np.linspace(0.0, 2 * np.pi / rabi, 50)
+        sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
+
+        static_result = qutip.mesolve(H_static, psi_0, tlist, [], [sigma_z])
+        modulated_result = qutip.mesolve(H_modulated, psi_0, tlist, [], [sigma_z])
+
+        np.testing.assert_allclose(
+            modulated_result.expect[0],
+            static_result.expect[0],
+            atol=1e-6,
+        )
+
+    def test_zero_envelope_freezes_dynamics(self) -> None:
+        """``envelope(t) = 0`` leaves the state at the initial state: no evolution."""
+        h = _single_ion_hilbert(fock=3)
+        rabi = 2 * np.pi * 1e6
+        H = modulated_carrier_hamiltonian(
+            h, _simple_drive(rabi=rabi), ion_index=0, envelope=lambda t: 0.0
+        )
+
+        psi_0 = ground_state(h)
+        tlist = np.linspace(0.0, np.pi / rabi, 5)
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+
+        for state in result.states:
+            assert (state - psi_0).norm() < 1e-8
+
+    def test_pulse_area_gives_pi_rotation(self) -> None:
+        """A Gaussian envelope with pulse area ``∫Ω·f(t) dt = π`` delivers
+        a π-rotation: |↓⟩ → |↑⟩ (⟨σ_z⟩ = −1 → +1). Uses an integrated
+        rather than constant-rate schedule — this is the test that
+        validates the time-dependent path beyond trivial equivalence."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=3)
+        rabi = 2 * np.pi * 1e6
+        t_end = 5e-6  # 5 μs window
+        t_centre = t_end / 2
+        sigma_gauss = t_end / 10  # narrow pulse, well inside the window
+
+        # Normalise so the pulse area ∫₀^t_end Ω·f(t) dt = π.
+        # f(t) = A · exp(-(t - t_c)² / (2 σ²)), area ≈ A · σ · √(2π) · Ω
+        # (the erf correction from truncating at t=0, t=t_end is <1e-30
+        # for the chosen σ ≪ t_end).
+        amplitude = np.pi / (rabi * sigma_gauss * np.sqrt(2 * np.pi))
+
+        def gaussian(t: float) -> float:
+            return float(amplitude * math.exp(-((t - t_centre) ** 2) / (2 * sigma_gauss**2)))
+
+        H = modulated_carrier_hamiltonian(
+            h, _simple_drive(rabi=rabi), ion_index=0, envelope=gaussian
+        )
+
+        psi_0 = ground_state(h)
+        tlist = np.linspace(0.0, t_end, 200)
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        psi_final = result.states[-1]
+
+        sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
+        assert qutip.expect(sigma_z, psi_0) == pytest.approx(-1.0)
+        assert qutip.expect(sigma_z, psi_final) == pytest.approx(+1.0, abs=1e-4)

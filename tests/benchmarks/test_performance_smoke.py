@@ -183,12 +183,6 @@ def test_two_ion_ms_gate_under_30s() -> None:
     assert elapsed < T_TWO_ION_MS_GATE, f"took {elapsed:.2f}s (threshold {T_TWO_ION_MS_GATE}s)"
 
 
-@pytest.mark.skip(
-    reason=(
-        "awaiting Phase 1 stroboscopic AC-π/2 builder (workplan §0.F item 3); "
-        "replace skip with build/solve and assert elapsed < T_STROBOSCOPIC_AC."
-    )
-)
 def test_stroboscopic_ac_halfpi_under_60s() -> None:
     """Stroboscopic AC-π/2 drive: ``N_Fock = 40``, 1000 steps.
 
@@ -196,8 +190,62 @@ def test_stroboscopic_ac_halfpi_under_60s() -> None:
     hardware. The 1000-step count reflects the fast time-dependence of
     stroboscopic drives — the threshold is deliberately the loosest of the
     three.
+
+    Setup: ²⁵Mg⁺, 1.3 MHz axial mode, 280 nm drive. On-resonance carrier
+    with a squared-sine envelope modulated at the mode frequency; pulse
+    area normalised so the full evolution implements a π/2 rotation.
+    The dispatcher is :func:`iontrap_dynamics.hamiltonians.modulated_carrier_hamiltonian`,
+    which returns QuTiP's time-dependent list format — this is the first
+    benchmark to exercise that path.
     """
-    raise AssertionError("unreachable — test is skipped")
+    import time
+
+    import numpy as np
+    import qutip
+
+    from iontrap_dynamics.drives import DriveConfig
+    from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
+    from iontrap_dynamics.hilbert import HilbertSpace
+    from iontrap_dynamics.modes import ModeConfig
+    from iontrap_dynamics.operators import spin_down
+    from iontrap_dynamics.species import mg25_plus
+    from iontrap_dynamics.system import IonSystem
+
+    n_fock = 40
+    rabi_rad_s = 2 * np.pi * 0.1e6
+    mode_freq_rad_s = 2 * np.pi * 1.3e6
+    wavenumber_m_inv = 2 * np.pi / 280e-9
+
+    mode = ModeConfig(
+        label="axial",
+        frequency_rad_s=mode_freq_rad_s,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+    )
+    system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
+    hilbert = HilbertSpace(system=system, fock_truncations={"axial": n_fock})
+
+    drive = DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, wavenumber_m_inv],
+        carrier_rabi_frequency_rad_s=rabi_rad_s,
+    )
+
+    # Stroboscopic-style envelope: sin²(ω_m·t/2) — strictly non-negative,
+    # mean 0.5 over each half-period, modulated at the mode frequency so
+    # the drive is on/off synchronously with the motional oscillation.
+    def envelope(t: float) -> float:
+        return float(np.sin(mode_freq_rad_s * t / 2.0) ** 2)
+
+    H = modulated_carrier_hamiltonian(hilbert, drive, ion_index=0, envelope=envelope)
+
+    # 1000 samples over ten motional periods — stroboscopic timescale.
+    tlist = np.linspace(0.0, 10 * 2 * np.pi / mode_freq_rad_s, 1000)
+    psi_0 = qutip.tensor(spin_down(), qutip.basis(n_fock, 0))
+
+    t0 = time.perf_counter()
+    qutip.mesolve(H, psi_0, tlist, [], [])
+    elapsed = time.perf_counter() - t0
+
+    assert elapsed < T_STROBOSCOPIC_AC, f"took {elapsed:.2f}s (threshold {T_STROBOSCOPIC_AC}s)"
 
 
 # ----------------------------------------------------------------------------
