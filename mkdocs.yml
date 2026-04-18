@@ -51,6 +51,7 @@ nav:
   - Welcome: index.md
   - Getting Started: getting-started.md
   - Project Framework: framework.md
+  - Phase 1 Architecture: phase-1-architecture.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:

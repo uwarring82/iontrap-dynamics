@@ -50,8 +50,10 @@ This is the line between “reproducible enough” and “quietly wrong”.
 - Coastline material states binding constraints.
 - Sail material carries adaptive guidance and tutorials.
 
-This docs folder currently contains only Coastline-facing entry pages; richer
-tutorial material lands later under `docs/tutorials/`.
+This docs folder carries Coastline-facing entry pages plus a concrete
+[Phase 1 Architecture](phase-1-architecture.md) reference describing the
+current public API surface. Richer tutorial material lands later under
+`docs/tutorials/`.
 
 ## Endorsement Marker
 
