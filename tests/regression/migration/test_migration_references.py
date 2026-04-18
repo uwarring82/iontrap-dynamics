@@ -326,13 +326,22 @@ def test_builder_matches_scenario_2() -> None:
 
 @pytest.mark.skip(
     reason=(
-        "qc.py drives a single-tone blue sideband on both spins; "
-        "iontrap-dynamics' ms_gate_hamiltonian implements the symmetric "
-        "bichromatic MS form. The two are physically distinct generators "
-        "and will not match at any tolerance. Activation path: either "
-        "add a single-tone two-ion-sideband builder, or retire this "
-        "scenario in favour of a bichromatic reference generated from "
-        "the Phase 1 MS builders themselves."
+        "The two-ion single-tone sideband builder "
+        "(``two_ion_blue_sideband_hamiltonian``) has landed and "
+        "reproduces qc.py's structural choice (single blue tone on "
+        "both ions at the COM mode, not a bichromatic MS gate). "
+        "However the empirical probe shows the same ~1.5× rate "
+        "mismatch as scenario 2 — qc.py's flopping is substantially "
+        "faster than our RWA + leading-order LD reduction, and "
+        "turning on ``full_lamb_dicke=True`` (Debye-Waller + "
+        "Laguerre) closes at most a few percent of the gap. The "
+        "residual is consistent with qc.py keeping lab-frame "
+        "counter-rotating terms or using a different initial-state "
+        "interpretation for the ``Fck=0, n_thermal=0.001`` "
+        "specification. Activation path: replicate qc.py's exact "
+        "state-construction + frame choice, or retire this scenario "
+        "in favour of a bichromatic MS reference generated from the "
+        "Phase 1 builders themselves."
     )
 )
 def test_builder_matches_scenario_3() -> None:

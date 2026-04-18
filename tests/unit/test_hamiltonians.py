@@ -31,6 +31,8 @@ from iontrap_dynamics.hamiltonians import (
     modulated_carrier_hamiltonian,
     ms_gate_hamiltonian,
     red_sideband_hamiltonian,
+    two_ion_blue_sideband_hamiltonian,
+    two_ion_red_sideband_hamiltonian,
 )
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
@@ -1837,3 +1839,158 @@ class TestFullLambDickeDiffersFromLeading:
         )
         psi_0 = ground_state(h)
         assert (H * psi_0).norm() < 1e-12
+
+
+# ============================================================================
+# Two-ion single-tone sideband (shared mode, exact resonance)
+# ============================================================================
+
+
+def _two_ion_stretch_mode() -> ModeConfig:
+    """Stretch mode: opposite-sign eigenvectors give η_0 = −η_1."""
+    return ModeConfig(
+        label="stretch",
+        frequency_rad_s=2 * np.pi * 2.6e6,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]]) / np.sqrt(2.0),
+    )
+
+
+class TestTwoIonSidebandStructure:
+    def test_red_dims_match(self) -> None:
+        h = _two_ion_ms_hilbert()
+        H = two_ion_red_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 1))
+        assert H.dims == h.qutip_dims()
+
+    def test_blue_dims_match(self) -> None:
+        h = _two_ion_ms_hilbert()
+        H = two_ion_blue_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 1))
+        assert H.dims == h.qutip_dims()
+
+    def test_red_hermitian(self) -> None:
+        h = _two_ion_ms_hilbert()
+        for phi in (0.0, np.pi / 3, -np.pi / 4):
+            H = two_ion_red_sideband_hamiltonian(
+                h, _ms_drive(phase_rad=phi), "com", ion_indices=(0, 1)
+            )
+            assert (H - H.dag()).norm() < 1e-10
+
+    def test_blue_hermitian(self) -> None:
+        h = _two_ion_ms_hilbert()
+        for phi in (0.0, np.pi / 3, -np.pi / 4):
+            H = two_ion_blue_sideband_hamiltonian(
+                h, _ms_drive(phase_rad=phi), "com", ion_indices=(0, 1)
+            )
+            assert (H - H.dag()).norm() < 1e-10
+
+    def test_ion_swap_invariance(self) -> None:
+        """H((0,1)) == H((1,0)) — spin operators on different ions commute."""
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_ij = two_ion_red_sideband_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_ji = two_ion_red_sideband_hamiltonian(h, drive, "com", ion_indices=(1, 0))
+        assert (H_ij - H_ji).norm() < 1e-12
+
+    def test_equals_sum_of_single_ion_red_pieces(self) -> None:
+        """The two-ion red operator is the sum of single-ion red builders."""
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_two = two_ion_red_sideband_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_0 = red_sideband_hamiltonian(h, drive, "com", ion_index=0)
+        H_1 = red_sideband_hamiltonian(h, drive, "com", ion_index=1)
+        assert (H_two - (H_0 + H_1)).norm() < 1e-12
+
+    def test_equals_sum_of_single_ion_blue_pieces(self) -> None:
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_two = two_ion_blue_sideband_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_0 = blue_sideband_hamiltonian(h, drive, "com", ion_index=0)
+        H_1 = blue_sideband_hamiltonian(h, drive, "com", ion_index=1)
+        assert (H_two - (H_0 + H_1)).norm() < 1e-12
+
+
+class TestTwoIonSidebandValidation:
+    def test_duplicate_indices_rejected_red(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="distinct"):
+            two_ion_red_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 0))
+
+    def test_duplicate_indices_rejected_blue(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="distinct"):
+            two_ion_blue_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(1, 1))
+
+    def test_unknown_mode_rejected(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="unknown mode"):
+            two_ion_red_sideband_hamiltonian(h, _ms_drive(), "nonexistent", ion_indices=(0, 1))
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(IndexError):
+            two_ion_red_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 2))
+
+    def test_validation_errors_subclass_iontraperror(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(IonTrapError):
+            two_ion_red_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(1, 1))
+
+
+class TestTwoIonSidebandPhysics:
+    def test_red_annihilates_two_ion_ground_state(self) -> None:
+        """H|↓↓, 0⟩ = 0: red sideband has no phonon to annihilate from vacuum."""
+        h = _two_ion_ms_hilbert()
+        H = two_ion_red_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 1))
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(6, 0))
+        assert (H * psi_0).norm() < 1e-12
+
+    def test_blue_does_not_annihilate_vacuum(self) -> None:
+        """Blue sideband creates a phonon from |↓↓, 0⟩ — nonzero action."""
+        h = _two_ion_ms_hilbert()
+        H = two_ion_blue_sideband_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 1))
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(6, 0))
+        assert (H * psi_0).norm() > 1e-6
+
+    def test_stretch_mode_ion_couplings_have_opposite_sign(self) -> None:
+        """For a stretch mode (η_0 = −η_1), the two single-ion pieces have
+        opposite-sign coefficients, and their sum differs from the COM case
+        where both pieces have the same sign."""
+        system = IonSystem(
+            species_per_ion=(mg25_plus(), mg25_plus()),
+            modes=(_two_ion_com_mode(), _two_ion_stretch_mode()),
+        )
+        h = HilbertSpace(system=system, fock_truncations={"com": 4, "stretch": 4})
+        drive = _ms_drive()
+        H_com = two_ion_red_sideband_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_stretch = two_ion_red_sideband_hamiltonian(h, drive, "stretch", ion_indices=(0, 1))
+        # Genuinely different operators (different η signs across ions)
+        assert (H_com - H_stretch).norm() > 1e-6
+
+
+class TestTwoIonSidebandFullLambDicke:
+    def test_full_ld_default_is_leading_order(self) -> None:
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_default = two_ion_red_sideband_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_explicit = two_ion_red_sideband_hamiltonian(
+            h, drive, "com", ion_indices=(0, 1), full_lamb_dicke=False
+        )
+        assert (H_default - H_explicit).norm() < 1e-14
+
+    def test_full_ld_equals_sum_of_full_ld_single_ions(self) -> None:
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_two = two_ion_red_sideband_hamiltonian(
+            h, drive, "com", ion_indices=(0, 1), full_lamb_dicke=True
+        )
+        H_0 = red_sideband_hamiltonian(h, drive, "com", ion_index=0, full_lamb_dicke=True)
+        H_1 = red_sideband_hamiltonian(h, drive, "com", ion_index=1, full_lamb_dicke=True)
+        assert (H_two - (H_0 + H_1)).norm() < 1e-12
+
+    def test_full_ld_differs_from_leading_at_realistic_eta(self) -> None:
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_leading = two_ion_red_sideband_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_full = two_ion_red_sideband_hamiltonian(
+            h, drive, "com", ion_indices=(0, 1), full_lamb_dicke=True
+        )
+        assert (H_full - H_leading).norm() > 1e-4

@@ -36,6 +36,13 @@ Follow-on builders (one per dispatch):
   blue sideband tone. Landed via
   :func:`detuned_red_sideband_hamiltonian` and
   :func:`detuned_blue_sideband_hamiltonian`.
+- **Two-ion single-tone sideband (shared mode)** — one laser tone
+  at the red- or blue-sideband resonance addressing both ions
+  simultaneously. Sum of two single-ion sideband couplings to a
+  shared mode; each ion carries its own η from the mode eigenvector
+  at that ion. Landed via :func:`two_ion_red_sideband_hamiltonian`
+  and :func:`two_ion_blue_sideband_hamiltonian`. Physically distinct
+  from the bichromatic MS gate.
 - **Mølmer–Sørensen (δ = 0, bichromatic)** — two-ion spin-dependent
   force, time-independent and therefore compatible with the existing
   :func:`iontrap_dynamics.sequences.solve` dispatcher. Landed via
@@ -543,6 +550,129 @@ def blue_sideband_hamiltonian(
     a_dag = hilbert.creation_for_mode(mode_label)
     coeff = omega * eta / 2.0
     return coeff * (phase_plus * sigma_p * a_dag + phase_minus * sigma_m * a)
+
+
+# ----------------------------------------------------------------------------
+# Two-ion single-tone sideband drives (shared mode, exact resonance)
+# ----------------------------------------------------------------------------
+
+
+def two_ion_red_sideband_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    mode_label: str,
+    *,
+    ion_indices: tuple[int, int],
+    full_lamb_dicke: bool = False,
+) -> qutip.Qobj:
+    """Return the single-tone red-sideband Hamiltonian for two ions
+    coupled to one shared motional mode.
+
+    .. math::
+        H / \\hbar = \\sum_{k \\in \\text{ions}}
+        \\frac{\\Omega \\, \\eta_k}{2}
+        \\left[ \\sigma_+^{(k)} a \\, e^{i\\phi}
+              + \\sigma_-^{(k)} a^\\dagger \\, e^{-i\\phi} \\right]
+
+    The physics is the sum of two independent single-ion red-sideband
+    couplings to the same mode — both ions see the same laser tone
+    at the red-sideband resonance ``ω_laser = ω_atom − ω_mode``, but
+    each carries its own Lamb–Dicke parameter ``η_k`` from the mode
+    eigenvector projection at that ion. For a COM mode ``η_0 = η_1``;
+    for a stretch mode the two ions see opposite-sign ``η`` values.
+
+    Physically distinct from :func:`ms_gate_hamiltonian`
+    (symmetric bichromatic drive with a position-quadrature
+    ``(a + a†)`` coupling). This builder is the Phase 1 analogue of
+    qc.py's ``squeeze_to_entangle_twoSpins_singleMode`` — a single
+    blue or red sideband tone, not a bichromatic MS gate.
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space.
+    drive
+        :class:`DriveConfig` for the single-tone red-sideband drive.
+    mode_label
+        Label of the motional mode shared by the two ions.
+    ion_indices
+        Tuple of the two zero-based ion indices the drive addresses.
+        Must be distinct; order does not matter (spin operators on
+        different ions commute).
+    full_lamb_dicke
+        When ``True``, each ion's single-ion piece is built with
+        :func:`red_sideband_hamiltonian`'s full-LD path
+        (Wineland–Itano Rabi rates via matrix exponentiation).
+
+    Returns
+    -------
+    qutip.Qobj
+        Time-independent Hermitian operator on the full Hilbert space.
+
+    Raises
+    ------
+    ConventionError
+        If ``ion_indices`` are duplicate or ``mode_label`` is unknown.
+    IndexError
+        If either ion index is outside ``[0, n_ions)``.
+    """
+    i, j = ion_indices
+    if i == j:
+        raise ConventionError(
+            f"two_ion_red_sideband_hamiltonian requires two distinct ions; "
+            f"got ion_indices=({i}, {j})."
+        )
+
+    h_i = red_sideband_hamiltonian(
+        hilbert, drive, mode_label, ion_index=i, full_lamb_dicke=full_lamb_dicke
+    )
+    h_j = red_sideband_hamiltonian(
+        hilbert, drive, mode_label, ion_index=j, full_lamb_dicke=full_lamb_dicke
+    )
+    return h_i + h_j
+
+
+def two_ion_blue_sideband_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    mode_label: str,
+    *,
+    ion_indices: tuple[int, int],
+    full_lamb_dicke: bool = False,
+) -> qutip.Qobj:
+    """Return the single-tone blue-sideband Hamiltonian for two ions
+    coupled to one shared motional mode.
+
+    .. math::
+        H / \\hbar = \\sum_{k \\in \\text{ions}}
+        \\frac{\\Omega \\, \\eta_k}{2}
+        \\left[ \\sigma_+^{(k)} a^\\dagger \\, e^{i\\phi}
+              + \\sigma_-^{(k)} a \\, e^{-i\\phi} \\right]
+
+    Blue counterpart of :func:`two_ion_red_sideband_hamiltonian`.
+    Unlike the red-sideband version this does not annihilate the
+    motional vacuum — ``|↓↓, 0⟩`` couples to ``|↑↓, 1⟩`` and
+    ``|↓↑, 1⟩`` (and at Debye–Waller / higher-order LD, also to
+    other Δn states).
+
+    Parameters, returns, and raises match
+    :func:`two_ion_red_sideband_hamiltonian`; the caller asserts
+    ``ω_laser = ω_atom + ω_mode``.
+    """
+    i, j = ion_indices
+    if i == j:
+        raise ConventionError(
+            f"two_ion_blue_sideband_hamiltonian requires two distinct ions; "
+            f"got ion_indices=({i}, {j})."
+        )
+
+    h_i = blue_sideband_hamiltonian(
+        hilbert, drive, mode_label, ion_index=i, full_lamb_dicke=full_lamb_dicke
+    )
+    h_j = blue_sideband_hamiltonian(
+        hilbert, drive, mode_label, ion_index=j, full_lamb_dicke=full_lamb_dicke
+    )
+    return h_i + h_j
 
 
 # ----------------------------------------------------------------------------
@@ -1191,4 +1321,6 @@ __all__ = [
     "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",
     "red_sideband_hamiltonian",
+    "two_ion_blue_sideband_hamiltonian",
+    "two_ion_red_sideband_hamiltonian",
 ]
