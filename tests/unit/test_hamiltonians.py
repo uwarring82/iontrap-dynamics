@@ -11,6 +11,8 @@ import qutip
 
 from iontrap_dynamics.analytic import (
     blue_sideband_rabi_frequency,
+    detuned_rabi_sigma_z,
+    generalized_rabi_frequency,
     lamb_dicke_parameter,
     ms_gate_closing_detuning,
     ms_gate_closing_time,
@@ -22,6 +24,7 @@ from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.hamiltonians import (
     blue_sideband_hamiltonian,
     carrier_hamiltonian,
+    detuned_carrier_hamiltonian,
     detuned_ms_gate_hamiltonian,
     modulated_carrier_hamiltonian,
     ms_gate_hamiltonian,
@@ -1211,3 +1214,209 @@ class TestMSGateClosingHelpers:
     def test_closing_time_rejects_zero_coupling(self) -> None:
         with pytest.raises(ValueError):
             ms_gate_closing_time(carrier_rabi_frequency=0.0, lamb_dicke_parameter=0.1, loops=1)
+
+
+# ============================================================================
+# Detuned carrier (δ ≠ 0, list-format)
+# ============================================================================
+
+
+def _detuned_drive(
+    *,
+    rabi: float = 2 * np.pi * 1e6,
+    detuning: float = 2 * np.pi * 5e5,
+    phase_rad: float = 0.0,
+) -> DriveConfig:
+    return DriveConfig(
+        k_vector_m_inv=[2e7, 0.0, 0.0],
+        carrier_rabi_frequency_rad_s=rabi,
+        detuning_rad_s=detuning,
+        phase_rad=phase_rad,
+    )
+
+
+class TestDetunedCarrierStructure:
+    def test_returns_two_piece_list_format(self) -> None:
+        """[[A_φ, cos_fn], [A_⊥, sin_fn]] — two time-dependent pieces."""
+        h = _single_ion_hilbert()
+        H = detuned_carrier_hamiltonian(h, _detuned_drive(), ion_index=0)
+        assert isinstance(H, list)
+        assert len(H) == 2
+        for piece in H:
+            assert isinstance(piece, list) and len(piece) == 2
+            assert isinstance(piece[0], qutip.Qobj)
+            assert callable(piece[1])
+            assert piece[0].dims == h.qutip_dims()
+
+    def test_hermitian_at_sampled_times(self) -> None:
+        """Both A_φ and A_⊥ are individually Hermitian, so H(t) is
+        Hermitian for every t."""
+        h = _single_ion_hilbert()
+        H = detuned_carrier_hamiltonian(h, _detuned_drive(), ion_index=0)
+        a_phi, cos_fn = H[0]
+        a_perp, sin_fn = H[1]
+        assert (a_phi - a_phi.dag()).norm() < 1e-12
+        assert (a_perp - a_perp.dag()).norm() < 1e-12
+        for t in (0.0, 1e-7, 5e-7, 2e-6):
+            H_t = cos_fn(t, {}) * a_phi + sin_fn(t, {}) * a_perp
+            assert (H_t - H_t.dag()).norm() < 1e-10
+
+    def test_t_zero_matches_static_carrier(self) -> None:
+        """At t = 0, cos(δt)=1 and sin(δt)=0, so H(0) = A_φ equals
+        what :func:`carrier_hamiltonian` would produce for the same
+        (Ω, φ) with δ set to zero."""
+        h = _single_ion_hilbert()
+        drive_resonant = _simple_drive(phase_rad=0.3)
+        drive_detuned = _detuned_drive(
+            rabi=drive_resonant.carrier_rabi_frequency_rad_s,
+            detuning=2 * np.pi * 5e5,
+            phase_rad=0.3,
+        )
+        H_static = carrier_hamiltonian(h, drive_resonant, ion_index=0)
+        H_detuned = detuned_carrier_hamiltonian(h, drive_detuned, ion_index=0)
+        a_phi, cos_fn = H_detuned[0]
+        a_perp, sin_fn = H_detuned[1]
+        H_at_zero = cos_fn(0.0, {}) * a_phi + sin_fn(0.0, {}) * a_perp
+        assert (H_at_zero - H_static).norm() < 1e-12
+
+    def test_ion_index_respected(self) -> None:
+        """Driving ion 1 on a two-ion crystal leaves ion 0 untouched."""
+        system = IonSystem(
+            species_per_ion=(mg25_plus(), mg25_plus()),
+            modes=(_two_ion_com_mode(),),
+        )
+        h = HilbertSpace(system=system, fock_truncations={"com": 4})
+        H = detuned_carrier_hamiltonian(h, _detuned_drive(), ion_index=1)
+        # At t=0 the reduced Hamiltonian is (Ω/2) σ_x on ion 1.
+        a_phi, _ = H[0]
+        expected = (_detuned_drive().carrier_rabi_frequency_rad_s / 2.0) * h.spin_op_for_ion(
+            sigma_x_ion(), 1
+        )
+        assert (a_phi - expected).norm() < 1e-12
+
+
+class TestDetunedCarrierValidation:
+    def test_zero_detuning_rejected(self) -> None:
+        """δ = 0 must use the static carrier_hamiltonian instead."""
+        h = _single_ion_hilbert()
+        with pytest.raises(ConventionError, match="non-zero"):
+            detuned_carrier_hamiltonian(h, _simple_drive(), ion_index=0)
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _single_ion_hilbert()
+        with pytest.raises(IndexError):
+            detuned_carrier_hamiltonian(h, _detuned_drive(), ion_index=1)
+
+    def test_validation_errors_subclass_iontraperror(self) -> None:
+        h = _single_ion_hilbert()
+        with pytest.raises(IonTrapError):
+            detuned_carrier_hamiltonian(h, _simple_drive(), ion_index=0)
+
+
+class TestDetunedCarrierDynamics:
+    """End-to-end: the builder + mesolve reproduces the detuned-Rabi formula
+    ⟨σ_z⟩(t) = −1 + 2·(Ω/Ω_gen)²·sin²(Ω_gen·t/2)."""
+
+    def test_matches_analytic_for_delta_equals_omega(self) -> None:
+        """δ = Ω gives Ω_gen = √2·Ω and max P↑ = 1/2 — the canonical
+        half-populated oscillation at rate √2·Ω."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=3)
+        omega = 2 * np.pi * 1e6
+        delta = omega  # δ = Ω
+        drive = _detuned_drive(rabi=omega, detuning=delta)
+
+        H = detuned_carrier_hamiltonian(h, drive, ion_index=0)
+        psi_0 = ground_state(h)
+        sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
+
+        omega_gen = generalized_rabi_frequency(carrier_rabi_frequency=omega, detuning_rad_s=delta)
+        tlist = np.linspace(0.0, 2 * 2 * np.pi / omega_gen, 100)
+
+        result = qutip.mesolve(H, psi_0, tlist, [], [sigma_z])
+        analytic = detuned_rabi_sigma_z(carrier_rabi_frequency=omega, detuning_rad_s=delta, t=tlist)
+        np.testing.assert_allclose(result.expect[0], analytic, atol=1e-4)
+
+    def test_amplitude_scales_as_omega_over_omega_gen_squared(self) -> None:
+        """Max P↑ = (Ω/Ω_gen)² — verify at δ = Ω·√3 gives max P↑ = 1/4."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=3)
+        omega = 2 * np.pi * 1e6
+        delta = omega * np.sqrt(3.0)  # Ω_gen = 2·Ω, (Ω/Ω_gen)² = 1/4
+        drive = _detuned_drive(rabi=omega, detuning=delta)
+
+        H = detuned_carrier_hamiltonian(h, drive, ion_index=0)
+        psi_0 = ground_state(h)
+        sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
+
+        omega_gen = generalized_rabi_frequency(carrier_rabi_frequency=omega, detuning_rad_s=delta)
+        tlist = np.linspace(0.0, 2 * np.pi / omega_gen, 200)
+
+        result = qutip.mesolve(H, psi_0, tlist, [], [sigma_z])
+        max_population = 0.5 * (1 + float(np.max(result.expect[0])))
+        # max P↑ = (Ω/Ω_gen)² = (Ω/(2Ω))² = 1/4
+        assert max_population == pytest.approx(0.25, abs=5e-3)
+
+    def test_resonant_limit_recovers_on_resonance_dynamics(self) -> None:
+        """With a very small δ << Ω, the trajectory should match the
+        on-resonance Rabi form ⟨σ_z⟩ = −cos(Ωt) over a modest window."""
+        from iontrap_dynamics.analytic import carrier_rabi_sigma_z
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=3)
+        omega = 2 * np.pi * 1e6
+        delta = omega * 1e-4  # effectively on-resonance
+        drive = _detuned_drive(rabi=omega, detuning=delta)
+
+        H = detuned_carrier_hamiltonian(h, drive, ion_index=0)
+        psi_0 = ground_state(h)
+        sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
+
+        tlist = np.linspace(0.0, np.pi / omega, 50)  # one half-period
+        result = qutip.mesolve(H, psi_0, tlist, [], [sigma_z])
+        analytic_resonant = carrier_rabi_sigma_z(omega, tlist)
+        np.testing.assert_allclose(result.expect[0], analytic_resonant, atol=1e-3)
+
+
+class TestDetunedRabiAnalyticHelpers:
+    def test_generalized_rabi_at_resonance(self) -> None:
+        """Ω_gen(δ=0) = Ω."""
+        assert generalized_rabi_frequency(
+            carrier_rabi_frequency=1e6, detuning_rad_s=0.0
+        ) == pytest.approx(1e6)
+
+    def test_generalized_rabi_at_equal_detuning(self) -> None:
+        """Ω_gen(δ=Ω) = √2·Ω."""
+        assert generalized_rabi_frequency(
+            carrier_rabi_frequency=1e6, detuning_rad_s=1e6
+        ) == pytest.approx(1e6 * np.sqrt(2))
+
+    def test_generalized_rabi_is_symmetric_in_detuning(self) -> None:
+        """Ω_gen(δ) = Ω_gen(−δ) — sign of detuning does not matter."""
+        pos = generalized_rabi_frequency(carrier_rabi_frequency=1e6, detuning_rad_s=+3e5)
+        neg = generalized_rabi_frequency(carrier_rabi_frequency=1e6, detuning_rad_s=-3e5)
+        assert pos == pytest.approx(neg)
+
+    def test_detuned_rabi_sigma_z_at_t_zero_is_minus_one(self) -> None:
+        """The initial |↓⟩ has ⟨σ_z⟩ = −1 regardless of Ω, δ."""
+        val = detuned_rabi_sigma_z(carrier_rabi_frequency=1e6, detuning_rad_s=3e5, t=0.0)
+        assert float(val) == pytest.approx(-1.0)
+
+    def test_detuned_rabi_sigma_z_matches_on_resonance_at_zero_detuning(self) -> None:
+        """At δ=0, the formula reduces to −cos(Ωt)."""
+        from iontrap_dynamics.analytic import carrier_rabi_sigma_z
+
+        tlist = np.linspace(0.0, 2 * np.pi / 1e6, 20)
+        detuned = detuned_rabi_sigma_z(carrier_rabi_frequency=1e6, detuning_rad_s=0.0, t=tlist)
+        resonant = carrier_rabi_sigma_z(1e6, tlist)
+        np.testing.assert_allclose(detuned, resonant, atol=1e-14)
+
+    def test_detuned_rabi_sigma_z_stays_in_range(self) -> None:
+        """⟨σ_z⟩ must stay in [−1, +1] for all parameter choices."""
+        tlist = np.linspace(0.0, 10.0, 500)
+        for delta in (0.0, 0.5, 1.0, 3.0, 10.0):
+            trace = detuned_rabi_sigma_z(carrier_rabi_frequency=1.0, detuning_rad_s=delta, t=tlist)
+            assert float(np.min(trace)) >= -1.0 - 1e-14
+            assert float(np.max(trace)) <= +1.0 + 1e-14

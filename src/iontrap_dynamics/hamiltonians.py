@@ -29,8 +29,10 @@ mismatch.)
 
 Follow-on builders (one per dispatch):
 
-- **Carrier, detuned** — ``detuning_rad_s ≠ 0``; list format.
-- **Near-sideband** — detuning slightly off resonance, list format.
+- **Carrier, detuned** — ``detuning_rad_s ≠ 0`` via list format.
+  Landed via :func:`detuned_carrier_hamiltonian`.
+- **Near-sideband** — detuning slightly off resonance on a single
+  sideband tone, list format. Future dispatch.
 - **Mølmer–Sørensen (δ = 0, bichromatic)** — two-ion spin-dependent
   force, time-independent and therefore compatible with the existing
   :func:`iontrap_dynamics.sequences.solve` dispatcher. Landed via
@@ -163,6 +165,148 @@ def carrier_hamiltonian(
     sigma_x = hilbert.spin_op_for_ion(sigma_x_ion(), ion_index)
     sigma_y = hilbert.spin_op_for_ion(sigma_y_ion(), ion_index)
     return (omega / 2.0) * (math.cos(phi) * sigma_x - math.sin(phi) * sigma_y)
+
+
+# ----------------------------------------------------------------------------
+# Detuned carrier (time-dependent, list-format)
+# ----------------------------------------------------------------------------
+
+
+def detuned_carrier_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    *,
+    ion_index: int,
+) -> list[object]:
+    """Return the off-resonance carrier Hamiltonian in QuTiP's
+    time-dependent list format.
+
+    Implements CONVENTIONS.md §5 for ``δ ≠ 0``:
+
+    .. math::
+        H(t) / \\hbar = \\frac{\\Omega}{2}
+        \\bigl[ \\sigma_+ e^{i\\phi} e^{i\\delta t}
+              + \\sigma_- e^{-i\\phi} e^{-i\\delta t} \\bigr],
+
+    which, using ``σ_y = −i(σ_+ − σ_−)`` (atomic-physics convention
+    §3), rewrites as
+
+    .. math::
+        H(t) / \\hbar = \\frac{\\Omega}{2}
+        \\bigl[ \\cos(\\delta t) \\, \\sigma_\\phi
+              + \\sin(\\delta t) \\, \\sigma_{\\phi + \\pi/2} \\bigr],
+
+    with ``σ_φ = cos(φ) σ_x − sin(φ) σ_y`` (the on-resonance carrier
+    axis) and ``σ_{φ+π/2} = −sin(φ) σ_x − cos(φ) σ_y`` (the
+    orthogonal axis in the spin x–y plane). Physical picture: in
+    the interaction picture of the atomic transition, the laser
+    phase precesses at rate ``δ`` relative to the atom frame, so
+    the drive axis rotates in the x–y plane at that rate.
+
+    Dynamics
+    --------
+
+    Populations are frame-invariant, so starting from ``|↓⟩`` the
+    excited-state population follows the textbook detuned-Rabi
+    formula
+
+    .. math::
+        P_{\\uparrow}(t) = (\\Omega / \\Omega_\\text{gen})^2
+                          \\sin^2(\\Omega_\\text{gen} t / 2),
+        \\quad
+        \\Omega_\\text{gen} = \\sqrt{\\Omega^2 + \\delta^2},
+
+    equivalent to ``⟨σ_z⟩(t) = −1 + 2 P_{\\uparrow}(t)``. See
+    :func:`iontrap_dynamics.analytic.generalized_rabi_frequency`
+    and :func:`iontrap_dynamics.analytic.detuned_rabi_sigma_z`.
+
+    Scope (v0.1)
+    ------------
+
+    Single-ion carrier only. Off-resonance sideband drives
+    (near-sideband dynamics) are a separate builder — the sideband
+    Lamb–Dicke factor ``η`` does not appear here because the
+    carrier transition does not couple motion in the interaction
+    picture + RWA reduction. Detuning from the carrier resonance
+    is physically distinct from detuning from a sideband resonance.
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space.
+    drive
+        :class:`DriveConfig` for the detuned carrier. Reads Rabi
+        frequency, phase, and detuning (``detuning_rad_s``, which
+        must be non-zero — use :func:`carrier_hamiltonian` for the
+        on-resonance case).
+    ion_index
+        Zero-based index of the ion the drive couples to.
+        Keyword-only.
+
+    Returns
+    -------
+    list[object]
+        Time-dependent list-format Hamiltonian
+        ``[[A_φ, cos(δt)], [A_⊥, sin(δt)]]`` with
+        ``A_φ = (Ω/2) σ_φ`` and
+        ``A_⊥ = (Ω/2) σ_{φ+π/2}`` — each time-independent and
+        Hermitian. Ready for
+        :func:`iontrap_dynamics.sequences.solve` or
+        ``qutip.mesolve``.
+
+    Raises
+    ------
+    ConventionError
+        If ``drive.detuning_rad_s == 0`` — route zero-detuning
+        cases through :func:`carrier_hamiltonian`, which returns a
+        time-independent Qobj without list-format overhead.
+    IndexError
+        If ``ion_index`` is out of range.
+
+    Example
+    -------
+
+    Detuned Rabi spectroscopy at ``δ = Ω`` (generalized Rabi
+    frequency ``Ω_gen = √2 Ω``, maximum excited-state population
+    ``(Ω/Ω_gen)² = 1/2``)::
+
+        drive = DriveConfig(
+            k_vector_m_inv=[2e7, 0.0, 0.0],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+            detuning_rad_s=2 * np.pi * 1e6,
+        )
+        H = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0)
+    """
+    if drive.detuning_rad_s == 0.0:
+        raise ConventionError(
+            "detuned_carrier_hamiltonian requires a non-zero detuning; got "
+            "drive.detuning_rad_s == 0. For the on-resonance case use "
+            "carrier_hamiltonian, which returns a time-independent Qobj "
+            "without list-format overhead."
+        )
+
+    omega = drive.carrier_rabi_frequency_rad_s
+    phi = drive.phase_rad
+    delta = drive.detuning_rad_s
+
+    sigma_x = hilbert.spin_op_for_ion(sigma_x_ion(), ion_index)
+    sigma_y = hilbert.spin_op_for_ion(sigma_y_ion(), ion_index)
+
+    # σ_φ = cos(φ) σ_x − sin(φ) σ_y         — on-resonance carrier axis
+    # σ_⊥ = −sin(φ) σ_x − cos(φ) σ_y        — orthogonal axis (σ_φ rotated +π/2)
+    s_phi = math.cos(phi) * sigma_x - math.sin(phi) * sigma_y
+    s_perp = -math.sin(phi) * sigma_x - math.cos(phi) * sigma_y
+
+    a_phi = (omega / 2.0) * s_phi
+    a_perp = (omega / 2.0) * s_perp
+
+    def cos_coeff(t: float, args: Any) -> float:
+        return math.cos(delta * t)
+
+    def sin_coeff(t: float, args: Any) -> float:
+        return math.sin(delta * t)
+
+    return [[a_phi, cos_coeff], [a_perp, sin_coeff]]
 
 
 # ----------------------------------------------------------------------------
@@ -726,6 +870,7 @@ def modulated_carrier_hamiltonian(
 __all__ = [
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
+    "detuned_carrier_hamiltonian",
     "detuned_ms_gate_hamiltonian",
     "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",

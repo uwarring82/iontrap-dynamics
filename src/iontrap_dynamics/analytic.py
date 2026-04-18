@@ -106,6 +106,90 @@ def carrier_rabi_sigma_z(
 
 
 # ----------------------------------------------------------------------------
+# Detuned carrier (off-resonance Rabi flopping)
+# ----------------------------------------------------------------------------
+
+
+def generalized_rabi_frequency(
+    *,
+    carrier_rabi_frequency: float,
+    detuning_rad_s: float,
+) -> float:
+    """Return the generalised Rabi frequency ``Ω_gen = √(Ω² + δ²)``.
+
+    The off-resonance carrier oscillates at ``Ω_gen`` rather than
+    ``Ω``; the amplitude of the population swing drops as the
+    detuning grows:
+
+    .. math::
+        P_{\\uparrow,\\max} = \\bigl( \\Omega / \\Omega_\\text{gen} \\bigr)^2
+        = \\frac{\\Omega^2}{\\Omega^2 + \\delta^2}.
+
+    Parameters
+    ----------
+    carrier_rabi_frequency
+        On-resonance Rabi frequency Ω, rad·s⁻¹.
+    detuning_rad_s
+        Detuning δ = ω_laser − ω_atom (CONVENTIONS.md §4),
+        rad·s⁻¹. Sign does not affect ``Ω_gen``.
+
+    Returns
+    -------
+    float
+        Generalised Rabi frequency, rad·s⁻¹. Always non-negative.
+    """
+    return float(np.sqrt(carrier_rabi_frequency**2 + detuning_rad_s**2))
+
+
+def detuned_rabi_sigma_z(
+    *,
+    carrier_rabi_frequency: float,
+    detuning_rad_s: float,
+    t: ArrayLike,
+) -> NDArray[np.floating]:
+    """Return ⟨σ_z⟩(t) for detuned-carrier flopping starting in |↓⟩.
+
+    .. math::
+        \\langle \\sigma_z \\rangle(t) = -1
+        + 2 \\, (\\Omega / \\Omega_\\text{gen})^2
+          \\sin^2(\\Omega_\\text{gen} t / 2)
+
+    where ``Ω_gen = √(Ω² + δ²)``. The population is frame-invariant
+    (the atomic-transition interaction-picture and the rotating-frame
+    expressions differ by a σ_z rotation that leaves ⟨σ_z⟩ unchanged),
+    so this formula applies to both the time-dependent interaction-
+    picture Hamiltonian returned by
+    :func:`iontrap_dynamics.hamiltonians.detuned_carrier_hamiltonian`
+    and the rotating-frame form.
+
+    At ``δ = 0`` this reduces to the on-resonance
+    :func:`carrier_rabi_sigma_z`.
+
+    Parameters
+    ----------
+    carrier_rabi_frequency
+        On-resonance Rabi frequency Ω, rad·s⁻¹.
+    detuning_rad_s
+        Detuning δ, rad·s⁻¹.
+    t
+        Time or array of times, s.
+
+    Returns
+    -------
+    np.ndarray
+        ⟨σ_z⟩(t), same shape as ``t``. Values in ``[−1, +1]``.
+        At ``t = 0`` evaluates to exactly ``−1`` (ground state).
+    """
+    time = np.asarray(t, dtype=np.float64)
+    omega_gen = generalized_rabi_frequency(
+        carrier_rabi_frequency=carrier_rabi_frequency,
+        detuning_rad_s=detuning_rad_s,
+    )
+    amplitude_squared = (carrier_rabi_frequency / omega_gen) ** 2
+    return -1.0 + 2.0 * amplitude_squared * np.sin(omega_gen * time / 2.0) ** 2
+
+
+# ----------------------------------------------------------------------------
 # Sideband Rabi frequencies (Lamb–Dicke leading order)
 # ----------------------------------------------------------------------------
 
@@ -455,6 +539,8 @@ __all__ = [
     "carrier_rabi_excited_population",
     "carrier_rabi_sigma_z",
     "coherent_state_mean_n",
+    "detuned_rabi_sigma_z",
+    "generalized_rabi_frequency",
     "lamb_dicke_parameter",
     "ms_gate_closing_detuning",
     "ms_gate_closing_time",
