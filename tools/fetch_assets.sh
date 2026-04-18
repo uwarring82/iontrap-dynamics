@@ -56,7 +56,9 @@ FILES=(
 )
 
 mkdir -p assets
-mkdir -p docs/stylesheets
+# Note: docs/stylesheets/ is created only if we actually mirror tokens.css
+# into it (see loop below). Creating it unconditionally would leave an
+# empty directory on repos that haven't set up a docs site yet.
 
 echo "Fetching from ${REPO_SLUG}..."
 for f in "${FILES[@]}"; do
@@ -78,7 +80,10 @@ for f in "${FILES[@]}"; do
     # The hash check in tools/hash_assets.sh operates on assets/ only; if
     # the docs copy drifts from the assets copy, fetch_assets.sh (or a
     # small CI step) will restore it at its next run.
+    # Only create docs/stylesheets/ when we actually write tokens.css
+    # — avoids leaving an empty directory on pre-docs-site repositories.
     if [[ "$f" == "tokens.css" ]]; then
+        mkdir -p docs/stylesheets
         cp -f "assets/$f" "docs/stylesheets/$f"
         echo "    -> mirrored to docs/stylesheets/$f for mkdocs consumption"
     fi

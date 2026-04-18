@@ -291,7 +291,7 @@ jobs:
   # back to a hard gate by removing the `continue-on-error: true`.
   # ---------------------------------------------------------------------------
   accessibility:
-    name: Accessibility (WCAG 2 — Level A mandatory, AA stretch)
+    name: Accessibility (WCAG 2 — Level A + AA report, both non-blocking per D3)
     runs-on: ubuntu-latest
     needs: [docs, detect]
     if: needs.detect.outputs.has_docs == 'true'

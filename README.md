@@ -10,15 +10,23 @@ as the Phase 0 reference backend.
 
 ## Status
 
-This repository is in Phase 0 scaffold work.
+Phase 0 is complete and Phase 1 is underway. The configuration layer and the
+first Hamiltonian builder are in place; end-to-end dynamics works
+(`DriveConfig` → `carrier_hamiltonian` → `qutip.mesolve` → expected π-pulse
+flip).
 
-- Public conventions are locked in `CONVENTIONS.md` v0.1-draft.
-- The package scaffold, result schema, and cache-integrity contract are in
-  place; invariant and analytic regression tiers are populated.
-- Core solver builders, observables, and worked examples follow next; the docs
-  landing site scaffold is now in place.
+Phase 0 artefacts (all done):
+
+- Public conventions locked in `CONVENTIONS.md` v0.1-draft.
+- Three-layer regression harness populated: migration (5 / 5 scenarios with
+  legacy `qc.py`-generated references, bit-identical across three runs),
+  analytic (6 closed-form formulas), invariant (9 checks).
+- Cache-integrity contract + the corresponding tests.
+- CI with ruff, mypy strict, pytest, pa11y accessibility report.
 
 Today the importable code surface covers:
+
+**Foundation (Phase 0)**
 
 - `iontrap_dynamics.exceptions` — canonical exception hierarchy
   (`IonTrapError`, `ConventionError`, `BackendError`, `IntegrityError`,
@@ -31,15 +39,38 @@ Today the importable code surface covers:
 - `iontrap_dynamics.analytic` — closed-form reference formulas (carrier
   Rabi, sideband rates, Lamb–Dicke parameter, coherent-state occupation)
 
-Test suite: 87 tests pass (20 schema, 24 cache, 9 invariants, 27 analytic,
-7 static convention-enforcement).
+**Configuration layer (Phase 1)**
+
+- `iontrap_dynamics.operators` — single-ion Pauli set in the atomic-physics
+  convention (`sigma_z_ion`, `sigma_plus_ion`, ...; see CONVENTIONS.md §3)
+- `iontrap_dynamics.species` — `IonSpecies`, `Transition`, `TransitionType`
+  and factories for ²⁵Mg⁺, ⁴⁰Ca⁺, ⁴³Ca⁺
+- `iontrap_dynamics.drives` — `DriveConfig` (wavevector, Rabi, detuning, ...)
+- `iontrap_dynamics.modes` — `ModeConfig` with CONVENTIONS.md §11
+  normalisation enforced at construction
+- `iontrap_dynamics.system` — `IonSystem` composition with cross-validation
+- `iontrap_dynamics.hilbert` — `HilbertSpace` implementing the §2 tensor
+  ordering, operator embedding helpers, motional primitives (a, a†, n̂)
+- `iontrap_dynamics.states` — `ground_state` ket + `compose_density`
+  general composition
+
+**Dynamics (Phase 1, initial builder)**
+
+- `iontrap_dynamics.hamiltonians` — `carrier_hamiltonian` (on-resonance
+  single-ion). Red/blue sideband, MS gate, and stroboscopic AC drives are
+  next in the queue.
+
+Test suite: **305 passed, 8 skipped** (8 skips are Phase 1 benchmark + migration
+comparison slots awaiting later builders).
 
 Docs site scaffold:
 
 - `mkdocs.yml` configures the public-facing documentation build
-- `docs/index.md` provides the welcome page
-- `docs/getting-started.md` and `docs/framework.md` give the first navigation
-  layer
+- `docs/index.md` — welcome page
+- `docs/getting-started.md` — install + first run
+- `docs/framework.md` — architecture summary
+- `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
+- `docs/stylesheets/tokens.css` — vendored from `threehouse-plus-ec/cd-rules`
 
 The authoritative project documents are:
 

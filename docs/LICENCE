@@ -16,11 +16,19 @@ tutorials are present yet.
 
 Covered by CC BY-SA 4.0 in this folder today:
 
-- `index.md`
-- `getting-started.md`
-- `framework.md`
-- presentation assets authored locally for the docs site, unless a file states
-  otherwise
+- `index.md` — welcome page
+- `getting-started.md` — installation and quick start
+- `framework.md` — architecture summary
+- `boundary-decision-tree.md` — contributor scope decision tree
+- Any future Coastline-level `.md` files added to `docs/` root
+
+Also in `docs/` but governed by a different licence:
+
+- `stylesheets/tokens.css` — vendored from `threehouse-plus-ec/cd-rules`,
+  remains **MIT** per `../assets/SOURCE.md` (this is a mirror of
+  `assets/tokens.css` maintained by `tools/fetch_assets.sh`).
+- `stylesheets/extra.css` — site-local styling authored here, CC BY-SA 4.0
+  unless a file-level SPDX identifier states otherwise.
 
 ## Upstream assets and fonts
 

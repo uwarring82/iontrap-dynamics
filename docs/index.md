@@ -66,8 +66,10 @@ Strict package metadata and CI scaffold
 
 </div>
 
-The current package surface is still early, but it already exposes the core
-contracts future solver code will depend on:
+The current package surface covers both the foundation and the first
+Phase 1 dynamics:
+
+Foundation (Phase 0):
 
 - Canonical exception hierarchy
 - Convention-version marker
@@ -75,6 +77,21 @@ contracts future solver code will depend on:
 - Hash-verified cache round-trips
 - Analytic reference formulas
 - Backend-agnostic invariant diagnostics
+
+Configuration layer (Phase 1):
+
+- Atomic-physics Pauli operators (`sigma_z_ion` etc. — sign-flipped
+  against QuTiP's native convention)
+- `IonSpecies`, `DriveConfig`, `ModeConfig`, `IonSystem` composition
+  with cross-validation at construction
+- `HilbertSpace` implementing the §2 tensor ordering, operator
+  embedding, and motional primitives (a, a†, n̂)
+- `ground_state` + `compose_density` state-prep helpers
+
+Dynamics (Phase 1, initial builder):
+
+- `carrier_hamiltonian` for on-resonance single-ion drives; end-to-end
+  π-pulse via `qutip.mesolve` verified against the analytic formula.
 
 ## Boundaries
 
