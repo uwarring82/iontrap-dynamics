@@ -46,33 +46,76 @@ T_TWO_ION_MS_GATE = 30.0  # seconds
 T_STROBOSCOPIC_AC = 60.0  # seconds
 
 
-@pytest.mark.skip(
-    reason=(
-        "awaiting Phase 1 red-sideband builder (workplan §0.F item 1); "
-        "replace skip with build/solve and assert elapsed < T_SINGLE_ION_SIDEBAND."
-    )
-)
 def test_single_ion_sideband_flopping_under_5s() -> None:
     """Single-ion red-sideband flopping: ``N_Fock = 30``, 200 steps.
 
     Threshold: ``T_SINGLE_ION_SIDEBAND`` = 5.0 s wall time on the canonical
-    hardware. Typical shape of the activation body (Phase 1):
+    hardware. Builds the same scenario as
+    ``tools/run_benchmark_sideband.py`` but asserts only on timing —
+    physics correctness is already covered by the analytic-regression
+    tests and the sideband-Hamiltonian unit tests.
 
-    .. code-block:: python
-
-        import time
-        system = IonSystem(species=Mg25, drives=[red_sideband], modes=[axial])
-        hilbert = HilbertSpace(system, n_fock={"axial": 30})
-        state = thermal_state(system, n_bar=0.05)
-        sequence = red_sideband_pulse(system, duration=...)
-        t0 = time.perf_counter()
-        sequence.run(initial_state=state, steps=200)
-        elapsed = time.perf_counter() - t0
-        assert elapsed < T_SINGLE_ION_SIDEBAND, (
-            f"took {elapsed:.2f}s (threshold {T_SINGLE_ION_SIDEBAND}s)"
-        )
+    Setup: ²⁵Mg⁺, 1.5 MHz axial mode, 280 nm drive aligned along +z,
+    Ω/2π = 0.1 MHz carrier Rabi. Initial state |↓, 1⟩. Evolve over
+    two sideband Rabi periods at 200 tlist samples.
     """
-    raise AssertionError("unreachable — test is skipped")
+    import time
+
+    import numpy as np
+    import qutip
+
+    from iontrap_dynamics.analytic import (
+        lamb_dicke_parameter,
+        red_sideband_rabi_frequency,
+    )
+    from iontrap_dynamics.drives import DriveConfig
+    from iontrap_dynamics.hamiltonians import red_sideband_hamiltonian
+    from iontrap_dynamics.hilbert import HilbertSpace
+    from iontrap_dynamics.modes import ModeConfig
+    from iontrap_dynamics.operators import spin_down
+    from iontrap_dynamics.species import mg25_plus
+    from iontrap_dynamics.system import IonSystem
+
+    n_fock = 30
+    rabi_rad_s = 2 * np.pi * 0.1e6
+    mode_freq_rad_s = 2 * np.pi * 1.5e6
+    wavenumber_m_inv = 2 * np.pi / 280e-9
+
+    mode = ModeConfig(
+        label="axial",
+        frequency_rad_s=mode_freq_rad_s,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+    )
+    system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
+    hilbert = HilbertSpace(system=system, fock_truncations={"axial": n_fock})
+
+    drive = DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, wavenumber_m_inv],
+        carrier_rabi_frequency_rad_s=rabi_rad_s,
+    )
+    H = red_sideband_hamiltonian(hilbert, drive, "axial", ion_index=0)
+
+    eta = lamb_dicke_parameter(
+        k_vec=drive.k_vector_m_inv,
+        mode_eigenvector=mode.eigenvector_at_ion(0),
+        ion_mass=system.species(0).mass_kg,
+        mode_frequency=mode_freq_rad_s,
+    )
+    sb_rate = red_sideband_rabi_frequency(
+        carrier_rabi_frequency=rabi_rad_s,
+        lamb_dicke_parameter=eta,
+        n_initial=1,
+    )
+    tlist = np.linspace(0.0, 2 * 2 * np.pi / sb_rate, 200)
+    psi_0 = qutip.tensor(spin_down(), qutip.basis(n_fock, 1))
+
+    t0 = time.perf_counter()
+    qutip.mesolve(H, psi_0, tlist, [], [])
+    elapsed = time.perf_counter() - t0
+
+    assert elapsed < T_SINGLE_ION_SIDEBAND, (
+        f"took {elapsed:.2f}s (threshold {T_SINGLE_ION_SIDEBAND}s)"
+    )
 
 
 @pytest.mark.skip(
