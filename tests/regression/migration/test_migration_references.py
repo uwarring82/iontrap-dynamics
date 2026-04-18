@@ -304,13 +304,19 @@ def test_builder_matches_scenario_1() -> None:
 
 @pytest.mark.skip(
     reason=(
-        "qc.py keeps sub-leading Lamb–Dicke terms on the sideband transition "
-        "that red_sideband_hamiltonian (leading-order RWA) does not; "
-        "element-wise match at the convention-translator level is not "
-        "achievable. Activation path: either compare only integrated "
-        "invariants (σ_z parity, ⟨n̂⟩ peak amplitude) with a looser "
-        "tolerance, or build a higher-order LD variant of the sideband "
-        "Hamiltonian."
+        "The full-LD path (``red_sideband_hamiltonian(..., "
+        "full_lamb_dicke=True)``) has landed, but scenario 2 has a "
+        "residual rate mismatch (~1.5× discrepancy) beyond what "
+        "Debye-Waller alone explains — probing from pure |↓,1⟩ shows "
+        "qc.py's flop completes in ~30 samples while our builder "
+        "(either leading-order or full-LD) needs ~45. The gap is "
+        "consistent with qc.py either using a different initial "
+        "state interpretation for ``Fck=1`` (not pure |1⟩) or keeping "
+        "lab-frame counter-rotating terms that our RWA reduction "
+        "drops. Activation path: replicate qc.py's ``initialise_"
+        "single_mode`` state construction exactly, or compare "
+        "integrated invariants (σ_z peak amplitude, ⟨n̂⟩ minimum) "
+        "rather than element-wise trajectories."
     )
 )
 def test_builder_matches_scenario_2() -> None:

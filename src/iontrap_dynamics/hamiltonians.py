@@ -74,6 +74,7 @@ import math
 from collections.abc import Callable
 from typing import Any
 
+import numpy as np
 import qutip
 
 from .analytic import lamb_dicke_parameter
@@ -317,6 +318,52 @@ def detuned_carrier_hamiltonian(
 # ----------------------------------------------------------------------------
 
 
+def _full_ld_lowering_single_mode(n_fock: int, eta: float) -> qutip.Qobj:
+    """Return the single-mode ``Δn = −1`` projection of ``e^{iη(a+a†)}``.
+
+    The resulting operator ``M̂_-`` on a Fock space of dimension
+    ``n_fock`` is a "dressed ``a``" with matrix elements
+
+    .. math::
+        \\langle m-1 | \\hat{M}_- | m \\rangle
+        = \\eta \\, e^{-\\eta^2/2} \\, \\sqrt{(m-1)! / m!}
+          \\, L_{m-1}^{(1)}(\\eta^2),
+
+    i.e. the Wineland–Itano closed form for ``⟨m−1|e^{iη(a+a†)}|m⟩``
+    with the overall factor of ``i`` divided out so the leading-order
+    expansion is ``M̂_- = η·a + O(η^3)`` (matching the sign convention
+    of the leading-order :func:`red_sideband_hamiltonian`).
+
+    This is the private engine for the ``full_lamb_dicke=True`` path
+    of the sideband builders. Computed via matrix exponentiation and
+    one sub-diagonal extraction — correct to all orders in ``η`` up
+    to the Fock truncation ``n_fock``.
+    """
+    a_mode = qutip.destroy(n_fock)
+    c_mode = (1j * eta * (a_mode + a_mode.dag())).expm()
+    c_matrix = c_mode.full()
+    m_matrix = np.zeros_like(c_matrix)
+    for m in range(1, n_fock):
+        m_matrix[m - 1, m] = -1j * c_matrix[m - 1, m]
+    return qutip.Qobj(m_matrix, dims=[[n_fock], [n_fock]])
+
+
+def _full_ld_raising_single_mode(n_fock: int, eta: float) -> qutip.Qobj:
+    """Return the single-mode ``Δn = +1`` projection of ``e^{iη(a+a†)}``.
+
+    Companion to :func:`_full_ld_lowering_single_mode`: the dressed
+    ``a†`` with leading-order expansion ``η·a† + O(η^3)``. Drives the
+    ``full_lamb_dicke=True`` path of :func:`blue_sideband_hamiltonian`.
+    """
+    a_mode = qutip.destroy(n_fock)
+    c_mode = (1j * eta * (a_mode + a_mode.dag())).expm()
+    c_matrix = c_mode.full()
+    m_matrix = np.zeros_like(c_matrix)
+    for m in range(0, n_fock - 1):
+        m_matrix[m + 1, m] = -1j * c_matrix[m + 1, m]
+    return qutip.Qobj(m_matrix, dims=[[n_fock], [n_fock]])
+
+
 def _sideband_lamb_dicke(
     hilbert: HilbertSpace,
     drive: DriveConfig,
@@ -344,8 +391,11 @@ def red_sideband_hamiltonian(
     mode_label: str,
     *,
     ion_index: int,
+    full_lamb_dicke: bool = False,
 ) -> qutip.Qobj:
     """Return the red-sideband Hamiltonian in the interaction picture (RWA).
+
+    Leading-order (``full_lamb_dicke=False``, default):
 
     .. math::
         H / \\hbar = \\frac{\\Omega \\eta}{2}
@@ -357,6 +407,29 @@ def red_sideband_hamiltonian(
     coupling ``σ_+ a`` takes ``|↓, n⟩`` to ``|↑, n − 1⟩`` with amplitude
     ``√n``, giving the textbook red-sideband Rabi rate
     ``|η|·√n·Ω`` per :func:`analytic.red_sideband_rabi_frequency`.
+
+    Full Lamb–Dicke (``full_lamb_dicke=True``):
+
+    .. math::
+        H / \\hbar = \\frac{\\Omega}{2}
+        \\left[ \\sigma_+ \\hat{M}_- \\, e^{i\\phi} +
+                \\sigma_- \\hat{M}_-^\\dagger \\, e^{-i\\phi} \\right]
+
+    where ``M̂_-`` is the ``Δn = −1`` projection of the full-exponential
+    coupling ``e^{iη(a+a†)}`` with the overall phase chosen so that
+    ``M̂_- → η·a`` at leading order in η. The Rabi rate for
+    ``|n⟩ → |n−1⟩`` becomes
+
+    .. math::
+        \\Omega_{n,n-1}^\\text{full}
+        = \\Omega \\, |\\eta| \\, e^{-\\eta^2/2}
+          \\, \\sqrt{(n-1)! / n!}
+          \\, L_{n-1}^{(1)}(\\eta^2),
+
+    the Wineland–Itano closed form. This captures Debye–Waller
+    amplitude reduction and the Laguerre-polynomial Rabi-rate
+    oscillations that are physically important in hot-ion regimes
+    (``η² · n̄ ≳ 0.1``) but invisible at leading order.
 
     The caller asserts by choosing this builder that
     ``ω_laser = ω_atom − ω_mode`` (exact red-sideband resonance). The
@@ -375,6 +448,11 @@ def red_sideband_hamiltonian(
         ``hilbert.system.modes``.
     ion_index
         Zero-based index of the ion the drive couples to.
+    full_lamb_dicke
+        When ``True``, replace ``η·a`` with the all-orders
+        ``M̂_- = P_{Δn=-1}(e^{iη(a+a†)})`` operator computed via
+        matrix exponentiation on the truncated mode. Default
+        ``False`` keeps the leading-order operator for speed.
 
     Returns
     -------
@@ -395,12 +473,20 @@ def red_sideband_hamiltonian(
 
     sigma_p = hilbert.spin_op_for_ion(sigma_plus_ion(), ion_index)
     sigma_m = hilbert.spin_op_for_ion(sigma_minus_ion(), ion_index)
-    a = hilbert.annihilation_for_mode(mode_label)
-    a_dag = hilbert.creation_for_mode(mode_label)
 
-    coeff = omega * eta / 2.0
     phase_plus = cmath.exp(1j * phi)
     phase_minus = phase_plus.conjugate()
+
+    if full_lamb_dicke:
+        n_fock = hilbert.fock_truncations[mode_label]
+        m_minus_mode = _full_ld_lowering_single_mode(n_fock, eta)
+        m_minus = hilbert.mode_op_for(m_minus_mode, mode_label)
+        coeff = omega / 2.0
+        return coeff * (phase_plus * sigma_p * m_minus + phase_minus * sigma_m * m_minus.dag())
+
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+    coeff = omega * eta / 2.0
     return coeff * (phase_plus * sigma_p * a + phase_minus * sigma_m * a_dag)
 
 
@@ -410,8 +496,11 @@ def blue_sideband_hamiltonian(
     mode_label: str,
     *,
     ion_index: int,
+    full_lamb_dicke: bool = False,
 ) -> qutip.Qobj:
     """Return the blue-sideband Hamiltonian in the interaction picture (RWA).
+
+    Leading-order (``full_lamb_dicke=False``):
 
     .. math::
         H / \\hbar = \\frac{\\Omega \\eta}{2}
@@ -423,7 +512,13 @@ def blue_sideband_hamiltonian(
     in contrast with :func:`red_sideband_hamiltonian`, which annihilates
     ``|↓, 0⟩``.
 
-    Parameters, returns, and raises match
+    Full Lamb–Dicke (``full_lamb_dicke=True``) replaces ``η·a†`` with
+    the all-orders ``Δn=+1`` projection of ``e^{iη(a+a†)}``. See
+    :func:`red_sideband_hamiltonian` for the physics and structure of
+    the full-LD path; the blue branch is the hermitian conjugate
+    pattern.
+
+    Parameters, returns, and raises otherwise match
     :func:`red_sideband_hamiltonian`; the caller asserts
     ``ω_laser = ω_atom + ω_mode``.
     """
@@ -433,12 +528,20 @@ def blue_sideband_hamiltonian(
 
     sigma_p = hilbert.spin_op_for_ion(sigma_plus_ion(), ion_index)
     sigma_m = hilbert.spin_op_for_ion(sigma_minus_ion(), ion_index)
-    a = hilbert.annihilation_for_mode(mode_label)
-    a_dag = hilbert.creation_for_mode(mode_label)
 
-    coeff = omega * eta / 2.0
     phase_plus = cmath.exp(1j * phi)
     phase_minus = phase_plus.conjugate()
+
+    if full_lamb_dicke:
+        n_fock = hilbert.fock_truncations[mode_label]
+        m_plus_mode = _full_ld_raising_single_mode(n_fock, eta)
+        m_plus = hilbert.mode_op_for(m_plus_mode, mode_label)
+        coeff = omega / 2.0
+        return coeff * (phase_plus * sigma_p * m_plus + phase_minus * sigma_m * m_plus.dag())
+
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+    coeff = omega * eta / 2.0
     return coeff * (phase_plus * sigma_p * a_dag + phase_minus * sigma_m * a)
 
 

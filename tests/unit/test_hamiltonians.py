@@ -1671,3 +1671,169 @@ class TestDetunedRedVsBlue:
         )
         # H_static pieces should differ (red uses a, blue uses a†)
         assert (H_red[0][0] - H_blue[0][0]).norm() > 1e-6
+
+
+# ============================================================================
+# Full Lamb–Dicke (Δn=±1 projection of the exponential coupling)
+# ============================================================================
+#
+# The ``full_lamb_dicke=True`` path on red_sideband_hamiltonian and
+# blue_sideband_hamiltonian replaces the leading-order η·a / η·a† with
+# the all-orders Wineland–Itano operator derived from ``e^{iη(a+a†)}``.
+
+
+class TestFullLambDickeStructure:
+    def test_default_is_leading_order(self) -> None:
+        """Not passing ``full_lamb_dicke`` leaves the Hamiltonian at leading order."""
+        h = _single_ion_hilbert(fock=6)
+        H_default = red_sideband_hamiltonian(h, _sideband_drive(), "axial", ion_index=0)
+        H_explicit = red_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, full_lamb_dicke=False
+        )
+        assert (H_default - H_explicit).norm() < 1e-14
+
+    def test_returns_qobj_with_matching_dims(self) -> None:
+        h = _single_ion_hilbert(fock=6)
+        H = red_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, full_lamb_dicke=True
+        )
+        assert isinstance(H, qutip.Qobj)
+        assert H.dims == h.qutip_dims()
+
+    def test_hermitian(self) -> None:
+        h = _single_ion_hilbert(fock=6)
+        for phi in (0.0, np.pi / 3, np.pi / 2, -np.pi / 4):
+            H = red_sideband_hamiltonian(
+                h,
+                _sideband_drive(phase_rad=phi),
+                "axial",
+                ion_index=0,
+                full_lamb_dicke=True,
+            )
+            assert (H - H.dag()).norm() < 1e-12
+
+
+class TestFullLambDickeConsistency:
+    """At η → 0, the full-LD operator reduces to leading order."""
+
+    def test_small_eta_matches_leading_order(self) -> None:
+        """Tiny η (from a near-perpendicular k·b projection) should give
+        a full-LD Hamiltonian numerically indistinguishable from the
+        leading-order form."""
+        tiny_mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[1.0, 0.0, 0.0]]),  # orthogonal to +z drive
+        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(tiny_mode,))
+        h = HilbertSpace(system=system, fock_truncations={"axial": 5})
+        # k tilted slightly into the ±x so η is small but nonzero.
+        drive = DriveConfig(
+            k_vector_m_inv=[_K_MAGNITUDE * 1e-4, 0.0, 0.0],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,
+            phase_rad=0.0,
+        )
+        H_leading = red_sideband_hamiltonian(h, drive, "axial", ion_index=0)
+        H_full = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
+        assert (H_full - H_leading).norm() < 1e-8
+
+    def test_red_full_ld_rabi_at_fock_one_matches_debye_waller(self) -> None:
+        """Red-sideband π-pulse |↓,1⟩→|↑,0⟩ at full LD flops at
+        ``Ω·|η|·e^{-η²/2}`` — the Debye-Waller-reduced rate."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=12)
+        rabi = 2 * np.pi * 0.1e6
+        drive = _sideband_drive(rabi=rabi)
+        eta = _expected_eta(h)
+        expected_rate = abs(rabi * eta) * np.exp(-(eta**2) / 2.0)
+
+        H = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 1))
+        t_pi_full = np.pi / expected_rate
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi_full], [], [])
+
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        n = h.number_for_mode("axial")
+        assert qutip.expect(sz, result.states[-1]) == pytest.approx(+1.0, abs=5e-3)
+        assert qutip.expect(n, result.states[-1]) == pytest.approx(0.0, abs=5e-3)
+
+    def test_red_full_ld_rabi_at_fock_two_matches_laguerre(self) -> None:
+        """For |↓,2⟩→|↑,1⟩ the Wineland–Itano rate is
+        ``Ω·|η|·e^{-η²/2}·(1/√2)·L_1^{(1)}(η²) = Ω·|η|·e^{-η²/2}·(2-η²)/√2``."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=12)
+        rabi = 2 * np.pi * 0.1e6
+        drive = _sideband_drive(rabi=rabi)
+        eta = _expected_eta(h)
+        eta2 = eta**2
+        expected_rate = abs(rabi * eta) * np.exp(-eta2 / 2.0) * (2.0 - eta2) / np.sqrt(2.0)
+
+        H = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 2))
+        t_pi = np.pi / expected_rate
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        n = h.number_for_mode("axial")
+        assert qutip.expect(sz, result.states[-1]) == pytest.approx(+1.0, abs=5e-3)
+        assert qutip.expect(n, result.states[-1]) == pytest.approx(1.0, abs=5e-3)
+
+    def test_blue_full_ld_vacuum_rate_matches_debye_waller(self) -> None:
+        """Blue from |↓,0⟩ to |↑,1⟩ at full LD flops at Ω·|η|·e^{-η²/2}."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=12)
+        rabi = 2 * np.pi * 0.1e6
+        drive = _sideband_drive(rabi=rabi)
+        eta = _expected_eta(h)
+        expected_rate = abs(rabi * eta) * np.exp(-(eta**2) / 2.0)
+
+        H = blue_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
+        psi_0 = ground_state(h)
+        t_pi = np.pi / expected_rate
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        n = h.number_for_mode("axial")
+        assert qutip.expect(sz, result.states[-1]) == pytest.approx(+1.0, abs=5e-3)
+        assert qutip.expect(n, result.states[-1]) == pytest.approx(1.0, abs=5e-3)
+
+
+class TestFullLambDickeDiffersFromLeading:
+    """At realistic η ≈ 0.2, full-LD and leading-order dynamics diverge
+    over multiple Rabi periods — a visible physical correction."""
+
+    def test_full_ld_undershoots_at_leading_order_pi_pulse_time(self) -> None:
+        """Leading-order predicts π-pulse at t_π = π/(Ωη); full-LD is slower
+        (Debye-Waller-reduced rate), so at the leading-order t_π the full-LD
+        ⟨σ_z⟩ has not yet reached +1."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=12)
+        rabi = 2 * np.pi * 0.1e6
+        drive = _sideband_drive(rabi=rabi)
+        eta = _expected_eta(h)
+
+        H_full = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 1))
+        t_pi_leading = np.pi / abs(rabi * eta)
+        result = qutip.mesolve(H_full, psi_0, [0.0, t_pi_leading], [], [])
+
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        sz_at_leading_t_pi = qutip.expect(sz, result.states[-1])
+        # At η ≈ 0.215 (η² ≈ 0.046), Debye-Waller factor e^{-η²/2} ≈ 0.977,
+        # so full-LD has covered only 0.977π radians at t_pi_leading —
+        # σ_z = −cos(0.977π) ≈ +0.9975, which is measurably below +1.0.
+        assert sz_at_leading_t_pi < 0.9995
+
+    def test_full_ld_preserves_vacuum_annihilation_on_red(self) -> None:
+        """Red-sideband from |↓,0⟩ still goes nowhere at full LD —
+        ``M̂_-`` has no matrix element ⟨−1|M̂_-|0⟩ to populate."""
+        h = _single_ion_hilbert(fock=8)
+        H = red_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, full_lamb_dicke=True
+        )
+        psi_0 = ground_state(h)
+        assert (H * psi_0).norm() < 1e-12
