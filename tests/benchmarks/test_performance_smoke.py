@@ -118,20 +118,69 @@ def test_single_ion_sideband_flopping_under_5s() -> None:
     )
 
 
-@pytest.mark.skip(
-    reason=(
-        "awaiting Phase 1 Mølmer–Sørensen gate builder (workplan §0.F item 2); "
-        "replace skip with build/solve and assert elapsed < T_TWO_ION_MS_GATE."
-    )
-)
 def test_two_ion_ms_gate_under_30s() -> None:
-    """Two-ion Mølmer–Sørensen gate: ``N_Fock = 15``, 500 steps.
+    """Two-ion Mølmer–Sørensen gate (δ = 0 bichromatic): ``N_Fock = 15``,
+    500 steps.
 
     Threshold: ``T_TWO_ION_MS_GATE`` = 30.0 s wall time on the canonical
     hardware. The smaller Fock truncation reflects the larger Hilbert
     dimension (two spins + one mode) relative to the single-ion case.
+
+    Setup: two ²⁵Mg⁺ ions sharing a 1.5 MHz axial COM mode, 280 nm drive
+    aligned along +z, Ω/2π = 0.1 MHz. Initial state |↓↓, 0⟩. Evolve
+    over one full coherent-displacement period.
     """
-    raise AssertionError("unreachable — test is skipped")
+    import time
+
+    import numpy as np
+    import qutip
+
+    from iontrap_dynamics.analytic import lamb_dicke_parameter
+    from iontrap_dynamics.drives import DriveConfig
+    from iontrap_dynamics.hamiltonians import ms_gate_hamiltonian
+    from iontrap_dynamics.hilbert import HilbertSpace
+    from iontrap_dynamics.modes import ModeConfig
+    from iontrap_dynamics.operators import spin_down
+    from iontrap_dynamics.species import mg25_plus
+    from iontrap_dynamics.system import IonSystem
+
+    n_fock = 15
+    rabi_rad_s = 2 * np.pi * 0.1e6
+    mode_freq_rad_s = 2 * np.pi * 1.5e6
+    wavenumber_m_inv = 2 * np.pi / 280e-9
+
+    mode = ModeConfig(
+        label="com",
+        frequency_rad_s=mode_freq_rad_s,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]) / np.sqrt(2.0),
+    )
+    system = IonSystem(species_per_ion=(mg25_plus(), mg25_plus()), modes=(mode,))
+    hilbert = HilbertSpace(system=system, fock_truncations={"com": n_fock})
+
+    drive = DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, wavenumber_m_inv],
+        carrier_rabi_frequency_rad_s=rabi_rad_s,
+    )
+    H = ms_gate_hamiltonian(hilbert, drive, "com", ion_indices=(0, 1))
+
+    eta = lamb_dicke_parameter(
+        k_vec=drive.k_vector_m_inv,
+        mode_eigenvector=mode.eigenvector_at_ion(0),
+        ion_mass=system.species(0).mass_kg,
+        mode_frequency=mode_freq_rad_s,
+    )
+    # MS displacement period T ≈ 2π/(Ωη) — one full phase-space loop for the
+    # |++⟩ component. Ground-state initial means the actual observable
+    # oscillation period differs, but this is the right dimensional scale
+    # and puts 500 samples on a physically representative grid.
+    tlist = np.linspace(0.0, 2 * np.pi / (rabi_rad_s * abs(eta)), 500)
+    psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(n_fock, 0))
+
+    t0 = time.perf_counter()
+    qutip.mesolve(H, psi_0, tlist, [], [])
+    elapsed = time.perf_counter() - t0
+
+    assert elapsed < T_TWO_ION_MS_GATE, f"took {elapsed:.2f}s (threshold {T_TWO_ION_MS_GATE}s)"
 
 
 @pytest.mark.skip(

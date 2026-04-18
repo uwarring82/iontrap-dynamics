@@ -10,6 +10,7 @@ import qutip
 from iontrap_dynamics.analytic import (
     blue_sideband_rabi_frequency,
     lamb_dicke_parameter,
+    ms_gate_phonon_number,
     red_sideband_rabi_frequency,
 )
 from iontrap_dynamics.drives import DriveConfig
@@ -17,6 +18,7 @@ from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.hamiltonians import (
     blue_sideband_hamiltonian,
     carrier_hamiltonian,
+    ms_gate_hamiltonian,
     red_sideband_hamiltonian,
 )
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -464,3 +466,285 @@ class TestRedVsBlue:
             red_sideband_hamiltonian(h, _sideband_drive(), "axial", ion_index=1)
         with pytest.raises(IndexError):
             blue_sideband_hamiltonian(h, _sideband_drive(), "axial", ion_index=1)
+
+
+# ============================================================================
+# Mølmer–Sørensen gate (δ = 0 bichromatic)
+# ============================================================================
+
+
+def _two_ion_ms_hilbert(*, fock: int = 6) -> HilbertSpace:
+    """Two ²⁵Mg⁺ ions sharing an axial COM mode (symmetric Lamb–Dicke)."""
+    system = IonSystem(
+        species_per_ion=(mg25_plus(), mg25_plus()),
+        modes=(_two_ion_com_mode(),),
+    )
+    return HilbertSpace(system=system, fock_truncations={"com": fock})
+
+
+def _ms_drive(*, rabi: float = 2 * np.pi * 0.1e6, phase_rad: float = 0.0) -> DriveConfig:
+    """Drive along +z, so k ∥ b for the axial COM mode."""
+    return DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, _K_MAGNITUDE],
+        carrier_rabi_frequency_rad_s=rabi,
+        phase_rad=phase_rad,
+    )
+
+
+def _ms_expected_eta(h: HilbertSpace, ion: int) -> float:
+    drive = _ms_drive()
+    species = h.system.species(ion)
+    mode = h.system.mode("com")
+    return lamb_dicke_parameter(
+        k_vec=drive.k_vector_m_inv,
+        mode_eigenvector=mode.eigenvector_at_ion(ion),
+        ion_mass=species.mass_kg,
+        mode_frequency=mode.frequency_rad_s,
+    )
+
+
+# ----------------------------------------------------------------------------
+# MS gate: structural correctness
+# ----------------------------------------------------------------------------
+
+
+class TestMSGateStructure:
+    def test_dims_match_full_hilbert(self) -> None:
+        h = _two_ion_ms_hilbert()
+        H = ms_gate_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 1))
+        assert H.dims == h.qutip_dims()
+
+    def test_hermitian_for_any_phase(self) -> None:
+        h = _two_ion_ms_hilbert()
+        for phi in (0.0, np.pi / 4, np.pi / 2, np.pi, -np.pi / 3):
+            H = ms_gate_hamiltonian(h, _ms_drive(phase_rad=phi), "com", ion_indices=(0, 1))
+            assert (H - H.dag()).norm() < 1e-10, f"non-Hermitian at φ={phi}"
+
+    def test_ion_index_swap_gives_same_operator(self) -> None:
+        """H((0, 1)) == H((1, 0)) — the builder is symmetric under ion swap."""
+        h = _two_ion_ms_hilbert()
+        H_ij = ms_gate_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 1))
+        H_ji = ms_gate_hamiltonian(h, _ms_drive(), "com", ion_indices=(1, 0))
+        assert (H_ij - H_ji).norm() < 1e-12
+
+    def test_equals_sum_of_single_ion_pieces(self) -> None:
+        """H_MS = H_0 + H_1 where each H_k = (Ωη_k/2) σ_φ^{(k)} ⊗ (a + a†)."""
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_full = ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+
+        omega = drive.carrier_rabi_frequency_rad_s
+        a = h.annihilation_for_mode("com")
+        a_dag = h.creation_for_mode("com")
+        x_mode = a + a_dag
+
+        eta_0 = _ms_expected_eta(h, 0)
+        eta_1 = _ms_expected_eta(h, 1)
+        sx0 = h.spin_op_for_ion(sigma_x_ion(), 0)
+        sx1 = h.spin_op_for_ion(sigma_x_ion(), 1)
+        # At φ=0: H = (Ω/2)(η_0 σ_x^{(0)} + η_1 σ_x^{(1)}) ⊗ (a + a†)
+        expected = (omega / 2.0) * (eta_0 * sx0 + eta_1 * sx1) * x_mode
+        assert (H_full - expected).norm() < 1e-10
+
+
+# ----------------------------------------------------------------------------
+# MS gate: phase conventions (σ_x at φ=0, σ_y at φ=π/2)
+# ----------------------------------------------------------------------------
+
+
+class TestMSGatePhaseConvention:
+    def test_phi_zero_reduces_to_sigma_x_form(self) -> None:
+        """At φ=0, H/ℏ = Σ_k (Ωη_k/2) σ_x^{(k)} ⊗ (a + a†)."""
+        h = _two_ion_ms_hilbert()
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(h, _ms_drive(rabi=omega), "com", ion_indices=(0, 1))
+
+        eta_0 = _ms_expected_eta(h, 0)
+        eta_1 = _ms_expected_eta(h, 1)
+        sx0 = h.spin_op_for_ion(sigma_x_ion(), 0)
+        sx1 = h.spin_op_for_ion(sigma_x_ion(), 1)
+        a = h.annihilation_for_mode("com")
+        x_mode = a + a.dag()
+
+        expected = (omega / 2.0) * (eta_0 * sx0 + eta_1 * sx1) * x_mode
+        assert (H - expected).norm() < 1e-10
+
+    def test_phi_pi_over_two_gives_minus_sigma_y_form(self) -> None:
+        """At φ=π/2, H/ℏ = −Σ_k (Ωη_k/2) σ_y^{(k)} ⊗ (a + a†)."""
+        h = _two_ion_ms_hilbert()
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(
+            h, _ms_drive(rabi=omega, phase_rad=np.pi / 2), "com", ion_indices=(0, 1)
+        )
+
+        eta_0 = _ms_expected_eta(h, 0)
+        eta_1 = _ms_expected_eta(h, 1)
+        sy0 = h.spin_op_for_ion(sigma_y_ion(), 0)
+        sy1 = h.spin_op_for_ion(sigma_y_ion(), 1)
+        a = h.annihilation_for_mode("com")
+        x_mode = a + a.dag()
+
+        expected = -(omega / 2.0) * (eta_0 * sy0 + eta_1 * sy1) * x_mode
+        assert (H - expected).norm() < 1e-10
+
+
+# ----------------------------------------------------------------------------
+# MS gate: validation
+# ----------------------------------------------------------------------------
+
+
+class TestMSGateValidation:
+    def test_duplicate_ion_indices_rejected(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="distinct"):
+            ms_gate_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 0))
+
+    def test_unknown_mode_label_rejected(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="unknown mode"):
+            ms_gate_hamiltonian(h, _ms_drive(), "nonexistent", ion_indices=(0, 1))
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(IndexError):
+            ms_gate_hamiltonian(h, _ms_drive(), "com", ion_indices=(0, 2))
+
+    def test_validation_errors_subclass_iontraperror(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(IonTrapError):
+            ms_gate_hamiltonian(h, _ms_drive(), "com", ion_indices=(1, 1))
+
+
+# ----------------------------------------------------------------------------
+# MS gate: symmetry-conservation integration tests
+# ----------------------------------------------------------------------------
+
+
+def _plus_state() -> qutip.Qobj:
+    """|+⟩ = (|↓⟩ + |↑⟩) / √2 — the σ_x = +1 eigenstate."""
+    return (spin_down() + spin_up()).unit()
+
+
+def _minus_state() -> qutip.Qobj:
+    """|−⟩ = (|↓⟩ − |↑⟩) / √2 — the σ_x = −1 eigenstate."""
+    return (spin_down() - spin_up()).unit()
+
+
+class TestMSGateConservationLaws:
+    """At φ=0 the MS generator is (Ω/2)(η₀ σ_x⁽⁰⁾ + η₁ σ_x⁽¹⁾) ⊗ (a + a†).
+    Each σ_x^{(k)} individually commutes with H, so ⟨σ_x^{(k)}⟩ and
+    ⟨σ_x^{(0)} σ_x^{(1)}⟩ are exact constants of motion."""
+
+    def test_sigma_x_each_ion_conserved_from_plus_plus(self) -> None:
+        """⟨σ_x^{(0)}⟩ = ⟨σ_x^{(1)}⟩ = +1 at every time, starting from |++, 0⟩."""
+        h = _two_ion_ms_hilbert(fock=10)
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(h, _ms_drive(rabi=omega), "com", ion_indices=(0, 1))
+
+        eta = _ms_expected_eta(h, 0)
+        # Short evolution over ~one displacement period (arbitrary cap)
+        t_end = 2 * np.pi / (omega * abs(eta))
+        tlist = np.linspace(0.0, t_end, 10)
+
+        psi_0 = qutip.tensor(_plus_state(), _plus_state(), qutip.basis(10, 0))
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+
+        sx0 = h.spin_op_for_ion(sigma_x_ion(), 0)
+        sx1 = h.spin_op_for_ion(sigma_x_ion(), 1)
+        for state in result.states:
+            assert qutip.expect(sx0, state) == pytest.approx(+1.0, abs=1e-6)
+            assert qutip.expect(sx1, state) == pytest.approx(+1.0, abs=1e-6)
+
+    def test_sigma_x_product_conserved_from_plus_minus(self) -> None:
+        """⟨σ_x^{(0)} σ_x^{(1)}⟩ = −1 throughout, starting from |+−, 0⟩."""
+        h = _two_ion_ms_hilbert(fock=10)
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(h, _ms_drive(rabi=omega), "com", ion_indices=(0, 1))
+
+        eta = _ms_expected_eta(h, 0)
+        t_end = 2 * np.pi / (omega * abs(eta))
+        tlist = np.linspace(0.0, t_end, 10)
+
+        psi_0 = qutip.tensor(_plus_state(), _minus_state(), qutip.basis(10, 0))
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+
+        sx_product = h.spin_op_for_ion(sigma_x_ion(), 0) * h.spin_op_for_ion(sigma_x_ion(), 1)
+        for state in result.states:
+            assert qutip.expect(sx_product, state) == pytest.approx(-1.0, abs=1e-6)
+
+    def test_sigma_z_ion_exchange_symmetry_from_ground(self) -> None:
+        """Starting from |↓↓, 0⟩, ⟨σ_z^{(0)}⟩(t) = ⟨σ_z^{(1)}⟩(t) at every time
+        (symmetric drive, symmetric mode)."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _two_ion_ms_hilbert(fock=10)
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(h, _ms_drive(rabi=omega), "com", ion_indices=(0, 1))
+
+        eta = _ms_expected_eta(h, 0)
+        t_end = 0.3 * 2 * np.pi / (omega * abs(eta))
+        tlist = np.linspace(0.0, t_end, 8)
+
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(10, 0))
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+
+        sz0 = h.spin_op_for_ion(sigma_z_ion(), 0)
+        sz1 = h.spin_op_for_ion(sigma_z_ion(), 1)
+        for state in result.states:
+            sz_0_t = qutip.expect(sz0, state)
+            sz_1_t = qutip.expect(sz1, state)
+            assert sz_0_t == pytest.approx(sz_1_t, abs=1e-8)
+
+
+# ----------------------------------------------------------------------------
+# MS gate: analytic coherent-displacement match
+# ----------------------------------------------------------------------------
+
+
+class TestMSGateCoherentDisplacement:
+    """The spin-dependent-force picture: starting from a σ_x product eigenstate
+    times motional vacuum, the motion becomes a coherent state whose mean
+    phonon number follows :func:`analytic.ms_gate_phonon_number`."""
+
+    def test_plus_plus_matches_analytic_displacement(self) -> None:
+        """|++, 0⟩ → ⟨n̂⟩(t) = ((Ωt/2)(η₀ + η₁))²."""
+        h = _two_ion_ms_hilbert(fock=20)
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(h, _ms_drive(rabi=omega), "com", ion_indices=(0, 1))
+
+        eta_0 = _ms_expected_eta(h, 0)
+        eta_1 = _ms_expected_eta(h, 1)
+        # Short horizon so |α(t)|² ≪ fock truncation
+        t_end = 0.5 / (omega * abs(eta_0))
+        tlist = np.linspace(0.0, t_end, 12)
+
+        psi_0 = qutip.tensor(_plus_state(), _plus_state(), qutip.basis(20, 0))
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+
+        n_op = h.number_for_mode("com")
+        numerical = np.array([qutip.expect(n_op, s) for s in result.states])
+        analytic = ms_gate_phonon_number(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameters=(eta_0, eta_1),
+            spin_eigenvalues=(+1, +1),
+            t=tlist,
+        )
+        np.testing.assert_allclose(numerical, analytic, atol=1e-4)
+
+    def test_plus_minus_dark_state_stays_in_vacuum(self) -> None:
+        """|+−, 0⟩ on the COM mode (η₀ = η₁) is a dark state: forces cancel,
+        motion stays in vacuum. ⟨n̂⟩(t) ≈ 0 throughout."""
+        h = _two_ion_ms_hilbert(fock=10)
+        omega = 2 * np.pi * 0.1e6
+        H = ms_gate_hamiltonian(h, _ms_drive(rabi=omega), "com", ion_indices=(0, 1))
+
+        eta = _ms_expected_eta(h, 0)
+        t_end = 2 * np.pi / (omega * abs(eta))
+        tlist = np.linspace(0.0, t_end, 20)
+
+        psi_0 = qutip.tensor(_plus_state(), _minus_state(), qutip.basis(10, 0))
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+
+        n_op = h.number_for_mode("com")
+        occupations = np.array([qutip.expect(n_op, s) for s in result.states])
+        np.testing.assert_allclose(occupations, np.zeros_like(occupations), atol=1e-8)

@@ -31,7 +31,14 @@ Follow-on builders (one per dispatch):
 
 - **Carrier, detuned** — ``detuning_rad_s ≠ 0``; list format.
 - **Near-sideband** — detuning slightly off resonance, list format.
-- **Mølmer–Sørensen** — two-ion bichromatic gate.
+- **Mølmer–Sørensen (δ = 0, bichromatic)** — two-ion spin-dependent
+  force, time-independent and therefore compatible with the existing
+  :func:`iontrap_dynamics.sequences.solve` dispatcher. Landed via
+  :func:`ms_gate_hamiltonian`.
+- **Mølmer–Sørensen (δ ≠ 0, gate-closing)** — bichromatic with a
+  symmetric detuning around the sideband; time-dependent list format
+  required to close a phase-space loop at ``t_gate = 2π/δ``. Future
+  dispatch.
 - **Stroboscopic AC drive** — time-modulated carrier per the qc.py
   scenario 4 envelope.
 
@@ -279,8 +286,140 @@ def blue_sideband_hamiltonian(
     return coeff * (phase_plus * sigma_p * a_dag + phase_minus * sigma_m * a)
 
 
+# ----------------------------------------------------------------------------
+# Mølmer–Sørensen gate (bichromatic, δ = 0)
+# ----------------------------------------------------------------------------
+
+
+def ms_gate_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    mode_label: str,
+    *,
+    ion_indices: tuple[int, int],
+) -> qutip.Qobj:
+    """Return the Mølmer–Sørensen gate Hamiltonian in the interaction picture
+    (symmetric bichromatic drive, δ = 0 — time-independent).
+
+    .. math::
+        H / \\hbar = \\sum_{k \\in \\text{ions}}
+        \\frac{\\Omega \\, \\eta_k}{2}
+        \\left[ \\sigma_+^{(k)} e^{i\\phi}
+              + \\sigma_-^{(k)} e^{-i\\phi} \\right]
+        \\otimes \\bigl(a + a^\\dagger\\bigr)
+
+    This is the Lamb–Dicke, RWA-reduced form of a **symmetric
+    bichromatic drive** with two tones at ``ω_atom ± (ω_mode − δ)``
+    under ``δ = 0`` — the two sideband contributions sum coherently to
+    a spin-dependent force along the ``σ_φ`` axis, coupled to the
+    mode's position quadrature ``x̂ ∝ (a + a†)``. In the σ_x/σ_y
+    rewrite (atomic-physics convention §3):
+
+    .. math::
+        H / \\hbar = \\sum_k \\frac{\\Omega \\eta_k}{2}
+        \\left[ \\cos(\\phi) \\sigma_x^{(k)}
+              - \\sin(\\phi) \\sigma_y^{(k)} \\right]
+        \\otimes \\bigl(a + a^\\dagger\\bigr),
+
+    which makes the physical picture explicit: at ``φ = 0`` each σ_x
+    commutes with the Hamiltonian, so the two-ion J_x axis is
+    conserved and each J_x eigenstate drives a coherent displacement
+    of the mode proportional to its eigenvalue (see
+    :func:`iontrap_dynamics.analytic.ms_gate_phonon_number`).
+
+    Scope (v0.1)
+    ------------
+
+    The builder supports **exactly two ions**, sharing a single drive
+    configuration (a single laser addressing both). Arbitrary ``N``-ion
+    MS generalises in the obvious way (symmetric sum across ions) and
+    will be added once a three-ion benchmark is agreed upon. The two
+    ions' individual ``η_k`` are computed independently from the mode
+    eigenvector at each ion — COM and stretch modes are therefore
+    handled correctly out of the box.
+
+    The ``δ = 0`` assumption keeps the Hamiltonian time-independent.
+    The gate-closing form (``δ ≠ 0``, ``t_gate = 2π/δ`` Bell-state
+    target) needs QuTiP's list format and lands in a follow-on
+    dispatch.
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space.
+    drive
+        :class:`DriveConfig` for the bichromatic drive. Reads Rabi
+        frequency (``carrier_rabi_frequency_rad_s``), phase, and
+        wavevector. Detuning is not consulted (the δ = 0 assumption
+        is structural, not a field value).
+    mode_label
+        Label of the motional mode that mediates the gate (typically
+        COM or stretch). Must exist in ``hilbert.system.modes``.
+    ion_indices
+        Tuple of the two zero-based ion indices to entangle. Must be
+        distinct and within ``[0, n_ions)``. Order does not matter —
+        the Hamiltonian is symmetric under swap.
+
+    Returns
+    -------
+    qutip.Qobj
+        Time-independent Hermitian operator on the full Hilbert space,
+        with dimensions :meth:`HilbertSpace.qutip_dims`. Ready to pass
+        straight to :func:`iontrap_dynamics.sequences.solve`.
+
+    Raises
+    ------
+    ConventionError
+        If ``ion_indices`` contains a duplicate index, or if
+        ``mode_label`` is not a mode of the system.
+    IndexError
+        If either ion index is outside ``[0, n_ions)``.
+
+    Example
+    -------
+
+    Two ²⁵Mg⁺ ions sharing an axial COM mode, driven symmetrically
+    with φ = 0::
+
+        system = IonSystem(
+            species_per_ion=(mg25_plus(), mg25_plus()),
+            modes=(com_mode,),
+        )
+        hilbert = HilbertSpace(system=system, fock_truncations={"com": 15})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,
+        )
+        H = ms_gate_hamiltonian(hilbert, drive, "com", ion_indices=(0, 1))
+    """
+    i, j = ion_indices
+    if i == j:
+        raise ConventionError(
+            f"ms_gate_hamiltonian requires two distinct ions; got ion_indices=({i}, {j})."
+        )
+
+    omega = drive.carrier_rabi_frequency_rad_s
+    phi = drive.phase_rad
+    phase_plus = cmath.exp(1j * phi)
+    phase_minus = phase_plus.conjugate()
+
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+    x_mode = a + a_dag
+
+    def _single_ion_term(k: int) -> qutip.Qobj:
+        eta_k = _sideband_lamb_dicke(hilbert, drive, mode_label, k)
+        sigma_p = hilbert.spin_op_for_ion(sigma_plus_ion(), k)
+        sigma_m = hilbert.spin_op_for_ion(sigma_minus_ion(), k)
+        coeff = omega * eta_k / 2.0
+        return coeff * (phase_plus * sigma_p + phase_minus * sigma_m) * x_mode
+
+    return _single_ion_term(i) + _single_ion_term(j)
+
+
 __all__ = [
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
+    "ms_gate_hamiltonian",
     "red_sideband_hamiltonian",
 ]

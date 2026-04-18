@@ -261,6 +261,81 @@ def lamb_dicke_parameter(
 
 
 # ----------------------------------------------------------------------------
+# Mølmer–Sørensen gate (δ = 0, time-independent form)
+# ----------------------------------------------------------------------------
+
+
+def ms_gate_phonon_number(
+    *,
+    carrier_rabi_frequency: float,
+    lamb_dicke_parameters: tuple[float, float],
+    spin_eigenvalues: tuple[int, int],
+    t: ArrayLike,
+) -> NDArray[np.floating]:
+    """Return ⟨n̂⟩(t) for the symmetric δ = 0 MS gate starting from a
+    σ_x eigenstate times motional vacuum.
+
+    At φ = 0 the MS Hamiltonian of
+    :func:`iontrap_dynamics.hamiltonians.ms_gate_hamiltonian` reduces to
+
+    .. math::
+        H / \\hbar = \\tfrac{\\Omega}{2}
+        \\bigl( \\eta_0 \\sigma_x^{(0)} + \\eta_1 \\sigma_x^{(1)} \\bigr)
+        \\otimes \\bigl( a + a^\\dagger \\bigr),
+
+    which commutes with every individual σ_x — so starting from
+    ``|ε_0, ε_1⟩ ⊗ |0⟩`` with ``ε_k ∈ {−1, +1}`` (a product σ_x
+    eigenstate), the spin sector factors out and the motion evolves
+    under the constant Hermitian generator
+    ``κ (a + a†)`` where ``κ = (Ω/2)(η₀ ε₀ + η₁ ε₁)``.
+
+    This is the textbook spin-dependent force: the motional state
+    becomes a coherent state ``|α(t)⟩`` with
+    ``α(t) = −i · κ · t`` and therefore
+
+    .. math::
+        \\langle n\\rangle(t) = |\\alpha(t)|^2
+        = \\bigl(\\tfrac{\\Omega t}{2}\\bigr)^2
+          \\bigl( \\eta_0 \\varepsilon_0 + \\eta_1 \\varepsilon_1 \\bigr)^2.
+
+    ``⟨n̂⟩(t) = 0`` exactly when the two ions' forces cancel
+    (e.g. ``ε_0 = +1, ε_1 = −1`` with ``η_0 = η_1`` — the "dark"
+    σ_x eigenstate for a stretch-mode drive).
+
+    Parameters
+    ----------
+    carrier_rabi_frequency
+        Carrier Rabi frequency Ω, rad·s⁻¹.
+    lamb_dicke_parameters
+        ``(η_0, η_1)`` — one per ion in the gate. Signs are preserved
+        (CONVENTIONS.md §10) and enter the displacement additively.
+    spin_eigenvalues
+        ``(ε_0, ε_1)`` — σ_x eigenvalues of the initial spin state.
+        Must each be in ``{−1, +1}``.
+    t
+        Time or array of times, s.
+
+    Returns
+    -------
+    np.ndarray
+        Mean phonon number ``⟨n̂⟩(t)``, same shape as ``t``.
+        Non-negative.
+
+    Raises
+    ------
+    ValueError
+        If either entry of ``spin_eigenvalues`` is not ±1.
+    """
+    eps_0, eps_1 = spin_eigenvalues
+    if eps_0 not in (-1, 1) or eps_1 not in (-1, 1):
+        raise ValueError(f"spin_eigenvalues must each be -1 or +1; got {spin_eigenvalues}")
+    eta_0, eta_1 = lamb_dicke_parameters
+    time = np.asarray(t, dtype=np.float64)
+    kappa = 0.5 * carrier_rabi_frequency * (eta_0 * eps_0 + eta_1 * eps_1)
+    return (kappa * time) ** 2
+
+
+# ----------------------------------------------------------------------------
 # Coherent states
 # ----------------------------------------------------------------------------
 
@@ -295,5 +370,6 @@ __all__ = [
     "carrier_rabi_sigma_z",
     "coherent_state_mean_n",
     "lamb_dicke_parameter",
+    "ms_gate_phonon_number",
     "red_sideband_rabi_frequency",
 ]
