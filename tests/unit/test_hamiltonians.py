@@ -12,6 +12,8 @@ import qutip
 from iontrap_dynamics.analytic import (
     blue_sideband_rabi_frequency,
     lamb_dicke_parameter,
+    ms_gate_closing_detuning,
+    ms_gate_closing_time,
     ms_gate_phonon_number,
     red_sideband_rabi_frequency,
 )
@@ -20,6 +22,7 @@ from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.hamiltonians import (
     blue_sideband_hamiltonian,
     carrier_hamiltonian,
+    detuned_ms_gate_hamiltonian,
     modulated_carrier_hamiltonian,
     ms_gate_hamiltonian,
     red_sideband_hamiltonian,
@@ -903,3 +906,308 @@ class TestModulatedCarrierDynamics:
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
         assert qutip.expect(sigma_z, psi_0) == pytest.approx(-1.0)
         assert qutip.expect(sigma_z, psi_final) == pytest.approx(+1.0, abs=1e-4)
+
+
+# ============================================================================
+# Detuned Mølmer–Sørensen gate (δ ≠ 0, gate-closing, list-format)
+# ============================================================================
+
+
+class TestDetunedMSGateStructure:
+    def test_returns_two_piece_list_format(self) -> None:
+        """[[A_x, cos_fn], [A_p, sin_fn]] — two time-dependent pieces."""
+        h = _two_ion_ms_hilbert()
+        H = detuned_ms_gate_hamiltonian(
+            h, _ms_drive(), "com", ion_indices=(0, 1), detuning_rad_s=1e5
+        )
+        assert isinstance(H, list)
+        assert len(H) == 2
+        for piece in H:
+            assert isinstance(piece, list) and len(piece) == 2
+            assert isinstance(piece[0], qutip.Qobj)
+            assert callable(piece[1])
+            assert piece[0].dims == h.qutip_dims()
+
+    def test_hermitian_at_sampled_times(self) -> None:
+        """H(t) = A_x · cos(δt) + A_p · sin(δt) should be Hermitian for all t,
+        since A_x and A_p are each independently Hermitian."""
+        h = _two_ion_ms_hilbert()
+        delta = 2 * np.pi * 50e3
+        H = detuned_ms_gate_hamiltonian(
+            h, _ms_drive(), "com", ion_indices=(0, 1), detuning_rad_s=delta
+        )
+        a_x, cos_fn = H[0]
+        a_p, sin_fn = H[1]
+        # Individual operators Hermitian
+        assert (a_x - a_x.dag()).norm() < 1e-10
+        assert (a_p - a_p.dag()).norm() < 1e-10
+        # Reconstructed H(t) Hermitian at representative times
+        for t in (0.0, 1e-6, 3e-6, 5e-6):
+            H_t = cos_fn(t, {}) * a_x + sin_fn(t, {}) * a_p
+            assert (H_t - H_t.dag()).norm() < 1e-10
+
+    def test_t_zero_matches_static_ms_gate(self) -> None:
+        """At t = 0, cos(δt) = 1 and sin(δt) = 0, so the reconstructed
+        Hamiltonian reduces to the static δ = 0 MS gate."""
+        h = _two_ion_ms_hilbert()
+        drive = _ms_drive()
+        H_static = ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1))
+        H_detuned = detuned_ms_gate_hamiltonian(
+            h, drive, "com", ion_indices=(0, 1), detuning_rad_s=1e5
+        )
+        a_x, cos_fn = H_detuned[0]
+        a_p, sin_fn = H_detuned[1]
+        H_at_zero = cos_fn(0.0, {}) * a_x + sin_fn(0.0, {}) * a_p
+        assert (H_at_zero - H_static).norm() < 1e-10
+
+
+class TestDetunedMSGateValidation:
+    def test_zero_detuning_rejected(self) -> None:
+        """δ = 0 must use the static ms_gate_hamiltonian instead."""
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="non-zero"):
+            detuned_ms_gate_hamiltonian(
+                h, _ms_drive(), "com", ion_indices=(0, 1), detuning_rad_s=0.0
+            )
+
+    def test_duplicate_ion_indices_rejected(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="distinct"):
+            detuned_ms_gate_hamiltonian(
+                h, _ms_drive(), "com", ion_indices=(1, 1), detuning_rad_s=1e5
+            )
+
+    def test_unknown_mode_label_rejected(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(ConventionError, match="unknown mode"):
+            detuned_ms_gate_hamiltonian(
+                h, _ms_drive(), "nonexistent", ion_indices=(0, 1), detuning_rad_s=1e5
+            )
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(IndexError):
+            detuned_ms_gate_hamiltonian(
+                h, _ms_drive(), "com", ion_indices=(0, 2), detuning_rad_s=1e5
+            )
+
+    def test_validation_errors_subclass_iontraperror(self) -> None:
+        h = _two_ion_ms_hilbert()
+        with pytest.raises(IonTrapError):
+            detuned_ms_gate_hamiltonian(
+                h, _ms_drive(), "com", ion_indices=(0, 1), detuning_rad_s=0.0
+            )
+
+
+# ----------------------------------------------------------------------------
+# Detuned MS — phase-space loop closure and Bell-state condition
+# ----------------------------------------------------------------------------
+
+
+class TestDetunedMSGateClosure:
+    """The textbook result: at δ = 2|Ωη|√K and t_gate = πK^{1/2}/|Ωη|,
+    the Magnus expansion closes — motion returns to vacuum and the spin
+    state picks up exactly a ``σ_x σ_x`` rotation of π/4 (mod π/2), which
+    on |↓↓⟩ yields a Bell state."""
+
+    def test_phase_space_loop_closes_at_t_gate(self) -> None:
+        """⟨n̂⟩(t_gate) ≈ 0 — the coherent state returns to vacuum after
+        the loop closes, regardless of the spin sector."""
+        h = _two_ion_ms_hilbert(fock=15)
+        omega = 2 * np.pi * 0.1e6
+        drive = _ms_drive(rabi=omega)
+        eta = _ms_expected_eta(h, 0)
+        delta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+        t_gate = ms_gate_closing_time(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+
+        H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
+
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        psi_final = result.states[-1]
+
+        n_op = h.number_for_mode("com")
+        assert qutip.expect(n_op, psi_final) == pytest.approx(0.0, abs=1e-3)
+
+    def test_bell_populations_at_t_gate(self) -> None:
+        """Starting from |↓↓, 0⟩, at t_gate the spin state has
+        P(|↓↓⟩) = P(|↑↑⟩) = 0.5 and P(|↓↑⟩) = P(|↑↓⟩) = 0 — a Bell
+        state up to local phases."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _two_ion_ms_hilbert(fock=15)
+        omega = 2 * np.pi * 0.1e6
+        drive = _ms_drive(rabi=omega)
+        eta = _ms_expected_eta(h, 0)
+        delta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+        t_gate = ms_gate_closing_time(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+
+        H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
+
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        psi_final = result.states[-1]
+
+        # Project onto the four two-spin computational-basis states (trace over motion)
+        dd = qutip.ket2dm(qutip.tensor(spin_down(), spin_down())).full()
+        du = qutip.ket2dm(qutip.tensor(spin_down(), spin_up())).full()
+        ud = qutip.ket2dm(qutip.tensor(spin_up(), spin_down())).full()
+        uu = qutip.ket2dm(qutip.tensor(spin_up(), spin_up())).full()
+
+        rho_spin = psi_final.ptrace([0, 1]).full()
+        p_dd = float(np.real((rho_spin * dd).trace()))
+        p_du = float(np.real((rho_spin * du).trace()))
+        p_ud = float(np.real((rho_spin * ud).trace()))
+        p_uu = float(np.real((rho_spin * uu).trace()))
+
+        assert p_dd == pytest.approx(0.5, abs=2e-2)
+        assert p_uu == pytest.approx(0.5, abs=2e-2)
+        assert p_du == pytest.approx(0.0, abs=2e-3)
+        assert p_ud == pytest.approx(0.0, abs=2e-3)
+
+        # Same-parity sanity: ⟨σ_z^{(0)} σ_z^{(1)}⟩ = +1 (both |↓↓⟩ and |↑↑⟩ give +1)
+        sz0_sz1 = h.spin_op_for_ion(sigma_z_ion(), 0) * h.spin_op_for_ion(sigma_z_ion(), 1)
+        assert qutip.expect(sz0_sz1, psi_final) == pytest.approx(+1.0, abs=5e-3)
+
+    def test_sigma_z_zero_at_bell(self) -> None:
+        """At t_gate with Bell-condition δ, each ion's ⟨σ_z⟩ is 0:
+        equal |↓↓⟩ and |↑↑⟩ populations cancel to zero polarisation."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _two_ion_ms_hilbert(fock=15)
+        omega = 2 * np.pi * 0.1e6
+        drive = _ms_drive(rabi=omega)
+        eta = _ms_expected_eta(h, 0)
+        delta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+        t_gate = ms_gate_closing_time(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+
+        H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
+
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        psi_final = result.states[-1]
+
+        sz0 = h.spin_op_for_ion(sigma_z_ion(), 0)
+        sz1 = h.spin_op_for_ion(sigma_z_ion(), 1)
+        assert qutip.expect(sz0, psi_final) == pytest.approx(0.0, abs=5e-3)
+        assert qutip.expect(sz1, psi_final) == pytest.approx(0.0, abs=5e-3)
+
+    def test_two_loop_closure_also_works(self) -> None:
+        """For K = 2 (two loops), δ = 2Ωη√2 and t_gate = π√2/(Ωη).
+        Same Bell-state outcome, slower gate."""
+        h = _two_ion_ms_hilbert(fock=15)
+        omega = 2 * np.pi * 0.1e6
+        drive = _ms_drive(rabi=omega)
+        eta = _ms_expected_eta(h, 0)
+        delta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=2,
+        )
+        t_gate = ms_gate_closing_time(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=2,
+        )
+
+        H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
+
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        psi_final = result.states[-1]
+
+        n_op = h.number_for_mode("com")
+        assert qutip.expect(n_op, psi_final) == pytest.approx(0.0, abs=1e-3)
+
+        # Same Bell populations as the K=1 case
+        dd = qutip.ket2dm(qutip.tensor(spin_down(), spin_down())).full()
+        uu = qutip.ket2dm(qutip.tensor(spin_up(), spin_up())).full()
+        rho_spin = psi_final.ptrace([0, 1]).full()
+        p_dd = float(np.real((rho_spin * dd).trace()))
+        p_uu = float(np.real((rho_spin * uu).trace()))
+        assert p_dd == pytest.approx(0.5, abs=3e-2)
+        assert p_uu == pytest.approx(0.5, abs=3e-2)
+
+
+# ----------------------------------------------------------------------------
+# Analytic helpers — standalone formula sanity (unit algebra)
+# ----------------------------------------------------------------------------
+
+
+class TestMSGateClosingHelpers:
+    def test_closing_detuning_single_loop(self) -> None:
+        """δ = 2·|Ωη|·√1 = 2·|Ωη| for a single-loop gate."""
+        delta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=1e5,
+            lamb_dicke_parameter=0.1,
+            loops=1,
+        )
+        assert delta == pytest.approx(2e4)
+
+    def test_closing_detuning_multi_loop_scaling(self) -> None:
+        """δ scales as √K — two loops at δ = 2·|Ωη|·√2."""
+        delta1 = ms_gate_closing_detuning(
+            carrier_rabi_frequency=1e5, lamb_dicke_parameter=0.1, loops=1
+        )
+        delta4 = ms_gate_closing_detuning(
+            carrier_rabi_frequency=1e5, lamb_dicke_parameter=0.1, loops=4
+        )
+        assert delta4 / delta1 == pytest.approx(2.0)  # √4 / √1 = 2
+
+    def test_closing_detuning_discards_sign(self) -> None:
+        """Only |Ωη| matters — flipping either sign gives the same δ."""
+        delta_pos = ms_gate_closing_detuning(
+            carrier_rabi_frequency=1e5, lamb_dicke_parameter=0.1, loops=1
+        )
+        delta_neg_eta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=1e5, lamb_dicke_parameter=-0.1, loops=1
+        )
+        assert delta_pos == pytest.approx(delta_neg_eta)
+
+    def test_closing_time_matches_two_pi_k_over_delta(self) -> None:
+        """t_gate · δ = 2π K by construction."""
+        omega, eta = 1e5, 0.1
+        for loops in (1, 2, 3, 5):
+            delta = ms_gate_closing_detuning(
+                carrier_rabi_frequency=omega,
+                lamb_dicke_parameter=eta,
+                loops=loops,
+            )
+            t_gate = ms_gate_closing_time(
+                carrier_rabi_frequency=omega,
+                lamb_dicke_parameter=eta,
+                loops=loops,
+            )
+            assert t_gate * delta == pytest.approx(2 * np.pi * loops)
+
+    def test_closing_detuning_rejects_zero_loops(self) -> None:
+        with pytest.raises(ValueError):
+            ms_gate_closing_detuning(carrier_rabi_frequency=1e5, lamb_dicke_parameter=0.1, loops=0)
+
+    def test_closing_time_rejects_zero_coupling(self) -> None:
+        with pytest.raises(ValueError):
+            ms_gate_closing_time(carrier_rabi_frequency=0.0, lamb_dicke_parameter=0.1, loops=1)

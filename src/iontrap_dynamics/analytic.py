@@ -265,6 +265,92 @@ def lamb_dicke_parameter(
 # ----------------------------------------------------------------------------
 
 
+def ms_gate_closing_detuning(
+    *,
+    carrier_rabi_frequency: float,
+    lamb_dicke_parameter: float,
+    loops: int = 1,
+) -> float:
+    """Return the MS detuning ``δ`` that closes the phase-space loop
+    **and** produces a maximally entangling Bell-state rotation.
+
+    .. math::
+        \\delta = 2 \\, |\\Omega \\, \\eta| \\, \\sqrt{K}
+
+    where ``K = loops`` is the integer number of loops the motional
+    coherent state traces in phase space before returning to the
+    origin at ``t_gate = 2π K / δ``.
+
+    Derivation. In the interaction picture, the Magnus expansion of
+    the detuned MS Hamiltonian
+    (:func:`iontrap_dynamics.hamiltonians.detuned_ms_gate_hamiltonian`)
+    has a vanishing first-order term at ``t_gate`` (loop closes) and
+    a second-order spin–spin coupling
+
+    .. math::
+        U(t_\\text{gate}) = \\exp\\!\\Bigl[ -i \\, \\pi K \\,
+          (\\Omega \\eta / \\delta)^2
+          \\bigl( I + \\sigma_x^{(0)} \\sigma_x^{(1)} \\bigr) \\Bigr].
+
+    Setting the argument of the ``σ_x σ_x`` exponential to ``π/4``
+    (maximally entangling) gives ``π K (Ω η / δ)² = π / 4``, which
+    rearranges to the formula above.
+
+    Parameters
+    ----------
+    carrier_rabi_frequency
+        Carrier Rabi frequency Ω, rad·s⁻¹.
+    lamb_dicke_parameter
+        Lamb–Dicke parameter η, dimensionless. Sign is discarded —
+        only ``|Ωη|`` enters the closure condition.
+    loops
+        Integer number of phase-space loops ``K`` before the gate
+        closes. Must be ≥ 1. Larger ``K`` gives slower, more lenient
+        gates at the cost of more motional decoherence exposure.
+
+    Returns
+    -------
+    float
+        Gate-closing detuning ``δ`` in rad·s⁻¹. Always positive;
+        physical sign is a convention choice (flipping δ flips the
+        sign of the Bell-state relative phase but not the fidelity).
+
+    Raises
+    ------
+    ValueError
+        If ``loops < 1``.
+    """
+    if loops < 1:
+        raise ValueError(f"loops must be >= 1; got {loops}")
+    return float(2.0 * abs(carrier_rabi_frequency * lamb_dicke_parameter) * np.sqrt(loops))
+
+
+def ms_gate_closing_time(
+    *,
+    carrier_rabi_frequency: float,
+    lamb_dicke_parameter: float,
+    loops: int = 1,
+) -> float:
+    """Return the MS gate time ``t_gate = 2π K / δ`` for the Bell-state
+    closing condition (:func:`ms_gate_closing_detuning`).
+
+    .. math::
+        t_\\text{gate} = \\frac{\\pi \\, \\sqrt{K}}{|\\Omega \\, \\eta|}
+
+    which is ``π / |Ωη|`` for the default single-loop gate (``K = 1``).
+
+    Parameters mirror :func:`ms_gate_closing_detuning`. Returns
+    seconds. Raises :exc:`ValueError` if ``loops < 1`` or if
+    ``|Ωη| == 0`` (would give an infinite gate time).
+    """
+    if loops < 1:
+        raise ValueError(f"loops must be >= 1; got {loops}")
+    g = abs(carrier_rabi_frequency * lamb_dicke_parameter)
+    if g == 0.0:
+        raise ValueError("ms_gate_closing_time is undefined for |Ω η| == 0 (infinite gate time)")
+    return float(np.pi * np.sqrt(loops) / g)
+
+
 def ms_gate_phonon_number(
     *,
     carrier_rabi_frequency: float,
@@ -370,6 +456,8 @@ __all__ = [
     "carrier_rabi_sigma_z",
     "coherent_state_mean_n",
     "lamb_dicke_parameter",
+    "ms_gate_closing_detuning",
+    "ms_gate_closing_time",
     "ms_gate_phonon_number",
     "red_sideband_rabi_frequency",
 ]

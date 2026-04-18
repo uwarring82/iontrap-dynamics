@@ -36,9 +36,12 @@ Follow-on builders (one per dispatch):
   :func:`iontrap_dynamics.sequences.solve` dispatcher. Landed via
   :func:`ms_gate_hamiltonian`.
 - **Mølmer–Sørensen (δ ≠ 0, gate-closing)** — bichromatic with a
-  symmetric detuning around the sideband; time-dependent list format
-  required to close a phase-space loop at ``t_gate = 2π/δ``. Future
-  dispatch.
+  symmetric detuning ``δ`` around the sideband; time-dependent list
+  format closes a phase-space loop at ``t_gate = 2π K/δ`` and
+  produces a Bell state at the textbook condition
+  ``δ = 2|Ωη|√K`` (see
+  :func:`iontrap_dynamics.analytic.ms_gate_closing_detuning`).
+  Landed via :func:`detuned_ms_gate_hamiltonian`.
 - **Modulated carrier** — on-resonance carrier whose amplitude is
   shaped by a user-supplied envelope ``f(t)``. First builder to
   return QuTiP's time-dependent list format. Landed via
@@ -424,6 +427,192 @@ def ms_gate_hamiltonian(
 
 
 # ----------------------------------------------------------------------------
+# Detuned Mølmer–Sørensen gate (δ ≠ 0, gate-closing, list-format)
+# ----------------------------------------------------------------------------
+
+
+def detuned_ms_gate_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    mode_label: str,
+    *,
+    ion_indices: tuple[int, int],
+    detuning_rad_s: float,
+) -> list[object]:
+    """Return the gate-closing Mølmer–Sørensen Hamiltonian in QuTiP's
+    time-dependent list format.
+
+    .. math::
+        H(t) / \\hbar = \\sum_{k \\in \\text{ions}}
+        \\frac{\\Omega \\, \\eta_k}{2}
+        \\Bigl[ \\sigma_+^{(k)} e^{i\\phi}
+              + \\sigma_-^{(k)} e^{-i\\phi} \\Bigr]
+        \\otimes
+        \\bigl[ a \\, e^{i\\delta t}
+              + a^\\dagger \\, e^{-i\\delta t} \\bigr]
+
+    The symmetric bichromatic drive has its two tones placed at
+    ``ω_atom ± (ω_mode − δ)`` — an offset ``δ`` inside the sideband
+    rather than exactly on it. The mismatch generates a
+    **time-dependent** spin-dependent force in the interaction
+    picture, which traces a closed loop in phase space after
+    ``t_gate = 2π K/δ`` (K = integer number of loops). At the
+    **Bell-state condition**
+
+    .. math::
+        \\delta = 2 |\\Omega \\, \\eta| \\sqrt{K},
+
+    the residual spin–spin coupling is exactly ``π K / 4`` on
+    ``σ_x^{(0)} σ_x^{(1)}`` and the Magnus expansion gives
+
+    .. math::
+        U(t_\\text{gate}) = e^{-i \\pi K / 4 \\cdot
+                              \\sigma_x^{(0)} \\sigma_x^{(1)}},
+
+    so ``|↓↓, 0⟩`` maps to ``(|↓↓⟩ − i |↑↑⟩) / \\sqrt{2} ⊗ |0⟩`` —
+    a Bell state with the motion fully disentangled. See
+    :func:`iontrap_dynamics.analytic.ms_gate_closing_detuning` and
+    :func:`iontrap_dynamics.analytic.ms_gate_closing_time` for
+    parameter-level helpers.
+
+    Implementation
+    --------------
+
+    The decomposition
+
+    .. math::
+        a \\, e^{i\\delta t} + a^\\dagger \\, e^{-i\\delta t}
+        = (a + a^\\dagger) \\cos(\\delta t)
+        + i(a - a^\\dagger) \\sin(\\delta t)
+
+    splits the Hamiltonian into two time-independent operators —
+    one coupled to position quadrature ``X̂ = a + a†`` and one to
+    the momentum-like ``P̂ = i(a - a†)`` — each with a scalar
+    ``cos(δt)`` or ``sin(δt)`` coefficient. Both operators are
+    Hermitian, so the returned list is a clean Hermitian-at-each-t
+    list-format Hamiltonian ready for
+    :func:`iontrap_dynamics.sequences.solve` or ``qutip.mesolve``.
+
+    Scope (v0.1)
+    ------------
+
+    Two ions, single mode, symmetric drive (both ions see the same
+    laser). Individual ``η_k`` are computed from each ion's mode
+    eigenvector so COM / stretch modes are both handled. The
+    on-resonance ``δ = 0`` case is rejected — use
+    :func:`ms_gate_hamiltonian` for that, which returns a cleaner
+    time-independent Qobj.
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space.
+    drive
+        :class:`DriveConfig` for the symmetric bichromatic drive.
+        Reads Rabi frequency, phase, and wavevector; ``detuning_rad_s``
+        on the drive object is **not** consulted (the MS detuning is a
+        separate parameter passed through ``detuning_rad_s`` below —
+        they are different physical quantities).
+    mode_label
+        Label of the motional mode the gate uses. Must exist in
+        ``hilbert.system.modes``.
+    ion_indices
+        Tuple of the two zero-based ion indices to entangle. Must be
+        distinct; order is immaterial.
+    detuning_rad_s
+        The MS detuning ``δ`` in rad·s⁻¹ — how far inside (or outside)
+        the sideband the two tones sit. Must be non-zero. Positive and
+        negative values both close the loop; the sign flips the phase
+        of the final Bell state (i.e. ``(|↓↓⟩ − i|↑↑⟩)/√2`` vs
+        ``(|↓↓⟩ + i|↑↑⟩)/√2``).
+
+    Returns
+    -------
+    list[object]
+        Time-dependent list-format Hamiltonian
+        ``[[A_X, cos_coeff], [A_P, sin_coeff]]`` where
+        ``A_X = (Ω/2) · Σ_k η_k σ_φ^{(k)} ⊗ (a + a†)`` and
+        ``A_P = (Ω/2) · Σ_k η_k σ_φ^{(k)} ⊗ i(a - a†)``.
+
+    Raises
+    ------
+    ConventionError
+        If ``ion_indices`` are duplicate, ``mode_label`` is unknown,
+        or ``detuning_rad_s == 0`` (route zero-detuning cases through
+        :func:`ms_gate_hamiltonian` instead).
+    IndexError
+        If either ion index is outside ``[0, n_ions)``.
+
+    Example
+    -------
+
+    Bell-state gate on two ²⁵Mg⁺ ions via a single COM-mode loop::
+
+        from iontrap_dynamics.analytic import (
+            lamb_dicke_parameter, ms_gate_closing_detuning,
+            ms_gate_closing_time,
+        )
+        eta = lamb_dicke_parameter(...)   # per-ion, equal for COM
+        delta = ms_gate_closing_detuning(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+        t_gate = ms_gate_closing_time(
+            carrier_rabi_frequency=omega,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+        H = detuned_ms_gate_hamiltonian(
+            hilbert, drive, "com", ion_indices=(0, 1),
+            detuning_rad_s=delta,
+        )
+        # mesolve at t_gate starting from |↓↓, 0⟩ gives a Bell state.
+    """
+    i, j = ion_indices
+    if i == j:
+        raise ConventionError(
+            f"detuned_ms_gate_hamiltonian requires two distinct ions; got ion_indices=({i}, {j})."
+        )
+    if detuning_rad_s == 0.0:
+        raise ConventionError(
+            "detuned_ms_gate_hamiltonian requires a non-zero detuning; got "
+            "detuning_rad_s == 0. For the on-resonance δ = 0 case use "
+            "ms_gate_hamiltonian, which returns a time-independent Qobj "
+            "without list-format overhead."
+        )
+
+    omega = drive.carrier_rabi_frequency_rad_s
+    phi = drive.phase_rad
+    delta = detuning_rad_s
+
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+    x_quadrature = a + a_dag
+    p_quadrature = 1j * (a - a_dag)
+
+    # Spin generator S = Σ_k η_k σ_φ^{(k)} with per-ion η.
+    def _s_phi_on_ion(k: int) -> qutip.Qobj:
+        eta_k = _sideband_lamb_dicke(hilbert, drive, mode_label, k)
+        sigma_x_k = hilbert.spin_op_for_ion(sigma_x_ion(), k)
+        sigma_y_k = hilbert.spin_op_for_ion(sigma_y_ion(), k)
+        return eta_k * (math.cos(phi) * sigma_x_k - math.sin(phi) * sigma_y_k)
+
+    s_generator = _s_phi_on_ion(i) + _s_phi_on_ion(j)
+
+    a_x = (omega / 2.0) * s_generator * x_quadrature
+    a_p = (omega / 2.0) * s_generator * p_quadrature
+
+    def cos_coeff(t: float, args: Any) -> float:
+        return math.cos(delta * t)
+
+    def sin_coeff(t: float, args: Any) -> float:
+        return math.sin(delta * t)
+
+    return [[a_x, cos_coeff], [a_p, sin_coeff]]
+
+
+# ----------------------------------------------------------------------------
 # Modulated carrier (time-dependent envelope, QuTiP list-format)
 # ----------------------------------------------------------------------------
 
@@ -537,6 +726,7 @@ def modulated_carrier_hamiltonian(
 __all__ = [
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
+    "detuned_ms_gate_hamiltonian",
     "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",
     "red_sideband_hamiltonian",
