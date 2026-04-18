@@ -19,4 +19,16 @@ from __future__ import annotations
 #: changes require a minor-version bump and a CHANGELOG entry.
 CONVENTION_VERSION: str = "0.1-draft"
 
-__all__ = ["CONVENTION_VERSION"]
+#: Default Fock-truncation convergence tolerance ε (CONVENTIONS.md §13).
+#: The top-Fock-level population ``p_top = max_t ⟨N_Fock−1|ρ_m|N_Fock−1⟩``
+#: drives the §15 warnings ladder:
+#:
+#:   - ``p_top < ε/10``     → OK, silent
+#:   - ``ε/10 ≤ p_top < ε`` → :class:`FockConvergenceWarning` (Level 1)
+#:   - ``ε ≤ p_top < 10·ε`` → :class:`FockQualityWarning`     (Level 2)
+#:   - ``p_top ≥ 10·ε``     → :class:`ConvergenceError`       (Level 3)
+#:
+#: Callers may override per call via ``solve(fock_tolerance=…)``.
+FOCK_CONVERGENCE_TOLERANCE: float = 1e-4
+
+__all__ = ["CONVENTION_VERSION", "FOCK_CONVERGENCE_TOLERANCE"]

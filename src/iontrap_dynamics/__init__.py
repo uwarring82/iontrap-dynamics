@@ -7,13 +7,16 @@ from .cache import (
     load_trajectory,
     save_trajectory,
 )
-from .conventions import CONVENTION_VERSION
+from .conventions import CONVENTION_VERSION, FOCK_CONVERGENCE_TOLERANCE
 from .exceptions import (
     BackendError,
     ConventionError,
     ConvergenceError,
+    FockConvergenceWarning,
+    FockQualityWarning,
     IntegrityError,
     IonTrapError,
+    IonTrapWarning,
 )
 from .results import (
     Result,
@@ -27,11 +30,15 @@ from .results import (
 __all__ = [
     "CACHE_FORMAT_VERSION",
     "CONVENTION_VERSION",
+    "FOCK_CONVERGENCE_TOLERANCE",
     "BackendError",
     "ConventionError",
     "ConvergenceError",
+    "FockConvergenceWarning",
+    "FockQualityWarning",
     "IntegrityError",
     "IonTrapError",
+    "IonTrapWarning",
     "Result",
     "ResultMetadata",
     "ResultWarning",

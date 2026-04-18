@@ -162,6 +162,7 @@ ignore = [
 "tests/**" = ["N802", "N803", "N806"]   # test functions mirror physics notation freely
 "examples/**" = ["N802", "N803", "N806"]
 "src/iontrap_dynamics/analytic.py" = ["RUF002", "RUF003"]
+"src/iontrap_dynamics/conventions.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/drives.py" = ["RUF002", "RUF003"]
 "src/iontrap_dynamics/hamiltonians.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/hilbert.py" = ["RUF001", "RUF002", "RUF003"]
