@@ -1,0 +1,53 @@
+{
+  "analytic_predictions": {
+    "final_n_mode_target": 0.0,
+    "final_p_dd_target": 0.5,
+    "final_p_flip_target": 0.0,
+    "final_p_uu_target": 0.5,
+    "final_sigma_z_target": 0.0
+  },
+  "backend_name": "qutip-mesolve",
+  "backend_version": "5.2.3",
+  "convention_version": "0.1-draft",
+  "elapsed_seconds": 0.009632624976802617,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "final_state": {
+    "max_sigma_z_asymmetry": 2.220446049250313e-16,
+    "n_mode": 3.1469413362640444e-10,
+    "p_dd": 0.5000002304290357,
+    "p_flip": 2.4832956304312884e-11,
+    "p_uu": 0.499999769546131,
+    "sigma_z_0": -4.6088290472402257e-07,
+    "sigma_z_1": -4.6088290472402257e-07
+  },
+  "generated_at": "2026-04-18T13:55:26.960654+00:00",
+  "parameters": {
+    "N_fock": 12,
+    "bell_detuning_over_2pi_kHz": 36.851303496543984,
+    "bell_detuning_rad_s": 231543.56867990084,
+    "gate_time_us": 27.13608217668021,
+    "initial_state": "|↓↓, 0⟩",
+    "lamb_dicke_eta": 0.1842565174827199,
+    "laser_wavelength_nm": 280.0,
+    "loops_K": 1,
+    "mode_freq_over_2pi_MHz": 1.5,
+    "n_steps": 500,
+    "rabi_over_2pi_MHz": 0.1
+  },
+  "provenance_tags": [
+    "demo",
+    "ms_gate_bell"
+  ],
+  "purpose": "end-to-end detuned MS gate demonstration — solve() + list-format Hamiltonian + two-ion population projectors as custom observables",
+  "scenario": "ms_gate_bell_demo",
+  "schema_version": 1,
+  "storage_mode": "omitted",
+  "workplan_reference": "not a Phase 0.F benchmark; complements run_demo_gaussian_pulse.py with the two-ion list-format path"
+}
