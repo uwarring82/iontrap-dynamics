@@ -31,8 +31,11 @@ Follow-on builders (one per dispatch):
 
 - **Carrier, detuned** — ``detuning_rad_s ≠ 0`` via list format.
   Landed via :func:`detuned_carrier_hamiltonian`.
-- **Near-sideband** — detuning slightly off resonance on a single
-  sideband tone, list format. Future dispatch.
+- **Near-sideband (single tone, δ ≠ 0)** — laser offset from exact
+  sideband resonance by a small detuning ``δ`` on a single red or
+  blue sideband tone. Landed via
+  :func:`detuned_red_sideband_hamiltonian` and
+  :func:`detuned_blue_sideband_hamiltonian`.
 - **Mølmer–Sørensen (δ = 0, bichromatic)** — two-ion spin-dependent
   force, time-independent and therefore compatible with the existing
   :func:`iontrap_dynamics.sequences.solve` dispatcher. Landed via
@@ -437,6 +440,214 @@ def blue_sideband_hamiltonian(
     phase_plus = cmath.exp(1j * phi)
     phase_minus = phase_plus.conjugate()
     return coeff * (phase_plus * sigma_p * a_dag + phase_minus * sigma_m * a)
+
+
+# ----------------------------------------------------------------------------
+# Near-sideband drives (single tone, δ ≠ 0, list format)
+# ----------------------------------------------------------------------------
+
+
+def detuned_red_sideband_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    mode_label: str,
+    *,
+    ion_index: int,
+    detuning_rad_s: float,
+) -> list[object]:
+    """Return the near-red-sideband Hamiltonian in QuTiP's time-dependent
+    list format.
+
+    .. math::
+        H(t) / \\hbar = \\frac{\\Omega \\, \\eta}{2}
+        \\Bigl[ \\sigma_+ a \\, e^{i\\phi} e^{i\\delta t}
+              + \\sigma_- a^\\dagger \\, e^{-i\\phi} e^{-i\\delta t} \\Bigr],
+
+    where ``δ = detuning_rad_s`` is the laser offset from exact
+    red-sideband resonance (``ω_laser = ω_atom − ω_mode + δ``).
+    Positive ``δ`` means the laser is blue-shifted relative to the
+    sideband; negative means red-shifted.
+
+    The complex exponential splits into a Hermitian decomposition
+
+    .. math::
+        H(t) = \\cos(\\delta t) \\, H_\\text{static}
+             + \\sin(\\delta t) \\, H_\\text{quadrature},
+
+    with
+
+    .. math::
+        H_\\text{static}     &= \\tfrac{\\Omega \\eta}{2}
+            \\bigl[ \\sigma_+ a \\, e^{i\\phi}
+                  + \\sigma_- a^\\dagger \\, e^{-i\\phi} \\bigr], \\\\
+        H_\\text{quadrature} &= \\tfrac{i \\, \\Omega \\eta}{2}
+            \\bigl[ \\sigma_+ a \\, e^{i\\phi}
+                  - \\sigma_- a^\\dagger \\, e^{-i\\phi} \\bigr].
+
+    Both pieces are Hermitian. ``H_static`` is byte-identical to
+    :func:`red_sideband_hamiltonian` (exact-resonance case). The
+    returned list is ``[[H_static, cos_fn], [H_quadrature, sin_fn]]``.
+
+    Dynamics
+    --------
+
+    At leading order in Lamb–Dicke, the population starting from
+    ``|↓, n⟩`` follows the generalised Rabi formula
+
+    .. math::
+        P_{\\uparrow}(t) = (\\Omega_\\text{sb} / \\Omega_\\text{gen})^2
+                          \\sin^2(\\Omega_\\text{gen} t / 2),
+
+    where ``Ω_sb = |Ω η| √n`` (the exact-sideband Rabi rate from
+    :func:`iontrap_dynamics.analytic.red_sideband_rabi_frequency`)
+    and ``Ω_gen = √(Ω_sb² + δ²)`` (from
+    :func:`iontrap_dynamics.analytic.generalized_rabi_frequency`).
+    Vacuum is still annihilated — the red sideband has nothing to
+    lower into from ``|↓, 0⟩``, regardless of ``δ``.
+
+    Scope (v0.1)
+    ------------
+
+    Single ion, single sideband tone. For near-resonant
+    **bichromatic** drives (gate-closing Mølmer–Sørensen) use
+    :func:`detuned_ms_gate_hamiltonian`. The ``detuning_rad_s``
+    field on :class:`DriveConfig` is **not** consulted (that field
+    carries the carrier-frame detuning ``ω_laser − ω_atom``, which
+    differs from the sideband detuning ``δ`` by one mode frequency).
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space.
+    drive
+        :class:`DriveConfig` for the near-red-sideband drive. Reads
+        Rabi frequency, phase, and wavevector.
+    mode_label
+        Label of the motional mode the sideband addresses.
+    ion_index
+        Zero-based index of the target ion. Keyword-only.
+    detuning_rad_s
+        Laser detuning ``δ`` from the exact red-sideband resonance,
+        rad·s⁻¹. Must be non-zero — use :func:`red_sideband_hamiltonian`
+        for the ``δ = 0`` case, which returns a time-independent
+        Qobj without list-format overhead.
+
+    Returns
+    -------
+    list[object]
+        Time-dependent list-format Hamiltonian
+        ``[[H_static, cos_fn], [H_quadrature, sin_fn]]``.
+
+    Raises
+    ------
+    ConventionError
+        If ``detuning_rad_s == 0`` or ``mode_label`` is unknown.
+    IndexError
+        If ``ion_index`` is out of range.
+    """
+    if detuning_rad_s == 0.0:
+        raise ConventionError(
+            "detuned_red_sideband_hamiltonian requires a non-zero detuning; "
+            "got detuning_rad_s == 0. For the exact-resonance case use "
+            "red_sideband_hamiltonian, which returns a time-independent Qobj "
+            "without list-format overhead."
+        )
+
+    eta = _sideband_lamb_dicke(hilbert, drive, mode_label, ion_index)
+    omega = drive.carrier_rabi_frequency_rad_s
+    phi = drive.phase_rad
+
+    sigma_p = hilbert.spin_op_for_ion(sigma_plus_ion(), ion_index)
+    sigma_m = hilbert.spin_op_for_ion(sigma_minus_ion(), ion_index)
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+
+    coeff = omega * eta / 2.0
+    phase_plus = cmath.exp(1j * phi)
+    phase_minus = phase_plus.conjugate()
+
+    raise_part = phase_plus * sigma_p * a
+    lower_part = phase_minus * sigma_m * a_dag
+    h_static = coeff * (raise_part + lower_part)
+    h_quadrature = coeff * 1j * (raise_part - lower_part)
+
+    return _list_format_cos_sin(h_static, h_quadrature, detuning_rad_s)
+
+
+def detuned_blue_sideband_hamiltonian(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    mode_label: str,
+    *,
+    ion_index: int,
+    detuning_rad_s: float,
+) -> list[object]:
+    """Return the near-blue-sideband Hamiltonian in QuTiP's time-dependent
+    list format.
+
+    .. math::
+        H(t) / \\hbar = \\frac{\\Omega \\, \\eta}{2}
+        \\Bigl[ \\sigma_+ a^\\dagger \\, e^{i\\phi} e^{i\\delta t}
+              + \\sigma_- a \\, e^{-i\\phi} e^{-i\\delta t} \\Bigr],
+
+    where ``δ`` is the laser offset from exact blue-sideband
+    resonance (``ω_laser = ω_atom + ω_mode + δ``). The decomposition
+    and conventions mirror :func:`detuned_red_sideband_hamiltonian`;
+    the physical distinction is that the blue sideband **creates**
+    phonons while the red sideband **annihilates** them, so vacuum
+    is not annihilated here — ``|↓, 0⟩`` couples to ``|↑, 1⟩`` at
+    rate ``|Ω η| √1`` even at ``δ ≠ 0`` (with the usual amplitude
+    reduction from the generalised Rabi formula).
+
+    Parameters, returns, and raises match
+    :func:`detuned_red_sideband_hamiltonian`.
+    """
+    if detuning_rad_s == 0.0:
+        raise ConventionError(
+            "detuned_blue_sideband_hamiltonian requires a non-zero detuning; "
+            "got detuning_rad_s == 0. For the exact-resonance case use "
+            "blue_sideband_hamiltonian, which returns a time-independent Qobj "
+            "without list-format overhead."
+        )
+
+    eta = _sideband_lamb_dicke(hilbert, drive, mode_label, ion_index)
+    omega = drive.carrier_rabi_frequency_rad_s
+    phi = drive.phase_rad
+
+    sigma_p = hilbert.spin_op_for_ion(sigma_plus_ion(), ion_index)
+    sigma_m = hilbert.spin_op_for_ion(sigma_minus_ion(), ion_index)
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+
+    coeff = omega * eta / 2.0
+    phase_plus = cmath.exp(1j * phi)
+    phase_minus = phase_plus.conjugate()
+
+    raise_part = phase_plus * sigma_p * a_dag
+    lower_part = phase_minus * sigma_m * a
+    h_static = coeff * (raise_part + lower_part)
+    h_quadrature = coeff * 1j * (raise_part - lower_part)
+
+    return _list_format_cos_sin(h_static, h_quadrature, detuning_rad_s)
+
+
+def _list_format_cos_sin(
+    h_static: qutip.Qobj,
+    h_quadrature: qutip.Qobj,
+    detuning_rad_s: float,
+) -> list[object]:
+    """Return ``[[H_static, cos(δt)], [H_quadrature, sin(δt)]]`` with the
+    coefficient callables closing over ``detuning_rad_s`` via its local
+    value (not a shared reference)."""
+    delta = detuning_rad_s
+
+    def cos_coeff(t: float, args: Any) -> float:
+        return math.cos(delta * t)
+
+    def sin_coeff(t: float, args: Any) -> float:
+        return math.sin(delta * t)
+
+    return [[h_static, cos_coeff], [h_quadrature, sin_coeff]]
 
 
 # ----------------------------------------------------------------------------
@@ -870,8 +1081,10 @@ def modulated_carrier_hamiltonian(
 __all__ = [
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
+    "detuned_blue_sideband_hamiltonian",
     "detuned_carrier_hamiltonian",
     "detuned_ms_gate_hamiltonian",
+    "detuned_red_sideband_hamiltonian",
     "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",
     "red_sideband_hamiltonian",

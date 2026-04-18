@@ -24,8 +24,10 @@ from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.hamiltonians import (
     blue_sideband_hamiltonian,
     carrier_hamiltonian,
+    detuned_blue_sideband_hamiltonian,
     detuned_carrier_hamiltonian,
     detuned_ms_gate_hamiltonian,
+    detuned_red_sideband_hamiltonian,
     modulated_carrier_hamiltonian,
     ms_gate_hamiltonian,
     red_sideband_hamiltonian,
@@ -1420,3 +1422,252 @@ class TestDetunedRabiAnalyticHelpers:
             trace = detuned_rabi_sigma_z(carrier_rabi_frequency=1.0, detuning_rad_s=delta, t=tlist)
             assert float(np.min(trace)) >= -1.0 - 1e-14
             assert float(np.max(trace)) <= +1.0 + 1e-14
+
+
+# ============================================================================
+# Detuned (near) sideband builders — single tone, δ ≠ 0, list format
+# ============================================================================
+
+
+class TestDetunedRedSidebandStructure:
+    def test_returns_two_piece_list_format(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        H = detuned_red_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=1e5
+        )
+        assert isinstance(H, list)
+        assert len(H) == 2
+        for piece in H:
+            assert isinstance(piece, list) and len(piece) == 2
+            assert isinstance(piece[0], qutip.Qobj)
+            assert callable(piece[1])
+            assert piece[0].dims == h.qutip_dims()
+
+    def test_hermitian_at_sampled_times(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        H = detuned_red_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=1e5
+        )
+        a_x, cos_fn = H[0]
+        a_p, sin_fn = H[1]
+        assert (a_x - a_x.dag()).norm() < 1e-12
+        assert (a_p - a_p.dag()).norm() < 1e-12
+        for t in (0.0, 1e-7, 5e-7, 2e-6):
+            H_t = cos_fn(t, {}) * a_x + sin_fn(t, {}) * a_p
+            assert (H_t - H_t.dag()).norm() < 1e-10
+
+    def test_t_zero_matches_static_red_sideband(self) -> None:
+        """At t = 0, cos(δt) = 1 and sin(δt) = 0 — the list reconstructs
+        the exact-resonance :func:`red_sideband_hamiltonian`."""
+        h = _single_ion_hilbert(fock=5)
+        drive = _sideband_drive(phase_rad=0.4)
+        H_static = red_sideband_hamiltonian(h, drive, "axial", ion_index=0)
+        H_detuned = detuned_red_sideband_hamiltonian(
+            h, drive, "axial", ion_index=0, detuning_rad_s=2e5
+        )
+        a_x, cos_fn = H_detuned[0]
+        a_p, sin_fn = H_detuned[1]
+        H_at_zero = cos_fn(0.0, {}) * a_x + sin_fn(0.0, {}) * a_p
+        assert (H_at_zero - H_static).norm() < 1e-12
+
+
+class TestDetunedRedSidebandValidation:
+    def test_zero_detuning_rejected(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(ConventionError, match="non-zero"):
+            detuned_red_sideband_hamiltonian(
+                h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=0.0
+            )
+
+    def test_unknown_mode_rejected(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(ConventionError, match="unknown mode"):
+            detuned_red_sideband_hamiltonian(
+                h, _sideband_drive(), "nonexistent", ion_index=0, detuning_rad_s=1e5
+            )
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(IndexError):
+            detuned_red_sideband_hamiltonian(
+                h, _sideband_drive(), "axial", ion_index=1, detuning_rad_s=1e5
+            )
+
+    def test_validation_errors_subclass_iontraperror(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(IonTrapError):
+            detuned_red_sideband_hamiltonian(
+                h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=0.0
+            )
+
+
+class TestDetunedRedSidebandDynamics:
+    """End-to-end: the builder + mesolve reproduces the generalised
+    detuned-Rabi formula with the sideband Rabi rate Ω_sb = |Ωη|."""
+
+    def test_vacuum_remains_frozen(self) -> None:
+        """Red sideband has nothing to lower into from ``|↓, 0⟩`` — any
+        detuning. The spin and motion should remain in their initial
+        state throughout."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=5)
+        rabi = 2 * np.pi * 0.1e6
+        H = detuned_red_sideband_hamiltonian(
+            h,
+            _sideband_drive(rabi=rabi),
+            "axial",
+            ion_index=0,
+            detuning_rad_s=1e5,
+        )
+        psi_0 = ground_state(h)
+        tlist = np.linspace(0.0, 5e-6, 20)
+        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        n = h.number_for_mode("axial")
+        for state in result.states:
+            assert qutip.expect(sz, state) == pytest.approx(-1.0, abs=1e-10)
+            assert qutip.expect(n, state) == pytest.approx(0.0, abs=1e-10)
+
+    def test_detuned_rabi_at_fock_one_matches_generalised_formula(self) -> None:
+        """|↓, 1⟩ → ⟨σ_z⟩(t) follows −1 + 2(Ω_sb/Ω_gen)² sin²(Ω_gen t/2)
+        with Ω_sb = |Ωη| and Ω_gen = √(Ω_sb² + δ²)."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=10)
+        rabi = 2 * np.pi * 0.1e6
+        drive = _sideband_drive(rabi=rabi)
+        eta = _expected_eta(h)
+        omega_sb = abs(rabi * eta)
+        delta = omega_sb  # δ = Ω_sb gives Ω_gen = √2·Ω_sb, max P↑ = 0.5
+
+        H = detuned_red_sideband_hamiltonian(h, drive, "axial", ion_index=0, detuning_rad_s=delta)
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(10, 1))
+        omega_gen = generalized_rabi_frequency(
+            carrier_rabi_frequency=omega_sb, detuning_rad_s=delta
+        )
+        tlist = np.linspace(0.0, 2 * np.pi / omega_gen, 100)
+
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        result = qutip.mesolve(H, psi_0, tlist, [], [sz])
+        analytic = -1.0 + 2.0 * (omega_sb / omega_gen) ** 2 * np.sin(omega_gen * tlist / 2.0) ** 2
+        np.testing.assert_allclose(result.expect[0], analytic, atol=5e-4)
+
+    def test_resonant_limit_recovers_exact_dynamics(self) -> None:
+        """Small δ << Ω_sb should match the exact-resonance sideband flopping."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=10)
+        rabi = 2 * np.pi * 0.1e6
+        eta = _expected_eta(h)
+        omega_sb = abs(rabi * eta)
+        delta = omega_sb * 1e-3  # effectively on-resonance
+
+        H_detuned = detuned_red_sideband_hamiltonian(
+            h, _sideband_drive(rabi=rabi), "axial", ion_index=0, detuning_rad_s=delta
+        )
+        H_exact = red_sideband_hamiltonian(h, _sideband_drive(rabi=rabi), "axial", ion_index=0)
+
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(10, 1))
+        tlist = np.linspace(0.0, np.pi / omega_sb, 30)  # half of an exact-resonance flop
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+
+        r_d = qutip.mesolve(H_detuned, psi_0, tlist, [], [sz])
+        r_e = qutip.mesolve(H_exact, psi_0, tlist, [], [sz])
+        np.testing.assert_allclose(r_d.expect[0], r_e.expect[0], atol=1e-3)
+
+
+class TestDetunedBlueSidebandStructure:
+    def test_returns_two_piece_list_format(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        H = detuned_blue_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=1e5
+        )
+        assert isinstance(H, list)
+        assert len(H) == 2
+
+    def test_t_zero_matches_static_blue_sideband(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        drive = _sideband_drive(phase_rad=0.4)
+        H_static = blue_sideband_hamiltonian(h, drive, "axial", ion_index=0)
+        H_detuned = detuned_blue_sideband_hamiltonian(
+            h, drive, "axial", ion_index=0, detuning_rad_s=2e5
+        )
+        a_x, cos_fn = H_detuned[0]
+        a_p, sin_fn = H_detuned[1]
+        H_at_zero = cos_fn(0.0, {}) * a_x + sin_fn(0.0, {}) * a_p
+        assert (H_at_zero - H_static).norm() < 1e-12
+
+    def test_hermitian_at_sampled_times(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        H = detuned_blue_sideband_hamiltonian(
+            h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=1e5
+        )
+        a_x, cos_fn = H[0]
+        a_p, sin_fn = H[1]
+        for t in (0.0, 1e-7, 5e-7, 2e-6):
+            H_t = cos_fn(t, {}) * a_x + sin_fn(t, {}) * a_p
+            assert (H_t - H_t.dag()).norm() < 1e-10
+
+
+class TestDetunedBlueSidebandValidation:
+    def test_zero_detuning_rejected(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(ConventionError, match="non-zero"):
+            detuned_blue_sideband_hamiltonian(
+                h, _sideband_drive(), "axial", ion_index=0, detuning_rad_s=0.0
+            )
+
+    def test_unknown_mode_rejected(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(ConventionError, match="unknown mode"):
+            detuned_blue_sideband_hamiltonian(
+                h, _sideband_drive(), "nonexistent", ion_index=0, detuning_rad_s=1e5
+            )
+
+    def test_out_of_range_ion_index_raises(self) -> None:
+        h = _single_ion_hilbert(fock=5)
+        with pytest.raises(IndexError):
+            detuned_blue_sideband_hamiltonian(
+                h, _sideband_drive(), "axial", ion_index=1, detuning_rad_s=1e5
+            )
+
+
+class TestDetunedBlueSidebandDynamics:
+    def test_vacuum_couples_at_reduced_amplitude(self) -> None:
+        """Unlike the red sideband, blue couples from vacuum.
+        Starting from ``|↓, 0⟩`` at δ = Ω_sb (Ω_gen = √2·Ω_sb), the
+        excited population peaks at (Ω_sb/Ω_gen)² = 0.5."""
+        from iontrap_dynamics.operators import sigma_z_ion
+
+        h = _single_ion_hilbert(fock=10)
+        rabi = 2 * np.pi * 0.1e6
+        drive = _sideband_drive(rabi=rabi)
+        eta = _expected_eta(h)
+        omega_sb = abs(rabi * eta)  # n=0 → √1 factor
+        delta = omega_sb
+
+        H = detuned_blue_sideband_hamiltonian(h, drive, "axial", ion_index=0, detuning_rad_s=delta)
+        psi_0 = ground_state(h)
+        omega_gen = generalized_rabi_frequency(
+            carrier_rabi_frequency=omega_sb, detuning_rad_s=delta
+        )
+        tlist = np.linspace(0.0, 2 * np.pi / omega_gen, 100)
+
+        sz = h.spin_op_for_ion(sigma_z_ion(), 0)
+        result = qutip.mesolve(H, psi_0, tlist, [], [sz])
+        max_population = 0.5 * (1 + float(np.max(result.expect[0])))
+        assert max_population == pytest.approx(0.5, abs=5e-3)
+
+
+class TestDetunedRedVsBlue:
+    def test_different_operators(self) -> None:
+        """Red and blue near-sideband list forms are distinct."""
+        h = _single_ion_hilbert(fock=5)
+        drive = _sideband_drive()
+        H_red = detuned_red_sideband_hamiltonian(h, drive, "axial", ion_index=0, detuning_rad_s=1e5)
+        H_blue = detuned_blue_sideband_hamiltonian(
+            h, drive, "axial", ion_index=0, detuning_rad_s=1e5
+        )
+        # H_static pieces should differ (red uses a, blue uses a†)
+        assert (H_red[0][0] - H_blue[0][0]).norm() > 1e-6
