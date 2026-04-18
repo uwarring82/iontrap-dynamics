@@ -9,12 +9,20 @@ Two entry points:
 - :func:`compose_density` — the general composition: given one state per
   ion and one state per mode, return the full-space density matrix.
 
-Per-subsystem state construction is delegated to QuTiP. The library does
-not re-wrap ``qutip.thermal_dm``, ``qutip.coherent``, ``qutip.squeeze``,
-``qutip.fock_dm`` etc. — those are stable, well-documented primitives
-that accept a dimension and return a Qobj of the right shape. This module
-only handles the tensor-product ordering (CONVENTIONS.md §2: spins first,
-then modes, left-to-right in the order they appear in ``system.modes``).
+Per-subsystem state construction is partly delegated to QuTiP. Generic
+primitives (``qutip.thermal_dm``, ``qutip.fock_dm``) are stable and
+accept a dimension + parameters — callers pass them straight into
+:func:`compose_density`. Named motional-state factories that fix a
+CONVENTIONS.md convention for ``α`` (§7) or ``ξ`` (§6) — coherent,
+squeezed-vacuum, and squeezed-coherent preparations — are re-exported
+here via :func:`coherent_mode`, :func:`squeezed_vacuum_mode`, and
+:func:`squeezed_coherent_mode` so that analytic/migration references
+that name those conventions can be reproduced without repeating the
+translation at every call site.
+
+This module handles the tensor-product ordering (CONVENTIONS.md §2:
+spins first, then modes, left-to-right in the order they appear in
+``system.modes``) for the full-space :func:`compose_density` helper.
 
 Design notes
 ------------
@@ -176,7 +184,107 @@ def compose_density(
     return qutip.tensor(*subsystems)
 
 
+# ----------------------------------------------------------------------------
+# Named single-mode state factories (coherent, squeezed, squeezed-coherent)
+# ----------------------------------------------------------------------------
+#
+# All three helpers return a ket on a *single* mode of dimension
+# ``fock_dim`` — the same shape QuTiP's ``displace`` / ``squeeze`` /
+# ``basis`` produce. Compose with other subsystems via
+# :func:`compose_density` (or by explicit ``qutip.tensor``).
+
+
+def coherent_mode(fock_dim: int, alpha: complex) -> qutip.Qobj:
+    """Return the coherent ket ``|α⟩ = D(α) |0⟩`` on a Fock-truncated mode.
+
+    ``D(α) = exp(α a† − α* a)`` (CONVENTIONS.md §7). The resulting state
+    has mean phonon number ``⟨n⟩ = |α|²``; see
+    :func:`iontrap_dynamics.analytic.coherent_state_mean_n`.
+
+    Parameters
+    ----------
+    fock_dim
+        Truncated dimension of the mode (the ``N_Fock`` entry in
+        :attr:`HilbertSpace.fock_truncations`). Must be positive.
+    alpha
+        Complex coherent amplitude ``α``. Use ``α = r·exp(iφ)`` to
+        parameterise magnitude and phase.
+
+    Returns
+    -------
+    qutip.Qobj
+        Normalised ket of dimension ``fock_dim`` (subject to Fock
+        truncation — choose ``fock_dim`` large enough that
+        ``|α|²`` fits well inside the envelope).
+    """
+    if fock_dim <= 0:
+        raise ConventionError(f"fock_dim must be positive; got {fock_dim}.")
+    return qutip.displace(fock_dim, alpha) * qutip.basis(fock_dim, 0)
+
+
+def squeezed_vacuum_mode(fock_dim: int, z: complex) -> qutip.Qobj:
+    """Return the squeezed-vacuum ket ``|ξ⟩ = S(ξ) |0⟩`` on a Fock mode.
+
+    ``S(ξ) = exp((ξ* a² − ξ a†²) / 2)`` with ``ξ = r·exp(2iφ)``
+    (CONVENTIONS.md §6 — the factor of 2 in the phase reflects the
+    π-period of the squeezing ellipse). Mean phonon number
+    ``⟨n⟩ = sinh²(|ξ|)``.
+
+    Matches QuTiP's ``qutip.squeeze(fock_dim, z)`` convention exactly;
+    this is a named alias that records the CONVENTIONS.md §6 choice.
+
+    Parameters mirror :func:`coherent_mode`, with ``z`` in place of
+    ``alpha`` and the phase interpretation above.
+    """
+    if fock_dim <= 0:
+        raise ConventionError(f"fock_dim must be positive; got {fock_dim}.")
+    return qutip.squeeze(fock_dim, z) * qutip.basis(fock_dim, 0)
+
+
+def squeezed_coherent_mode(
+    fock_dim: int,
+    *,
+    z: complex,
+    alpha: complex,
+) -> qutip.Qobj:
+    """Return the displaced-squeezed ket ``|α, ξ⟩ = D(α) S(ξ) |0⟩``.
+
+    The squeezing is applied first, then the displacement — matching
+    the ``initialise_single_mode`` order in the legacy qc.py reference
+    script. Mean phonon number
+    ``⟨n⟩ = |α|² + sinh²(|ξ|)``.
+
+    Keyword-only ``z`` and ``alpha`` to prevent accidental positional
+    swapping; the two arguments have different physical meanings
+    (squeeze parameter vs displacement) and should be named at every
+    call site.
+
+    Parameters
+    ----------
+    fock_dim
+        Truncated mode dimension. Must be positive.
+    z
+        Squeeze parameter ``ξ = r·exp(2iφ)`` (CONVENTIONS.md §6).
+    alpha
+        Coherent amplitude ``α`` (CONVENTIONS.md §7), applied after
+        the squeezing.
+
+    Returns
+    -------
+    qutip.Qobj
+        Normalised ket of dimension ``fock_dim``.
+    """
+    if fock_dim <= 0:
+        raise ConventionError(f"fock_dim must be positive; got {fock_dim}.")
+    d_op = qutip.displace(fock_dim, alpha)
+    s_op = qutip.squeeze(fock_dim, z)
+    return d_op * s_op * qutip.basis(fock_dim, 0)
+
+
 __all__ = [
+    "coherent_mode",
     "compose_density",
     "ground_state",
+    "squeezed_coherent_mode",
+    "squeezed_vacuum_mode",
 ]

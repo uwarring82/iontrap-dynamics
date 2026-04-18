@@ -45,12 +45,14 @@ In practice the bit-identity goal is incompatible with the Phase 1 design:
   sideband rather than the symmetric bichromatic MS gate we build via
   :func:`ms_gate_hamiltonian` / :func:`detuned_ms_gate_hamiltonian`.
 
-Scenario 1 therefore activates with a physical-level tolerance
-(``atol = 5e-3`` on all convention-translated observables), rather than
-``1e-10``. Scenarios 2–5 stay skipped with honest, specific blockers
-(see each skip reason). The tier remains a check against accidental
-convention drift; the analytic-regression tests are the permanent
-physics anchor.
+Scenarios 1 (on-resonance carrier, thermal) and 5 (on-resonance carrier,
+squeezed-coherent) therefore activate with physical-level tolerances
+rather than ``1e-10`` — ``atol = 5e-3`` for scenario 1 and ``atol =
+2e-2`` for scenario 5 (looser because the higher-⟨n̂⟩ initial state
+amplifies the sub-leading LD corrections qc.py keeps). Scenarios 2–4
+stay skipped with honest, specific blockers (see each skip reason).
+The tier remains a check against accidental convention drift; the
+analytic-regression tests are the permanent physics anchor.
 """
 
 from __future__ import annotations
@@ -69,6 +71,7 @@ from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.observables import number, spin_x, spin_y, spin_z
 from iontrap_dynamics.species import mg25_plus
+from iontrap_dynamics.states import squeezed_coherent_mode
 from iontrap_dynamics.system import IonSystem
 
 pytestmark = pytest.mark.regression_migration
@@ -348,15 +351,70 @@ def test_builder_matches_scenario_4() -> None:
     raise AssertionError("unreachable — skipped")
 
 
-@pytest.mark.skip(
-    reason=(
-        "Requires squeezing + displacement state-prep builders (workplan "
-        "1.D), not yet landed in Phase 1. A ``squeeze`` / ``displace`` "
-        "pair in :mod:`iontrap_dynamics.states` would unblock a clean "
-        "activation at convention-translator tolerance, parallel to "
-        "scenario 1."
-    )
-)
 def test_builder_matches_scenario_5() -> None:
-    """Scenario 5 — single-mode squeezing + displacement."""
-    raise AssertionError("unreachable — skipped")
+    """Compare :func:`carrier_hamiltonian` + mesolve output against the
+    qc.py reference for scenario 5 (single-ion on-resonance carrier on
+    a squeezed-coherent motional state).
+
+    Same structure as scenario 1 (on-resonance carrier, convention
+    translator applied). The motional initial state is prepared via
+    :func:`iontrap_dynamics.states.squeezed_coherent_mode` with
+    ``ξ = sq_ampl · exp(2i · sq_phi_rad)`` (CONVENTIONS.md §6) and
+    ``α = dis_ampl · exp(i · dis_phi_rad)`` (§7).
+
+    Tolerance: ``atol = 2e-2`` — looser than scenario 1's 5e-3 because
+    the higher-energy motional state (⟨n⟩ ≈ 1.27 vs 0.5 for scenario
+    1) amplifies the sub-leading Lamb–Dicke corrections that qc.py
+    retains but the Phase 1 carrier_hamiltonian drops. The σ_y, σ_z,
+    n_mode matches are still at the 1e-3 level; the looseness is
+    driven by σ_x, which stays near zero in both simulations but
+    carries residual LD jitter of order 1e-2.
+    """
+    metadata, qc_arrays = _load_reference("05_single_mode_squeeze_displace")
+    qc_translated = _qc_to_iontrap_convention(qc_arrays)
+
+    p = metadata["parameters"]
+    omega = p["Omega_over_2pi_MHz"] * 2 * np.pi * 1e6
+    mode_freq = p["omega_mode_over_2pi_MHz"] * 2 * np.pi * 1e6
+    phi = p["phi_drive_rad"]
+    alpha = p["dis_ampl"] * np.exp(1j * p["dis_phi_rad"])
+    z = p["sq_ampl"] * np.exp(2j * p["sq_phi_rad"])
+
+    # Fock truncation 20 leaves ≪1e-6 population above n=19 for ⟨n⟩≈1.27
+    n_fock = 20
+
+    mode = ModeConfig(
+        label="axial",
+        frequency_rad_s=mode_freq,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+    )
+    system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
+    hilbert = HilbertSpace(system=system, fock_truncations={"axial": n_fock})
+
+    drive = DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+        carrier_rabi_frequency_rad_s=omega,
+        phase_rad=phi,
+    )
+    H = carrier_hamiltonian(hilbert, drive, ion_index=0)
+
+    # |↓⟩ ⊗ D(α) S(ξ) |0⟩
+    psi_spin = qutip.basis(2, 0)
+    psi_motion = squeezed_coherent_mode(n_fock, z=z, alpha=alpha)
+    psi_0 = qutip.tensor(psi_spin, psi_motion)
+
+    tlist_s = qc_arrays["times"] * 1e-6
+    obs = [
+        spin_x(hilbert, 0).operator,
+        spin_y(hilbert, 0).operator,
+        spin_z(hilbert, 0).operator,
+        number(hilbert, "axial").operator,
+    ]
+    result = qutip.mesolve(H, psi_0, tlist_s, [], obs)
+    my_sx, my_sy, my_sz, my_n = result.expect
+
+    atol = 2e-2
+    np.testing.assert_allclose(my_sx, qc_translated["sigma_x"], atol=atol)
+    np.testing.assert_allclose(my_sy, qc_translated["sigma_y"], atol=atol)
+    np.testing.assert_allclose(my_sz, qc_translated["sigma_z"], atol=atol)
+    np.testing.assert_allclose(my_n, qc_translated["n_mode"], atol=atol)

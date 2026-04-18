@@ -12,7 +12,13 @@ from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.operators import sigma_z_ion, spin_down, spin_up
 from iontrap_dynamics.species import mg25_plus
-from iontrap_dynamics.states import compose_density, ground_state
+from iontrap_dynamics.states import (
+    coherent_mode,
+    compose_density,
+    ground_state,
+    squeezed_coherent_mode,
+    squeezed_vacuum_mode,
+)
 from iontrap_dynamics.system import IonSystem
 
 # ----------------------------------------------------------------------------
@@ -290,3 +296,137 @@ class TestConventionCompliance:
         rho_via_ground = qutip.ket2dm(ground_state(h))
         diff = rho_compose - rho_via_ground
         assert diff.norm() < 1e-14
+
+
+# ============================================================================
+# Named single-mode state factories (coherent / squeezed / squeezed-coherent)
+# ============================================================================
+
+
+class TestCoherentMode:
+    def test_returns_normalised_ket(self) -> None:
+        psi = coherent_mode(15, 1.0)
+        assert psi.isket
+        assert psi.dims == [[15], [1]]
+        assert abs(float(psi.norm()) - 1.0) < 1e-12
+
+    def test_alpha_zero_gives_vacuum(self) -> None:
+        psi = coherent_mode(10, 0.0)
+        assert (psi - qutip.basis(10, 0)).norm() < 1e-12
+
+    def test_mean_n_equals_alpha_magnitude_squared(self) -> None:
+        """⟨n̂⟩ = |α|² for a coherent state."""
+        for alpha in (0.5, 1.0, 1.5 + 0.5j, -0.7j):
+            psi = coherent_mode(25, alpha)
+            n_op = qutip.num(25)
+            expected = abs(alpha) ** 2
+            assert float(qutip.expect(n_op, psi).real) == pytest.approx(expected, abs=5e-3)
+
+    def test_nonpositive_fock_dim_rejected(self) -> None:
+        with pytest.raises(ConventionError, match="positive"):
+            coherent_mode(0, 1.0)
+        with pytest.raises(ConventionError, match="positive"):
+            coherent_mode(-5, 1.0)
+
+    def test_a_eigenvalue_matches_alpha(self) -> None:
+        """a|α⟩ = α|α⟩ to within truncation error."""
+        alpha = 1.2 + 0.3j
+        psi = coherent_mode(30, alpha)
+        a = qutip.destroy(30)
+        lhs = a * psi
+        rhs = alpha * psi
+        assert (lhs - rhs).norm() < 1e-6
+
+
+class TestSqueezedVacuumMode:
+    def test_returns_normalised_ket(self) -> None:
+        psi = squeezed_vacuum_mode(20, 0.3)
+        assert psi.isket
+        assert abs(float(psi.norm()) - 1.0) < 1e-12
+
+    def test_z_zero_gives_vacuum(self) -> None:
+        psi = squeezed_vacuum_mode(10, 0.0)
+        assert (psi - qutip.basis(10, 0)).norm() < 1e-12
+
+    def test_mean_n_equals_sinh_squared(self) -> None:
+        """⟨n̂⟩ = sinh²(|ξ|) for squeezed vacuum."""
+        for r in (0.1, 0.3, 0.5, 0.8):
+            psi = squeezed_vacuum_mode(30, r)
+            n_op = qutip.num(30)
+            expected = np.sinh(r) ** 2
+            assert float(qutip.expect(n_op, psi).real) == pytest.approx(expected, abs=5e-3)
+
+    def test_squeezes_x_quadrature_at_phase_zero(self) -> None:
+        """At φ=0 (real ξ>0), the X quadrature variance is reduced
+        below the vacuum floor."""
+        n_fock = 30
+        psi = squeezed_vacuum_mode(n_fock, 0.5)
+        a = qutip.destroy(n_fock)
+        x_op = (a + a.dag()) / np.sqrt(2.0)
+        var_x = float((qutip.expect(x_op * x_op, psi) - qutip.expect(x_op, psi) ** 2).real)
+        # Vacuum variance is 0.5; squeezed by r=0.5 gives e^{-1} * 0.5 ≈ 0.184
+        assert var_x < 0.5  # at least squeezed
+        assert var_x == pytest.approx(0.5 * np.exp(-2 * 0.5), abs=1e-3)
+
+    def test_nonpositive_fock_dim_rejected(self) -> None:
+        with pytest.raises(ConventionError, match="positive"):
+            squeezed_vacuum_mode(0, 0.3)
+
+
+class TestSqueezedCoherentMode:
+    def test_returns_normalised_ket(self) -> None:
+        psi = squeezed_coherent_mode(20, z=0.3, alpha=1.0)
+        assert psi.isket
+        assert abs(float(psi.norm()) - 1.0) < 1e-12
+
+    def test_mean_n_equals_alpha_squared_plus_sinh_squared(self) -> None:
+        """⟨n̂⟩ = |α|² + sinh²(|ξ|)."""
+        n_fock = 30
+        for alpha in (1.0, 0.5 + 0.5j):
+            for r in (0.1, 0.3, 0.5):
+                psi = squeezed_coherent_mode(n_fock, z=r, alpha=alpha)
+                expected = abs(alpha) ** 2 + np.sinh(r) ** 2
+                n_op = qutip.num(n_fock)
+                assert float(qutip.expect(n_op, psi).real) == pytest.approx(expected, abs=5e-3)
+
+    def test_zero_squeeze_recovers_coherent(self) -> None:
+        """ξ=0 reduces to the plain coherent state."""
+        psi_sq = squeezed_coherent_mode(20, z=0.0, alpha=1.2)
+        psi_coh = coherent_mode(20, 1.2)
+        assert (psi_sq - psi_coh).norm() < 1e-10
+
+    def test_zero_alpha_recovers_squeezed_vacuum(self) -> None:
+        """α=0 reduces to squeezed vacuum (D(0) = I)."""
+        psi_sq_coh = squeezed_coherent_mode(20, z=0.3, alpha=0.0)
+        psi_sq_vac = squeezed_vacuum_mode(20, 0.3)
+        assert (psi_sq_coh - psi_sq_vac).norm() < 1e-10
+
+    def test_keyword_only_construction(self) -> None:
+        """``z`` and ``alpha`` are keyword-only to prevent positional swap."""
+        with pytest.raises(TypeError):
+            squeezed_coherent_mode(20, 0.3, 1.0)  # type: ignore[misc]
+
+    def test_nonpositive_fock_dim_rejected(self) -> None:
+        with pytest.raises(ConventionError, match="positive"):
+            squeezed_coherent_mode(0, z=0.3, alpha=1.0)
+
+    def test_composes_with_compose_density(self) -> None:
+        """The factory output feeds straight into :func:`compose_density`."""
+        mode = _single_ion_axial()
+        system = IonSystem(species_per_ion=(mg25_plus(),), modes=(mode,))
+        fock = 15
+        h = HilbertSpace(system=system, fock_truncations={"axial": fock})
+
+        rho = compose_density(
+            h,
+            spin_states_per_ion=[spin_down()],
+            mode_states_by_label={"axial": squeezed_coherent_mode(fock, z=0.3, alpha=1.0)},
+        )
+        assert rho.isoper
+        assert rho.dims == h.qutip_dims()
+        # Trace preserved
+        assert float(rho.tr().real) == pytest.approx(1.0, abs=1e-10)
+
+    def test_errors_subclass_iontraperror(self) -> None:
+        with pytest.raises(IonTrapError):
+            squeezed_coherent_mode(-1, z=0.0, alpha=0.0)
