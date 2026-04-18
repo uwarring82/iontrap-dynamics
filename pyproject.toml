@@ -188,6 +188,7 @@ ignore = [
 "tools/generate_migration_references.py" = ["RUF002", "RUF003"]
 "tools/run_benchmark_sideband.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_carrier.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/run_demo_gaussian_pulse.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 quote-style = "double"

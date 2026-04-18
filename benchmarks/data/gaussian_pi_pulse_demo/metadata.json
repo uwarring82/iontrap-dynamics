@@ -1,0 +1,44 @@
+{
+  "analytic_formulas": {
+    "rotation_angle": "θ(t) = ∫₀^t Ω · f(t') dt'",
+    "sigma_x": "0",
+    "sigma_y": "sin(θ(t))",
+    "sigma_z": "-cos(θ(t))"
+  },
+  "backend_name": "qutip-mesolve",
+  "backend_version": "5.2.3",
+  "convention_version": "0.1-draft",
+  "elapsed_seconds": 0.005287499981932342,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "final_pulse_area_rad": 3.1415908524987537,
+  "final_sigma_z": 0.9999999999990273,
+  "generated_at": "2026-04-18T08:53:39.592998+00:00",
+  "max_numerical_vs_analytic_error": 3.3798337705504e-06,
+  "parameters": {
+    "N_fock": 3,
+    "envelope_amplitude": 0.39894228040143276,
+    "initial_state": "|↓, 0⟩",
+    "n_steps": 400,
+    "phase_rad": 0.0,
+    "pulse_centre_us": 2.5,
+    "pulse_duration_us": 5.0,
+    "pulse_sigma_us": 0.5,
+    "rabi_over_2pi_MHz": 1.0
+  },
+  "provenance_tags": [
+    "demo",
+    "gaussian_pi_pulse"
+  ],
+  "purpose": "end-to-end Phase 1 public API exercise — sequences.solve + modulated_carrier_hamiltonian + named observables",
+  "scenario": "gaussian_pi_pulse_demo",
+  "schema_version": 1,
+  "storage_mode": "omitted",
+  "workplan_reference": "not a Phase 0.F benchmark; complements run_benchmark_sideband.py (static) and run_demo_carrier.py (static carrier) with a time-dependent list-format end-to-end trajectory"
+}
