@@ -134,13 +134,23 @@ thresholds in WORKPLAN_v0.3 §0.F:
   positivity, norm conservation, and swap symmetry.
 - Permanent `regression_analytic` tests — closed-form physics checks
   feeding from `iontrap_dynamics.analytic`.
-- Migration-regression tier (`regression_migration`, Phase 0 only):
-  reference bundles under `tests/regression/migration/references/`,
-  bundle-validation tests, `_qc_to_iontrap_convention` translator
-  (atomic-physics σ_z/σ_y sign flip), and scenario-1 + scenario-5
-  activated comparisons at physical-level tolerance (`atol = 5e-3`
-  and `2e-2` respectively). Scenarios 2/3/4 remain skipped with
-  specific, probe-informed blockers.
+- Migration-regression tier (`regression_migration`, Phase 0 only).
+  Two layers to keep straight:
+    - **Reference generator** (`tools/generate_migration_references.py`)
+      — all 5 canonical scenarios implemented; reference bundles
+      committed under `tests/regression/migration/references/`.
+      Regeneration requires the `[legacy]` extras. Scenario 4 is a
+      Path-A compat duplicate of qc.py's `single_spin_and_mode_ACpi2`
+      with a single spline-callable fix for QuTiP 5; the other four
+      dispatch straight into qc.py methods.
+    - **Builder comparison** (`test_migration_references.py`) — the
+      Phase 1 builder output compared against each committed bundle.
+      Uses the `_qc_to_iontrap_convention` translator (atomic-physics
+      σ_z/σ_y sign flip). Active for scenario 1 (carrier-on-thermal
+      at `atol = 5e-3`) and scenario 5 (carrier-on-squeezed-coherent
+      at `atol = 2e-2`). Scenarios 2/3/4 remain skipped with specific,
+      probe-informed blockers — those are comparison-tier blockers,
+      not generator-tier blockers.
 
 #### Phase 1 — demo tools (`tools/`, `benchmarks/data/`)
 
@@ -172,10 +182,12 @@ thresholds in WORKPLAN_v0.3 §0.F:
 
 ### Status at this mark
 
-- **Test suite**: 497 passing, 3 skipped (the three specific
-  migration-tier scenarios 2/3/4 that require either reverse-
-  engineering qc.py's frame/state choices or a full-exponential
-  lab-frame builder).
+- **Test suite**: 497 passing, 3 skipped. The skips are all in the
+  migration-tier **builder-comparison** layer (scenarios 2/3/4),
+  which requires either reverse-engineering qc.py's frame/state
+  choices or a full-exponential lab-frame builder. The
+  reference-generator layer implements all 5 scenarios; the skips
+  reflect unmatched comparisons, not missing references.
 - **Gates**: ruff lint + format, mypy strict on 17 source files,
   pa11y Level A (report-only), CI green.
 - **Phase 0.F benchmarks**: all three active and within thresholds.
