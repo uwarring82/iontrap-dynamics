@@ -109,6 +109,7 @@ legacy = [
     "requests>=2.31",
     "ipython>=8.0",
     "ipywidgets>=8.0",
+    "joblib>=1.3",
 ]
 
 [project.urls]

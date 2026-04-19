@@ -54,21 +54,38 @@ Today the importable code surface covers:
 - `iontrap_dynamics.states` — `ground_state` ket + `compose_density`
   general composition
 
-**Dynamics (Phase 1, initial builder)**
+**Dynamics (Phase 1, full builder family)**
 
-- `iontrap_dynamics.hamiltonians` — `carrier_hamiltonian` (on-resonance
-  single-ion). Red/blue sideband, MS gate, and stroboscopic AC drives are
-  next in the queue.
+The public Hamiltonian surface is symmetric across four families:
 
-Test suite: **305 passed, 8 skipped** (8 skips are Phase 1 benchmark + migration
-comparison slots awaiting later builders).
+|                | exact (time-indep. Qobj)   | detuned (list format)                |
+|----------------|----------------------------|--------------------------------------|
+| carrier        | `carrier_hamiltonian`      | `detuned_carrier_hamiltonian`        |
+| red sideband   | `red_sideband_hamiltonian` | `detuned_red_sideband_hamiltonian`   |
+| blue sideband  | `blue_sideband_hamiltonian`| `detuned_blue_sideband_hamiltonian`  |
+| MS gate        | `ms_gate_hamiltonian`      | `detuned_ms_gate_hamiltonian`        |
+
+Plus `modulated_carrier_hamiltonian` (time-dependent envelope primitive),
+`two_ion_{red,blue}_sideband_hamiltonian` (single-tone shared-mode), and a
+`full_lamb_dicke: bool` flag on the sideband builders (Wineland–Itano
+all-orders operator via matrix exponentiation). Solver entry point:
+`iontrap_dynamics.sequences.solve(...)` — accepts both Qobj and QuTiP
+list-format Hamiltonians, enforces the §13 Fock-saturation ladder on
+every call.
+
+Test suite: **497 passed, 3 skipped**. Skips are migration-tier builder-
+comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:
 
 - `mkdocs.yml` configures the public-facing documentation build
 - `docs/index.md` — welcome page
 - `docs/getting-started.md` — install + first run
-- `docs/framework.md` — architecture summary
+- `docs/framework.md` — high-level design rules
+- `docs/conventions.md` — rendered live from root `CONVENTIONS.md`
+  (single source of truth via `pymdownx.snippets`)
+- `docs/phase-1-architecture.md` — concrete public-API reference
+  (module map, per-module surface, extension points, non-goals)
 - `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
 - `docs/stylesheets/tokens.css` — vendored from `threehouse-plus-ec/cd-rules`
 

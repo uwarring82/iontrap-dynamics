@@ -18,7 +18,12 @@ Covered by CC BY-SA 4.0 in this folder today:
 
 - `index.md` — welcome page
 - `getting-started.md` — installation and quick start
-- `framework.md` — architecture summary
+- `framework.md` — high-level design rules
+- `conventions.md` — live render of the root `CONVENTIONS.md` via
+  `pymdownx.snippets` include (the text originates at the repo
+  root and is licensed there; this page is a rendered view under
+  the same CC BY-SA 4.0 terms)
+- `phase-1-architecture.md` — concrete public-API reference
 - `boundary-decision-tree.md` — contributor scope decision tree
 - Any future Coastline-level `.md` files added to `docs/` root
 
