@@ -286,23 +286,41 @@ jobs:
   # ---------------------------------------------------------------------------
   # Accessibility — WCAG 2 per workplan 0.H step 5 and decision D3.
   # D3 staging:
-  #   Level A (WCAG2A)  — currently REPORT-ONLY (continue-on-error). Stock
-  #                       mkdocs-material plus our nav fires multiple Level-A
-  #                       violations on a clean build (logo src, icon-only
-  #                       links, etc.). Those need individual triage before
-  #                       the gate can be made mandatory.
+  #   Level A (WCAG2A)  — HARD GATE. Four mkdocs-material theme-level rule
+  #                       codes are ignored (catalogued via local pa11y runs
+  #                       against the built site; see the WCAG2A_IGNORES
+  #                       env var below). Any remaining Level A violation
+  #                       fails the build — the gate is real, not advisory.
   #   Level AA (WCAG2AA) — reported but non-blocking (unchanged).
   # Builds the mkdocs site locally, then runs `pa11y` against every
   # generated HTML page.
-  # TODO(0.H.5): catalogue the specific WCAG2A rule codes firing, add
-  # targeted `--ignore` flags for theme-level noise, then flip Level A
-  # back to a hard gate by removing the `continue-on-error: true`.
+  #
+  # The four ignored rules and why:
+  #   - H32.2            : search form has no submit button
+  #                        (mkdocs-material uses JS-driven search, no
+  #                         <input type="submit">)
+  #   - H91.A.NoContent  : heading permalink ¶ icons have aria-label but
+  #                        no text content (theme design choice)
+  #   - F68              : #__toc input has no associated <label>
+  #                        (hidden responsive-nav toggle)
+  #   - H91.InputCheckbox.Name : same #__toc input missing accessible name
+  #
+  # Adding new pages or theme variants may surface new theme-level rule
+  # codes — re-catalogue locally before adding to the ignore list.
   # ---------------------------------------------------------------------------
   accessibility:
-    name: Accessibility (WCAG 2 — Level A + AA report, both non-blocking per D3)
+    name: Accessibility (WCAG 2 — Level A gated, AA advisory)
     runs-on: ubuntu-latest
     needs: [docs, detect]
     if: needs.detect.outputs.has_docs == 'true'
+    env:
+      # Space-separated list of WCAG2A rule codes to ignore (theme noise).
+      # See comment block above for the triage story behind each entry.
+      WCAG2A_IGNORES: >-
+        WCAG2A.Principle3.Guideline3_2.3_2_2.H32.2
+        WCAG2A.Principle4.Guideline4_1.4_1_2.H91.A.NoContent
+        WCAG2A.Principle1.Guideline1_3.1_3_1.F68
+        WCAG2A.Principle4.Guideline4_1.4_1_2.H91.InputCheckbox.Name
     steps:
       - uses: actions/checkout@v5
 
@@ -320,21 +338,26 @@ jobs:
       - name: Install pa11y
         run: npm install --global pa11y
 
-      - name: Level A — report (currently non-blocking; see D3 note above)
-        continue-on-error: true
+      - name: Level A — gate (WCAG2A, hard fail)
         run: |
           set -euo pipefail
           shopt -s globstar nullglob
+          ignore_args=()
+          for rule in $WCAG2A_IGNORES; do
+            ignore_args+=(--ignore "$rule")
+          done
           fail=0
           for html in site/**/*.html; do
             echo "::group::pa11y WCAG2A: $html"
             pa11y --standard WCAG2A --runner htmlcs \
+                  "${ignore_args[@]}" \
                   "file://${PWD}/${html}" || fail=1
             echo "::endgroup::"
           done
           if [[ $fail -ne 0 ]]; then
-            echo "::warning::WCAG 2 Level A violations present; see groups above. "\
-                 "Gate is report-only until rules are catalogued (see ci.yml TODO)."
+            echo "::error::WCAG 2 Level A violations present; see groups above."
+            echo "::error::Level A is a hard gate. Either fix the underlying content or add the specific rule code to WCAG2A_IGNORES (with a justification comment)."
+            exit 1
           fi
 
       - name: Level AA — stretch report (non-blocking per D3)
