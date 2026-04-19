@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3 · Drafted 2026-04-17 · Status: Ready for Phase 0 commencement
+Version 0.3 (with §5.0 release-mapping amendment 2026-04-19) · Drafted 2026-04-17 · Status: Phase 0 + Phase 1 core shipped on `main`; see §5.0
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -286,6 +286,41 @@ Why not host `iontrap-dynamics` under `threehouse-plus-ec/`? The neutral `open-i
 
 *(Phase milestones are Coastline; resource estimates are Sail.)*
 
+### 5.0 — Release-mapping amendment (2026-04) *(Coastline, new in v0.3.1)*
+
+Added after Phase 0 and the Phase 1 core builder layer both shipped back-to-back on `main`. The phase boundary collapsed in practice — by 2026-04-19 every Phase 0 exit criterion below plus the core Phase 1 builder / observable / state-prep / diagnostic surface are on `main` under a single `[Unreleased]` CHANGELOG block.
+
+**Actual release mapping (amends §5 below):**
+
+| Scope | Originally planned release | Actual release |
+|---|---|---|
+| Phase 0 foundations | `v0.1-alpha` | `v0.1-alpha` |
+| Phase 1 — core builder / observable / state-prep / diagnostic surface | `v0.2` | **`v0.1-alpha` (combined)** |
+| Phase 1 — measurement layer (`measurement/`) | `v0.2` | `v0.2` (unchanged) |
+| Phase 1 — systematics layer (`systematics/`) | `v0.2` | `v0.2` (unchanged) |
+| Phase 1 — logarithmic negativity / EoF as registered observables | `v0.2` | `v0.2` (unchanged) |
+| Phase 2 — performance, JAX backend | `v0.3` | `v0.3` (unchanged) |
+
+**Why the merge happened.** The Phase 0 regression-harness + schema + convention frame made the Phase 1 core builder family a thin shell on top of already-locked primitives. Landing one builder per commit behind a frozen result schema took less time than staging two releases would have cost. The measurement and systematics layers are genuinely new physics on top of the core and stay on their own `v0.2` line, as originally planned.
+
+**Consequence for §5 below.** The Phase 0 and Phase 1 section headers still name their originally-planned release tags for historical continuity. Read them through this amendment: `v0.1-alpha` now covers the two rows marked above, and Phase 1's `v0.2` target now covers only the measurement + systematics additions plus any Phase 1 observables (logarithmic negativity, EoF) that were not already landed as part of the core surface.
+
+**Shipped on `main` as of 2026-04-19, under `[Unreleased]`:**
+
+- Configuration layer — `operators`, `species`, `drives`, `modes`, `system`, `hilbert`, `states` (with `coherent_mode` / `squeezed_vacuum_mode` / `squeezed_coherent_mode` factories).
+- Full four-family Hamiltonian matrix (carrier / red-sideband / blue-sideband / MS) × (exact / detuned), plus `modulated_carrier_hamiltonian` and `two_ion_{red,blue}_sideband_hamiltonian`, plus a `full_lamb_dicke: bool` flag on the sideband builders.
+- Analytic-regression helpers (lamb-Dicke parameter, carrier / sideband / generalised Rabi formulas, MS-gate closing condition).
+- `observables` factory + `sequences.solve()` dispatcher with the §13 Fock-saturation ladder wired in.
+- Hash-verified cache I/O (`cache.save_trajectory` / `load_trajectory`).
+- All three Phase 0.F performance benchmarks active and under threshold.
+- Four demo tools (`run_benchmark_sideband`, `run_demo_carrier`, `run_demo_gaussian_pulse`, `run_demo_ms_gate`) with canonical `manifest.json` + `arrays.npz` + narrative `demo_report.json` artefacts committed under `benchmarks/data/`.
+- Three-tier regression harness: analytic + invariant permanent, migration tier with scenarios 1 and 5 active (2/3/4 skipped with probe-informed blockers).
+- Accessibility CI gate at WCAG 2 Level A (hard fail), AA advisory.
+
+The boundary-tree between "what's in `v0.1-alpha`" and "what's in `v0.2`" is: does it touch the measurement / systematics / extra-observable layers? If yes, `v0.2`. If no, already on `main` for `v0.1-alpha`.
+
+---
+
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
 
 **Deliverable:** repository skeleton with conventions, regression harness, canonical result schema, corporate-design bootstrap, one end-to-end example.
@@ -421,6 +456,13 @@ Reference implementation of idiomatic library usage.
 
 ### Phase 1 — Core physics and measurement layer (target: v0.2, 8–10 weeks)
 
+> **§5.0 amendment applies.** The *dynamics core* deliverable below has
+> already shipped on `main` and is part of the `v0.1-alpha` cut (see the
+> shipped-on-`main` list in §5.0). The `v0.2` release now covers only the
+> measurement layer, the systematics layer, and the remaining registered
+> observables (logarithmic negativity, EoF, any as-yet-unlanded coupled-
+> ion normal-mode decomposition helpers).
+
 **Dynamics core:** two-spin / two-mode systems, MS gate, parametric modulation, stroboscopic AC drives, coupled-ion normal-mode decomposition, logarithmic negativity / concurrence / EoF as registered observables.
 
 **Measurement layer (`measurement/`):** channels (Bernoulli, binomial, Poisson), protocols (spin readout, parity scan, sideband-flopping inference), detectors (efficiency, dark counts, thresholding), statistics (estimators, CI).
@@ -550,4 +592,4 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Convention version:** references `CONVENTIONS.md` v0.1 (to be drafted Week 1).
 **Corporate design version:** **PROVISIONAL — no upstream tag yet** (decision D2). `cd-rules v1.7.0` is the intended target named throughout this document, but `threehouse-plus-ec/cd-rules` had no tagged releases at Phase 0 commencement (2026-04-17) and still does not today. Assets are pinned to a specific commit hash documented in [`assets/SOURCE.md`](assets/SOURCE.md), which carries the authoritative PROVISIONAL banner. Before any v0.1-alpha release the upstream first-tag action must complete, `SOURCE.md` must re-pin to the tagged commit and drop its banner, and only then does the CI hash-drift check activate as a permanent gate. Until then, every reference to `cd-v1.7.0` in this workplan reads as "the CD blueprint we will consume once tagged"; in-flight work continues against the pinned commit per D2.
-**Workplan version:** 0.3 · 2026-04-17 · Ready for Phase 0 commencement.
+**Workplan version:** 0.3 (amended §5.0 on 2026-04-19) · Phase 0 complete and Phase 1 core builder / observable / state-prep / diagnostic surface shipped on `main` ahead of tag cut.
