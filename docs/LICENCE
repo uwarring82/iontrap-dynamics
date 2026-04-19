@@ -9,8 +9,9 @@ This folder contains the documentation layer for `iontrap-dynamics`.
 - Sail material under `docs/tutorials/` is licensed under
   **CC BY-NC-SA 4.0** (`CC-BY-NC-SA-4.0`).
 
-At present, this folder contains Coastline-facing entry pages only. No Sail
-tutorials are present yet.
+`docs/tutorials/` currently holds a single placeholder landing page
+(`tutorials/index.md`) pending Phase 1.E content; the placeholder is
+Sail material and covered by CC BY-NC-SA 4.0 per the split above.
 
 ## Scope
 

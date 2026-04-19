@@ -53,6 +53,8 @@ nav:
   - Project Framework: framework.md
   - Conventions: conventions.md
   - Phase 1 Architecture: phase-1-architecture.md
+  - Tutorials:
+      - Overview: tutorials/index.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:
