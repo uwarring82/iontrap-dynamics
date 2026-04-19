@@ -354,7 +354,8 @@ jobs:
           fail=0
           for html in site/**/*.html; do
             echo "::group::pa11y WCAG2A: $html"
-            pa11y --standard WCAG2A --runner htmlcs \
+            pa11y --config tools/pa11y.config.json \
+                  --standard WCAG2A --runner htmlcs \
                   "${ignore_args[@]}" \
                   "file://${PWD}/${html}" || fail=1
             echo "::endgroup::"
@@ -372,7 +373,8 @@ jobs:
           shopt -s globstar nullglob
           for html in site/**/*.html; do
             echo "::group::pa11y WCAG2AA: $html"
-            pa11y --standard WCAG2AA --runner htmlcs \
+            pa11y --config tools/pa11y.config.json \
+                  --standard WCAG2AA --runner htmlcs \
                   "file://${PWD}/${html}" || true
             echo "::endgroup::"
           done

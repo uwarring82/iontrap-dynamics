@@ -1,0 +1,10 @@
+{
+  "_comment": "pa11y config used by the accessibility CI job (.github/workflows/ci.yml). Chromium is launched with --no-sandbox because GitHub Actions runners run as a non-privileged user without unprivileged user-namespace support, and the default sandboxed launch SIGSEGVs immediately. --disable-setuid-sandbox and --disable-dev-shm-usage are the standard companions for containerised / CI Chromium runs.",
+  "chromeLaunchConfig": {
+    "args": [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage"
+    ]
+  }
+}
