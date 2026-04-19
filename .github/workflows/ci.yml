@@ -336,7 +336,12 @@ jobs:
           node-version: "20"
 
       - name: Install pa11y
-        run: npm install --global pa11y
+        run: |
+          npm install --global pa11y
+          # pa11y 9.x / Puppeteer 19+ no longer auto-downloads Chromium on
+          # `npm install`. Install it explicitly via the Puppeteer CLI so
+          # the headless run below finds a browser binary.
+          npx --yes puppeteer browsers install chrome
 
       - name: Level A — gate (WCAG2A, hard fail)
         run: |
