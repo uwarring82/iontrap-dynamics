@@ -92,6 +92,25 @@ plot = [
     "matplotlib>=3.8",
 ]
 
+# Legacy qc.py dependencies — only needed by developers regenerating the
+# Phase 0.B migration-regression reference bundles via
+# ``tools/generate_migration_references.py``. ``legacy/qc.py`` is frozen at
+# qc-legacy-v1.0 and uses ``from qutip import *`` plus a heavy non-core
+# stack (plotting, stats, notebooks, Allan variance). Normal users do NOT
+# need this extra — the reference bundles are committed under
+# ``tests/regression/migration/references/`` and the migration-tier tests
+# read them straight from disk. Install only when regenerating.
+legacy = [
+    "matplotlib>=3.8",
+    "pandas>=2.0",
+    "seaborn>=0.13",
+    "sympy>=1.12",
+    "allantools>=2019.9",
+    "requests>=2.31",
+    "ipython>=8.0",
+    "ipywidgets>=8.0",
+]
+
 [project.urls]
 # URLs reflect the current repository location. Workplan §4 plans a future
 # migration to the neutral `open-iontrap` community organisation; until that

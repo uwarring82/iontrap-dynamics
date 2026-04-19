@@ -275,6 +275,14 @@ jobs:
       - name: mkdocs build --strict
         run: mkdocs build --strict
 
+      - name: Upload rendered site for downstream jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: mkdocs-site
+          path: site/
+          retention-days: 1
+          if-no-files-found: error
+
   # ---------------------------------------------------------------------------
   # Accessibility — WCAG 2 per workplan 0.H step 5 and decision D3.
   # D3 staging:
@@ -298,19 +306,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Download rendered site from docs job
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install docs extras
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[docs]"
-
-      - name: Build docs site (strict)
-        run: mkdocs build --strict
+          name: mkdocs-site
+          path: site/
 
       - name: Set up Node.js
         uses: actions/setup-node@v5

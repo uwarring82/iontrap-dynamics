@@ -24,10 +24,21 @@ This script performs two workplan actions:
 Scope
 -----
 
-Scenario 1 (single-ion carrier flopping, thermal) is fully implemented.
-Scenarios 2–5 are stubbed with ``NotImplementedError`` and a comment
-pointing at the qc.py method they will call; each un-stubbing is its
-own small PR.
+All five canonical scenarios are implemented. Scenarios 1, 2, 3, 5
+dispatch straight into qc.py methods; scenario 4 is a Path-A
+duplicate of qc.py's ``single_spin_and_mode_ACpi2`` with a single
+spline-callable fix for QuTiP 5 compatibility (see that scenario's
+section for the rationale). The reference bundles for all five
+scenarios are committed under
+``tests/regression/migration/references/``.
+
+Regenerating the bundles requires the ``[legacy]`` extras
+(``pip install -e ".[legacy]"``) — qc.py pulls in a heavy non-core
+stack (pandas, seaborn, sympy, allantools, requests, ipython,
+ipywidgets, matplotlib) via ``from qutip import *`` and explicit
+imports. Normal users reading the migration-regression tests do
+not need the extras — the tests load the committed bundles
+directly from disk.
 
 QuTiP compat
 ------------
@@ -257,7 +268,7 @@ def _run_scenario_2(qc_module: Any) -> dict[str, np.ndarray]:
 
 
 # ----------------------------------------------------------------------------
-# Scenarios 3–5 — stubbed (one-PR-per-scenario activation plan)
+# Scenarios 3–5 — implemented
 # ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
