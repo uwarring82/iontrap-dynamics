@@ -196,6 +196,18 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
+### Changed
+
+- WORKPLAN v0.3.2: two amendments under Coastline authority.
+  - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
+    and reconciles the §4 "Repository topology" clause and the
+    Phase 0 exit criterion with the live `[project.urls]` and
+    `mkdocs.yml` state.
+  - §5.0 gains a "Consequence for WCAG clauses in §5 and §6"
+    paragraph reconciling three stale "AA as gate" clauses with
+    the actual "Level A gated, AA advisory" CI policy landed in
+    `f370fe7`.
+
 ### Status at this mark
 
 - **Test suite**: 497 passing, 3 skipped. The skips are all in the

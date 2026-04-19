@@ -217,6 +217,22 @@ No 1D shortcut, not even as convenience.
 
 ## 4. Governance and licence *(Coastline)*
 
+### 4.0 — Repository-hosting amendment (2026-04) *(Coastline, new in v0.3.2)*
+
+Added after Phase 0 shipped on `main` under the maintainer's personal GitHub account rather than the neutral `open-iontrap/` org named in the "Repository topology" subsection below. The §4 topology clause and the Phase 0 exit criterion at §5 must be read through this amendment.
+
+**Actual repository mapping (amends §4 below):**
+
+| Asset | Originally planned | Actual |
+|---|---|---|
+| Primary code repo | `github.com/open-iontrap/iontrap-dynamics` | **`github.com/uwarring82/iontrap-dynamics`** |
+| Design authority | `github.com/threehouse-plus-ec/cd-rules` | `github.com/threehouse-plus-ec/cd-rules` (unchanged) |
+| Maintainer working fork | personal dev space | (collapsed into primary) |
+
+**Why the merge happened.** The `open-iontrap/` org was a future-state positioning decision (CD 0.3's Model B neutrality), not a precondition for Phase 0. Creating the org before any code shipped would have required signalling a community-governance story Phase 0 did not need. The split-licence layout and Model B asset-propagation pipeline are intact under `uwarring82/`; the eventual org move is an address change, not a governance change.
+
+**Consequence for §4 and §5 below.** The "Repository topology" subsection still names `open-iontrap/` as the primary repo for historical continuity. Read it through this amendment: the interim primary is `uwarring82/iontrap-dynamics`, and the Phase 0 exit criterion "Repository scaffolded under `open-iontrap/`, CI green" is satisfied under `uwarring82/iontrap-dynamics` with CI green. The `[project.urls]` block in `pyproject.toml` and the `site_url` / `repo_url` / `repo_name` entries in `mkdocs.yml` each carry a migration-aware comment listing the swap needed when the org move happens.
+
 ### Split licence architecture (per CD 0.3)
 
 The repository adopts the T(h)reehouse +EC split architecture because it matches the library's epistemic structure: the workplan and CONVENTIONS are coastlines, tutorials are authored works, assets and code are infrastructure.
@@ -318,6 +334,14 @@ Added after Phase 0 and the Phase 1 core builder layer both shipped back-to-back
 - Accessibility CI gate at WCAG 2 Level A (hard fail), AA advisory.
 
 The boundary-tree between "what's in `v0.1-alpha`" and "what's in `v0.2`" is: does it touch the measurement / systematics / extra-observable layers? If yes, `v0.2`. If no, already on `main` for `v0.1-alpha`.
+
+**Consequence for WCAG clauses in §5 and §6 (amended in v0.3.2).** Three older clauses still name WCAG 2.2 AA as the CI gate:
+
+- the Phase 0 exit criterion below ("Accessibility smoke check: docs site passes WCAG 2.2 AA rules A1–A29 from CD 12A");
+- Phase 0.H step 5 ("Verify docs site against WCAG 2.2 AA rules A1–A29 (CD 12A) — this is a CI gate");
+- the §6 risks-table row ("WCAG 2.2 AA rules A1–A29 as CI gate per CD 12A").
+
+Read these through the WCAG bullet above: **WCAG 2 Level A is the hard CI gate (with the triaged theme-level rule-code ignores documented inline in `.github/workflows/ci.yml`); AA is advisory only.** The shift from "AA as gate" to "Level A gated, AA advisory" landed in commit `f370fe7` ahead of this amendment. The AA rule set is retained as a reporting target — re-promotion to a hard gate remains on the table once the triaged ignores can be retired.
 
 ---
 
