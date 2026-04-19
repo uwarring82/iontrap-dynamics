@@ -54,11 +54,15 @@ from iontrap_dynamics.analytic import (
     lamb_dicke_parameter,
     red_sideband_rabi_frequency,
 )
+from iontrap_dynamics.cache import compute_request_hash, save_trajectory
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.hamiltonians import red_sideband_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
-from iontrap_dynamics.operators import sigma_z_ion, spin_down
+from iontrap_dynamics.observables import number, spin_z
+from iontrap_dynamics.operators import spin_down
+from iontrap_dynamics.results import StorageMode
+from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
@@ -144,52 +148,76 @@ def main() -> int:
     print(f"    η = {eta:.4f}, Ω_SB/(2π) = {sb_rate / (2 * np.pi) / 1e3:.3f} kHz")
     print(f"    duration = {tlist[-1] * 1e6:.2f} μs (~2 sideband Rabi periods)")
 
+    # Parameters dict — frozen inputs that pin the cache to this scenario.
+    parameters = {
+        "scenario": "01_single_ion_sideband_flopping",
+        "N_fock": N_FOCK,
+        "n_steps": N_STEPS,
+        "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
+        "mode_frequency_over_2pi_MHz": MODE_FREQ_OVER_2PI_MHZ,
+        "laser_wavelength_nm": LASER_WAVELENGTH_NM,
+        "initial_state": "|↓, 1⟩",
+    }
+    request_hash = compute_request_hash(parameters)
+
     t0 = time.perf_counter()
-    result = qutip.mesolve(hamiltonian, psi_0, tlist, [], [])
+    result = solve(
+        hilbert=hilbert,
+        hamiltonian=hamiltonian,
+        initial_state=psi_0,
+        times=tlist,
+        observables=[spin_z(hilbert, 0), number(hilbert, "axial")],
+        request_hash=request_hash,
+        storage_mode=StorageMode.OMITTED,
+        provenance_tags=("benchmark", "01_single_ion_sideband_flopping"),
+    )
     elapsed = time.perf_counter() - t0
     print(f"    elapsed: {elapsed:.3f} s (threshold 5.0 s)")
 
-    sz_op = hilbert.spin_op_for_ion(sigma_z_ion(), 0)
-    n_op = hilbert.number_for_mode("axial")
-    sigma_z_traj = np.array([qutip.expect(sz_op, st) for st in result.states])
-    n_traj = np.array([qutip.expect(n_op, st) for st in result.states])
+    sigma_z_traj = result.expectations["sigma_z_0"]
+    n_traj = result.expectations["n_axial"]
 
     # ------------------------------------------------------------------------
-    # Save arrays + metadata
+    # Canonical cache (manifest.json + arrays.npz, hash-verified)
     # ------------------------------------------------------------------------
-    times_us = tlist * 1e6
-    np.savez(
-        OUTPUT_DIR / "arrays.npz",
-        times_us=times_us,
-        sigma_z=sigma_z_traj,
-        n_mode=n_traj,
-    )
+    save_trajectory(result, OUTPUT_DIR, overwrite=True)
 
-    metadata = {
+    # ------------------------------------------------------------------------
+    # Demo-specific narrative (times_us for humans, analytic context, env)
+    # ------------------------------------------------------------------------
+    demo_report = {
         "scenario": "01_single_ion_sideband_flopping",
         "workplan_reference": "§0.F item 1",
         "threshold_seconds": 5.0,
         "elapsed_seconds": elapsed,
         "parameters": {
-            "N_fock": N_FOCK,
-            "n_steps": N_STEPS,
-            "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
-            "mode_frequency_over_2pi_MHz": MODE_FREQ_OVER_2PI_MHZ,
-            "laser_wavelength_nm": LASER_WAVELENGTH_NM,
-            "initial_state": "|↓, 1⟩",
+            **parameters,
             "eta": eta,
             "sideband_rabi_rate_over_2pi_kHz": sb_rate / (2 * np.pi) / 1e3,
-            "duration_us": times_us[-1],
+            "duration_us": float(tlist[-1] * 1e6),
         },
+        "arrays_schema_note": (
+            "arrays.npz follows the canonical cache schema: 'times' in SI "
+            "seconds, observables under 'expectation__<label>'. Multiply "
+            "times by 1e6 for μs."
+        ),
+        "canonical_request_hash": request_hash,
         "environment": _environment(),
         "generated_at": datetime.now(UTC).isoformat(),
-        "schema_version": 1,
+        "schema_version": 2,
     }
-    (OUTPUT_DIR / "metadata.json").write_text(
-        json.dumps(metadata, indent=2, sort_keys=True, ensure_ascii=False),
+    (OUTPUT_DIR / "demo_report.json").write_text(
+        json.dumps(demo_report, indent=2, sort_keys=True, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/arrays.npz + metadata.json")
+    print(
+        f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/"
+        "{manifest.json, arrays.npz, demo_report.json}"
+    )
+
+    # Keep times_us available for the plotting section (canonical arrays
+    # stores seconds; demo plots show μs).
+    times_us = tlist * 1e6
 
     # ------------------------------------------------------------------------
     # Plot (two stacked panels)

@@ -154,17 +154,33 @@ thresholds in WORKPLAN_v0.3 §0.F:
 
 #### Phase 1 — demo tools (`tools/`, `benchmarks/data/`)
 
-- `tools/run_benchmark_sideband.py` — Phase 0.F benchmark 1 capture
-  tool with `arrays.npz`/`metadata.json`/`plot.png` output.
-- `tools/run_demo_carrier.py` — static carrier analytic Rabi overlay.
+All four tools go through `sequences.solve(...)` + emit artefacts in
+a split canonical / narrative layout:
+
+```
+benchmarks/data/<scenario>/
+├── manifest.json        — canonical via cache.save_trajectory (§0.B §3)
+├── arrays.npz           — canonical: 'times' in SI seconds,
+│                          observables under 'expectation__<label>'
+├── demo_report.json     — narrative (purpose, analytic formulas,
+│                          elapsed, environment, derived finals)
+├── analytic_overlay.npz — optional: analytic-comparison arrays
+│                          (present for carrier + Gaussian demos)
+└── plot.png             — human-readable figure
+```
+
+The canonical cache is hash-verified and round-trips through
+`cache.load_trajectory(path, expected_request_hash=…)`. Narrative
+extras live alongside so demos can carry pedagogical context without
+bloating the typed schema.
+
+- `tools/run_benchmark_sideband.py` — Phase 0.F benchmark 1 capture.
+- `tools/run_demo_carrier.py` — static carrier analytic-Rabi overlay.
 - `tools/run_demo_gaussian_pulse.py` — end-to-end
   `sequences.solve` + `modulated_carrier_hamiltonian` with a
-  Gaussian π-pulse envelope; 4-panel figure showing envelope +
-  Bloch components.
+  Gaussian π-pulse envelope; 4-panel figure.
 - `tools/run_demo_ms_gate.py` — end-to-end two-ion list-format MS
-  Bell gate via `detuned_ms_gate_hamiltonian`; three-panel figure
-  showing phase-space loop closure, Bell populations converging to
-  0.5/0.5, and ion-exchange symmetry.
+  Bell gate via `detuned_ms_gate_hamiltonian`; three-panel figure.
 
 #### Phase 1 — result layer
 

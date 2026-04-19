@@ -1,14 +1,13 @@
 {
   "analytic_formulas": {
     "rotation_angle": "θ(t) = ∫₀^t Ω · f(t') dt'",
-    "sigma_x": "0",
-    "sigma_y": "sin(θ(t))",
-    "sigma_z": "-cos(θ(t))"
+    "sigma_x_0": "0",
+    "sigma_y_0": "sin(θ(t))",
+    "sigma_z_0": "-cos(θ(t))"
   },
-  "backend_name": "qutip-mesolve",
-  "backend_version": "5.2.3",
-  "convention_version": "0.1-draft",
-  "elapsed_seconds": 0.005287499981932342,
+  "arrays_schema_note": "arrays.npz follows the canonical cache schema: 'times' in SI seconds, observables under 'expectation__<label>'. The Gaussian envelope, integrated rotation angle θ(t), and analytic overlays live separately in analytic_overlay.npz.",
+  "canonical_request_hash": "b1c7ce4406d7d78d9fa38b89b2fb32b0ada48aa394a27211526c09e30c1293fe",
+  "elapsed_seconds": 0.007145000010496005,
   "environment": {
     "machine": "arm64",
     "numpy": "2.4.4",
@@ -19,7 +18,7 @@
   },
   "final_pulse_area_rad": 3.1415908524987537,
   "final_sigma_z": 0.9999999999990273,
-  "generated_at": "2026-04-18T08:53:39.592998+00:00",
+  "generated_at": "2026-04-19T08:16:54.737095+00:00",
   "max_numerical_vs_analytic_error": 3.3798337705504e-06,
   "parameters": {
     "N_fock": 3,
@@ -30,15 +29,11 @@
     "pulse_centre_us": 2.5,
     "pulse_duration_us": 5.0,
     "pulse_sigma_us": 0.5,
-    "rabi_over_2pi_MHz": 1.0
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "gaussian_pi_pulse_demo"
   },
-  "provenance_tags": [
-    "demo",
-    "gaussian_pi_pulse"
-  ],
   "purpose": "end-to-end Phase 1 public API exercise — sequences.solve + modulated_carrier_hamiltonian + named observables",
   "scenario": "gaussian_pi_pulse_demo",
-  "schema_version": 1,
-  "storage_mode": "omitted",
+  "schema_version": 2,
   "workplan_reference": "not a Phase 0.F benchmark; complements run_benchmark_sideband.py (static) and run_demo_carrier.py (static carrier) with a time-dependent list-format end-to-end trajectory"
 }

@@ -1,0 +1,22 @@
+{
+  "cache_format_version": 1,
+  "expectation_labels": [
+    "n_axial",
+    "sigma_z_0"
+  ],
+  "metadata": {
+    "backend_name": "qutip-mesolve",
+    "backend_version": "5.2.3",
+    "convention_version": "0.1-draft",
+    "fock_truncations": {
+      "axial": 30
+    },
+    "provenance_tags": [
+      "benchmark",
+      "01_single_ion_sideband_flopping"
+    ],
+    "request_hash": "d237469149f7a7afdd50fd4e02dd81173072bd34f240ef62f0051dbd5a8ee5ad",
+    "storage_mode": "omitted"
+  },
+  "warnings": []
+}

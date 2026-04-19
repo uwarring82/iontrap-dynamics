@@ -201,8 +201,16 @@ Frozen dataclasses only:
 ### `cache.py`
 
 - `compute_request_hash(parameters)` → SHA-256 hex.
-- `save_trajectory(result, path)` / `load_trajectory(path, expected_hash)` —
-  `.npz` + JSON manifest; hash mismatch raises `IntegrityError`.
+- `save_trajectory(result, path, overwrite=False)` — writes
+  `manifest.json` (schema-validated metadata + warnings +
+  expectation-label list) plus `arrays.npz` (`times` in SI seconds,
+  observables under `expectation__<label>`).
+- `load_trajectory(path, *, expected_request_hash)` — validates
+  schema and hash; any mismatch raises `IntegrityError`.
+
+All demo tools under `tools/` use this as their canonical output
+path; pedagogical narrative lives alongside in a separate
+`demo_report.json` so the canonical layout stays tight.
 
 ## End-to-end pipeline
 

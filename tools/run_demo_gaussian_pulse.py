@@ -68,6 +68,7 @@ from pathlib import Path
 import numpy as np
 import qutip
 
+from iontrap_dynamics.cache import compute_request_hash, save_trajectory
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -177,6 +178,21 @@ def main() -> int:
     print(f"    Ω/2π = {RABI_OVER_2PI_MHZ} MHz, pulse σ = {PULSE_SIGMA_US:.2f} μs")
     print(f"    pulse peak amplitude f_max = {ENVELOPE_AMPLITUDE:.3f}")
 
+    # Parameters — frozen inputs, canonical-cache hash binding
+    parameters = {
+        "scenario": "gaussian_pi_pulse_demo",
+        "N_fock": N_FOCK,
+        "n_steps": N_STEPS,
+        "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
+        "phase_rad": 0.0,
+        "pulse_duration_us": PULSE_DURATION_US,
+        "pulse_centre_us": PULSE_CENTRE_US,
+        "pulse_sigma_us": PULSE_SIGMA_US,
+        "envelope_amplitude": ENVELOPE_AMPLITUDE,
+        "initial_state": "|↓, 0⟩",
+    }
+    request_hash = compute_request_hash(parameters)
+
     t0 = time.perf_counter()
     result = solve(
         hilbert=hilbert,
@@ -184,6 +200,7 @@ def main() -> int:
         initial_state=psi_0,
         times=tlist,
         observables=[spin_x(hilbert, 0), spin_y(hilbert, 0), spin_z(hilbert, 0)],
+        request_hash=request_hash,
         storage_mode=StorageMode.OMITTED,
         provenance_tags=("demo", "gaussian_pi_pulse"),
     )
@@ -213,23 +230,24 @@ def main() -> int:
     print(f"    final ⟨σ_z⟩ = {sz_traj[-1]:+.6f} (target +1.0 for a π-pulse)")
 
     # ------------------------------------------------------------------------
-    # Save arrays + metadata
+    # Canonical cache (manifest.json + arrays.npz, hash-verified)
     # ------------------------------------------------------------------------
-    times_us = tlist * 1e6
+    save_trajectory(result, OUTPUT_DIR, overwrite=True)
+
+    # ------------------------------------------------------------------------
+    # Demo-specific arrays (envelope shape, integrated θ, analytic overlays).
+    # Kept separate from arrays.npz so the cache layout stays canonical.
+    # ------------------------------------------------------------------------
     np.savez(
-        OUTPUT_DIR / "arrays.npz",
-        times_us=times_us,
+        OUTPUT_DIR / "analytic_overlay.npz",
         envelope=envelope_samples,
         rotation_angle=theta,
-        sigma_x=sx_traj,
-        sigma_y=sy_traj,
-        sigma_z=sz_traj,
         sigma_x_analytic=sx_analytic,
         sigma_y_analytic=sy_analytic,
         sigma_z_analytic=sz_analytic,
     )
 
-    metadata = {
+    demo_report = {
         "scenario": "gaussian_pi_pulse_demo",
         "purpose": (
             "end-to-end Phase 1 public API exercise — sequences.solve + "
@@ -242,39 +260,34 @@ def main() -> int:
         ),
         "analytic_formulas": {
             "rotation_angle": "θ(t) = ∫₀^t Ω · f(t') dt'",
-            "sigma_x": "0",
-            "sigma_y": "sin(θ(t))",
-            "sigma_z": "-cos(θ(t))",
+            "sigma_x_0": "0",
+            "sigma_y_0": "sin(θ(t))",
+            "sigma_z_0": "-cos(θ(t))",
         },
         "elapsed_seconds": elapsed,
         "final_pulse_area_rad": final_theta,
         "final_sigma_z": float(sz_traj[-1]),
         "max_numerical_vs_analytic_error": max_error,
-        "parameters": {
-            "N_fock": N_FOCK,
-            "n_steps": N_STEPS,
-            "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
-            "phase_rad": 0.0,
-            "pulse_duration_us": PULSE_DURATION_US,
-            "pulse_centre_us": PULSE_CENTRE_US,
-            "pulse_sigma_us": PULSE_SIGMA_US,
-            "envelope_amplitude": ENVELOPE_AMPLITUDE,
-            "initial_state": "|↓, 0⟩",
-        },
-        "provenance_tags": list(result.metadata.provenance_tags),
-        "convention_version": result.metadata.convention_version,
-        "storage_mode": result.metadata.storage_mode.value,
-        "backend_name": result.metadata.backend_name,
-        "backend_version": result.metadata.backend_version,
+        "parameters": parameters,
+        "arrays_schema_note": (
+            "arrays.npz follows the canonical cache schema: 'times' in SI "
+            "seconds, observables under 'expectation__<label>'. The Gaussian "
+            "envelope, integrated rotation angle θ(t), and analytic "
+            "overlays live separately in analytic_overlay.npz."
+        ),
+        "canonical_request_hash": request_hash,
         "environment": _environment(),
         "generated_at": datetime.now(UTC).isoformat(),
-        "schema_version": 1,
+        "schema_version": 2,
     }
-    (OUTPUT_DIR / "metadata.json").write_text(
-        json.dumps(metadata, indent=2, sort_keys=True, ensure_ascii=False),
+    (OUTPUT_DIR / "demo_report.json").write_text(
+        json.dumps(demo_report, indent=2, sort_keys=True, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/arrays.npz + metadata.json")
+    print(
+        f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/"
+        "{manifest.json, arrays.npz, analytic_overlay.npz, demo_report.json}"
+    )
 
     # ------------------------------------------------------------------------
     # Plot — four panels: envelope, ⟨σ_x⟩, ⟨σ_y⟩, ⟨σ_z⟩
@@ -287,6 +300,8 @@ def main() -> int:
     except ImportError:
         print("    matplotlib not installed; skipping plot")
         return 0
+
+    times_us = tlist * 1e6  # human-readable axis; canonical arrays store seconds
 
     fig, axes = plt.subplots(4, 1, sharex=True, figsize=(8.0, 8.0))
 

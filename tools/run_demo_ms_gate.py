@@ -65,6 +65,7 @@ from iontrap_dynamics.analytic import (
     ms_gate_closing_detuning,
     ms_gate_closing_time,
 )
+from iontrap_dynamics.cache import compute_request_hash, save_trajectory
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.hamiltonians import detuned_ms_gate_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -192,12 +193,25 @@ def main() -> int:
     ]
 
     t0 = time.perf_counter()
+    parameters = {
+        "scenario": "ms_gate_bell_demo",
+        "N_fock": N_FOCK,
+        "n_steps": N_STEPS,
+        "loops_K": LOOPS,
+        "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
+        "mode_freq_over_2pi_MHz": MODE_FREQ_OVER_2PI_MHZ,
+        "laser_wavelength_nm": LASER_WAVELENGTH_NM,
+        "initial_state": "|↓↓, 0⟩",
+    }
+    request_hash = compute_request_hash(parameters)
+
     result = solve(
         hilbert=hilbert,
         hamiltonian=hamiltonian,
         initial_state=psi_0,
         times=tlist,
         observables=observables,
+        request_hash=request_hash,
         storage_mode=StorageMode.OMITTED,
         provenance_tags=("demo", "ms_gate_bell"),
     )
@@ -231,21 +245,14 @@ def main() -> int:
     print(f"    max|Δσ_z|    = {max_sz_asymmetry:.3e}   (ion-exchange symmetry)")
 
     # ------------------------------------------------------------------------
-    # Save arrays + metadata
+    # Canonical cache (manifest.json + arrays.npz, hash-verified)
     # ------------------------------------------------------------------------
-    times_us = tlist * 1e6
-    np.savez(
-        OUTPUT_DIR / "arrays.npz",
-        times_us=times_us,
-        n_mode=n_traj,
-        sigma_z_0=sz_0,
-        sigma_z_1=sz_1,
-        p_dd=p_dd,
-        p_uu=p_uu,
-        p_flip=p_flip,
-    )
+    save_trajectory(result, OUTPUT_DIR, overwrite=True)
 
-    metadata = {
+    # ------------------------------------------------------------------------
+    # Demo-specific narrative (analytic predictions, derived finals, env)
+    # ------------------------------------------------------------------------
+    demo_report = {
         "scenario": "ms_gate_bell_demo",
         "purpose": (
             "end-to-end detuned MS gate demonstration — solve() + list-format "
@@ -273,32 +280,30 @@ def main() -> int:
         },
         "elapsed_seconds": elapsed,
         "parameters": {
-            "N_fock": N_FOCK,
-            "n_steps": N_STEPS,
-            "loops_K": LOOPS,
-            "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
-            "mode_freq_over_2pi_MHz": MODE_FREQ_OVER_2PI_MHZ,
-            "laser_wavelength_nm": LASER_WAVELENGTH_NM,
+            **parameters,
             "lamb_dicke_eta": eta,
             "bell_detuning_rad_s": delta,
             "bell_detuning_over_2pi_kHz": delta / (2 * np.pi * 1e3),
             "gate_time_us": t_gate * 1e6,
-            "initial_state": "|↓↓, 0⟩",
         },
-        "provenance_tags": list(result.metadata.provenance_tags),
-        "convention_version": result.metadata.convention_version,
-        "storage_mode": result.metadata.storage_mode.value,
-        "backend_name": result.metadata.backend_name,
-        "backend_version": result.metadata.backend_version,
+        "arrays_schema_note": (
+            "arrays.npz follows the canonical cache schema: 'times' in SI "
+            "seconds, observables under 'expectation__<label>' (including "
+            "p_dd, p_uu, p_flip for the two-ion population projectors)."
+        ),
+        "canonical_request_hash": request_hash,
         "environment": _environment(),
         "generated_at": datetime.now(UTC).isoformat(),
-        "schema_version": 1,
+        "schema_version": 2,
     }
-    (OUTPUT_DIR / "metadata.json").write_text(
-        json.dumps(metadata, indent=2, sort_keys=True, ensure_ascii=False),
+    (OUTPUT_DIR / "demo_report.json").write_text(
+        json.dumps(demo_report, indent=2, sort_keys=True, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/arrays.npz + metadata.json")
+    print(
+        f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/"
+        "{manifest.json, arrays.npz, demo_report.json}"
+    )
 
     # ------------------------------------------------------------------------
     # Plot — three stacked panels
@@ -313,6 +318,7 @@ def main() -> int:
         return 0
 
     t_gate_us = t_gate * 1e6
+    times_us = tlist * 1e6  # human-readable axis; canonical arrays store seconds
 
     fig, axes = plt.subplots(3, 1, sharex=True, figsize=(8.0, 7.0))
 

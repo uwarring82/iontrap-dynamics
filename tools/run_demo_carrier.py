@@ -44,11 +44,15 @@ from pathlib import Path
 import numpy as np
 import qutip
 
+from iontrap_dynamics.cache import compute_request_hash, save_trajectory
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.hamiltonians import carrier_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
-from iontrap_dynamics.operators import sigma_x_ion, sigma_y_ion, sigma_z_ion, spin_down
+from iontrap_dynamics.observables import spin_x, spin_y, spin_z
+from iontrap_dynamics.operators import spin_down
+from iontrap_dynamics.results import StorageMode
+from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
@@ -113,17 +117,34 @@ def main() -> int:
     print(f"    steps = {N_STEPS}, duration = {tlist[-1] * 1e6:.3f} μs = 2 Rabi periods")
     print(f"    Ω/2π = {RABI_OVER_2PI_MHZ} MHz")
 
+    # Parameters — frozen inputs, canonical-cache hash binding
+    parameters = {
+        "scenario": "carrier_rabi_demo",
+        "N_fock": N_FOCK,
+        "n_steps": N_STEPS,
+        "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
+        "phase_rad": 0.0,
+        "initial_state": "|↓, 0⟩",
+    }
+    request_hash = compute_request_hash(parameters)
+
     t0 = time.perf_counter()
-    result = qutip.mesolve(hamiltonian, psi_0, tlist, [], [])
+    result = solve(
+        hilbert=hilbert,
+        hamiltonian=hamiltonian,
+        initial_state=psi_0,
+        times=tlist,
+        observables=[spin_x(hilbert, 0), spin_y(hilbert, 0), spin_z(hilbert, 0)],
+        request_hash=request_hash,
+        storage_mode=StorageMode.OMITTED,
+        provenance_tags=("demo", "carrier_rabi"),
+    )
     elapsed = time.perf_counter() - t0
     print(f"    elapsed: {elapsed:.3f} s")
 
-    sx_op = hilbert.spin_op_for_ion(sigma_x_ion(), 0)
-    sy_op = hilbert.spin_op_for_ion(sigma_y_ion(), 0)
-    sz_op = hilbert.spin_op_for_ion(sigma_z_ion(), 0)
-    sx_traj = np.array([qutip.expect(sx_op, st) for st in result.states])
-    sy_traj = np.array([qutip.expect(sy_op, st) for st in result.states])
-    sz_traj = np.array([qutip.expect(sz_op, st) for st in result.states])
+    sx_traj = result.expectations["sigma_x_0"]
+    sy_traj = result.expectations["sigma_y_0"]
+    sz_traj = result.expectations["sigma_z_0"]
 
     # Analytic comparison — starting in |↓⟩ with φ = 0:
     #   ⟨σ_x⟩ = 0,  ⟨σ_y⟩ = sin(Ω t),  ⟨σ_z⟩ = −cos(Ω t)
@@ -139,48 +160,55 @@ def main() -> int:
     print(f"    max |numerical − analytic| = {max_error:.3e}")
 
     # ------------------------------------------------------------------------
-    # Save arrays + metadata
+    # Canonical cache (manifest.json + arrays.npz, hash-verified)
     # ------------------------------------------------------------------------
-    times_us = tlist * 1e6
+    save_trajectory(result, OUTPUT_DIR, overwrite=True)
+
+    # ------------------------------------------------------------------------
+    # Demo-specific narrative (analytic comparison arrays, elapsed, env)
+    # ------------------------------------------------------------------------
     np.savez(
-        OUTPUT_DIR / "arrays.npz",
-        times_us=times_us,
-        sigma_x=sx_traj,
-        sigma_y=sy_traj,
-        sigma_z=sz_traj,
+        OUTPUT_DIR / "analytic_overlay.npz",
         sigma_x_analytic=sx_analytic,
         sigma_y_analytic=sy_analytic,
         sigma_z_analytic=sz_analytic,
     )
 
-    metadata = {
+    demo_report = {
         "scenario": "carrier_rabi_demo",
-        "purpose": "illustrative — overlays numerical mesolve against analytic formulas",
+        "purpose": "illustrative — overlays numerical solve() output against analytic formulas",
         "workplan_reference": "not a Phase 0.F benchmark; companion to run_benchmark_sideband.py",
         "analytic_formulas": {
-            "sigma_x": "0",
-            "sigma_y": "sin(Ω t)",
-            "sigma_z": "-cos(Ω t)",
+            "sigma_x_0": "0",
+            "sigma_y_0": "sin(Ω t)",
+            "sigma_z_0": "-cos(Ω t)",
         },
         "elapsed_seconds": elapsed,
         "max_numerical_vs_analytic_error": max_error,
         "parameters": {
-            "N_fock": N_FOCK,
-            "n_steps": N_STEPS,
-            "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
-            "phase_rad": 0.0,
-            "initial_state": "|↓, 0⟩",
-            "duration_us": float(times_us[-1]),
+            **parameters,
+            "duration_us": float(tlist[-1] * 1e6),
         },
+        "arrays_schema_note": (
+            "arrays.npz follows the canonical cache schema: 'times' in SI "
+            "seconds, observables under 'expectation__<label>'. The analytic "
+            "overlay arrays live separately in analytic_overlay.npz."
+        ),
+        "canonical_request_hash": request_hash,
         "environment": _environment(),
         "generated_at": datetime.now(UTC).isoformat(),
-        "schema_version": 1,
+        "schema_version": 2,
     }
-    (OUTPUT_DIR / "metadata.json").write_text(
-        json.dumps(metadata, indent=2, sort_keys=True, ensure_ascii=False),
+    (OUTPUT_DIR / "demo_report.json").write_text(
+        json.dumps(demo_report, indent=2, sort_keys=True, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/arrays.npz + metadata.json")
+    print(
+        f"    wrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/"
+        "{manifest.json, arrays.npz, analytic_overlay.npz, demo_report.json}"
+    )
+
+    times_us = tlist * 1e6
 
     # ------------------------------------------------------------------------
     # Plot

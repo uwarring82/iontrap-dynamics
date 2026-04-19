@@ -6,10 +6,9 @@
     "final_p_uu_target": 0.5,
     "final_sigma_z_target": 0.0
   },
-  "backend_name": "qutip-mesolve",
-  "backend_version": "5.2.3",
-  "convention_version": "0.1-draft",
-  "elapsed_seconds": 0.009632624976802617,
+  "arrays_schema_note": "arrays.npz follows the canonical cache schema: 'times' in SI seconds, observables under 'expectation__<label>' (including p_dd, p_uu, p_flip for the two-ion population projectors).",
+  "canonical_request_hash": "c9a4e362da0ce5234b1c12226f2af8fe7fcf5452be3608415a293c15e6f383cf",
+  "elapsed_seconds": 0.00989683298394084,
   "environment": {
     "machine": "arm64",
     "numpy": "2.4.4",
@@ -27,7 +26,7 @@
     "sigma_z_0": -4.6088290472402257e-07,
     "sigma_z_1": -4.6088290472402257e-07
   },
-  "generated_at": "2026-04-18T13:55:26.960654+00:00",
+  "generated_at": "2026-04-19T08:18:10.142214+00:00",
   "parameters": {
     "N_fock": 12,
     "bell_detuning_over_2pi_kHz": 36.851303496543984,
@@ -39,15 +38,11 @@
     "loops_K": 1,
     "mode_freq_over_2pi_MHz": 1.5,
     "n_steps": 500,
-    "rabi_over_2pi_MHz": 0.1
+    "rabi_over_2pi_MHz": 0.1,
+    "scenario": "ms_gate_bell_demo"
   },
-  "provenance_tags": [
-    "demo",
-    "ms_gate_bell"
-  ],
   "purpose": "end-to-end detuned MS gate demonstration — solve() + list-format Hamiltonian + two-ion population projectors as custom observables",
   "scenario": "ms_gate_bell_demo",
-  "schema_version": 1,
-  "storage_mode": "omitted",
+  "schema_version": 2,
   "workplan_reference": "not a Phase 0.F benchmark; complements run_demo_gaussian_pulse.py with the two-ion list-format path"
 }

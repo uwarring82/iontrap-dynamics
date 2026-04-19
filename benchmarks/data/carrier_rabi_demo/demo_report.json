@@ -1,0 +1,33 @@
+{
+  "analytic_formulas": {
+    "sigma_x_0": "0",
+    "sigma_y_0": "sin(Ω t)",
+    "sigma_z_0": "-cos(Ω t)"
+  },
+  "arrays_schema_note": "arrays.npz follows the canonical cache schema: 'times' in SI seconds, observables under 'expectation__<label>'. The analytic overlay arrays live separately in analytic_overlay.npz.",
+  "canonical_request_hash": "593bc11287b0210e9b0e251e122577e21fd160f05fe06a88d434cb5cc1ad5c80",
+  "elapsed_seconds": 0.006455207971157506,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-19T08:15:02.181203+00:00",
+  "max_numerical_vs_analytic_error": 1.501794873210328e-05,
+  "parameters": {
+    "N_fock": 3,
+    "duration_us": 2.0,
+    "initial_state": "|↓, 0⟩",
+    "n_steps": 200,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "carrier_rabi_demo"
+  },
+  "purpose": "illustrative — overlays numerical solve() output against analytic formulas",
+  "scenario": "carrier_rabi_demo",
+  "schema_version": 2,
+  "workplan_reference": "not a Phase 0.F benchmark; companion to run_benchmark_sideband.py"
+}

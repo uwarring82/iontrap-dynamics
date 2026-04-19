@@ -1,0 +1,26 @@
+{
+  "cache_format_version": 1,
+  "expectation_labels": [
+    "n_com",
+    "p_dd",
+    "p_flip",
+    "p_uu",
+    "sigma_z_0",
+    "sigma_z_1"
+  ],
+  "metadata": {
+    "backend_name": "qutip-mesolve",
+    "backend_version": "5.2.3",
+    "convention_version": "0.1-draft",
+    "fock_truncations": {
+      "com": 12
+    },
+    "provenance_tags": [
+      "demo",
+      "ms_gate_bell"
+    ],
+    "request_hash": "c9a4e362da0ce5234b1c12226f2af8fe7fcf5452be3608415a293c15e6f383cf",
+    "storage_mode": "omitted"
+  },
+  "warnings": []
+}

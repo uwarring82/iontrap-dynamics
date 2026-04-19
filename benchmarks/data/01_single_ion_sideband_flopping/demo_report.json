@@ -1,5 +1,7 @@
 {
-  "elapsed_seconds": 0.0032834159792400897,
+  "arrays_schema_note": "arrays.npz follows the canonical cache schema: 'times' in SI seconds, observables under 'expectation__<label>'. Multiply times by 1e6 for μs.",
+  "canonical_request_hash": "d237469149f7a7afdd50fd4e02dd81173072bd34f240ef62f0051dbd5a8ee5ad",
+  "elapsed_seconds": 0.006589708005776629,
   "environment": {
     "machine": "arm64",
     "numpy": "2.4.4",
@@ -8,7 +10,7 @@
     "qutip": "5.2.3",
     "scipy": "1.17.1"
   },
-  "generated_at": "2026-04-18T07:59:09.307799+00:00",
+  "generated_at": "2026-04-19T08:13:09.162213+00:00",
   "parameters": {
     "N_fock": 30,
     "duration_us": 76.75243088786394,
@@ -18,10 +20,11 @@
     "mode_frequency_over_2pi_MHz": 1.5,
     "n_steps": 200,
     "rabi_over_2pi_MHz": 0.1,
+    "scenario": "01_single_ion_sideband_flopping",
     "sideband_rabi_rate_over_2pi_kHz": 26.057806597969776
   },
   "scenario": "01_single_ion_sideband_flopping",
-  "schema_version": 1,
+  "schema_version": 2,
   "threshold_seconds": 5.0,
   "workplan_reference": "§0.F item 1"
 }
