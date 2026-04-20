@@ -411,9 +411,32 @@ Each protocol's result layout is dual-view, per §17.2:
 - `sampled_outcome[f"{label}_bits"]` — `(shots, n_times)` int8 bright/dark bits.
 - `sampled_outcome[f"{label}_bright_fraction"]` — `(n_times,)` float64 shot-averaged estimate.
 
-### 17.10 Pending (still in flight across Dispatches N–P)
+### 17.10 Multi-ion joint readout *(added in Dispatch N)*
 
-Rules governing parity-scan and sideband-flopping inference protocols, plus estimator / CI semantics, will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+Entangled-state measurements require joint sampling — each shot must project both (or all) ions on the same draw, so the correlations in the quantum state survive into the shot record. The `ParityScan` protocol (Dispatch N) implements the two-ion case by reconstructing the joint readout distribution from three expectations:
+
+    P(↑↑) = (1 + ⟨σ_z^i⟩ + ⟨σ_z^j⟩ + ⟨σ_z^i σ_z^j⟩) / 4
+    P(↑↓) = (1 + ⟨σ_z^i⟩ − ⟨σ_z^j⟩ − ⟨σ_z^i σ_z^j⟩) / 4
+    P(↓↑) = (1 − ⟨σ_z^i⟩ + ⟨σ_z^j⟩ − ⟨σ_z^i σ_z^j⟩) / 4
+    P(↓↓) = (1 − ⟨σ_z^i⟩ − ⟨σ_z^j⟩ + ⟨σ_z^i σ_z^j⟩) / 4
+
+and drawing one categorical sample per shot instead of two independent Bernoullis. The trajectory must carry all three expectations — `sigma_z_{i}`, `sigma_z_{j}`, and `parity_{i}_{j}` (provided by `iontrap_dynamics.observables.parity`).
+
+**Why independent Bernoullis fail for entanglement.** Sampling each ion with an independent Bernoulli at its marginal `p_↑^(k)` reproduces the correct single-ion statistics but **factorises** the joint distribution into `P(s_0, s_1) = p_↑^(0)·p_↑^(1) · …`. For a Bell state `|Φ+⟩ = (|↑↑⟩ + |↓↓⟩)/√2`, the marginals are `p_↑^(k) = 1/2` so the factorised joint gives `P(↑↑) = 1/4`, whereas the true joint gives `P(↑↑) = 1/2`. Parity estimates from an independent-Bernoulli pipeline underestimate Bell-state fidelity by a factor of up to 2.
+
+**Projective envelope for the parity estimator.** Under a shared per-ion detector with `TP = P(bright | ↑)` and `TN = P(dark | ↓)` (from `DetectorConfig.classification_fidelity`), the infinite-shots parity estimator satisfies
+
+    ⟨parity⟩∞ = 2 · Σ_s P(s) · P(bits agree | s)  −  1
+
+which, expanded, reduces at zero marginals (`⟨σ_z^i⟩ = ⟨σ_z^j⟩ = 0`) to
+
+    ⟨parity⟩∞ = (TP + TN − 1)² · ⟨σ_z^i σ_z^j⟩  +  (TP − TN)²
+
+The first term is the entanglement-visibility shrinkage `contrast²`; the second is a detector-asymmetry offset that vanishes for symmetric detectors (`TP = TN`). Callers computing Bell-state fidelity from experimental parity records must divide out the contrast² factor.
+
+### 17.11 Pending (still in flight across Dispatches O–P)
+
+Rules governing sideband-flopping inference and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
 
 ---
 

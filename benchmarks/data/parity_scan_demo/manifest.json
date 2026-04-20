@@ -1,0 +1,23 @@
+{
+  "cache_format_version": 1,
+  "expectation_labels": [
+    "parity_0_1",
+    "sigma_z_0",
+    "sigma_z_1"
+  ],
+  "metadata": {
+    "backend_name": "qutip-mesolve",
+    "backend_version": "5.2.3",
+    "convention_version": "0.1-draft",
+    "fock_truncations": {
+      "com": 12
+    },
+    "provenance_tags": [
+      "demo",
+      "parity_scan"
+    ],
+    "request_hash": "4c374e823dddbe9498e04ae658ae98d2e0b84b16f32388ce9e97391e26fb72c7",
+    "storage_mode": "omitted"
+  },
+  "warnings": []
+}

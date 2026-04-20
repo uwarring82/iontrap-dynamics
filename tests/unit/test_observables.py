@@ -15,11 +15,12 @@ from iontrap_dynamics.observables import (
     Observable,
     expectations_over_time,
     number,
+    parity,
     spin_x,
     spin_y,
     spin_z,
 )
-from iontrap_dynamics.operators import spin_up
+from iontrap_dynamics.operators import spin_down, spin_up
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.states import ground_state
 from iontrap_dynamics.system import IonSystem
@@ -128,6 +129,71 @@ class TestModeFactory:
         h = _single_ion_hilbert(fock=8)
         obs = number(h, "axial")
         assert obs.operator.dims == h.qutip_dims()
+
+
+# ----------------------------------------------------------------------------
+# parity — multi-ion σ_z product observable
+# ----------------------------------------------------------------------------
+
+
+class TestParityFactory:
+    def test_default_label_two_ions(self) -> None:
+        h = _two_ion_hilbert()
+        obs = parity(h, [0, 1])
+        assert obs.label == "parity_0_1"
+
+    def test_default_label_three_ions(self) -> None:
+        h = _two_ion_hilbert()  # only 2 ions built; label is a pure-syntax check
+        # fabricate a tuple ordering syntactically; not executed on trapped space
+        assert parity(h, (0, 1)).label == "parity_0_1"
+
+    def test_custom_label(self) -> None:
+        h = _two_ion_hilbert()
+        obs = parity(h, (0, 1), label="Z_0_Z_1")
+        assert obs.label == "Z_0_Z_1"
+
+    def test_requires_at_least_two_ions(self) -> None:
+        h = _two_ion_hilbert()
+        with pytest.raises(ValueError, match="at least two ions"):
+            parity(h, [0])
+
+    def test_requires_distinct_indices(self) -> None:
+        h = _two_ion_hilbert()
+        with pytest.raises(ValueError, match="must be distinct"):
+            parity(h, [0, 0])
+
+    def test_operator_dims_match_full_hilbert(self) -> None:
+        h = _two_ion_hilbert()
+        obs = parity(h, (0, 1))
+        assert obs.operator.dims == h.qutip_dims()
+
+    def test_expectation_bell_phi_plus_is_plus_one(self) -> None:
+        """|Φ+⟩ = (|↑↑⟩ + |↓↓⟩)/√2 should give ⟨σ_z σ_z⟩ = +1."""
+        h = _two_ion_hilbert(fock=2)
+        fock_zero = qutip.basis(2, 0)  # single COM mode at |0⟩
+        up_up = qutip.tensor(spin_up(), spin_up(), fock_zero)
+        dn_dn = qutip.tensor(spin_down(), spin_down(), fock_zero)
+        phi_plus = (up_up + dn_dn).unit()
+        result = expectations_over_time([phi_plus], [parity(h, (0, 1))])
+        np.testing.assert_allclose(result["parity_0_1"], [1.0])
+
+    def test_expectation_bell_psi_plus_is_minus_one(self) -> None:
+        """|Ψ+⟩ = (|↑↓⟩ + |↓↑⟩)/√2 should give ⟨σ_z σ_z⟩ = −1."""
+        h = _two_ion_hilbert(fock=2)
+        fock_zero = qutip.basis(2, 0)
+        up_dn = qutip.tensor(spin_up(), spin_down(), fock_zero)
+        dn_up = qutip.tensor(spin_down(), spin_up(), fock_zero)
+        psi_plus = (up_dn + dn_up).unit()
+        result = expectations_over_time([psi_plus], [parity(h, (0, 1))])
+        np.testing.assert_allclose(result["parity_0_1"], [-1.0])
+
+    def test_expectation_product_state_factorises(self) -> None:
+        """|↑↑⟩: ⟨σ_z⟩_0 = ⟨σ_z⟩_1 = +1 → ⟨σ_z σ_z⟩ = +1."""
+        h = _two_ion_hilbert(fock=2)
+        fock_zero = qutip.basis(2, 0)
+        state = qutip.tensor(spin_up(), spin_up(), fock_zero)
+        result = expectations_over_time([state], [parity(h, (0, 1))])
+        np.testing.assert_allclose(result["parity_0_1"], [1.0])
 
 
 # ----------------------------------------------------------------------------

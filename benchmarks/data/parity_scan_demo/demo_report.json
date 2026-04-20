@@ -1,0 +1,61 @@
+{
+  "analytic_detector_fidelity": {
+    "effective_bright_rate": 10.3,
+    "effective_dark_rate": 0.3,
+    "fidelity": 0.9957223843832095,
+    "true_negative_rate": 0.9997341888099782,
+    "true_positive_rate": 0.9917105799564407
+  },
+  "canonical_request_hash": "4c374e823dddbe9498e04ae658ae98d2e0b84b16f32388ce9e97391e26fb72c7",
+  "convention_references": [
+    "§3 Spin basis",
+    "§17.8 Detector response",
+    "§17.9 Projective-shot readout",
+    "§17.10 Multi-ion joint readout"
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "extreme_value_band": 0.12775308848897193,
+  "generated_at": "2026-04-20T10:12:09.520576+00:00",
+  "lamb_dicke_parameter": 0.1842565174827199,
+  "max_envelope_vs_ideal": 0.01697288485316073,
+  "max_parity_estimate_vs_envelope": 0.09102300618398695,
+  "measurement_result_provenance_tags": [
+    "demo",
+    "parity_scan",
+    "measurement",
+    "bell_parity",
+    "ms_gate"
+  ],
+  "parameters": {
+    "N_fock": 12,
+    "dark_count_rate": 0.3,
+    "duration_us": 27.13608217668021,
+    "efficiency": 0.4,
+    "initial_state": "|↓↓, 0⟩",
+    "lambda_bright_emit": 25.0,
+    "lambda_dark_emit": 0.0,
+    "loops": 1,
+    "n_steps": 400,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 0.1,
+    "scenario": "parity_scan_demo",
+    "seed": 20260420,
+    "shots": 500,
+    "threshold": 4
+  },
+  "purpose": "joint two-ion readout through a Bell-state-forming MS gate — shows the projective parity envelope shrunk by the detector's (TP + TN − 1)² contrast factor.",
+  "readout_elapsed_seconds": 0.025952500000130385,
+  "scenario": "parity_scan_demo",
+  "schema_version": 2,
+  "t_gate_us": 27.13608217668021,
+  "trajectory_elapsed_seconds": 0.009578917000908405,
+  "trajectory_hash": "4c374e823dddbe9498e04ae658ae98d2e0b84b16f32388ce9e97391e26fb72c7",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch N)"
+}

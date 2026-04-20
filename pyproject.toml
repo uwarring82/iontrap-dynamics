@@ -218,6 +218,7 @@ ignore = [
 "tools/run_demo_binomial_readout.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_carrier.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_detected_readout.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/run_demo_parity_scan.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_poisson_readout.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_spin_readout.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_gaussian_pulse.py" = ["RUF001", "RUF002", "RUF003"]

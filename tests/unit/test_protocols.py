@@ -19,6 +19,7 @@ from iontrap_dynamics import (
     ConventionError,
     DetectorConfig,
     MeasurementResult,
+    ParityScan,
     ResultMetadata,
     SpinReadout,
     StorageMode,
@@ -449,3 +450,422 @@ class TestSpinReadoutProjectiveSampling:
         np.testing.assert_array_equal(
             r1.sampled_outcome["spin_readout_bright_fraction"], np.ones(3)
         )
+
+
+# ----------------------------------------------------------------------------
+# ParityScan — joint two-ion readout
+# ----------------------------------------------------------------------------
+
+
+def _two_ion_trajectory(
+    *,
+    sigma_z_0: np.ndarray,
+    sigma_z_1: np.ndarray,
+    parity_01: np.ndarray,
+    provenance_tags: tuple[str, ...] = ("demo", "ms_gate"),
+    request_hash: str = "b" * 64,
+) -> TrajectoryResult:
+    """Two-ion trajectory carrying sigma_z_0, sigma_z_1, parity_0_1."""
+    assert sigma_z_0.shape == sigma_z_1.shape == parity_01.shape
+    times = np.linspace(0.0, 1.0e-6, sigma_z_0.size)
+    meta = ResultMetadata(
+        convention_version=CONVENTION_VERSION,
+        request_hash=request_hash,
+        backend_name="qutip-mesolve",
+        backend_version="5.0.0",
+        storage_mode=StorageMode.OMITTED,
+        provenance_tags=provenance_tags,
+    )
+    return TrajectoryResult(
+        metadata=meta,
+        times=times,
+        expectations={
+            "sigma_z_0": sigma_z_0,
+            "sigma_z_1": sigma_z_1,
+            "parity_0_1": parity_01,
+        },
+    )
+
+
+def _bell_phi_plus_trajectory(n_times: int = 4) -> TrajectoryResult:
+    """|Φ+⟩ Bell state: ⟨σ_z^i⟩ = 0, ⟨σ_z^0 σ_z^1⟩ = +1."""
+    return _two_ion_trajectory(
+        sigma_z_0=np.zeros(n_times),
+        sigma_z_1=np.zeros(n_times),
+        parity_01=np.ones(n_times),
+    )
+
+
+def _bell_psi_plus_trajectory(n_times: int = 4) -> TrajectoryResult:
+    """|Ψ+⟩ Bell state: ⟨σ_z^i⟩ = 0, ⟨σ_z^0 σ_z^1⟩ = −1."""
+    return _two_ion_trajectory(
+        sigma_z_0=np.zeros(n_times),
+        sigma_z_1=np.zeros(n_times),
+        parity_01=-np.ones(n_times),
+    )
+
+
+class TestParityScanConstruction:
+    def test_minimal_construction(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        assert protocol.ion_indices == (0, 1)
+        assert protocol.label == "parity_scan"
+
+    def test_non_distinct_indices_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be distinct"):
+            ParityScan(
+                ion_indices=(0, 0),
+                detector=_ideal_detector(),
+                lambda_bright=20.0,
+                lambda_dark=0.0,
+            )
+
+    def test_negative_index_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be >= 0"):
+            ParityScan(
+                ion_indices=(-1, 1),
+                detector=_ideal_detector(),
+                lambda_bright=20.0,
+                lambda_dark=0.0,
+            )
+
+    def test_negative_rate_raises(self) -> None:
+        with pytest.raises(ValueError, match="rates must be >= 0"):
+            ParityScan(
+                ion_indices=(0, 1),
+                detector=_ideal_detector(),
+                lambda_bright=20.0,
+                lambda_dark=-0.1,
+            )
+
+    def test_dark_greater_than_bright_raises(self) -> None:
+        with pytest.raises(ValueError, match="lambda_dark must be <= lambda_bright"):
+            ParityScan(
+                ion_indices=(0, 1),
+                detector=_ideal_detector(),
+                lambda_bright=2.0,
+                lambda_dark=5.0,
+            )
+
+    def test_frozen(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        with pytest.raises(FrozenInstanceError):
+            protocol.lambda_bright = 10.0  # type: ignore[misc]
+
+
+class TestParityScanRunSurface:
+    def test_result_is_measurement_result(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(_bell_phi_plus_trajectory(), shots=100, seed=0)
+        assert isinstance(result, MeasurementResult)
+        assert result.shots == 100
+
+    def test_sampled_outcome_shapes(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(_bell_phi_plus_trajectory(n_times=5), shots=200, seed=0)
+        assert result.sampled_outcome["parity_scan_counts_0"].shape == (200, 5)
+        assert result.sampled_outcome["parity_scan_counts_1"].shape == (200, 5)
+        assert result.sampled_outcome["parity_scan_bits_0"].shape == (200, 5)
+        assert result.sampled_outcome["parity_scan_bits_1"].shape == (200, 5)
+        assert result.sampled_outcome["parity_scan_parity"].shape == (200, 5)
+        assert result.sampled_outcome["parity_scan_parity"].dtype == np.int8
+        assert result.sampled_outcome["parity_scan_parity_estimate"].shape == (5,)
+
+    def test_ideal_outcome_carries_joint_and_parity(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        trajectory = _bell_phi_plus_trajectory(n_times=3)
+        result = protocol.run(trajectory, shots=10, seed=0)
+        assert result.ideal_outcome["p_up_0"].shape == (3,)
+        assert result.ideal_outcome["p_up_1"].shape == (3,)
+        np.testing.assert_array_equal(result.ideal_outcome["parity"], np.ones(3))
+        np.testing.assert_allclose(
+            result.ideal_outcome["joint_probabilities"].sum(axis=0), np.ones(3)
+        )
+
+    def test_trajectory_hash_and_provenance(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        trajectory = _two_ion_trajectory(
+            sigma_z_0=np.array([0.0]),
+            sigma_z_1=np.array([0.0]),
+            parity_01=np.array([1.0]),
+            provenance_tags=("demo", "ms_gate"),
+            request_hash="d" * 64,
+        )
+        result = protocol.run(trajectory, shots=10, seed=0, provenance_tags=("unit-test",))
+        assert result.trajectory_hash == "d" * 64
+        assert result.metadata.provenance_tags == (
+            "demo",
+            "ms_gate",
+            "measurement",
+            "parity_scan",
+            "unit-test",
+        )
+
+    def test_label_routes_sampled_outcome_keys(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+            label="bell_scan",
+        )
+        result = protocol.run(_bell_phi_plus_trajectory(n_times=2), shots=10, seed=0)
+        assert "bell_scan_counts_0" in result.sampled_outcome
+        assert "bell_scan_parity" in result.sampled_outcome
+        assert "parity_scan_parity" not in result.sampled_outcome
+
+
+class TestParityScanRunErrors:
+    def test_missing_marginal_raises(self) -> None:
+        times = np.linspace(0.0, 1.0e-6, 3)
+        meta = ResultMetadata(
+            convention_version=CONVENTION_VERSION,
+            request_hash="a" * 64,
+            backend_name="qutip-mesolve",
+            backend_version="5.0.0",
+            storage_mode=StorageMode.OMITTED,
+        )
+        trajectory = TrajectoryResult(
+            metadata=meta,
+            times=times,
+            expectations={
+                "sigma_z_0": np.zeros(3),
+                # missing sigma_z_1 and parity_0_1
+            },
+        )
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        with pytest.raises(ConventionError, match="sigma_z_1"):
+            protocol.run(trajectory, shots=10, seed=0)
+
+    def test_missing_parity_raises(self) -> None:
+        times = np.linspace(0.0, 1.0e-6, 2)
+        meta = ResultMetadata(
+            convention_version=CONVENTION_VERSION,
+            request_hash="a" * 64,
+            backend_name="qutip-mesolve",
+            backend_version="5.0.0",
+            storage_mode=StorageMode.OMITTED,
+        )
+        trajectory = TrajectoryResult(
+            metadata=meta,
+            times=times,
+            expectations={
+                "sigma_z_0": np.zeros(2),
+                "sigma_z_1": np.zeros(2),
+            },
+        )
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        with pytest.raises(ConventionError, match="parity_0_1"):
+            protocol.run(trajectory, shots=10, seed=0)
+
+    def test_unphysical_joint_raises(self) -> None:
+        """Marginals + parity that imply negative joint probabilities → error."""
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        # ⟨σ_z_0⟩ = ⟨σ_z_1⟩ = 0 but ⟨σ_z_0 σ_z_1⟩ = +1 → P(↑↓) = P(↓↑) = 0
+        # which is legal. Push parity past +1 to force negatives.
+        trajectory = _two_ion_trajectory(
+            sigma_z_0=np.zeros(1),
+            sigma_z_1=np.zeros(1),
+            parity_01=np.array([1.5]),
+        )
+        with pytest.raises(ValueError, match="unphysical"):
+            protocol.run(trajectory, shots=10, seed=0)
+
+    def test_zero_shots_raises(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        with pytest.raises(ValueError, match="shots must be >= 1"):
+            protocol.run(_bell_phi_plus_trajectory(), shots=0, seed=0)
+
+
+class TestParityScanJointSampling:
+    def test_phi_plus_all_agree(self) -> None:
+        """|Φ+⟩: perfect correlation → every shot parity is +1."""
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1),
+            lambda_bright=30.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(_bell_phi_plus_trajectory(n_times=3), shots=300, seed=0)
+        parities = result.sampled_outcome["parity_scan_parity"]
+        # With ideal detector + clean Poisson saturation, every shot
+        # should produce parity = +1 for |Φ+⟩.
+        assert np.all(parities == 1)
+        np.testing.assert_array_equal(
+            result.sampled_outcome["parity_scan_parity_estimate"],
+            np.ones(3),
+        )
+
+    def test_psi_plus_all_anticorrelated(self) -> None:
+        """|Ψ+⟩: perfect anti-correlation → every shot parity is −1."""
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1),
+            lambda_bright=30.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(_bell_psi_plus_trajectory(n_times=3), shots=300, seed=0)
+        parities = result.sampled_outcome["parity_scan_parity"]
+        assert np.all(parities == -1)
+        np.testing.assert_array_equal(
+            result.sampled_outcome["parity_scan_parity_estimate"],
+            -np.ones(3),
+        )
+
+    def test_product_state_factorises(self) -> None:
+        """Product state |↑↑⟩: sigma_z_i = +1, parity = +1 → parity est +1."""
+        trajectory = _two_ion_trajectory(
+            sigma_z_0=np.ones(3),
+            sigma_z_1=np.ones(3),
+            parity_01=np.ones(3),
+        )
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1),
+            lambda_bright=30.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(trajectory, shots=200, seed=0)
+        np.testing.assert_array_equal(
+            result.sampled_outcome["parity_scan_parity_estimate"],
+            np.ones(3),
+        )
+
+    def test_parity_estimator_converges_to_envelope(self) -> None:
+        """Noisy detector: parity estimate tracks the linear-fidelity envelope."""
+        detector = _noisy_detector()
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=detector,
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        # Sweep the parity observable from −1 to +1 while keeping marginals
+        # at 0 (both ions maximally mixed σ_z basis) — pure entanglement
+        # contrast with no single-ion bias.
+        n_times = 21
+        trajectory = _two_ion_trajectory(
+            sigma_z_0=np.zeros(n_times),
+            sigma_z_1=np.zeros(n_times),
+            parity_01=np.linspace(-1.0, 1.0, n_times),
+        )
+        shots = 10_000
+        result = protocol.run(trajectory, shots=shots, seed=0)
+        estimate = result.sampled_outcome["parity_scan_parity_estimate"]
+        envelope = result.ideal_outcome["parity_envelope"]
+        # Per-point shot std of a ±1 sample estimator ≈ sqrt(1/N); use 4σ.
+        tolerance = 4.0 / np.sqrt(shots)
+        np.testing.assert_allclose(estimate, envelope, atol=tolerance)
+
+    def test_envelope_contracts_by_fidelity_squared(self) -> None:
+        """Envelope = (TP + TN − 1)² · ⟨σ_z σ_z⟩ + (TP − TN)² at marginals = 0.
+
+        Expansion of the 4-term projective envelope at σ_z_0 = σ_z_1 = 0
+        separates into (a) a parity contrast scaled by the fidelity-
+        contrast squared (TP + TN − 1)² — the entanglement-visibility
+        shrinkage — and (b) a detector-asymmetry offset (TP − TN)²
+        that vanishes for symmetric detectors (TP = TN) but is nonzero
+        whenever dark-count and threshold choices leave TP ≠ TN.
+        """
+        detector = _noisy_detector()
+        fid = detector.classification_fidelity(lambda_bright=25.0, lambda_dark=0.0)
+        tp = fid["true_positive_rate"]
+        tn = fid["true_negative_rate"]
+        contrast = tp + tn - 1.0
+        asymmetry = tp - tn
+
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=detector,
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        trajectory = _two_ion_trajectory(
+            sigma_z_0=np.zeros(5),
+            sigma_z_1=np.zeros(5),
+            parity_01=np.array([-1.0, -0.5, 0.0, 0.5, 1.0]),
+        )
+        result = protocol.run(trajectory, shots=10, seed=0)
+        envelope = result.ideal_outcome["parity_envelope"]
+        expected = contrast**2 * trajectory.expectations["parity_0_1"] + asymmetry**2
+        np.testing.assert_allclose(envelope, expected)
+
+    def test_seed_reproducible(self) -> None:
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_noisy_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.1,
+        )
+        trajectory = _bell_phi_plus_trajectory(n_times=4)
+        first = protocol.run(trajectory, shots=100, seed=42)
+        second = protocol.run(trajectory, shots=100, seed=42)
+        np.testing.assert_array_equal(
+            first.sampled_outcome["parity_scan_parity"],
+            second.sampled_outcome["parity_scan_parity"],
+        )
+
+    def test_joint_reconstruction_correctness(self) -> None:
+        """Reconstructed joint for |Φ+⟩: P(↑↑)=P(↓↓)=1/2, P(↑↓)=P(↓↑)=0."""
+        protocol = ParityScan(
+            ion_indices=(0, 1),
+            detector=_ideal_detector(),
+            lambda_bright=10.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(_bell_phi_plus_trajectory(n_times=2), shots=10, seed=0)
+        joint = result.ideal_outcome["joint_probabilities"]  # shape (4, 2)
+        np.testing.assert_allclose(joint[0], 0.5)  # P(↑↑)
+        np.testing.assert_allclose(joint[1], 0.0, atol=1e-12)  # P(↑↓)
+        np.testing.assert_allclose(joint[2], 0.0, atol=1e-12)  # P(↓↑)
+        np.testing.assert_allclose(joint[3], 0.5)  # P(↓↓)

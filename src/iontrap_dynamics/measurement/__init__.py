@@ -19,10 +19,14 @@ threshold — composing with rate-consuming channels via explicit
 calls either side of the channel; Dispatch M adds the first
 protocol, :class:`SpinReadout`, which wraps projective state
 projection + Poisson photon counting + thresholding into a named
-``.run(trajectory, shots, seed)`` call. Parity scan / sideband-
-flopping protocols and statistics follow in Dispatches N–P. The
-``CONVENTIONS.md`` §17 section is opened here as staged rules and
-will freeze at the close of the track.
+``.run(trajectory, shots, seed)`` call; Dispatch N adds
+:class:`ParityScan`, which reads two ions on the same shot and
+reconstructs the joint readout distribution from
+``⟨σ_z^i⟩``, ``⟨σ_z^j⟩``, and ``⟨σ_z^i σ_z^j⟩`` so entanglement-
+bearing correlations (Bell-state verification, CHSH) survive.
+Sideband-flopping inference (Dispatch O) and statistics (Dispatch P)
+follow the same shape. The ``CONVENTIONS.md`` §17 section is opened
+here as staged rules and will freeze at the close of the track.
 """
 
 from __future__ import annotations
@@ -34,12 +38,13 @@ from .channels import (
     sample_outcome,
 )
 from .detectors import DetectorConfig
-from .protocols import SpinReadout
+from .protocols import ParityScan, SpinReadout
 
 __all__ = [
     "BernoulliChannel",
     "BinomialChannel",
     "DetectorConfig",
+    "ParityScan",
     "PoissonChannel",
     "SpinReadout",
     "sample_outcome",

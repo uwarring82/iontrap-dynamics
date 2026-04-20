@@ -63,7 +63,8 @@ Today the importable code surface covers:
   `coherent_mode` / `squeezed_vacuum_mode` / `squeezed_coherent_mode`
   factories (CONVENTIONS.md §6, §7)
 - `iontrap_dynamics.observables` — named `Observable` records and
-  `expectations_over_time(...)`; spin x/y/z plus mode number
+  `expectations_over_time(...)`; spin x/y/z, multi-ion parity
+  (`σ_z` product), plus mode number
 
 **Dynamics (Phase 1, full builder family)**
 
@@ -115,19 +116,25 @@ every call.
   shot readout model (§17.9) and returns a `MeasurementResult` with
   per-shot counts / bits / bright-fraction plus the ideal `p_↑` and
   `TP · p_↑ + (1 − TN) · (1 − p_↑)` envelope.
+- `iontrap_dynamics.measurement.ParityScan` — two-ion joint readout
+  protocol (§17.10). Reconstructs `P(s_0, s_1)` from `⟨σ_z^i⟩`,
+  `⟨σ_z^j⟩`, and `⟨σ_z^i σ_z^j⟩`, draws joint categorical samples so
+  entangled-state correlations survive, and returns parity estimate
+  + envelope shrunk by `(TP + TN − 1)²`. Requires the new
+  `iontrap_dynamics.observables.parity` factory.
 
-Dispatches N–P extend the layer with parity-scan and sideband-
-flopping inference protocols plus statistics; `CONVENTIONS.md` §17
-seals at v0.2 under a Convention Freeze gate.
+Dispatches O–P extend the layer with sideband-flopping inference and
+statistics; `CONVENTIONS.md` §17 seals at v0.2 under a Convention
+Freeze gate.
 
 **Demo tools** (`tools/run_*.py` with canonical `manifest.json` +
 `arrays.npz` + `demo_report.json` artefacts under `benchmarks/data/`):
 `run_benchmark_sideband`, `run_demo_carrier`, `run_demo_gaussian_pulse`,
 `run_demo_ms_gate`, `run_demo_bernoulli_readout`, `run_demo_binomial_readout`,
 `run_demo_poisson_readout`, `run_demo_detected_readout`,
-`run_demo_spin_readout`.
+`run_demo_spin_readout`, `run_demo_parity_scan`.
 
-Test suite: **593 passed, 3 skipped**. Skips are migration-tier
+Test suite: **624 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

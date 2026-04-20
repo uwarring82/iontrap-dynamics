@@ -107,6 +107,44 @@ def spin_z(
 
 
 # ----------------------------------------------------------------------------
+# Multi-ion spin observables
+# ----------------------------------------------------------------------------
+
+
+def parity(
+    hilbert: HilbertSpace,
+    ion_indices: Sequence[int],
+    *,
+    label: str | None = None,
+) -> Observable:
+    """Return the multi-ion parity operator ``Π_i σ_z^(i)``.
+
+    For a pair ``(i, j)`` the operator is ``σ_z^(i) · σ_z^(j)``; its
+    expectation is the joint two-body correlation ``⟨σ_z^(i) σ_z^(j)⟩``
+    consumed by parity-scan protocols (Dispatch N) to reconstruct the
+    joint readout distribution from single-ion marginals.
+
+    For a general sequence of ion indices, returns the product
+    ``∏_k σ_z^(i_k)``. Sign convention: eigenvalue ``(-1)^n_↑`` where
+    ``n_↑`` is the count of ``|↑⟩`` among the named ions — consistent
+    with the atomic-physics σ_z convention (§3: ⟨↑|σ_z|↑⟩ = +1).
+
+    Default label: ``"parity_{i0}_{i1}_..."``.
+    """
+    indices = tuple(ion_indices)
+    if len(indices) < 2:
+        raise ValueError(f"parity: ion_indices must name at least two ions; got {indices}")
+    if len(set(indices)) != len(indices):
+        raise ValueError(f"parity: ion_indices must be distinct; got {indices}")
+
+    op = hilbert.spin_op_for_ion(sigma_z_ion(), indices[0])
+    for i in indices[1:]:
+        op = op * hilbert.spin_op_for_ion(sigma_z_ion(), i)
+    default = "parity_" + "_".join(str(i) for i in indices)
+    return Observable(label=label or default, operator=op)
+
+
+# ----------------------------------------------------------------------------
 # Mode observables
 # ----------------------------------------------------------------------------
 
@@ -174,6 +212,7 @@ __all__ = [
     "Observable",
     "expectations_over_time",
     "number",
+    "parity",
     "spin_x",
     "spin_y",
     "spin_z",

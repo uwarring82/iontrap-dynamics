@@ -196,7 +196,7 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
-#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M)
+#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M / N)
 
 - `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
   carrying the ideal / sampled dual-view mandated by
@@ -266,6 +266,23 @@ bloating the typed schema.
   envelopes (projective-linear vs rate-averaged-nonlinear) to
   visualise how far the two sampling models diverge at finite
   fidelity.
+- `ParityScan` protocol (Dispatch N) — first multi-ion protocol.
+  Reconstructs the joint readout distribution `P(s_0, s_1)` from
+  `⟨σ_z^i⟩`, `⟨σ_z^j⟩`, and the new two-body observable
+  `⟨σ_z^i σ_z^j⟩`, then draws one categorical sample per shot so
+  entangled-state correlations survive. Returns a
+  `MeasurementResult` with `ideal_outcome` = `{p_up_i, p_up_j,
+  parity, parity_envelope, joint_probabilities}` and
+  `sampled_outcome` carrying per-ion counts / bits, per-shot parity,
+  and shot-averaged parity estimate.
+- `iontrap_dynamics.observables.parity(hilbert, ion_indices)` —
+  multi-ion σ_z product observable factory. Default label
+  `"parity_{i0}_{i1}_…"`. Required input for `ParityScan`.
+- `tools/run_demo_parity_scan.py` — Bell-state-formation demo. Runs
+  the gate-closing MS Hamiltonian on two ions and reads joint
+  parity at every step, overlaying the ideal `⟨σ_z σ_z⟩`, the
+  projective fidelity-shrunk envelope, and the shot-averaged
+  parity estimate.
 
 ### Changed
 
@@ -282,8 +299,12 @@ bloating the typed schema.
   threshold composition, exact Poisson thinning + additive
   background); Dispatch M added §17.9 (projective-shot readout
   model, linear fidelity envelope `TP·p_↑ + (1−TN)·(1−p_↑)`,
-  per-protocol result layout). §17.10 lists the rules still pending
-  for Dispatches N–P.
+  per-protocol result layout); Dispatch N added §17.10 (multi-ion
+  joint readout: joint-probability reconstruction from three ZZ-
+  tomography components, why independent-Bernoulli sampling fails
+  for entangled states, parity envelope
+  `(TP + TN − 1)² · ⟨σ_z σ_z⟩ + (TP − TN)²` at zero marginals).
+  §17.11 lists the rules still pending for Dispatches O–P.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the
