@@ -45,7 +45,7 @@ QuTiP compat
 
 ``qc.py`` was written against QuTiP 4.x and uses ``from qutip import *``
 which, under QuTiP 5, does not expose the rotation-operator helpers
-``rx``/``ry``/``rz``. These are injected into the ``qc`` module's globals
+``rx``/``ry``/``rz`` or ``concurrence``. These are injected into the ``qc`` module's globals
 before any scenario runs. Two ``FutureWarning`` messages about ``e_ops``
 and ``progress_bar`` keyword-only transitions in QuTiP 5.3 are expected
 and ignored — we accept the current deprecation noise since the script
@@ -96,10 +96,16 @@ def _load_qc_module() -> Any:
     sys.path.insert(0, str(LEGACY_DIR))
     from qutip.core.gates import rx, ry, rz
 
+    try:
+        from qutip.metrics import concurrence
+    except ImportError:
+        from qutip import concurrence
+
     qc = importlib.import_module("qc")
     qc.rx = rx
     qc.ry = ry
     qc.rz = rz
+    qc.concurrence = concurrence
     return qc
 
 
