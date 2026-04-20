@@ -10,19 +10,27 @@ as the Phase 0 reference backend.
 
 ## Status
 
-Phase 0 is complete and Phase 1 is underway. The configuration layer and the
-first Hamiltonian builder are in place; end-to-end dynamics works
+Phase 0 and the Phase 1 *core* (configuration, builders, observables, state
+preparation, diagnostics) have shipped on `main` and are part of the
+`v0.1-alpha` cut per `WORKPLAN_v0.3.md` §5.0 (release-mapping amendment,
+v0.3.1). The Phase 1 *measurement layer* opened at Dispatch H and is
+in-flight toward `v0.2`; its conventions are staged, not yet frozen
+(`CONVENTIONS.md` §17). End-to-end dynamics works
 (`DriveConfig` → `carrier_hamiltonian` → `qutip.mesolve` → expected π-pulse
-flip).
+flip); end-to-end *measurement* works
+(`TrajectoryResult` → `p_↑` → `BernoulliChannel` → `MeasurementResult`).
 
 Phase 0 artefacts (all done):
 
-- Public conventions locked in `CONVENTIONS.md` v0.1-draft.
+- Public conventions locked in `CONVENTIONS.md` v0.1-draft; §17 (measurement
+  layer) opened as staged rules.
 - Three-layer regression harness populated: migration (5 / 5 scenarios with
-  legacy `qc.py`-generated references, bit-identical across three runs),
+  legacy `qc.py`-generated references, bit-identical across three runs;
+  2 / 5 active comparisons, 3 / 5 skipped with probe-informed blockers),
   analytic (6 closed-form formulas), invariant (9 checks).
 - Cache-integrity contract + the corresponding tests.
-- CI with ruff, mypy strict, pytest, pa11y accessibility report.
+- CI with ruff, ruff-format, mypy strict, pytest, pa11y WCAG 2 Level A
+  (hard gate, AA advisory per the v0.3.2 amendment).
 
 Today the importable code surface covers:
 
@@ -51,8 +59,11 @@ Today the importable code surface covers:
 - `iontrap_dynamics.system` — `IonSystem` composition with cross-validation
 - `iontrap_dynamics.hilbert` — `HilbertSpace` implementing the §2 tensor
   ordering, operator embedding helpers, motional primitives (a, a†, n̂)
-- `iontrap_dynamics.states` — `ground_state` ket + `compose_density`
-  general composition
+- `iontrap_dynamics.states` — `ground_state` ket, `compose_density`, plus
+  `coherent_mode` / `squeezed_vacuum_mode` / `squeezed_coherent_mode`
+  factories (CONVENTIONS.md §6, §7)
+- `iontrap_dynamics.observables` — named `Observable` records and
+  `expectations_over_time(...)`; spin x/y/z plus mode number
 
 **Dynamics (Phase 1, full builder family)**
 
@@ -73,8 +84,31 @@ all-orders operator via matrix exponentiation). Solver entry point:
 list-format Hamiltonians, enforces the §13 Fock-saturation ladder on
 every call.
 
-Test suite: **497 passed, 3 skipped**. Skips are migration-tier builder-
-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
+**Measurement (Phase 1, v0.2 — staged)**
+
+- `iontrap_dynamics.results.MeasurementResult` — `Result` sibling carrying
+  the ideal / sampled dual-view mandated by WORKPLAN §5; enforces
+  `shots ≥ 1` and `storage_mode = OMITTED` at construction.
+- `iontrap_dynamics.measurement.BernoulliChannel` — per-shot Bernoulli
+  sampler; returns `(shots, n_inputs)` bits with leading shot axis
+  (CONVENTIONS.md §17.1).
+- `iontrap_dynamics.measurement.sample_outcome(...)` — orchestrator that
+  seeds the RNG, applies the channel, and inherits upstream-trajectory
+  metadata when supplied (bit-reproducible given `(seed, probabilities,
+  shots)`).
+
+Dispatches I–O extend the layer with binomial / Poisson channels, detector
+models, protocols (spin readout, parity scan, sideband-flopping inference),
+and statistics; `CONVENTIONS.md` §17 seals at v0.2 under a Convention
+Freeze gate.
+
+**Demo tools** (`tools/run_*.py` with canonical `manifest.json` +
+`arrays.npz` + `demo_report.json` artefacts under `benchmarks/data/`):
+`run_benchmark_sideband`, `run_demo_carrier`, `run_demo_gaussian_pulse`,
+`run_demo_ms_gate`, `run_demo_bernoulli_readout`.
+
+Test suite: **518 passed, 3 skipped**. Skips are migration-tier
+builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:
 
@@ -87,6 +121,8 @@ Docs site scaffold:
 - `docs/phase-1-architecture.md` — concrete public-API reference
   (module map, per-module surface, extension points, non-goals)
 - `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
+- `docs/tutorials/index.md` — tutorials landing page (placeholder; content
+  arrives in Phase 1.E)
 - `docs/stylesheets/tokens.css` — vendored from `threehouse-plus-ec/cd-rules`
 
 The authoritative project documents are:
@@ -136,11 +172,19 @@ python -m pip install -e ".[dev,docs]"
 
 ## Repository Layout
 
-- `src/iontrap_dynamics/` - Python package
-- `tools/` - maintenance scripts for asset fetch and checksum verification
-- `assets/` - design assets consumed from `threehouse-plus-ec/cd-rules`
-- `WORKPLAN_v0.3.md` - project workplan
-- `CONVENTIONS.md` - binding conventions document
+- `src/iontrap_dynamics/` — Python package (core + `measurement/` subpackage)
+- `tests/` — `unit/`, `conventions/`, `regression/{analytic,invariants,migration}/`,
+  `benchmarks/`
+- `tools/` — maintenance scripts (asset fetch / checksum, SPDX check, pa11y
+  config, migration-reference generator) and demo runners
+- `benchmarks/data/` — canonical manifest + arrays + report artefacts per
+  demo / benchmark
+- `docs/` — mkdocs-material source for the documentation site
+- `assets/` — design assets consumed from `threehouse-plus-ec/cd-rules`
+- `legacy/` — pinned legacy `qc.py` used by migration-tier regression
+- `WORKPLAN_v0.3.md` — project workplan (v0.3.2 amendments applied)
+- `CONVENTIONS.md` — binding conventions document (§17 staged)
+- `CHANGELOG.md` — Keep-a-Changelog log of dispatches on `main`
 
 ## Licence
 
