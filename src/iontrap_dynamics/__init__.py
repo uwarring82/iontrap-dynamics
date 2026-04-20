@@ -21,6 +21,7 @@ from .exceptions import (
 from .measurement import (
     BernoulliChannel,
     BinomialChannel,
+    DetectorConfig,
     PoissonChannel,
     sample_outcome,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "BinomialChannel",
     "ConventionError",
     "ConvergenceError",
+    "DetectorConfig",
     "FockConvergenceWarning",
     "FockQualityWarning",
     "IntegrityError",

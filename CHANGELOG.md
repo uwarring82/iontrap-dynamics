@@ -196,7 +196,7 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
-#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K)
+#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L)
 
 - `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
   carrying the ideal / sampled dual-view mandated by
@@ -234,6 +234,21 @@ bloating the typed schema.
   `λ(t) = λ_dark + (λ_bright − λ_dark) · p_↑(t)` with
   `λ_bright = 10`, `λ_dark = 0.5`. Overlays the shot-averaged count
   against `λ(t)` with the `±1σ` mean-of-Poisson band `sqrt(λ/N)`.
+- `DetectorConfig` (Dispatch L) — frozen dataclass for detector
+  response (efficiency `η`, dark-count rate `γ_d`, threshold `N̂`).
+  `apply(rate)` returns `η · rate + γ_d` (exact Poisson thinning
+  plus additive background); `discriminate(counts)` thresholds
+  per-shot counts into bright / dark bits;
+  `classification_fidelity(lambda_bright, lambda_dark)` returns the
+  analytic TP / TN / F values from `scipy.stats.poisson.cdf`.
+  `sample_outcome` stays detector-agnostic — detectors compose
+  explicitly around the channel call.
+- `tools/run_demo_detected_readout.py` — first composition of
+  detector + Poisson channel. Runs the full
+  `apply → PoissonChannel → discriminate` pipeline on the carrier
+  Rabi trajectory with `η = 0.4`, `γ_d = 0.3`, `N̂ = 4`; overlays
+  the shot-averaged bright fraction against the Poisson-tail
+  envelope `P(count ≥ N̂ | λ_det)` and the ideal `p_↑(t)`.
 
 ### Changed
 
@@ -245,8 +260,11 @@ bloating the typed schema.
   (per-shot vs aggregated output shape; distributional- not bit-
   equivalence across channel types); Dispatch K generalised §17.6
   to cover `probability` and `rate` input types via the
-  `channel.ideal_label` ClassVar. §17.8 lists the rules still
-  pending for Dispatches L–P.
+  `channel.ideal_label` ClassVar; Dispatch L added §17.8 (detector
+  response: `η / γ_d / N̂` parameters, explicit rate-transform +
+  threshold composition, exact Poisson thinning + additive
+  background). §17.9 lists the rules still pending for Dispatches
+  M–P.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the

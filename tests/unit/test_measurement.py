@@ -19,6 +19,7 @@ from iontrap_dynamics import (
     BernoulliChannel,
     BinomialChannel,
     ConventionError,
+    DetectorConfig,
     IonTrapError,
     MeasurementResult,
     PoissonChannel,
@@ -339,6 +340,184 @@ class TestPoissonChannelSample:
 
     def test_default_label_is_poisson(self) -> None:
         assert PoissonChannel().label == "poisson"
+
+
+# ----------------------------------------------------------------------------
+# DetectorConfig construction + rate transform + thresholding + fidelity
+# ----------------------------------------------------------------------------
+
+
+class TestDetectorConfigConstruction:
+    def test_minimal_construction(self) -> None:
+        det = DetectorConfig(efficiency=0.3, dark_count_rate=0.1, threshold=3)
+        assert det.efficiency == 0.3
+        assert det.dark_count_rate == 0.1
+        assert det.threshold == 3
+        assert det.label == "detector"
+
+    def test_efficiency_out_of_range_raises(self) -> None:
+        with pytest.raises(ValueError, match=r"efficiency must lie in \[0, 1\]"):
+            DetectorConfig(efficiency=1.5, dark_count_rate=0.0, threshold=1)
+        with pytest.raises(ValueError, match=r"efficiency must lie in \[0, 1\]"):
+            DetectorConfig(efficiency=-0.1, dark_count_rate=0.0, threshold=1)
+
+    def test_negative_dark_rate_raises(self) -> None:
+        with pytest.raises(ValueError, match="dark_count_rate must be >= 0"):
+            DetectorConfig(efficiency=0.5, dark_count_rate=-0.2, threshold=1)
+
+    def test_threshold_below_one_raises(self) -> None:
+        with pytest.raises(ValueError, match="threshold must be >= 1"):
+            DetectorConfig(efficiency=0.5, dark_count_rate=0.0, threshold=0)
+
+    def test_frozen(self) -> None:
+        det = DetectorConfig(efficiency=0.3, dark_count_rate=0.1, threshold=3)
+        with pytest.raises(FrozenInstanceError):
+            det.efficiency = 0.5  # type: ignore[misc]
+
+    def test_positional_construction_forbidden(self) -> None:
+        with pytest.raises(TypeError):
+            DetectorConfig(0.3, 0.1, 3)  # type: ignore[misc]
+
+
+class TestDetectorApply:
+    def test_rate_transform(self) -> None:
+        det = DetectorConfig(efficiency=0.4, dark_count_rate=0.5, threshold=1)
+        rates = np.array([0.0, 1.0, 10.0])
+        detected = det.apply(rates)
+        np.testing.assert_allclose(detected, np.array([0.5, 0.9, 4.5]))
+
+    def test_unit_efficiency_no_dark_passes_through(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1)
+        rates = np.array([0.5, 2.0, 10.0])
+        np.testing.assert_array_equal(det.apply(rates), rates)
+
+    def test_zero_efficiency_floor_is_dark_rate(self) -> None:
+        det = DetectorConfig(efficiency=0.0, dark_count_rate=0.3, threshold=1)
+        rates = np.array([0.0, 5.0, 100.0])
+        np.testing.assert_array_equal(det.apply(rates), np.full_like(rates, 0.3))
+
+    def test_output_is_float64(self) -> None:
+        det = DetectorConfig(efficiency=0.5, dark_count_rate=0.1, threshold=1)
+        detected = det.apply(np.array([1.0, 2.0]))
+        assert detected.dtype == np.float64
+
+    def test_negative_rate_raises(self) -> None:
+        det = DetectorConfig(efficiency=0.5, dark_count_rate=0.0, threshold=1)
+        with pytest.raises(ValueError, match="emitted_rate must be >= 0"):
+            det.apply(np.array([1.0, -0.2]))
+
+
+class TestDetectorDiscriminate:
+    def test_thresholding(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=3)
+        counts = np.array([0, 1, 2, 3, 4, 100])
+        bits = det.discriminate(counts)
+        np.testing.assert_array_equal(bits, np.array([0, 0, 0, 1, 1, 1], dtype=np.int8))
+
+    def test_threshold_one_any_click_is_bright(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1)
+        counts = np.array([[0, 1, 5], [2, 0, 0]])
+        bits = det.discriminate(counts)
+        np.testing.assert_array_equal(bits, np.array([[0, 1, 1], [1, 0, 0]], dtype=np.int8))
+
+    def test_output_is_int8_preserves_shape(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=2)
+        counts = np.ones((7, 4), dtype=np.int64) * 3
+        bits = det.discriminate(counts)
+        assert bits.shape == (7, 4)
+        assert bits.dtype == np.int8
+
+    def test_negative_counts_raises(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=2)
+        with pytest.raises(ValueError, match="counts must be >= 0"):
+            det.discriminate(np.array([0, 1, -1]))
+
+
+class TestDetectorClassificationFidelity:
+    def test_ideal_detector_high_contrast(self) -> None:
+        """η=1, γ_d=0, threshold=5, λ_bright=15, λ_dark=0.3 → fidelity ~ 1."""
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=5)
+        fid = det.classification_fidelity(lambda_bright=15.0, lambda_dark=0.3)
+        assert fid["true_positive_rate"] > 0.99
+        assert fid["true_negative_rate"] > 0.99
+        assert fid["fidelity"] > 0.99
+        assert fid["effective_bright_rate"] == 15.0
+        assert fid["effective_dark_rate"] == 0.3
+
+    def test_rate_transform_visible_in_effective_rates(self) -> None:
+        det = DetectorConfig(efficiency=0.5, dark_count_rate=0.4, threshold=3)
+        fid = det.classification_fidelity(lambda_bright=10.0, lambda_dark=0.0)
+        assert fid["effective_bright_rate"] == 0.5 * 10.0 + 0.4
+        assert fid["effective_dark_rate"] == 0.5 * 0.0 + 0.4
+
+    def test_no_contrast_gives_chance_performance(self) -> None:
+        """λ_bright = λ_dark → classifier cannot distinguish; fidelity < 0.6."""
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=3)
+        fid = det.classification_fidelity(lambda_bright=2.0, lambda_dark=2.0)
+        # TP + FN = 1 and TN + FP = 1, with TP = 1 − TN for equal rates,
+        # so fidelity = (TP + TN) / 2 = (1 − TN + TN) / 2 = 0.5 exactly.
+        np.testing.assert_allclose(fid["fidelity"], 0.5)
+
+    def test_matches_empirical_classification(self) -> None:
+        """Analytic fidelity must match Monte-Carlo classification rate at 1σ."""
+        det = DetectorConfig(efficiency=0.6, dark_count_rate=0.5, threshold=4)
+        lam_bright, lam_dark = 12.0, 0.2
+        fid = det.classification_fidelity(lambda_bright=lam_bright, lambda_dark=lam_dark)
+        rng = np.random.default_rng(2026)
+        shots = 50_000
+        bright_counts = rng.poisson(det.efficiency * lam_bright + det.dark_count_rate, size=shots)
+        dark_counts = rng.poisson(det.efficiency * lam_dark + det.dark_count_rate, size=shots)
+        empirical_tp = (bright_counts >= det.threshold).mean()
+        empirical_tn = (dark_counts < det.threshold).mean()
+        # 1σ empirical error ≈ sqrt(p(1−p)/N) ≈ 2e-3 at 50k; allow 5e-3.
+        np.testing.assert_allclose(empirical_tp, fid["true_positive_rate"], atol=5e-3)
+        np.testing.assert_allclose(empirical_tn, fid["true_negative_rate"], atol=5e-3)
+
+    def test_negative_rate_raises(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1)
+        with pytest.raises(ValueError, match="rates must be >= 0"):
+            det.classification_fidelity(lambda_bright=1.0, lambda_dark=-0.1)
+
+    def test_dark_greater_than_bright_raises(self) -> None:
+        det = DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1)
+        with pytest.raises(ValueError, match="lambda_dark must be"):
+            det.classification_fidelity(lambda_bright=0.5, lambda_dark=5.0)
+
+
+# ----------------------------------------------------------------------------
+# Detector + PoissonChannel composition (end-to-end pipeline)
+# ----------------------------------------------------------------------------
+
+
+class TestDetectorPoissonComposition:
+    def test_end_to_end_pipeline(self) -> None:
+        """apply → Poisson → discriminate should reach the expected fidelity."""
+        det = DetectorConfig(efficiency=0.5, dark_count_rate=0.3, threshold=3)
+        lam_bright, lam_dark = 12.0, 0.0
+
+        bright_rate = det.apply(np.array([lam_bright]))
+        dark_rate = det.apply(np.array([lam_dark]))
+
+        bright_result = sample_outcome(
+            channel=PoissonChannel(),
+            inputs=bright_rate,
+            shots=10_000,
+            seed=1,
+        )
+        dark_result = sample_outcome(
+            channel=PoissonChannel(),
+            inputs=dark_rate,
+            shots=10_000,
+            seed=2,
+        )
+
+        bright_bits = det.discriminate(bright_result.sampled_outcome["poisson"])
+        dark_bits = det.discriminate(dark_result.sampled_outcome["poisson"])
+
+        empirical_fid = 0.5 * (bright_bits.mean() + (1 - dark_bits).mean())
+        analytic = det.classification_fidelity(lambda_bright=lam_bright, lambda_dark=lam_dark)
+        # 10k shots on each of two rates — 1σ ~ 5e-3.
+        np.testing.assert_allclose(empirical_fid, analytic["fidelity"], atol=1e-2)
 
 
 # ----------------------------------------------------------------------------

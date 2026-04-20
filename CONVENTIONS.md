@@ -369,9 +369,27 @@ Channels advertise their output shape by class, not by flag. The two shapes that
 
 Distributionally equivalent channels (Bernoulli-summed ≡ Binomial; per-click Poisson ≡ aggregated Poisson at matching rate) are **not** required to be bit-identical under a shared seed. Library implementations use the most efficient NumPy primitive (`rng.binomial`, `rng.poisson`, or threshold + aggregation), which consumes RNG bits differently depending on the path taken. Tests assert distributional — not bit — equivalence across channel types.
 
-### 17.8 Pending (still in flight across Dispatches L–P)
+### 17.8 Detector response *(added in Dispatch L)*
 
-Rules governing detector efficiency / dark-count parameters, protocol composition (spin readout, parity scan, sideband-flopping inference), and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+A `DetectorConfig` carries three parameters:
+
+- **Efficiency** `η ∈ [0, 1]` — combined collection and quantum efficiency. Thins the emitted Poisson rate multiplicatively.
+- **Dark-count rate** `γ_d ≥ 0` — mean stray-light / detector-noise counts per shot. Adds an independent Poisson background.
+- **Threshold** `N̂ ≥ 1` — bright / dark classification cut. A shot is classified *bright* when its count is at least `N̂`; otherwise *dark*.
+
+Composition with `PoissonChannel` is **explicit**, not implicit: the orchestrator `sample_outcome` stays detector-agnostic, and callers transform the rate and threshold the counts either side of the channel call:
+
+1. `detected_rate = detector.apply(emitted_rate)` — returns `η · emitted_rate + γ_d`.
+2. `result = sample_outcome(channel=PoissonChannel(), inputs=detected_rate, shots=N, seed=…)`.
+3. `bright_bits = detector.discriminate(result.sampled_outcome["poisson"])` — returns per-shot `{0, 1}` bits.
+
+The thinning-plus-additive rate composition is exact for Poisson emission: a Poisson(`λ`) stream thinned by Bernoulli(`η`) and added to an independent Poisson(`γ_d`) background is Poisson(`η·λ + γ_d`), with no cross terms.
+
+`DetectorConfig.classification_fidelity(lambda_bright=..., lambda_dark=...)` returns the analytic TP / TN rates and overall fidelity from `scipy.stats.poisson.cdf`. Fidelity is reported as the equal-prior mean `(TP + TN) / 2`; callers weighting by an a-priori probability compute the weighted sum themselves.
+
+### 17.9 Pending (still in flight across Dispatches M–P)
+
+Rules governing protocol composition (spin readout, parity scan, sideband-flopping inference) and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
 
 ---
 

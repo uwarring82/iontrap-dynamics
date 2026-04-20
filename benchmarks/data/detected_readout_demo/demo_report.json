@@ -1,0 +1,53 @@
+{
+  "analytic_detector_fidelity": {
+    "effective_bright_rate": 10.3,
+    "effective_dark_rate": 0.3,
+    "fidelity": 0.9957223843832095,
+    "true_negative_rate": 0.9997341888099782,
+    "true_positive_rate": 0.9917105799564407
+  },
+  "canonical_request_hash": "f20ff4d7bd554716e06fb25ef7809a36d41a761df7062dca1d4fbddbca4c052f",
+  "convention_references": [
+    "§3 Spin basis (p_↑ = (1 + ⟨σ_z⟩)/2)",
+    "§17 Measurement layer (staged) — §17.8 detector response"
+  ],
+  "elapsed_seconds": 0.002984082995681092,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "extreme_value_band": 0.07278084328481987,
+  "generated_at": "2026-04-20T08:35:46.879534+00:00",
+  "max_bright_fraction_vs_envelope": 0.043670774926307276,
+  "measurement_result_provenance_tags": [
+    "demo",
+    "detected_readout",
+    "measurement",
+    "carrier_rabi"
+  ],
+  "parameters": {
+    "N_fock": 3,
+    "dark_count_rate": 0.3,
+    "duration_us": 2.0,
+    "efficiency": 0.4,
+    "initial_state": "|↓, 0⟩",
+    "lambda_bright_emit": 25.0,
+    "lambda_dark_emit": 0.0,
+    "n_steps": 200,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "detected_readout_demo",
+    "seed": 20260420,
+    "shots": 500,
+    "threshold": 4
+  },
+  "purpose": "first composition of detector + Poisson channel — shows the Poisson-tail envelope that separates ideal p_↑ from what a finite-efficiency, thresholded detector actually measures.",
+  "scenario": "detected_readout_demo",
+  "schema_version": 2,
+  "trajectory_hash": "f20ff4d7bd554716e06fb25ef7809a36d41a761df7062dca1d4fbddbca4c052f",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch L)"
+}

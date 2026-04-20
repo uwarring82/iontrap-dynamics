@@ -11,10 +11,14 @@ Dispatch H lands :class:`BernoulliChannel` and the minimal
 :func:`sample_outcome` orchestrator; Dispatch J adds
 :class:`BinomialChannel`; Dispatch K adds :class:`PoissonChannel` and
 renames the orchestrator keyword ``probabilities`` → ``inputs`` to
-reflect that Poisson consumes rates, not probabilities. Detector
-models, protocols, and statistics follow in Dispatches L–P. The
-``CONVENTIONS.md`` §17 section is opened here as staged rules and will
-freeze at the close of the track.
+reflect that Poisson consumes rates, not probabilities; Dispatch L
+adds :class:`DetectorConfig` — efficiency / dark-count rate /
+threshold — composing with rate-consuming channels via explicit
+:meth:`DetectorConfig.apply` (rate transform) and
+:meth:`DetectorConfig.discriminate` (bright / dark thresholding)
+calls either side of the channel. Protocols and statistics follow in
+Dispatches M–P. The ``CONVENTIONS.md`` §17 section is opened here as
+staged rules and will freeze at the close of the track.
 """
 
 from __future__ import annotations
@@ -25,10 +29,12 @@ from .channels import (
     PoissonChannel,
     sample_outcome,
 )
+from .detectors import DetectorConfig
 
 __all__ = [
     "BernoulliChannel",
     "BinomialChannel",
+    "DetectorConfig",
     "PoissonChannel",
     "sample_outcome",
 ]
