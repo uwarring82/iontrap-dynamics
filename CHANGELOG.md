@@ -196,8 +196,32 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
+#### Phase 1 — measurement layer (`measurement/`, Dispatch H)
+
+- `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
+  carrying the ideal / sampled dual-view mandated by
+  `WORKPLAN_v0.3.md` §5. Enforces `shots >= 1` and
+  `storage_mode = OMITTED` at construction; `ConventionError` on
+  violation (blanket-catchable via `IonTrapError`).
+- `measurement/channels.py` — `BernoulliChannel` (per-shot bits in
+  `{0, 1}`, leading shot axis per CONVENTIONS.md §17.1) plus the
+  `sample_outcome(channel, probabilities, shots, seed, upstream)`
+  orchestrator. Bit-reproducible given `(seed, probabilities, shots)`;
+  inherits upstream-trajectory metadata and emits a `trajectory_hash`
+  provenance link when `upstream` is supplied.
+- `tools/run_demo_bernoulli_readout.py` — first end-to-end exercise of
+  the measurement boundary: carrier Rabi → `⟨σ_z⟩` → `p_↑` →
+  `BernoulliChannel` → shot-noisy estimate, overlaid against the
+  extreme-value band `σ · √(2 log N)`.
+
 ### Changed
 
+- CONVENTIONS.md §17 *(staged — v0.2 Convention Freeze target)*
+  opened. Covers shot semantics, the ideal / sampled dual-view, RNG
+  reproducibility, the `OMITTED` storage-mode tombstone for
+  `MeasurementResult`, provenance chaining, and probability-input
+  bounds. Subsections 17.1–17.6 ship with Dispatch H; 17.7 lists the
+  rules still pending for Dispatches I–O.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the

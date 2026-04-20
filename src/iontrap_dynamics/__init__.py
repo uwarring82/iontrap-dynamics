@@ -18,7 +18,9 @@ from .exceptions import (
     IonTrapError,
     IonTrapWarning,
 )
+from .measurement import BernoulliChannel, sample_outcome
 from .results import (
+    MeasurementResult,
     Result,
     ResultMetadata,
     ResultWarning,
@@ -32,6 +34,7 @@ __all__ = [
     "CONVENTION_VERSION",
     "FOCK_CONVERGENCE_TOLERANCE",
     "BackendError",
+    "BernoulliChannel",
     "ConventionError",
     "ConvergenceError",
     "FockConvergenceWarning",
@@ -39,6 +42,7 @@ __all__ = [
     "IntegrityError",
     "IonTrapError",
     "IonTrapWarning",
+    "MeasurementResult",
     "Result",
     "ResultMetadata",
     "ResultWarning",
@@ -47,5 +51,6 @@ __all__ = [
     "WarningSeverity",
     "compute_request_hash",
     "load_trajectory",
+    "sample_outcome",
     "save_trajectory",
 ]

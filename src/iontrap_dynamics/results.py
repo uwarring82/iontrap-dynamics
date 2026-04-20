@@ -218,7 +218,71 @@ class TrajectoryResult(Result):
                 )
 
 
+# ----------------------------------------------------------------------------
+# MeasurementResult (Phase 1 sibling of TrajectoryResult)
+# ----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MeasurementResult(Result):
+    """Outcome of applying a measurement channel to a state or trajectory.
+
+    The dual-view shape mandated by ``WORKPLAN_v0.3.md`` §5 (Phase 1):
+    :attr:`ideal_outcome` carries the noise-free expectation values the
+    channel was applied to; :attr:`sampled_outcome` carries the per-shot
+    stochastic result of the channel. Downstream statistics code consumes
+    the sampled view; analytic-limit checks compare to the ideal view.
+
+    Parameters
+    ----------
+    shots
+        Number of independent measurement shots per time / setting entry.
+        Must be ≥ 1.
+    rng_seed
+        Seed that was passed to :func:`numpy.random.default_rng` to
+        produce the sampled outcome. ``None`` when the caller supplied a
+        pre-seeded generator and the seed is therefore unknown.
+    ideal_outcome
+        Mapping from a channel-dependent label to the noise-free input
+        (e.g. ``"probability"`` for Bernoulli; shape matches the upstream
+        expectation array).
+    sampled_outcome
+        Mapping from a channel-dependent label to the stochastic output
+        (e.g. ``"counts"`` for Bernoulli; shape depends on channel — per-
+        shot bits give ``(shots, n_times)`` integer arrays).
+    trajectory_hash
+        Request-hash of the upstream :class:`TrajectoryResult` when one
+        exists. ``None`` when the measurement was applied to a free-
+        standing probability array without an owning trajectory.
+
+    Raises
+    ------
+    ConventionError
+        At construction, if ``shots < 1`` or if
+        :attr:`ResultMetadata.storage_mode` is not
+        :attr:`StorageMode.OMITTED`. Measurement results do not retain
+        quantum states; the storage-mode field on inherited metadata
+        must reflect that.
+    """
+
+    shots: int
+    rng_seed: int | None
+    ideal_outcome: Mapping[str, NDArray[np.floating]] = field(default_factory=dict)
+    sampled_outcome: Mapping[str, NDArray[Any]] = field(default_factory=dict)
+    trajectory_hash: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.shots < 1:
+            raise ConventionError(f"MeasurementResult requires shots >= 1; got shots={self.shots}.")
+        if self.metadata.storage_mode is not StorageMode.OMITTED:
+            raise ConventionError(
+                "MeasurementResult requires metadata.storage_mode=OMITTED; "
+                "measurement outcomes do not retain quantum states."
+            )
+
+
 __all__ = [
+    "MeasurementResult",
     "Result",
     "ResultMetadata",
     "ResultWarning",

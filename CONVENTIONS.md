@@ -320,6 +320,45 @@ The rule does **not** apply to ephemeral artefacts: generated caches (`__pycache
 
 ---
 
+## 17. Measurement layer *(staged — v0.2 Convention Freeze target)*
+
+**Status:** opened at Dispatch H (`src/iontrap_dynamics/measurement/`). Rules below are staged, not frozen: additions across Dispatches I–O may tighten them, and the full section seals at the v0.2 release under a Convention Freeze gate per `WORKPLAN_v0.3.md` §5 Phase 1. Treat any call-site depending on details of §17 as provisional until the freeze.
+
+### 17.1 Shot
+
+A **shot** is one independent application of a measurement channel, producing one outcome sample at one setting. Shot count is a keyword-only argument `shots: int` (≥ 1) on every channel-facing API. The shot axis is always the **leading** axis of per-shot outputs — `(shots, n_settings)` or `(shots, n_times)`. Aggregated outputs (counts, estimators) place the setting / time axis first.
+
+### 17.2 Ideal vs sampled outcomes (result dual-view)
+
+Every measurement result carries two views, mandated by `WORKPLAN_v0.3.md` §5:
+
+- `ideal_outcome: Mapping[str, NDArray]` — the noise-free input the channel was applied to (e.g. probability, expectation value, intensity).
+- `sampled_outcome: Mapping[str, NDArray]` — the stochastic output (e.g. per-shot bits, photon counts).
+
+Analytic-regression checks compare to the ideal view; statistics / estimators consume the sampled view. Library code MUST NOT silently overwrite one with the other.
+
+### 17.3 RNG and reproducibility
+
+The reference RNG is `numpy.random.default_rng`. Channel-facing APIs accept either a `seed: int | None` (convenience) or a caller-constructed `rng: np.random.Generator` (full control). When `seed` is supplied, the resulting `MeasurementResult.rng_seed` records it and the result is bit-reproducible given `(seed, probabilities, shots)`. When a pre-seeded generator is supplied, `rng_seed` is `None` and reproducibility is the caller's responsibility.
+
+### 17.4 Storage-mode tombstone
+
+`MeasurementResult` requires `metadata.storage_mode = StorageMode.OMITTED`. Measurement results never retain quantum states — the upstream `TrajectoryResult` does. Construction with any other storage mode raises `ConventionError`.
+
+### 17.5 Provenance chaining
+
+When a measurement is applied to an upstream `TrajectoryResult`, the measurement inherits that trajectory's `convention_version`, `backend_name`, `backend_version`, and `fock_truncations`; its `request_hash` is copied onto `MeasurementResult.trajectory_hash` so analysis code can rejoin a measurement to the dynamics that produced it. The measurement's `provenance_tags` start with the upstream tags and append `"measurement"` plus any caller-supplied extras.
+
+### 17.6 Probability-input range
+
+Channels that consume probabilities (e.g. `BernoulliChannel`) raise `ValueError` at `.sample()` if any entry lies outside `[0, 1]`. This is a system-boundary input check, not a convention violation — observables can go out of range only if the caller miscomputed the probability reduction, which is a bug in caller code rather than a schema failure.
+
+### 17.7 Pending (still in flight across Dispatches I–O)
+
+Rules governing binomial / Poisson channels, detector efficiency / dark-count parameters, protocol composition (spin readout, parity scan, sideband-flopping inference), and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+
+---
+
 ## Endorsement Marker
 
 **Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version; extensions for Phase 1 measurement and systematics layers are staged and will carry explicit Convention Freeze gates.
