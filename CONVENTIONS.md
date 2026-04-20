@@ -387,9 +387,33 @@ The thinning-plus-additive rate composition is exact for Poisson emission: a Poi
 
 `DetectorConfig.classification_fidelity(lambda_bright=..., lambda_dark=...)` returns the analytic TP / TN rates and overall fidelity from `scipy.stats.poisson.cdf`. Fidelity is reported as the equal-prior mean `(TP + TN) / 2`; callers weighting by an a-priori probability compute the weighted sum themselves.
 
-### 17.9 Pending (still in flight across Dispatches M–P)
+### 17.9 Projective-shot readout *(added in Dispatch M)*
 
-Rules governing protocol composition (spin readout, parity scan, sideband-flopping inference) and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+Protocol-layer measurements in `measurement/protocols.py` use the *projective-shot* sampling model:
+
+1. For each shot, project the qubit into bright with probability `p_↑` or dark with probability `1 − p_↑`.
+2. Sample Poisson photon counts at the *state-conditional* effective rate — `η · λ_bright + γ_d` on the bright branch, `η · λ_dark + γ_d` on the dark branch.
+3. Threshold each shot's count against `N̂` to produce a bright/dark bit.
+
+This is the correct model for experimental ion-trap readout, where the detection laser optically pumps the qubit into a pinned bright or dark cycling transition for the duration of the detection window. The qubit "collapses" at the start of the window and emits photons at a single state-conditional rate for the remainder.
+
+The infinite-shots envelope under the projective model is
+
+    bright_fraction∞(t) = TP · p_↑(t) + (1 − TN) · (1 − p_↑(t))
+
+with `TP` and `TN` from `DetectorConfig.classification_fidelity`. This is **linear** in `p_↑`, unlike the Poisson-tail envelope `P(count ≥ N̂ | η · (λ_b·p_↑ + λ_d·(1−p_↑)) + γ_d)` produced by the rate-averaged pipeline used in `tools/run_demo_detected_readout.py`. Protocol-layer code comparing dynamics predictions to experimental readout MUST use the projective model; callers needing the rate-averaged limit compose channel + detector explicitly instead.
+
+Each protocol's result layout is dual-view, per §17.2:
+
+- `ideal_outcome["p_up"]` — the `p_↑(t)` trajectory that drove the projection (exact, from the dynamics).
+- `ideal_outcome["bright_fraction_envelope"]` — the `TP · p_↑ + (1 − TN) · (1 − p_↑)` limit.
+- `sampled_outcome[f"{label}_counts"]` — `(shots, n_times)` int64 per-shot photon counts.
+- `sampled_outcome[f"{label}_bits"]` — `(shots, n_times)` int8 bright/dark bits.
+- `sampled_outcome[f"{label}_bright_fraction"]` — `(n_times,)` float64 shot-averaged estimate.
+
+### 17.10 Pending (still in flight across Dispatches N–P)
+
+Rules governing parity-scan and sideband-flopping inference protocols, plus estimator / CI semantics, will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
 
 ---
 

@@ -110,18 +110,24 @@ every call.
   uniformly on channel type, stores ``inputs`` under
   ``ideal_outcome[channel.ideal_label]`` (``"probability"`` or
   ``"rate"``), and inherits upstream-trajectory metadata when supplied.
+- `iontrap_dynamics.measurement.SpinReadout` — first protocol-layer
+  composer. `.run(trajectory, shots, seed)` executes the projective-
+  shot readout model (§17.9) and returns a `MeasurementResult` with
+  per-shot counts / bits / bright-fraction plus the ideal `p_↑` and
+  `TP · p_↑ + (1 − TN) · (1 − p_↑)` envelope.
 
-Dispatches M–P extend the layer with protocols (spin readout, parity
-scan, sideband-flopping inference) and statistics; `CONVENTIONS.md`
-§17 seals at v0.2 under a Convention Freeze gate.
+Dispatches N–P extend the layer with parity-scan and sideband-
+flopping inference protocols plus statistics; `CONVENTIONS.md` §17
+seals at v0.2 under a Convention Freeze gate.
 
 **Demo tools** (`tools/run_*.py` with canonical `manifest.json` +
 `arrays.npz` + `demo_report.json` artefacts under `benchmarks/data/`):
 `run_benchmark_sideband`, `run_demo_carrier`, `run_demo_gaussian_pulse`,
 `run_demo_ms_gate`, `run_demo_bernoulli_readout`, `run_demo_binomial_readout`,
-`run_demo_poisson_readout`, `run_demo_detected_readout`.
+`run_demo_poisson_readout`, `run_demo_detected_readout`,
+`run_demo_spin_readout`.
 
-Test suite: **569 passed, 3 skipped**. Skips are migration-tier
+Test suite: **593 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

@@ -1,0 +1,57 @@
+{
+  "analytic_detector_fidelity": {
+    "effective_bright_rate": 10.3,
+    "effective_dark_rate": 0.3,
+    "fidelity": 0.9957223843832095,
+    "true_negative_rate": 0.9997341888099782,
+    "true_positive_rate": 0.9917105799564407
+  },
+  "canonical_request_hash": "2e02f187844420d6c562294555bda9b7475507096f6a2c7ab834f5f7ddc6a7e2",
+  "convention_references": [
+    "§3 Spin basis (p_↑ = (1 + ⟨σ_z⟩)/2)",
+    "§17.8 Detector response",
+    "§17.9 Projective-shot readout"
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "extreme_value_band": 0.07278954018086922,
+  "generated_at": "2026-04-20T08:57:57.406241+00:00",
+  "max_bright_fraction_vs_envelope": 0.07574567650638342,
+  "max_projective_vs_rate_averaged": 0.28446475188047304,
+  "measurement_result_provenance_tags": [
+    "demo",
+    "spin_readout",
+    "measurement",
+    "ion_0_readout",
+    "carrier_rabi"
+  ],
+  "parameters": {
+    "N_fock": 3,
+    "dark_count_rate": 0.3,
+    "duration_us": 2.0,
+    "efficiency": 0.4,
+    "initial_state": "|↓, 0⟩",
+    "lambda_bright_emit": 25.0,
+    "lambda_dark_emit": 0.0,
+    "n_steps": 200,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "spin_readout_demo",
+    "seed": 20260420,
+    "shots": 500,
+    "threshold": 4
+  },
+  "purpose": "first protocol-layer dispatch — shows the projective-shot readout envelope and contrasts it against the rate-averaged Dispatch L envelope at identical detector parameters.",
+  "readout_elapsed_seconds": 0.007499500003177673,
+  "scenario": "spin_readout_demo",
+  "schema_version": 2,
+  "trajectory_elapsed_seconds": 0.003674334002425894,
+  "trajectory_hash": "2e02f187844420d6c562294555bda9b7475507096f6a2c7ab834f5f7ddc6a7e2",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch M)"
+}

@@ -196,7 +196,7 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
-#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L)
+#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M)
 
 - `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
   carrying the ideal / sampled dual-view mandated by
@@ -249,6 +249,23 @@ bloating the typed schema.
   Rabi trajectory with `η = 0.4`, `γ_d = 0.3`, `N̂ = 4`; overlays
   the shot-averaged bright fraction against the Poisson-tail
   envelope `P(count ≥ N̂ | λ_det)` and the ideal `p_↑(t)`.
+- `SpinReadout` protocol (Dispatch M) — first protocol-layer
+  composer. Frozen dataclass bundling `ion_index`, `DetectorConfig`,
+  `lambda_bright`, `lambda_dark`, and a `label` prefix. Its
+  `.run(trajectory, *, shots, seed)` executes the *projective-shot*
+  model — each shot projects to bright / dark with probability
+  `p_↑`, then Poisson-samples at the state-conditional rate, then
+  thresholds — and returns a `MeasurementResult` with the dual-view
+  payload (`p_up`, `bright_fraction_envelope` ideal; per-shot
+  `counts`, `bits`, and `bright_fraction` sampled). Looks up
+  `sigma_z_{ion_index}` on the trajectory and raises
+  `ConventionError` if missing.
+- `tools/run_demo_spin_readout.py` — first protocol demo. Runs
+  `SpinReadout.run` on the carrier Rabi trajectory with the same
+  detector parameters as the Dispatch L demo and overlays both
+  envelopes (projective-linear vs rate-averaged-nonlinear) to
+  visualise how far the two sampling models diverge at finite
+  fidelity.
 
 ### Changed
 
@@ -263,8 +280,10 @@ bloating the typed schema.
   `channel.ideal_label` ClassVar; Dispatch L added §17.8 (detector
   response: `η / γ_d / N̂` parameters, explicit rate-transform +
   threshold composition, exact Poisson thinning + additive
-  background). §17.9 lists the rules still pending for Dispatches
-  M–P.
+  background); Dispatch M added §17.9 (projective-shot readout
+  model, linear fidelity envelope `TP·p_↑ + (1−TN)·(1−p_↑)`,
+  per-protocol result layout). §17.10 lists the rules still pending
+  for Dispatches N–P.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the

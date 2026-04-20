@@ -23,6 +23,7 @@ from .measurement import (
     BinomialChannel,
     DetectorConfig,
     PoissonChannel,
+    SpinReadout,
     sample_outcome,
 )
 from .results import (
@@ -55,6 +56,7 @@ __all__ = [
     "Result",
     "ResultMetadata",
     "ResultWarning",
+    "SpinReadout",
     "StorageMode",
     "TrajectoryResult",
     "WarningSeverity",
