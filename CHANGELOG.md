@@ -318,6 +318,36 @@ bloating the typed schema.
   overlays Wilson 95 % CI band on the bright-fraction estimator;
   reports single-seed empirical coverage (~96 % at nominal 95 %).
 
+#### Phase 1 — registered entanglement observables (Dispatch Q)
+
+Closes the §5 Phase 1 gap "logarithmic negativity / concurrence /
+EoF as registered observables". These are nonlinear in ρ so they do
+not fit the ``operator → qutip.expect`` shape consumed by
+``expectations_over_time``; they are exposed as trajectory
+evaluators that post-process an ``EAGER``-mode
+:class:`TrajectoryResult.states` into a ``(n_times,)`` scalar
+trajectory.
+
+- `entanglement.concurrence_trajectory(states, *, hilbert, ion_indices)`
+  — Wootters concurrence of a two-ion reduced state. Traces over
+  motion + any other ions, evaluates the 4 × 4 Hill–Wootters
+  formula via :func:`qutip.concurrence`. Returns ``float64`` in
+  ``[0, 1]``, ``1`` on Bell states.
+- `entanglement.entanglement_of_formation_trajectory(...)` — closed-
+  form EoF from concurrence via
+  ``E_F = h((1 + √(1 − C²)) / 2)``. Exact for the two-qubit case.
+- `entanglement.log_negativity_trajectory(states, *, hilbert,
+  partition)` — ``log₂ ‖ρ^{T_A}‖₁`` via explicit partial transpose
+  (so multi-subsystem partitions work). ``partition="spins"`` or
+  ``"modes"``; symmetric in the bipartition choice. Raises on
+  mode-less Hilbert spaces.
+- `tools/run_demo_bell_entanglement.py` — MS-gate entanglement
+  trajectory demo. Runs the gate-closing Hamiltonian on `|↓↓, 0⟩`
+  with ``storage_mode=EAGER``, overlays concurrence, EoF, and
+  spin-motion log-negativity on one plot. Textbook signature:
+  concurrence grows monotonically to 1 at ``t_gate``; log-negativity
+  loops (peaks at ~1.31) and returns to ~0 as motion disentangles.
+
 ### Changed
 
 - CONVENTIONS.md §17 *(staged — v0.2 Convention Freeze target)*

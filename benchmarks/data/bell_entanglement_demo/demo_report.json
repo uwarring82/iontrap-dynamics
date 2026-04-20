@@ -1,0 +1,42 @@
+{
+  "canonical_request_hash": "eaf3cb911a36586955550b7286efe62385a4d94f64a3156d528039af35e338e0",
+  "concurrence_end": 0.9999999847976392,
+  "concurrence_max": 0.9999999847976392,
+  "concurrence_start": 0.0,
+  "convention_references": [
+    "§2 Tensor ordering (spins before modes)",
+    "§3 Spin basis",
+    "§9 Bell state convention"
+  ],
+  "entanglement_elapsed_seconds": 0.10968008401687257,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "eof_end": 0.9999999780676294,
+  "generated_at": "2026-04-20T13:04:54.261231+00:00",
+  "lamb_dicke_parameter": 0.1842565174827199,
+  "log_negativity_end": 2.5709915316758135e-05,
+  "log_negativity_max": 1.309504755382204,
+  "log_negativity_start": 0.0,
+  "parameters": {
+    "N_fock": 12,
+    "duration_us": 27.13608217668021,
+    "initial_state": "|↓↓, 0⟩",
+    "loops": 1,
+    "n_steps": 200,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 0.1,
+    "scenario": "bell_entanglement_demo"
+  },
+  "purpose": "registered entanglement observables on the MS-gate Bell-formation trajectory — concurrence grows monotonically, spin-motion log-negativity loops and closes back to 0 at t_gate.",
+  "scenario": "bell_entanglement_demo",
+  "schema_version": 2,
+  "solve_elapsed_seconds": 0.005818499979795888,
+  "t_gate_us": 27.13608217668021,
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 — log-neg / concurrence / EoF as registered observables (Dispatch Q)"
+}

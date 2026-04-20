@@ -65,6 +65,11 @@ Today the importable code surface covers:
 - `iontrap_dynamics.observables` — named `Observable` records and
   `expectations_over_time(...)`; spin x/y/z, multi-ion parity
   (`σ_z` product), plus mode number
+- `iontrap_dynamics.entanglement` — nonlinear trajectory evaluators
+  for `concurrence`, `entanglement_of_formation`, and
+  `log_negativity` (with `partition="spins" | "modes"` for
+  bipartite splits). Consume `TrajectoryResult.states` under
+  `storage_mode=EAGER`
 
 **Dynamics (Phase 1, full builder family)**
 
@@ -143,9 +148,10 @@ v0.2 Convention Freeze gate.
 `run_demo_ms_gate`, `run_demo_bernoulli_readout`, `run_demo_binomial_readout`,
 `run_demo_poisson_readout`, `run_demo_detected_readout`,
 `run_demo_spin_readout`, `run_demo_parity_scan`,
-`run_demo_sideband_inference`, `run_demo_wilson_ci`.
+`run_demo_sideband_inference`, `run_demo_wilson_ci`,
+`run_demo_bell_entanglement`.
 
-Test suite: **675 passed, 3 skipped**. Skips are migration-tier
+Test suite: **698 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

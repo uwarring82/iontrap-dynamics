@@ -8,6 +8,11 @@ from .cache import (
     save_trajectory,
 )
 from .conventions import CONVENTION_VERSION, FOCK_CONVERGENCE_TOLERANCE
+from .entanglement import (
+    concurrence_trajectory,
+    entanglement_of_formation_trajectory,
+    log_negativity_trajectory,
+)
 from .exceptions import (
     BackendError,
     ConventionError,
@@ -72,7 +77,10 @@ __all__ = [
     "binomial_summary",
     "clopper_pearson_interval",
     "compute_request_hash",
+    "concurrence_trajectory",
+    "entanglement_of_formation_trajectory",
     "load_trajectory",
+    "log_negativity_trajectory",
     "sample_outcome",
     "save_trajectory",
     "wilson_interval",
