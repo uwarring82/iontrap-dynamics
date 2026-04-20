@@ -17,6 +17,7 @@ import pytest
 from iontrap_dynamics import (
     CONVENTION_VERSION,
     BernoulliChannel,
+    BinomialChannel,
     ConventionError,
     IonTrapError,
     MeasurementResult,
@@ -180,6 +181,98 @@ class TestBernoulliChannelSample:
 
 
 # ----------------------------------------------------------------------------
+# BinomialChannel stochastic contract
+# ----------------------------------------------------------------------------
+
+
+class TestBinomialChannelSample:
+    def test_output_shape_and_dtype(self) -> None:
+        channel = BinomialChannel()
+        probs = np.array([0.2, 0.5, 0.8])
+        counts = channel.sample(probs, shots=500, rng=np.random.default_rng(0))
+        assert counts.shape == (3,)
+        assert counts.dtype == np.int64
+
+    def test_counts_in_range(self) -> None:
+        channel = BinomialChannel()
+        probs = np.linspace(0.0, 1.0, 11)
+        counts = channel.sample(probs, shots=200, rng=np.random.default_rng(0))
+        assert np.all(counts >= 0)
+        assert np.all(counts <= 200)
+
+    def test_deterministic_given_seed(self) -> None:
+        channel = BinomialChannel()
+        probs = np.array([0.1, 0.5, 0.9])
+        first = channel.sample(probs, shots=256, rng=np.random.default_rng(123))
+        second = channel.sample(probs, shots=256, rng=np.random.default_rng(123))
+        np.testing.assert_array_equal(first, second)
+
+    def test_mean_converges_to_shots_times_probability(self) -> None:
+        """Binomial(n, p) has mean n·p and std sqrt(n·p·(1−p))."""
+        channel = BinomialChannel()
+        probs = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+        shots = 5_000
+        # Average over many repeats to estimate the distribution mean.
+        rng = np.random.default_rng(7)
+        trials = np.stack(
+            [channel.sample(probs, shots=shots, rng=rng) for _ in range(200)],
+            axis=0,
+        )
+        estimated_rate = trials.mean(axis=0) / shots
+        np.testing.assert_allclose(estimated_rate, probs, atol=0.005)
+
+    def test_distributional_equivalence_to_summed_bernoulli(self) -> None:
+        """Binomial counts have the same distribution as sum-of-Bernoulli bits.
+
+        Not bit-identical (different RNG consumption) but the empirical
+        rate agrees to within Monte-Carlo tolerance.
+        """
+        bernoulli = BernoulliChannel()
+        binomial = BinomialChannel()
+        probs = np.array([0.25, 0.5, 0.75])
+        shots = 2_000
+
+        rng_b = np.random.default_rng(42)
+        bernoulli_counts = (
+            bernoulli.sample(probs, shots=shots, rng=rng_b).sum(axis=0).astype(np.int64)
+        )
+        rng_p = np.random.default_rng(84)
+        binomial_counts = binomial.sample(probs, shots=shots, rng=rng_p)
+
+        # Shot-noise std is ≈ sqrt(N·p·(1−p)); compare to well within 5σ.
+        std_bound = np.sqrt(shots * probs * (1.0 - probs))
+        np.testing.assert_array_less(np.abs(bernoulli_counts - binomial_counts), 5.0 * std_bound)
+
+    def test_p_zero_is_all_zeros(self) -> None:
+        channel = BinomialChannel()
+        counts = channel.sample(np.array([0.0, 0.0]), shots=100, rng=np.random.default_rng(0))
+        np.testing.assert_array_equal(counts, np.array([0, 0]))
+
+    def test_p_one_equals_shots(self) -> None:
+        channel = BinomialChannel()
+        counts = channel.sample(np.array([1.0, 1.0]), shots=100, rng=np.random.default_rng(0))
+        np.testing.assert_array_equal(counts, np.array([100, 100]))
+
+    def test_out_of_range_probability_raises(self) -> None:
+        channel = BinomialChannel()
+        with pytest.raises(ValueError, match=r"probabilities must lie in \[0, 1\]"):
+            channel.sample(np.array([0.5, 1.5]), shots=1, rng=np.random.default_rng(0))
+
+    def test_non_1d_input_raises(self) -> None:
+        channel = BinomialChannel()
+        with pytest.raises(ValueError, match="must be 1-D"):
+            channel.sample(np.array([[0.2, 0.5]]), shots=1, rng=np.random.default_rng(0))
+
+    def test_shots_zero_raises(self) -> None:
+        channel = BinomialChannel()
+        with pytest.raises(ValueError, match="shots must be >= 1"):
+            channel.sample(np.array([0.5]), shots=0, rng=np.random.default_rng(0))
+
+    def test_default_label_is_binomial(self) -> None:
+        assert BinomialChannel().label == "binomial"
+
+
+# ----------------------------------------------------------------------------
 # sample_outcome orchestrator
 # ----------------------------------------------------------------------------
 
@@ -255,3 +348,38 @@ class TestSampleOutcome:
         )
         assert "readout_ion_0" in result.sampled_outcome
         assert "bernoulli" not in result.sampled_outcome
+
+    def test_binomial_channel_dispatch(self) -> None:
+        probs = np.array([0.25, 0.5, 0.75])
+        result = sample_outcome(
+            channel=BinomialChannel(),
+            probabilities=probs,
+            shots=200,
+            seed=0,
+        )
+        counts = result.sampled_outcome["binomial"]
+        assert counts.shape == (3,)
+        assert counts.dtype == np.int64
+        assert np.all(counts >= 0)
+        assert np.all(counts <= 200)
+        np.testing.assert_array_equal(result.ideal_outcome["probability"], probs)
+
+    def test_binomial_seed_reproducible(self) -> None:
+        probs = np.array([0.3, 0.7])
+        first = sample_outcome(channel=BinomialChannel(), probabilities=probs, shots=500, seed=99)
+        second = sample_outcome(channel=BinomialChannel(), probabilities=probs, shots=500, seed=99)
+        np.testing.assert_array_equal(
+            first.sampled_outcome["binomial"],
+            second.sampled_outcome["binomial"],
+        )
+
+    def test_binomial_label_routed_into_sampled_outcome(self) -> None:
+        custom = BinomialChannel(label="population_ion_0")
+        result = sample_outcome(
+            channel=custom,
+            probabilities=np.array([0.5]),
+            shots=10,
+            seed=0,
+        )
+        assert "population_ion_0" in result.sampled_outcome
+        assert "binomial" not in result.sampled_outcome

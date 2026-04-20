@@ -1,0 +1,40 @@
+{
+  "canonical_request_hash": "bcc36f49bed8e68c217bfa4fd1634f6781ca73e5f11c55d145c0fad6fd5c15ff",
+  "convention_references": [
+    "§3 Spin basis (p_↑ = (1 + ⟨σ_z⟩)/2)",
+    "§17 Measurement layer (staged) — §17.7 shape classes"
+  ],
+  "elapsed_seconds": 0.0035720409941859543,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-20T06:01:38.439266+00:00",
+  "max_estimator_error": 0.05015917140398807,
+  "measurement_result_provenance_tags": [
+    "demo",
+    "binomial_readout",
+    "measurement",
+    "carrier_rabi"
+  ],
+  "parameters": {
+    "N_fock": 3,
+    "duration_us": 2.0,
+    "initial_state": "|↓, 0⟩",
+    "n_steps": 200,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "binomial_readout_demo",
+    "seed": 20260420,
+    "shots": 500
+  },
+  "purpose": "aggregated-shot counterpart to the Bernoulli demo — ideal p_↑ vs. finite-shot Binomial estimator.",
+  "scenario": "binomial_readout_demo",
+  "schema_version": 2,
+  "trajectory_hash": "bcc36f49bed8e68c217bfa4fd1634f6781ca73e5f11c55d145c0fad6fd5c15ff",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch J)"
+}

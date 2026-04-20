@@ -353,9 +353,18 @@ When a measurement is applied to an upstream `TrajectoryResult`, the measurement
 
 Channels that consume probabilities (e.g. `BernoulliChannel`) raise `ValueError` at `.sample()` if any entry lies outside `[0, 1]`. This is a system-boundary input check, not a convention violation — observables can go out of range only if the caller miscomputed the probability reduction, which is a bug in caller code rather than a schema failure.
 
-### 17.7 Pending (still in flight across Dispatches I–O)
+### 17.7 Per-shot vs aggregated output shape *(added in Dispatch J)*
 
-Rules governing binomial / Poisson channels, detector efficiency / dark-count parameters, protocol composition (spin readout, parity scan, sideband-flopping inference), and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+Channels advertise their output shape by class, not by flag. The two shapes that v0.2 supports:
+
+- **Per-shot** (Bernoulli, Poisson when per-click granularity matters): output shape `(shots, n_inputs)`, dtype ≥ `int8`, shot axis leading per §17.1. Callers that need aggregate counts reduce along `axis=0` explicitly.
+- **Aggregated** (Binomial, Poisson when only totals matter): output shape `(n_inputs,)`, dtype ≥ `int64` to accommodate large shot budgets without per-call overflow checks. The shot axis is absorbed into the count.
+
+Distributionally equivalent channels (Bernoulli-summed ≡ Binomial; per-click Poisson ≡ aggregated Poisson at matching rate) are **not** required to be bit-identical under a shared seed. Library implementations use the most efficient NumPy primitive (`rng.binomial`, `rng.poisson`, or threshold + aggregation), which consumes RNG bits differently depending on the path taken. Tests assert distributional — not bit — equivalence across channel types.
+
+### 17.8 Pending (still in flight across Dispatches K–P)
+
+Rules governing Poisson channels, detector efficiency / dark-count parameters, protocol composition (spin readout, parity scan, sideband-flopping inference), and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
 
 ---
 

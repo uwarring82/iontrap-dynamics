@@ -8,17 +8,19 @@ surfaces — channels, detectors, protocols, statistics — each shipping in
 its own dispatch so the boundary can be exercised before it hardens.
 
 Dispatch H lands :class:`BernoulliChannel` and the minimal
-:func:`sample_outcome` orchestrator. Binomial / Poisson channels, detector
-models, protocols, and statistics follow in Dispatches I–O. The
-``CONVENTIONS.md`` §17 section is opened here as staged rules and will
-freeze at the close of the track.
+:func:`sample_outcome` orchestrator; Dispatch J adds
+:class:`BinomialChannel`. Poisson channels, detector models, protocols,
+and statistics follow in Dispatches K–P. The ``CONVENTIONS.md`` §17
+section is opened here as staged rules and will freeze at the close of
+the track.
 """
 
 from __future__ import annotations
 
-from .channels import BernoulliChannel, sample_outcome
+from .channels import BernoulliChannel, BinomialChannel, sample_outcome
 
 __all__ = [
     "BernoulliChannel",
+    "BinomialChannel",
     "sample_outcome",
 ]

@@ -18,7 +18,7 @@ from .exceptions import (
     IonTrapError,
     IonTrapWarning,
 )
-from .measurement import BernoulliChannel, sample_outcome
+from .measurement import BernoulliChannel, BinomialChannel, sample_outcome
 from .results import (
     MeasurementResult,
     Result,
@@ -35,6 +35,7 @@ __all__ = [
     "FOCK_CONVERGENCE_TOLERANCE",
     "BackendError",
     "BernoulliChannel",
+    "BinomialChannel",
     "ConventionError",
     "ConvergenceError",
     "FockConvergenceWarning",
