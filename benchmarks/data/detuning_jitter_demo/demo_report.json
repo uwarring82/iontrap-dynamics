@@ -1,0 +1,38 @@
+{
+  "canonical_request_hash": "a8ca1acd61a2de9baa958a788da57541964e109e39b4c17adb2ae192aad816bd",
+  "convention_references": [
+    "§3 Spin basis",
+    "§4 Detuning sign",
+    "§18.3 Jitter primitives"
+  ],
+  "detuning_over_rabi_ratio": 0.3,
+  "ensemble_elapsed_seconds": 0.5335788750089705,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-20T17:28:42.733127+00:00",
+  "ideal_elapsed_seconds": 0.003461458982201293,
+  "max_mean_vs_ideal_deviation": 0.7156531832081722,
+  "parameters": {
+    "N_fock": 3,
+    "detuning_sigma_over_2pi_kHz": 300.0,
+    "duration_us": 5.0,
+    "initial_state": "|↓, 0⟩",
+    "n_steps": 300,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "detuning_jitter_demo",
+    "seed": 20260420,
+    "shots": 200
+  },
+  "purpose": "companion to run_demo_rabi_jitter — shows off-resonance Rabi mixing under Gaussian detuning noise: both dephasing (frequency spread) and amplitude reduction (Ω² / (Ω² + δ²) factor) are visible in the ensemble mean.",
+  "scenario": "detuning_jitter_demo",
+  "schema_version": 2,
+  "terminal_damping_from_minus_one": 0.4606767122036397,
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 systematics layer (Dispatch S)"
+}

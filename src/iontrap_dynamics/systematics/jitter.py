@@ -10,10 +10,14 @@ independent from one shot to the next, drawn from a distribution
 observable trajectory dephases from the noise-free signal — the
 classic inhomogeneous-dephasing signature.
 
-Dispatch R ships :class:`RabiJitter` — multiplicative Gaussian noise
-on carrier Rabi frequency, the most common real-experiment imperfection
-and the baseline against which later jitter primitives (detuning,
-phase, trap-frequency) will be compared.
+Dispatch R shipped :class:`RabiJitter` — multiplicative Gaussian noise
+on carrier Rabi frequency, the baseline against which later primitives
+are compared. Dispatch S adds :class:`DetuningJitter` (additive noise
+on ``detuning_rad_s``) and :class:`PhaseJitter` (additive noise on
+``phase_rad``). All three use the same composition pattern: sample
+per-shot perturbations, materialise a tuple of perturbed
+:class:`DriveConfig`\\s via ``perturb_*`` helpers, run solve() per
+entry, aggregate with NumPy.
 """
 
 from __future__ import annotations
@@ -154,7 +158,158 @@ def perturb_carrier_rabi(
     )
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DetuningJitter:
+    """Shot-to-shot additive Gaussian jitter on laser-atom detuning.
+
+    Each shot independently samples an offset ``Δδ ~ Normal(0, σ)``
+    and adds it to the drive's ``detuning_rad_s``. Physical sources:
+    laser-frequency jitter over the detection window, magnetic-field
+    drift translating into Zeeman-shift noise on the atomic
+    resonance, or AOM / EOM frequency instability.
+
+    Parameters
+    ----------
+    sigma_rad_s
+        Detuning jitter amplitude in rad·s⁻¹. Non-negative;
+        ``0.0`` is a valid no-op used for pipeline tests. Typical
+        experimental values are ``σ / 2π ≈ 10 Hz – 1 kHz`` depending
+        on the stabilisation.
+    label
+        Identifier used by downstream aggregation code when a run
+        carries multiple jitter sources. Defaults to
+        ``"detuning_jitter"``.
+
+    Raises
+    ------
+    ValueError
+        On negative ``sigma_rad_s``.
+    """
+
+    sigma_rad_s: float
+    label: str = "detuning_jitter"
+
+    def __post_init__(self) -> None:
+        if self.sigma_rad_s < 0.0:
+            raise ValueError(f"DetuningJitter: sigma_rad_s must be >= 0; got {self.sigma_rad_s}")
+
+    def sample_offsets(
+        self,
+        *,
+        shots: int,
+        rng: np.random.Generator,
+    ) -> np.ndarray:
+        """Draw ``shots`` independent additive offsets in rad·s⁻¹."""
+        if shots < 1:
+            raise ValueError(f"DetuningJitter.sample_offsets: shots must be >= 1; got {shots}")
+        return rng.normal(loc=0.0, scale=self.sigma_rad_s, size=shots).astype(np.float64)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PhaseJitter:
+    """Shot-to-shot additive Gaussian jitter on drive phase.
+
+    Each shot independently samples an offset ``Δφ ~ Normal(0, σ)``
+    and adds it to the drive's ``phase_rad``. Physical sources:
+    optical-phase noise from the laser or its delivery fibre, AOM
+    RF-phase jitter, vibration-induced path-length fluctuations.
+
+    Over many shots, phase jitter decoheres any protocol that relies
+    on a fixed phase reference between pulses (Ramsey-style
+    sequences, MS gates with calibration pulses). Single-pulse
+    Rabi flopping is insensitive to a constant phase offset, so
+    :class:`PhaseJitter` only becomes visible on multi-pulse
+    sequences or interferometric observables.
+
+    Parameters
+    ----------
+    sigma_rad
+        Phase jitter amplitude in rad. Non-negative. Values of
+        ``σ ≈ 0.01 – 0.1`` correspond to state-of-the-art to modest
+        phase stability on optical paths.
+    label
+        Identifier used by downstream aggregation code. Defaults to
+        ``"phase_jitter"``.
+
+    Raises
+    ------
+    ValueError
+        On negative ``sigma_rad``.
+    """
+
+    sigma_rad: float
+    label: str = "phase_jitter"
+
+    def __post_init__(self) -> None:
+        if self.sigma_rad < 0.0:
+            raise ValueError(f"PhaseJitter: sigma_rad must be >= 0; got {self.sigma_rad}")
+
+    def sample_offsets(
+        self,
+        *,
+        shots: int,
+        rng: np.random.Generator,
+    ) -> np.ndarray:
+        """Draw ``shots`` independent additive phase offsets in rad."""
+        if shots < 1:
+            raise ValueError(f"PhaseJitter.sample_offsets: shots must be >= 1; got {shots}")
+        return rng.normal(loc=0.0, scale=self.sigma_rad, size=shots).astype(np.float64)
+
+
+def perturb_detuning(
+    drive: DriveConfig,
+    jitter: DetuningJitter,
+    *,
+    shots: int,
+    seed: int | None = None,
+) -> tuple[DriveConfig, ...]:
+    """Return ``shots`` :class:`DriveConfig`\\s with jittered detuning.
+
+    Each entry has ``detuning_rad_s = drive.detuning_rad_s + Δδ_i``
+    for independent ``Δδ_i ~ Normal(0, jitter.sigma_rad_s)``. Other
+    fields pass through.
+
+    Bit-reproducibility: fully determined by
+    ``(drive, jitter, shots, seed)``.
+    """
+    if shots < 1:
+        raise ValueError(f"perturb_detuning: shots must be >= 1; got {shots}")
+    rng = np.random.default_rng(seed)
+    offsets = jitter.sample_offsets(shots=shots, rng=rng)
+    base = drive.detuning_rad_s
+    return tuple(replace(drive, detuning_rad_s=float(base + o)) for o in offsets)
+
+
+def perturb_phase(
+    drive: DriveConfig,
+    jitter: PhaseJitter,
+    *,
+    shots: int,
+    seed: int | None = None,
+) -> tuple[DriveConfig, ...]:
+    """Return ``shots`` :class:`DriveConfig`\\s with jittered phase.
+
+    Each entry has ``phase_rad = drive.phase_rad + Δφ_i`` for
+    independent ``Δφ_i ~ Normal(0, jitter.sigma_rad)``. Other fields
+    pass through. Phase is not wrapped — builders apply ``exp(i φ)``
+    so values outside ``[−π, π]`` are legal.
+
+    Bit-reproducibility: fully determined by
+    ``(drive, jitter, shots, seed)``.
+    """
+    if shots < 1:
+        raise ValueError(f"perturb_phase: shots must be >= 1; got {shots}")
+    rng = np.random.default_rng(seed)
+    offsets = jitter.sample_offsets(shots=shots, rng=rng)
+    base = drive.phase_rad
+    return tuple(replace(drive, phase_rad=float(base + o)) for o in offsets)
+
+
 __all__ = [
+    "DetuningJitter",
+    "PhaseJitter",
     "RabiJitter",
     "perturb_carrier_rabi",
+    "perturb_detuning",
+    "perturb_phase",
 ]

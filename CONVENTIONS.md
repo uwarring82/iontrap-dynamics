@@ -513,18 +513,24 @@ ensemble_std  = expectations.std(axis=0)
 
 The `(N, n_times)` shape echoes the `(shots, n_times)` pattern from §17.1 — shot axis leading, time axis trailing — so jittered-dynamics aggregation looks identical to measurement-layer sampling from the caller's perspective. No new `Result` type is needed for Dispatch R; users compose with NumPy. A later dispatch may add an `EnsembleResult` wrapper once the pattern has been exercised by multiple jitter sources.
 
-### 18.3 RabiJitter semantics *(added in Dispatch R)*
+### 18.3 Jitter primitives *(opened in Dispatch R, extended in Dispatch S)*
 
-`RabiJitter(sigma=σ)` samples *multiplicative* Gaussian noise: each shot scales the carrier Rabi frequency by `(1 + ε)` with `ε ~ Normal(0, σ)`. Conventions:
+Three shot-to-shot jitter primitives ship on `DriveConfig` fields, each a frozen dataclass carrying a single `sigma*` parameter plus an identifier `label`:
 
-- `σ` is **dimensionless** — a relative jitter amplitude (e.g. `0.02` for 2 %).
-- `σ` must be ``>= 0``; ``σ = 0`` is a valid no-op for pipeline checks.
-- The drive sign can in principle flip at large ``σ`` (Gaussian tails), but realistic experimental values are ``σ ≲ 0.05``, for which sign-flip probability is negligible.
-- Bit-reproducibility follows the §17.3 convention: supplying an integer ``seed`` to the composition helper (``perturb_carrier_rabi``) makes the output tuple deterministic given ``(drive, jitter, shots, seed)``. Callers wanting independent streams across multiple jitter sources should use ``np.random.SeedSequence.spawn(n)`` to derive per-source seeds (same discipline as §17.11).
+- **`RabiJitter(sigma=σ)`** — *multiplicative* Gaussian noise on `carrier_rabi_frequency_rad_s`. Each shot scales by `(1 + ε)` with `ε ~ Normal(0, σ)`. `σ` is dimensionless (a relative amplitude); realistic values `σ ≲ 0.05`. The drive sign can in principle flip at large `σ` via Gaussian tails; negligible at realistic values.
+- **`DetuningJitter(sigma_rad_s=σ)`** — *additive* Gaussian noise on `detuning_rad_s`. Each shot adds `Δδ ~ Normal(0, σ)`. Units are rad·s⁻¹ (SI per §1). Typical values `σ / 2π ≈ 10 Hz – 1 kHz`. Composes via `perturb_detuning(drive, jitter, shots, seed)`.
+- **`PhaseJitter(sigma_rad=σ)`** — *additive* Gaussian noise on `phase_rad`. Each shot adds `Δφ ~ Normal(0, σ)`. Units are radians. Phase is **not** wrapped — `DriveConfig.phase_rad` accepts any real value, and builders apply `exp(i φ)` internally. Single-pulse Rabi flopping is insensitive to a constant phase; `PhaseJitter` becomes visible only on multi-pulse sequences (Ramsey, MS) or interferometric observables.
 
-### 18.4 Pending (still in flight across Dispatches S–U)
+All three share these rules:
 
-Rules for detuning / phase jitter (S), static parameter drifts (T), and state-preparation errors (U) will be added in sequence. Each dispatch appends to §18 rather than rewriting it, so the read-through grows linearly. §18 freezes alongside §17 at the v0.2 release.
+- `σ` must be ``>= 0``; ``σ = 0`` is a valid no-op used for pipeline checks.
+- Each primitive exposes a `.sample_multipliers(shots, rng)` (Rabi) or `.sample_offsets(shots, rng)` (Detuning / Phase) method returning a `(shots,)` `float64` array. Multipliers are multiplicative (`1 + ε`); offsets are additive (`Δ`).
+- Module-level `perturb_*` helpers materialise a `tuple[DriveConfig, ...]` of length `shots` from the sampled perturbations; other `DriveConfig` fields pass through untouched via `dataclasses.replace`.
+- Bit-reproducibility follows §17.3: supplying an integer `seed` to the composition helper makes the output tuple deterministic given `(drive, jitter, shots, seed)`. Callers wanting independent streams across multiple jitter sources should use `np.random.SeedSequence.spawn(n)` to derive per-source seeds (same discipline as §17.11).
+
+### 18.4 Pending (still in flight across Dispatches T–U)
+
+Rules for static parameter drifts (T) and state-preparation errors (U) will be added in sequence. Each dispatch appends to §18 rather than rewriting it, so the read-through grows linearly. §18 freezes alongside §17 at the v0.2 release.
 
 ---
 

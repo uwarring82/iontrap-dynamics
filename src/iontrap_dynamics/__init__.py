@@ -46,7 +46,14 @@ from .results import (
     TrajectoryResult,
     WarningSeverity,
 )
-from .systematics import RabiJitter, perturb_carrier_rabi
+from .systematics import (
+    DetuningJitter,
+    PhaseJitter,
+    RabiJitter,
+    perturb_carrier_rabi,
+    perturb_detuning,
+    perturb_phase,
+)
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
@@ -59,6 +66,7 @@ __all__ = [
     "ConventionError",
     "ConvergenceError",
     "DetectorConfig",
+    "DetuningJitter",
     "FockConvergenceWarning",
     "FockQualityWarning",
     "IntegrityError",
@@ -66,6 +74,7 @@ __all__ = [
     "IonTrapWarning",
     "MeasurementResult",
     "ParityScan",
+    "PhaseJitter",
     "PoissonChannel",
     "RabiJitter",
     "Result",
@@ -84,6 +93,8 @@ __all__ = [
     "load_trajectory",
     "log_negativity_trajectory",
     "perturb_carrier_rabi",
+    "perturb_detuning",
+    "perturb_phase",
     "sample_outcome",
     "save_trajectory",
     "wilson_interval",

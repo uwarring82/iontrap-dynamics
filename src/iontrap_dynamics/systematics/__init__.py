@@ -15,20 +15,35 @@ from a parameter distribution. The user composes by:
 4. Aggregating observables across the resulting list of
    :class:`TrajectoryResult` via normal NumPy reductions.
 
-Dispatch R lands the first stochastic primitive — :class:`RabiJitter`
-— plus a thin :func:`perturb_carrier_rabi` helper that builds the
-perturbed :class:`DriveConfig` ensemble. Detuning / phase jitter,
-parameter drifts (offsets), and SPAM (state-prep) errors follow in
-Dispatches S–U. The ``CONVENTIONS.md`` §18 section is opened with
-Dispatch R as staged rules and will freeze at the close of the
-systematics track.
+Dispatch R landed the first stochastic primitive — :class:`RabiJitter`
+— plus a thin :func:`perturb_carrier_rabi` helper. Dispatch S adds
+:class:`DetuningJitter` and :class:`PhaseJitter` with matching
+``perturb_detuning`` and ``perturb_phase`` composition helpers. All
+three jitter primitives share the same aggregation pattern: sample
+shot-to-shot perturbations, build a tuple of perturbed
+:class:`DriveConfig`\\s, run solve() per entry, aggregate with NumPy.
+Parameter drifts (T) and SPAM / state-prep errors (U) close the
+track. The ``CONVENTIONS.md`` §18 section is opened with Dispatch R
+as staged rules and will freeze at the close of the systematics
+track.
 """
 
 from __future__ import annotations
 
-from .jitter import RabiJitter, perturb_carrier_rabi
+from .jitter import (
+    DetuningJitter,
+    PhaseJitter,
+    RabiJitter,
+    perturb_carrier_rabi,
+    perturb_detuning,
+    perturb_phase,
+)
 
 __all__ = [
+    "DetuningJitter",
+    "PhaseJitter",
     "RabiJitter",
     "perturb_carrier_rabi",
+    "perturb_detuning",
+    "perturb_phase",
 ]

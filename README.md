@@ -71,10 +71,10 @@ Today the importable code surface covers:
   bipartite splits). Consume `TrajectoryResult.states` under
   `storage_mode=EAGER`
 - `iontrap_dynamics.systematics` — dynamics-side noise models
-  (Phase 1, v0.2 track — staged per §18). `RabiJitter(sigma=…)` +
-  `perturb_carrier_rabi(drive, jitter, shots, seed)` ship the first
-  jitter primitive; detuning / phase / drift / SPAM follow in
-  Dispatches S–U
+  (Phase 1, v0.2 track — staged per §18). Jitter primitives
+  `RabiJitter` (multiplicative on Ω), `DetuningJitter` (additive on
+  δ), `PhaseJitter` (additive on φ) with matching `perturb_*`
+  composition helpers; drift (T) and SPAM (U) dispatches pending
 
 **Dynamics (Phase 1, full builder family)**
 
@@ -154,9 +154,10 @@ v0.2 Convention Freeze gate.
 `run_demo_poisson_readout`, `run_demo_detected_readout`,
 `run_demo_spin_readout`, `run_demo_parity_scan`,
 `run_demo_sideband_inference`, `run_demo_wilson_ci`,
-`run_demo_bell_entanglement`, `run_demo_rabi_jitter`.
+`run_demo_bell_entanglement`, `run_demo_rabi_jitter`,
+`run_demo_detuning_jitter`.
 
-Test suite: **717 passed, 3 skipped**. Skips are migration-tier
+Test suite: **742 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

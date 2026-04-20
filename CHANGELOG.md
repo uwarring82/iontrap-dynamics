@@ -348,7 +348,7 @@ trajectory.
   concurrence grows monotonically to 1 at ``t_gate``; log-negativity
   loops (peaks at ~1.31) and returns to ~0 as motion disentangles.
 
-#### Phase 1 — systematics layer (`systematics/`, Dispatch R)
+#### Phase 1 — systematics layer (`systematics/`, Dispatches R / S)
 
 Opens the §5 Phase 1 systematics surface. Jitter / drift / SPAM noise
 classes (§18.1) are distinguished; Dispatch R ships the first jitter
@@ -376,6 +376,28 @@ primitive.
   the ideal `⟨σ_z⟩(t)`, ensemble mean (visibly damped), ±1σ
   shot-to-shot spread band, and the analytic
   `T₂* ≈ 1/(σ·Ω₀) ≈ 5.3 μs` marker.
+- `systematics.DetuningJitter(sigma_rad_s)` and
+  `systematics.PhaseJitter(sigma_rad)` (Dispatch S) — additive
+  Gaussian jitter primitives on `DriveConfig.detuning_rad_s` and
+  `DriveConfig.phase_rad` respectively. Each exposes a
+  `.sample_offsets(shots, rng)` method returning the per-shot
+  additive offsets. Parallel to `RabiJitter` but additive rather
+  than multiplicative.
+- `systematics.perturb_detuning(drive, jitter, shots, seed)` and
+  `systematics.perturb_phase(drive, jitter, shots, seed)` (Dispatch
+  S) — composition helpers matching `perturb_carrier_rabi`. Both
+  bit-reproducible given `(drive, jitter, shots, seed)`.
+- `CONVENTIONS.md §18.3` generalised to cover all three jitter
+  primitives (Rabi multiplicative, Detuning / Phase additive),
+  shared `σ ≥ 0` + zero-is-no-op + seed-reproducibility rules.
+  §18.4 repoints to Dispatches T–U.
+- `tools/run_demo_detuning_jitter.py` — off-resonance Rabi-mixing
+  demo. Runs 200 carrier-Rabi trajectories with
+  `σ_δ / 2π = 300 kHz` (`σ_δ / Ω₀ = 0.3`) and shows the combined
+  dephasing + amplitude-reduction signature of off-resonance drive
+  (each shot's effective Rabi rate depends on δ, and its amplitude
+  is reduced by `Ω² / (Ω² + δ²)`). Max |ensemble mean − ideal| ≈
+  0.72; terminal-offset-from-`−1` ≈ 0.46 at `t ≈ 5 T_Ω`.
 
 ### Changed
 

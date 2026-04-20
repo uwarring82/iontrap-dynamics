@@ -227,6 +227,7 @@ ignore = [
 "tools/run_demo_carrier.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_detected_readout.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_parity_scan.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/run_demo_detuning_jitter.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_poisson_readout.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_rabi_jitter.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_sideband_inference.py" = ["RUF001", "RUF002", "RUF003"]
