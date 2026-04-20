@@ -24,9 +24,12 @@ projection + Poisson photon counting + thresholding into a named
 reconstructs the joint readout distribution from
 ``⟨σ_z^i⟩``, ``⟨σ_z^j⟩``, and ``⟨σ_z^i σ_z^j⟩`` so entanglement-
 bearing correlations (Bell-state verification, CHSH) survive.
-Sideband-flopping inference (Dispatch O) and statistics (Dispatch P)
-follow the same shape. The ``CONVENTIONS.md`` §17 section is opened
-here as staged rules and will freeze at the close of the track.
+Dispatch O adds :class:`SidebandInference`, which composes paired
+red / blue sideband readouts through the short-time
+``n̄ = r / (1 − r)`` ratio to report a motional-occupation estimate.
+Statistics (Dispatch P) follows to close the track. The
+``CONVENTIONS.md`` §17 section is opened here as staged rules and
+will freeze at the close of the track.
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ from .channels import (
     sample_outcome,
 )
 from .detectors import DetectorConfig
-from .protocols import ParityScan, SpinReadout
+from .protocols import ParityScan, SidebandInference, SpinReadout
 
 __all__ = [
     "BernoulliChannel",
@@ -46,6 +49,7 @@ __all__ = [
     "DetectorConfig",
     "ParityScan",
     "PoissonChannel",
+    "SidebandInference",
     "SpinReadout",
     "sample_outcome",
 ]

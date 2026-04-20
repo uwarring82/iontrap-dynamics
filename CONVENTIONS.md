@@ -434,9 +434,25 @@ which, expanded, reduces at zero marginals (`⟨σ_z^i⟩ = ⟨σ_z^j⟩ = 0`) t
 
 The first term is the entanglement-visibility shrinkage `contrast²`; the second is a detector-asymmetry offset that vanishes for symmetric detectors (`TP = TN`). Callers computing Bell-state fidelity from experimental parity records must divide out the contrast² factor.
 
-### 17.11 Pending (still in flight across Dispatches O–P)
+### 17.11 Sideband inference *(added in Dispatch O)*
 
-Rules governing sideband-flopping inference and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+Motional-state thermometry on trapped ions uses the short-time Leibfried–Wineland ratio between red- and blue-sideband Rabi excitations:
+
+    P↑_RSB(t) / P↑_BSB(t)  →  n̄ / (n̄ + 1)    as (2Ωη t)² → 0
+
+inverting to `n̄ = r / (1 − r)`. The formula is exact in the short-time limit for *any* motional distribution — the $\sum_n p_n (2Ωη\sqrt{n+1} t)^2$ expansion weights by `n̄ + 1` on BSB and by `n̄` on RSB, independent of the shape of the distribution. `SidebandInference.run` evaluates the ratio element-wise.
+
+**Fidelity correction before the ratio.** The detector's projective envelope `TP·p_↑ + (1−TN)·(1−p_↑)` (§17.9) is linearly invertible: `p̂_↑ = (bright_fraction − (1 − TN)) / (TP + TN − 1)`. The protocol applies this inversion to *both* sideband bright fractions before computing the ratio. Detector contrast `TP + TN − 1` must be strictly positive; a detector that can't distinguish bright from dark (`TP ≈ 1 − TN`) makes the inversion ill-defined and raises `ValueError`.
+
+The protocol reports both the fidelity-corrected `n̄_estimate` (the principled one) and the raw-ratio `n̄_from_raw_ratio` (the naive one) so callers can see the size of the fidelity correction — at high-fidelity detectors the two converge; at low-contrast detectors the uncorrected estimate is visibly biased toward `(1 − TN) / TP` asymptotically.
+
+**Independent RNG streams per sideband.** The two sideband readouts consume different shots and therefore different RNG streams. `SidebandInference.run(seed=K)` uses `np.random.SeedSequence(K).spawn(2)` to derive bit-reproducible but statistically independent generators — callers MUST NOT pre-split seeds themselves or reuse a single seed across sidebands.
+
+**NaN propagation.** The ratio is NaN wherever `p_up_bsb ≤ 0` (indeterminate) or `r ≥ 1` (unphysical: RSB ≥ BSB leaves the short-time regime). `n̄` inherits the NaN. Callers mask with `np.nanmean` / `np.nanmedian` rather than expecting the protocol to regularise.
+
+### 17.12 Pending (still in flight for Dispatch P)
+
+Rules governing estimator / CI semantics (Wilson, Clopper–Pearson) close the section. The §17 freeze lands with Dispatch P.
 
 ---
 

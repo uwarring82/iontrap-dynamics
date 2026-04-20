@@ -12,9 +12,10 @@ Dispatch M adds :class:`SpinReadout` — the prototype single-ion
 protocol. Dispatch N adds :class:`ParityScan`, which reads two ions
 jointly on the same shot so entanglement-bearing correlations (Bell
 states, CHSH, Mølmer–Sørensen verification) survive the measurement.
-Sideband-flopping inference (Dispatch O) follows the same shape:
-construct a spec, call ``.run()``, consume the
-:class:`MeasurementResult`.
+Dispatch O adds :class:`SidebandInference`, which combines paired
+red / blue sideband trajectories through the short-time ratio
+``P↑_RSB / P↑_BSB = n̄ / (n̄ + 1)`` to infer the mean motional
+occupation ``n̄`` from shot records.
 
 Projective-shot readout model
 -----------------------------
@@ -183,13 +184,14 @@ class SpinReadout:
             )
         p_up = np.clip(p_up, 0.0, 1.0)
 
+        rng = np.random.default_rng(seed)
         counts, bits, bright_fraction, envelope = _project_and_sample(
             p_up=p_up,
             detector=self.detector,
             lambda_bright=self.lambda_bright,
             lambda_dark=self.lambda_dark,
             shots=shots,
-            seed=seed,
+            rng=rng,
         )
 
         metadata = _inherit_metadata(
@@ -220,7 +222,7 @@ def _project_and_sample(
     lambda_bright: float,
     lambda_dark: float,
     shots: int,
-    seed: int | None,
+    rng: np.random.Generator,
 ) -> tuple[
     NDArray[np.int64],
     NDArray[np.int8],
@@ -232,7 +234,6 @@ def _project_and_sample(
     Returns (counts, bits, bright_fraction, envelope) with shapes
     ((shots, n_times), (shots, n_times), (n_times,), (n_times,)).
     """
-    rng = np.random.default_rng(seed)
     n_times = p_up.size
 
     # Per-shot state projection: Bernoulli(p_↑) giving a bright mask.
@@ -465,13 +466,14 @@ class ParityScan:
             )
         joint = np.clip(joint, 0.0, 1.0)
 
+        rng = np.random.default_rng(seed)
         counts, bits, parity_shots, parity_est = _parity_project_and_sample(
             joint=joint,
             detector=self.detector,
             lambda_bright=self.lambda_bright,
             lambda_dark=self.lambda_dark,
             shots=shots,
-            seed=seed,
+            rng=rng,
         )
 
         # Projective-shot envelope for the parity estimator (§17.11).
@@ -527,7 +529,7 @@ def _parity_project_and_sample(
     lambda_bright: float,
     lambda_dark: float,
     shots: int,
-    seed: int | None,
+    rng: np.random.Generator,
 ) -> tuple[
     tuple[NDArray[np.int64], NDArray[np.int64]],
     tuple[NDArray[np.int8], NDArray[np.int8]],
@@ -544,7 +546,6 @@ def _parity_project_and_sample(
     ``(shots, n_times)``; parity is ``(shots, n_times)`` int8 in
     ``{−1, +1}``; parity_estimate is ``(n_times,)`` float64.
     """
-    rng = np.random.default_rng(seed)
     n_times = joint.shape[1]
 
     # Cumulative joint distribution along the 4-outcome axis,
@@ -629,7 +630,282 @@ def _parity_envelope(
     return np.asarray(2.0 * p_agree - 1.0, dtype=np.float64)
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SidebandInference:
+    """Mean-phonon inference from paired RSB / BSB Rabi trajectories (Dispatch O).
+
+    Takes two :class:`TrajectoryResult`s driven on the red and blue
+    motional sidebands of the *same* initial motional distribution, runs
+    both through the projective-shot readout pipeline (per §17.9), and
+    inverts the short-time Leibfried–Wineland relation
+
+        ⟨P↑⟩_RSB(t) / ⟨P↑⟩_BSB(t) → n̄ / (n̄ + 1)
+
+    to estimate the mean motional occupation ``n̄``. The ratio formula
+    is *exact* in the short-time limit ``(2Ωη t)² ≪ 1`` and is the
+    workhorse experimental method for motional-state thermometry after
+    Doppler / sideband cooling.
+
+    Fidelity correction
+    -------------------
+
+    The raw bright-fraction estimator is shrunk by the detector's
+    linear envelope (§17.9) — at fidelity ``F < 1``, applying the ratio
+    directly to ``bright_fraction`` biases the inferred ``n̄``. The
+    protocol therefore inverts the envelope *before* taking the ratio:
+
+        p̂↑ = (bright_fraction − (1 − TN)) / (TP + TN − 1)
+
+    and reports both the corrected ``n̄`` (the principled estimator)
+    and the uncorrected ``n̄_from_raw_ratio`` (the naive one) so users
+    can see the size of the fidelity correction.
+
+    Parameters
+    ----------
+    ion_index
+        Zero-based index of the ion being read out on both sidebands.
+        Each trajectory must carry ``sigma_z_{ion_index}``.
+    detector
+        Shared :class:`DetectorConfig` used on both sideband readouts.
+    lambda_bright
+        Emitted photon rate per shot when the qubit is pinned bright.
+        Shared across both sidebands.
+    lambda_dark
+        Emitted photon rate per shot when the qubit is pinned dark.
+        ``<= lambda_bright``.
+    label
+        Identifier prefix for ``MeasurementResult.sampled_outcome``
+        entries. Defaults to ``"sideband_inference"``.
+
+    Raises
+    ------
+    ValueError
+        At construction, on negative ion_index, negative rates, or
+        ``lambda_dark > lambda_bright``.
+    """
+
+    ion_index: int
+    detector: DetectorConfig
+    lambda_bright: float
+    lambda_dark: float
+    label: str = "sideband_inference"
+
+    def __post_init__(self) -> None:
+        if self.ion_index < 0:
+            raise ValueError(f"SidebandInference: ion_index must be >= 0; got {self.ion_index}")
+        if self.lambda_bright < 0.0 or self.lambda_dark < 0.0:
+            raise ValueError(
+                "SidebandInference: rates must be >= 0; "
+                f"got lambda_bright={self.lambda_bright}, "
+                f"lambda_dark={self.lambda_dark}"
+            )
+        if self.lambda_dark > self.lambda_bright:
+            raise ValueError(
+                "SidebandInference: lambda_dark must be <= lambda_bright; "
+                f"got {self.lambda_dark} > {self.lambda_bright}"
+            )
+
+    def run(
+        self,
+        *,
+        rsb_trajectory: TrajectoryResult,
+        bsb_trajectory: TrajectoryResult,
+        shots: int,
+        seed: int | None = None,
+        provenance_tags: tuple[str, ...] = (),
+    ) -> MeasurementResult:
+        """Execute the inference against paired RSB / BSB trajectories.
+
+        Both trajectories must carry ``sigma_z_{ion_index}`` and share
+        the same time grid (element-wise ratio requires matched times).
+        The upstream metadata is inherited from ``rsb_trajectory`` —
+        the ``bsb_trajectory``'s ``request_hash`` is recorded in the
+        result's ``ideal_outcome["bsb_trajectory_hash"]`` for the
+        provenance chain.
+
+        Returns
+        -------
+        MeasurementResult
+            ``ideal_outcome`` carries:
+
+            - ``"p_up_rsb"``, ``"p_up_bsb"`` — per-sideband marginals
+              ``(1 + ⟨σ_z⟩) / 2`` from the trajectories.
+            - ``"nbar_from_ideal_ratio"`` — ``n̄`` from the ideal
+              ``p_up_rsb / p_up_bsb`` ratio (no shot noise, no
+              detector shrinkage). NaN wherever the ratio is singular
+              or ≥ 1.
+            - ``"bsb_trajectory_hash"`` — upstream BSB ``request_hash``.
+
+            ``sampled_outcome`` carries the Dispatch M fields for
+            each sideband under suffixed keys
+            ``f"{label}_rsb_{counts,bits,bright_fraction}"`` and
+            ``f"{label}_bsb_{counts,bits,bright_fraction}"``, plus:
+
+            - ``f"{label}_nbar_estimate"`` — fidelity-corrected
+              ``n̄`` estimate (the principled one).
+            - ``f"{label}_nbar_from_raw_ratio"`` — ``n̄`` from the
+              uncorrected bright-fraction ratio (shows the bias that
+              fidelity-correction removes).
+
+            The ``trajectory_hash`` field inherits the RSB
+            ``request_hash``; see ``ideal_outcome["bsb_trajectory_hash"]``
+            for the BSB counterpart.
+
+        Raises
+        ------
+        ConventionError
+            If either trajectory lacks ``sigma_z_{ion_index}``.
+        ValueError
+            If ``shots < 1``; if the two trajectories have mismatched
+            time grids; or if the detector's classification contrast
+            ``TP + TN − 1`` is ≤ 0 (inversion is ill-defined — the
+            detector cannot distinguish bright from dark).
+        """
+        if shots < 1:
+            raise ValueError(f"SidebandInference.run: shots must be >= 1; got {shots}")
+
+        observable_key = f"sigma_z_{self.ion_index}"
+        for label, traj in (("RSB", rsb_trajectory), ("BSB", bsb_trajectory)):
+            if observable_key not in traj.expectations:
+                raise ConventionError(
+                    f"SidebandInference.run: {label} trajectory has no "
+                    f"'{observable_key}' expectation (available: "
+                    f"{sorted(traj.expectations)})"
+                )
+
+        if rsb_trajectory.times.shape != bsb_trajectory.times.shape or not np.allclose(
+            rsb_trajectory.times, bsb_trajectory.times
+        ):
+            raise ValueError(
+                "SidebandInference.run: RSB and BSB trajectories must share the same "
+                "time grid (ratio is element-wise)."
+            )
+
+        fidelities = self.detector.classification_fidelity(
+            lambda_bright=self.lambda_bright, lambda_dark=self.lambda_dark
+        )
+        contrast = fidelities["true_positive_rate"] + fidelities["true_negative_rate"] - 1.0
+        if contrast <= 0.0:
+            raise ValueError(
+                "SidebandInference.run: detector classification contrast "
+                f"(TP + TN − 1) = {contrast:.3e} is not positive; "
+                "fidelity inversion is ill-defined."
+            )
+
+        p_up_rsb = _p_up_from_trajectory(rsb_trajectory, observable_key)
+        p_up_bsb = _p_up_from_trajectory(bsb_trajectory, observable_key)
+
+        # Two independent RNG streams so the RSB and BSB readouts don't
+        # see the same bits — seeded deterministically from a shared
+        # seed via np.random.SeedSequence.spawn, giving bit-reproducible
+        # but statistically independent sampling.
+        if seed is None:
+            rsb_rng = np.random.default_rng(None)
+            bsb_rng = np.random.default_rng(None)
+        else:
+            rsb_ss, bsb_ss = np.random.SeedSequence(seed).spawn(2)
+            rsb_rng = np.random.default_rng(rsb_ss)
+            bsb_rng = np.random.default_rng(bsb_ss)
+
+        rsb_counts, rsb_bits, rsb_fraction, _ = _project_and_sample(
+            p_up=p_up_rsb,
+            detector=self.detector,
+            lambda_bright=self.lambda_bright,
+            lambda_dark=self.lambda_dark,
+            shots=shots,
+            rng=rsb_rng,
+        )
+        bsb_counts, bsb_bits, bsb_fraction, _ = _project_and_sample(
+            p_up=p_up_bsb,
+            detector=self.detector,
+            lambda_bright=self.lambda_bright,
+            lambda_dark=self.lambda_dark,
+            shots=shots,
+            rng=bsb_rng,
+        )
+
+        # Fidelity-corrected probabilities — invert the linear envelope
+        # (§17.9). Clipped to [0, 1] to quiet noise-induced excursions.
+        offset = 1.0 - fidelities["true_negative_rate"]
+        p_up_rsb_hat = np.clip((rsb_fraction - offset) / contrast, 0.0, 1.0)
+        p_up_bsb_hat = np.clip((bsb_fraction - offset) / contrast, 0.0, 1.0)
+
+        # Ratios and n̄ estimates. np.errstate silences the expected
+        # divide-by-zero and invalid warnings when BSB estimate is 0
+        # or the ratio touches 1 — the NaN propagation is intentional.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            nbar_from_ideal_ratio = _nbar_from_ratio(p_up_rsb, p_up_bsb)
+            nbar_estimate = _nbar_from_ratio(p_up_rsb_hat, p_up_bsb_hat)
+            nbar_from_raw_ratio = _nbar_from_ratio(rsb_fraction, bsb_fraction)
+
+        metadata = _inherit_metadata(
+            upstream=rsb_trajectory,
+            provenance_tags=(self.label, *provenance_tags),
+        )
+        return MeasurementResult(
+            metadata=metadata,
+            shots=shots,
+            rng_seed=seed,
+            ideal_outcome={
+                "p_up_rsb": p_up_rsb,
+                "p_up_bsb": p_up_bsb,
+                "nbar_from_ideal_ratio": nbar_from_ideal_ratio,
+                "bsb_trajectory_hash": np.asarray(
+                    bsb_trajectory.metadata.request_hash, dtype=object
+                ),
+            },
+            sampled_outcome={
+                f"{self.label}_rsb_counts": rsb_counts,
+                f"{self.label}_rsb_bits": rsb_bits,
+                f"{self.label}_rsb_bright_fraction": rsb_fraction,
+                f"{self.label}_bsb_counts": bsb_counts,
+                f"{self.label}_bsb_bits": bsb_bits,
+                f"{self.label}_bsb_bright_fraction": bsb_fraction,
+                f"{self.label}_p_up_rsb_hat": p_up_rsb_hat,
+                f"{self.label}_p_up_bsb_hat": p_up_bsb_hat,
+                f"{self.label}_nbar_estimate": nbar_estimate,
+                f"{self.label}_nbar_from_raw_ratio": nbar_from_raw_ratio,
+            },
+            trajectory_hash=rsb_trajectory.metadata.request_hash,
+        )
+
+
+def _p_up_from_trajectory(trajectory: TrajectoryResult, observable_key: str) -> NDArray[np.float64]:
+    """Convert ``⟨σ_z⟩`` to ``p_↑``, clipping ODE floating-point slop.
+
+    Shared between :class:`SpinReadout.run` (inlined there for
+    legibility) and :class:`SidebandInference.run`. Same ±1e-9
+    tolerance for |⟨σ_z⟩| > 1 slop; anything larger raises.
+    """
+    sigma_z = np.asarray(trajectory.expectations[observable_key], dtype=np.float64)
+    p_up = 0.5 * (1.0 + sigma_z)
+    if np.any((p_up < -1e-9) | (p_up > 1.0 + 1e-9)):
+        raise ValueError(
+            f"SidebandInference.run: p_up from '{observable_key}' lies outside "
+            f"[0, 1] by more than 1e-9 (min={p_up.min()}, max={p_up.max()}) — "
+            "upstream solve is likely buggy."
+        )
+    return np.clip(p_up, 0.0, 1.0)
+
+
+def _nbar_from_ratio(
+    p_up_rsb: NDArray[np.float64],
+    p_up_bsb: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """``n̄ = r / (1 − r)`` where ``r = p_up_rsb / p_up_bsb``.
+
+    NaN wherever the BSB probability is 0 (indeterminate ratio) or the
+    ratio is ≥ 1 (unphysical: RSB ≥ BSB implies the formula has left
+    its short-time regime). Callers get NaN-tainted arrays they can
+    mask without a warning spray.
+    """
+    r = np.where(p_up_bsb > 0.0, p_up_rsb / p_up_bsb, np.nan)
+    nbar = np.where((r >= 0.0) & (r < 1.0), r / (1.0 - r), np.nan)
+    return nbar.astype(np.float64)
+
+
 __all__ = [
     "ParityScan",
+    "SidebandInference",
     "SpinReadout",
 ]

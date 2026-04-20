@@ -196,7 +196,7 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
-#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M / N)
+#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M / N / O)
 
 - `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
   carrying the ideal / sampled dual-view mandated by
@@ -283,6 +283,22 @@ bloating the typed schema.
   parity at every step, overlaying the ideal `⟨σ_z σ_z⟩`, the
   projective fidelity-shrunk envelope, and the shot-averaged
   parity estimate.
+- `SidebandInference` protocol (Dispatch O) — motional thermometry
+  via the short-time Leibfried–Wineland ratio. Takes paired RSB
+  and BSB :class:`TrajectoryResult`s driven on the same initial
+  motional distribution, runs each through the projective-shot
+  pipeline on independent RNG streams (`np.random.SeedSequence.spawn(2)`),
+  inverts the detector's linear envelope to get fidelity-corrected
+  probabilities, then reports `n̄ = r / (1 − r)` element-wise.
+  Result carries both the corrected `nbar_estimate` and the
+  uncorrected `nbar_from_raw_ratio` so the fidelity-correction
+  visibility is explicit. NaN propagates wherever `p_up_bsb = 0`
+  or `r ≥ 1` — callers mask with `np.nanmean` / `np.nanmedian`.
+- `tools/run_demo_sideband_inference.py` — ground-state thermometry
+  demo. Runs RSB + BSB Hamiltonians on `|↓, 0⟩`, showing that RSB
+  stays pinned (no phonon to remove) while BSB flops normally; the
+  inferred `n̄` has median ~0 with a shot-noise spread of ~0.14 at
+  500 shots and F ≈ 0.97.
 
 ### Changed
 
@@ -303,8 +319,11 @@ bloating the typed schema.
   joint readout: joint-probability reconstruction from three ZZ-
   tomography components, why independent-Bernoulli sampling fails
   for entangled states, parity envelope
-  `(TP + TN − 1)² · ⟨σ_z σ_z⟩ + (TP − TN)²` at zero marginals).
-  §17.11 lists the rules still pending for Dispatches O–P.
+  `(TP + TN − 1)² · ⟨σ_z σ_z⟩ + (TP − TN)²` at zero marginals);
+  Dispatch O added §17.11 (sideband inference: short-time ratio
+  formula, fidelity correction before ratio, independent RNG
+  streams via `SeedSequence.spawn`, NaN propagation). §17.12 lists
+  the estimator / CI rules still pending for Dispatch P.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the

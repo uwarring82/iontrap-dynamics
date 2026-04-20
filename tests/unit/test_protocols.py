@@ -21,6 +21,7 @@ from iontrap_dynamics import (
     MeasurementResult,
     ParityScan,
     ResultMetadata,
+    SidebandInference,
     SpinReadout,
     StorageMode,
     TrajectoryResult,
@@ -869,3 +870,409 @@ class TestParityScanJointSampling:
         np.testing.assert_allclose(joint[1], 0.0, atol=1e-12)  # P(↑↓)
         np.testing.assert_allclose(joint[2], 0.0, atol=1e-12)  # P(↓↑)
         np.testing.assert_allclose(joint[3], 0.5)  # P(↓↓)
+
+
+# ----------------------------------------------------------------------------
+# SidebandInference — RSB / BSB ratio-based n̄ inference
+# ----------------------------------------------------------------------------
+
+
+def _sideband_trajectory(
+    sigma_z: np.ndarray,
+    *,
+    ion_index: int = 0,
+    provenance_tags: tuple[str, ...] = ("demo", "sideband"),
+    request_hash: str = "e" * 64,
+    times: np.ndarray | None = None,
+) -> TrajectoryResult:
+    t = times if times is not None else np.linspace(0.0, 1.0e-6, sigma_z.size)
+    meta = ResultMetadata(
+        convention_version=CONVENTION_VERSION,
+        request_hash=request_hash,
+        backend_name="qutip-mesolve",
+        backend_version="5.0.0",
+        storage_mode=StorageMode.OMITTED,
+        provenance_tags=provenance_tags,
+    )
+    return TrajectoryResult(
+        metadata=meta,
+        times=t,
+        expectations={f"sigma_z_{ion_index}": sigma_z},
+    )
+
+
+def _from_nbar(
+    nbar: float,
+    *,
+    n_times: int = 5,
+    scale: float = 0.01,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build matched-time (RSB, BSB) ⟨σ_z⟩ trajectories for a given n̄.
+
+    Uses the short-time ratio p_up_rsb / p_up_bsb = n̄/(n̄+1). We pick
+    p_up_bsb(t) = scale · t_index (a linear ramp into the short-time
+    regime), then derive p_up_rsb from the ratio. Returns
+    (sigma_z_rsb, sigma_z_bsb) with ⟨σ_z⟩ = 2·p_up − 1.
+    """
+    ramp = np.linspace(scale, scale * n_times, n_times)
+    p_up_bsb = ramp
+    p_up_rsb = (nbar / (nbar + 1.0)) * ramp
+    return 2.0 * p_up_rsb - 1.0, 2.0 * p_up_bsb - 1.0
+
+
+class TestSidebandInferenceConstruction:
+    def test_minimal_construction(self) -> None:
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        assert protocol.ion_index == 0
+        assert protocol.label == "sideband_inference"
+
+    def test_negative_ion_index_raises(self) -> None:
+        with pytest.raises(ValueError, match="ion_index must be >= 0"):
+            SidebandInference(
+                ion_index=-1,
+                detector=_ideal_detector(),
+                lambda_bright=20.0,
+                lambda_dark=0.0,
+            )
+
+    def test_dark_greater_than_bright_raises(self) -> None:
+        with pytest.raises(ValueError, match="lambda_dark must be <= lambda_bright"):
+            SidebandInference(
+                ion_index=0,
+                detector=_ideal_detector(),
+                lambda_bright=2.0,
+                lambda_dark=5.0,
+            )
+
+    def test_frozen(self) -> None:
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=20.0,
+            lambda_dark=0.0,
+        )
+        with pytest.raises(FrozenInstanceError):
+            protocol.ion_index = 1  # type: ignore[misc]
+
+
+class TestSidebandInferenceRunSurface:
+    def test_result_is_measurement_result(self) -> None:
+        rsb, bsb = _from_nbar(0.5, n_times=4)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=100,
+            seed=0,
+        )
+        assert isinstance(result, MeasurementResult)
+        assert result.shots == 100
+
+    def test_sampled_outcome_shapes(self) -> None:
+        rsb, bsb = _from_nbar(0.3, n_times=5)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=200,
+            seed=0,
+        )
+        assert result.sampled_outcome["sideband_inference_rsb_counts"].shape == (200, 5)
+        assert result.sampled_outcome["sideband_inference_bsb_counts"].shape == (200, 5)
+        assert result.sampled_outcome["sideband_inference_rsb_bright_fraction"].shape == (5,)
+        assert result.sampled_outcome["sideband_inference_nbar_estimate"].shape == (5,)
+        assert result.sampled_outcome["sideband_inference_nbar_from_raw_ratio"].shape == (5,)
+
+    def test_ideal_outcome_carries_p_up_and_ideal_ratio(self) -> None:
+        rsb, bsb = _from_nbar(1.0, n_times=4)  # n̄ = 1
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=10,
+            seed=0,
+        )
+        np.testing.assert_allclose(result.ideal_outcome["p_up_bsb"], 0.5 * (1.0 + bsb))
+        np.testing.assert_allclose(result.ideal_outcome["p_up_rsb"], 0.5 * (1.0 + rsb))
+        # n̄ = 1 everywhere since the trajectory was constructed that way.
+        np.testing.assert_allclose(result.ideal_outcome["nbar_from_ideal_ratio"], 1.0)
+
+    def test_trajectory_hashes_and_provenance(self) -> None:
+        rsb, bsb = _from_nbar(0.5)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(
+                rsb,
+                provenance_tags=("demo", "rsb_scan"),
+                request_hash="f" * 64,
+            ),
+            bsb_trajectory=_sideband_trajectory(
+                bsb,
+                provenance_tags=("demo", "bsb_scan"),
+                request_hash="9" * 64,
+            ),
+            shots=10,
+            seed=0,
+            provenance_tags=("unit-test",),
+        )
+        assert result.trajectory_hash == "f" * 64
+        assert str(result.ideal_outcome["bsb_trajectory_hash"]) == "9" * 64
+        assert result.metadata.provenance_tags == (
+            "demo",
+            "rsb_scan",
+            "measurement",
+            "sideband_inference",
+            "unit-test",
+        )
+
+    def test_label_routing(self) -> None:
+        rsb, bsb = _from_nbar(0.5)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+            label="thermometry",
+        )
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=10,
+            seed=0,
+        )
+        assert "thermometry_nbar_estimate" in result.sampled_outcome
+        assert "thermometry_rsb_counts" in result.sampled_outcome
+        assert "thermometry_bsb_counts" in result.sampled_outcome
+        assert "sideband_inference_nbar_estimate" not in result.sampled_outcome
+
+
+class TestSidebandInferenceRunErrors:
+    def test_missing_observable_rsb_raises(self) -> None:
+        protocol = SidebandInference(
+            ion_index=5,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        with pytest.raises(ConventionError, match="sigma_z_5"):
+            protocol.run(
+                rsb_trajectory=_sideband_trajectory(np.zeros(3)),
+                bsb_trajectory=_sideband_trajectory(np.zeros(3)),
+                shots=10,
+                seed=0,
+            )
+
+    def test_mismatched_time_grids_raise(self) -> None:
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        rsb_traj = _sideband_trajectory(np.zeros(3), times=np.linspace(0.0, 1e-6, 3))
+        bsb_traj = _sideband_trajectory(np.zeros(3), times=np.linspace(0.0, 2e-6, 3))
+        with pytest.raises(ValueError, match="same time grid"):
+            protocol.run(
+                rsb_trajectory=rsb_traj,
+                bsb_trajectory=bsb_traj,
+                shots=10,
+                seed=0,
+            )
+
+    def test_zero_contrast_detector_raises(self) -> None:
+        """TP + TN − 1 ≤ 0 makes fidelity inversion ill-defined."""
+        degenerate = DetectorConfig(
+            efficiency=0.0,
+            dark_count_rate=0.0,
+            threshold=1,
+        )
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=degenerate,
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        rsb, bsb = _from_nbar(0.5)
+        with pytest.raises(ValueError, match="contrast"):
+            protocol.run(
+                rsb_trajectory=_sideband_trajectory(rsb),
+                bsb_trajectory=_sideband_trajectory(bsb),
+                shots=10,
+                seed=0,
+            )
+
+    def test_zero_shots_raises(self) -> None:
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        rsb, bsb = _from_nbar(0.5)
+        with pytest.raises(ValueError, match="shots must be >= 1"):
+            protocol.run(
+                rsb_trajectory=_sideband_trajectory(rsb),
+                bsb_trajectory=_sideband_trajectory(bsb),
+                shots=0,
+                seed=0,
+            )
+
+
+class TestSidebandInferenceRatioRecovery:
+    def test_ground_state_nbar_zero(self) -> None:
+        """RSB is dark (p_up_rsb = 0 everywhere) → inferred n̄ = 0."""
+        # p_up_bsb small-but-nonzero; p_up_rsb identically 0.
+        p_up_bsb = np.linspace(0.01, 0.1, 5)
+        p_up_rsb = np.zeros_like(p_up_bsb)
+        rsb = 2.0 * p_up_rsb - 1.0
+        bsb = 2.0 * p_up_bsb - 1.0
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1),
+            lambda_bright=50.0,  # saturate → TP ≈ 1
+            lambda_dark=0.0,
+        )
+        shots = 50_000
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=shots,
+            seed=0,
+        )
+        nbar_est = result.sampled_outcome["sideband_inference_nbar_estimate"]
+        # Shot noise on p̂_rsb is ~ sqrt(p(1-p)/N) ≈ 0 for true p=0 but
+        # non-zero when fidelity-inverted. Expect very small nbar.
+        assert np.nanmax(np.abs(nbar_est)) < 0.05
+
+    def test_thermal_like_nbar_recovery(self) -> None:
+        """Constructed trajectory with ratio = n̄/(n̄+1) → inferred n̄ = n̄."""
+        true_nbar = 0.75
+        rsb, bsb = _from_nbar(true_nbar, n_times=5, scale=0.02)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=DetectorConfig(efficiency=1.0, dark_count_rate=0.0, threshold=1),
+            lambda_bright=50.0,
+            lambda_dark=0.0,
+        )
+        shots = 50_000
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=shots,
+            seed=0,
+        )
+        # ideal ratio trajectory should match true n̄ exactly (construction)
+        np.testing.assert_allclose(result.ideal_outcome["nbar_from_ideal_ratio"], true_nbar)
+        # Sampled estimate converges to n̄ within shot noise (at low p,
+        # the ratio variance is large; use a generous tolerance for this
+        # deliberately-small-signal fixture).
+        nbar_est = result.sampled_outcome["sideband_inference_nbar_estimate"]
+        np.testing.assert_allclose(nbar_est, true_nbar, atol=0.5)
+
+    def test_seed_reproducible(self) -> None:
+        rsb, bsb = _from_nbar(0.5)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_noisy_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        first = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=100,
+            seed=42,
+        )
+        second = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=100,
+            seed=42,
+        )
+        np.testing.assert_array_equal(
+            first.sampled_outcome["sideband_inference_rsb_counts"],
+            second.sampled_outcome["sideband_inference_rsb_counts"],
+        )
+        np.testing.assert_array_equal(
+            first.sampled_outcome["sideband_inference_bsb_counts"],
+            second.sampled_outcome["sideband_inference_bsb_counts"],
+        )
+
+    def test_rsb_and_bsb_streams_are_independent(self) -> None:
+        """Same p_up on RSB and BSB should yield different bit patterns."""
+        # Matching p_up → ratio = 1 → n̄ undefined, but that's OK — we're
+        # testing stream independence here, not inference correctness.
+        matching = 0.3 * np.ones(5)
+        sigma_z = 2.0 * matching - 1.0
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_ideal_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(sigma_z),
+            bsb_trajectory=_sideband_trajectory(sigma_z),
+            shots=200,
+            seed=7,
+        )
+        assert not np.array_equal(
+            result.sampled_outcome["sideband_inference_rsb_counts"],
+            result.sampled_outcome["sideband_inference_bsb_counts"],
+        )
+
+    def test_fidelity_correction_improves_over_raw_ratio(self) -> None:
+        """At finite fidelity, the corrected estimator should be closer to truth.
+
+        At low-visibility trajectories where both sidebands are deep in
+        the short-time regime, the raw-ratio estimate is shrunk by the
+        detector contrast while the corrected estimate is not. Compare
+        mean absolute errors against the true n̄.
+        """
+        true_nbar = 0.5
+        rsb, bsb = _from_nbar(true_nbar, n_times=8, scale=0.05)
+        protocol = SidebandInference(
+            ion_index=0,
+            detector=_noisy_detector(),
+            lambda_bright=25.0,
+            lambda_dark=0.0,
+        )
+        shots = 50_000
+        result = protocol.run(
+            rsb_trajectory=_sideband_trajectory(rsb),
+            bsb_trajectory=_sideband_trajectory(bsb),
+            shots=shots,
+            seed=0,
+        )
+        corrected = result.sampled_outcome["sideband_inference_nbar_estimate"]
+        raw = result.sampled_outcome["sideband_inference_nbar_from_raw_ratio"]
+        # Compare MAE vs truth across the trajectory; corrected should
+        # win on average in this regime.
+        err_corrected = float(np.nanmean(np.abs(corrected - true_nbar)))
+        err_raw = float(np.nanmean(np.abs(raw - true_nbar)))
+        assert err_corrected < err_raw

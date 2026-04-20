@@ -1,0 +1,71 @@
+{
+  "analytic_detector_fidelity": {
+    "effective_bright_rate": 7.6,
+    "effective_dark_rate": 0.4,
+    "fidelity": 0.9670720910611529,
+    "true_negative_rate": 0.938448064449895,
+    "true_positive_rate": 0.9956961176724107
+  },
+  "bsb_trajectory_hash": "c625a68163c1926fad064791e6462f9361ea1bebb058b7274d764959fdf5c2ce",
+  "convention_references": [
+    "§3 Spin basis",
+    "§17.8 Detector response",
+    "§17.9 Projective-shot readout",
+    "§17.11 Sideband inference"
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-20T10:39:11.262372+00:00",
+  "inference_elapsed_seconds": 0.011365791986463591,
+  "measurement_result_provenance_tags": [
+    "demo",
+    "sideband_inference",
+    "rsb",
+    "measurement",
+    "ground_state_thermometry",
+    "ground_state"
+  ],
+  "median_inferred_nbar": 0.0013256344671450768,
+  "p95_abs_inferred_nbar": 0.14481608246304722,
+  "parameters": {
+    "bsb": {
+      "N_fock": 5,
+      "duration_us": 10.0,
+      "initial_state": "|↓, 0⟩",
+      "n_steps": 200,
+      "phase_rad": 0.0,
+      "rabi_over_2pi_MHz": 0.1,
+      "scenario": "sideband_inference_demo",
+      "sideband": "blue"
+    },
+    "dark_count_rate": 0.4,
+    "efficiency": 0.6,
+    "lambda_bright_emit": 12.0,
+    "lambda_dark_emit": 0.0,
+    "rsb": {
+      "N_fock": 5,
+      "duration_us": 10.0,
+      "initial_state": "|↓, 0⟩",
+      "n_steps": 200,
+      "phase_rad": 0.0,
+      "rabi_over_2pi_MHz": 0.1,
+      "scenario": "sideband_inference_demo",
+      "sideband": "red"
+    },
+    "seed": 20260420,
+    "shots": 500,
+    "threshold": 2
+  },
+  "purpose": "end-to-end motional thermometry on |↓, 0⟩ — RSB is dark, BSB flops; the ratio method correctly reports n̄ ≈ 0.",
+  "rsb_trajectory_hash": "56c13e2261321959f52f193b02316e671196e565f7498ac96888269fe33edae1",
+  "scenario": "sideband_inference_demo",
+  "schema_version": 2,
+  "trajectories_elapsed_seconds": 0.005880625016288832,
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch O)"
+}

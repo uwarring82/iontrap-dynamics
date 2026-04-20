@@ -24,6 +24,7 @@ from .measurement import (
     DetectorConfig,
     ParityScan,
     PoissonChannel,
+    SidebandInference,
     SpinReadout,
     sample_outcome,
 )
@@ -58,6 +59,7 @@ __all__ = [
     "Result",
     "ResultMetadata",
     "ResultWarning",
+    "SidebandInference",
     "SpinReadout",
     "StorageMode",
     "TrajectoryResult",
