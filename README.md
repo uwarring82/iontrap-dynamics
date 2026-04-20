@@ -127,10 +127,15 @@ every call.
   and reports fidelity-corrected `n̄ = r / (1 − r)` via the
   short-time Leibfried–Wineland ratio; independent RNG streams
   per sideband; NaN propagates on singular ratios.
+- `iontrap_dynamics.measurement.wilson_interval`,
+  `clopper_pearson_interval`, and `binomial_summary` / the
+  `BinomialSummary` dataclass (§17.12) — vectorised confidence
+  intervals on binomial shot counts. Wilson is the recommended
+  default; Clopper–Pearson is exact and conservative.
 
-Dispatch P closes the layer with statistics (Wilson / Clopper–
-Pearson CI estimators); `CONVENTIONS.md` §17 then seals at v0.2
-under a Convention Freeze gate.
+The measurement track is complete: `CONVENTIONS.md` §17.1–17.12
+close the read-through, with §17 now frozen as the target for the
+v0.2 Convention Freeze gate.
 
 **Demo tools** (`tools/run_*.py` with canonical `manifest.json` +
 `arrays.npz` + `demo_report.json` artefacts under `benchmarks/data/`):
@@ -138,9 +143,9 @@ under a Convention Freeze gate.
 `run_demo_ms_gate`, `run_demo_bernoulli_readout`, `run_demo_binomial_readout`,
 `run_demo_poisson_readout`, `run_demo_detected_readout`,
 `run_demo_spin_readout`, `run_demo_parity_scan`,
-`run_demo_sideband_inference`.
+`run_demo_sideband_inference`, `run_demo_wilson_ci`.
 
-Test suite: **642 passed, 3 skipped**. Skips are migration-tier
+Test suite: **675 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

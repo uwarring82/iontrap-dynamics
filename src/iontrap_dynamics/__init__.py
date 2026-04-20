@@ -21,12 +21,16 @@ from .exceptions import (
 from .measurement import (
     BernoulliChannel,
     BinomialChannel,
+    BinomialSummary,
     DetectorConfig,
     ParityScan,
     PoissonChannel,
     SidebandInference,
     SpinReadout,
+    binomial_summary,
+    clopper_pearson_interval,
     sample_outcome,
+    wilson_interval,
 )
 from .results import (
     MeasurementResult,
@@ -45,6 +49,7 @@ __all__ = [
     "BackendError",
     "BernoulliChannel",
     "BinomialChannel",
+    "BinomialSummary",
     "ConventionError",
     "ConvergenceError",
     "DetectorConfig",
@@ -64,8 +69,11 @@ __all__ = [
     "StorageMode",
     "TrajectoryResult",
     "WarningSeverity",
+    "binomial_summary",
+    "clopper_pearson_interval",
     "compute_request_hash",
     "load_trajectory",
     "sample_outcome",
     "save_trajectory",
+    "wilson_interval",
 ]

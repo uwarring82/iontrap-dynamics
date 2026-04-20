@@ -27,9 +27,12 @@ bearing correlations (Bell-state verification, CHSH) survive.
 Dispatch O adds :class:`SidebandInference`, which composes paired
 red / blue sideband readouts through the short-time
 ``n̄ = r / (1 − r)`` ratio to report a motional-occupation estimate.
-Statistics (Dispatch P) follows to close the track. The
-``CONVENTIONS.md`` §17 section is opened here as staged rules and
-will freeze at the close of the track.
+Dispatch P closes the track with confidence-interval statistics —
+:func:`wilson_interval` and :func:`clopper_pearson_interval` on
+binomial counts, plus the :func:`binomial_summary` /
+:class:`BinomialSummary` convenience wrapper. The ``CONVENTIONS.md``
+§17 section is opened here as staged rules and freezes at the close
+of the track.
 """
 
 from __future__ import annotations
@@ -42,14 +45,24 @@ from .channels import (
 )
 from .detectors import DetectorConfig
 from .protocols import ParityScan, SidebandInference, SpinReadout
+from .statistics import (
+    BinomialSummary,
+    binomial_summary,
+    clopper_pearson_interval,
+    wilson_interval,
+)
 
 __all__ = [
     "BernoulliChannel",
     "BinomialChannel",
+    "BinomialSummary",
     "DetectorConfig",
     "ParityScan",
     "PoissonChannel",
     "SidebandInference",
     "SpinReadout",
+    "binomial_summary",
+    "clopper_pearson_interval",
     "sample_outcome",
+    "wilson_interval",
 ]

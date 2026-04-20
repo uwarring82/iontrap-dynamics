@@ -196,7 +196,7 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
-#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M / N / O)
+#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K / L / M / N / O / P)
 
 - `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
   carrying the ideal / sampled dual-view mandated by
@@ -299,6 +299,24 @@ bloating the typed schema.
   stays pinned (no phonon to remove) while BSB flops normally; the
   inferred `n̄` has median ~0 with a shot-noise spread of ~0.14 at
   500 shots and F ≈ 0.97.
+- `measurement/statistics.py` (Dispatch P) — binomial confidence-
+  interval surface. `wilson_interval(successes, trials, confidence)`
+  returns the Wilson-score `(lower, upper)` bounds — closed-form,
+  well-behaved at `p̂ ∈ {0, 1}`, near-nominal coverage for modest
+  `n`. `clopper_pearson_interval` returns the exact Beta-quantile
+  bounds — conservative, guaranteed actual coverage ≥ nominal.
+  Both are fully vectorised over `(k, n)`. The
+  `binomial_summary(k, n, confidence, method)` convenience
+  dispatches on method and wraps the result in a frozen
+  `BinomialSummary` dataclass with matched-shape `successes`,
+  `trials`, `point_estimate`, `lower`, `upper` fields. No Wald
+  interval — its coverage collapses near `p̂ ∈ {0, 1}` extremes
+  routine in ion-trap readout.
+- `tools/run_demo_wilson_ci.py` — capstone demo for the
+  measurement track. Runs `SpinReadout` on a carrier-Rabi
+  trajectory at an intentionally modest shot budget (80 shots) and
+  overlays Wilson 95 % CI band on the bright-fraction estimator;
+  reports single-seed empirical coverage (~96 % at nominal 95 %).
 
 ### Changed
 
@@ -322,8 +340,11 @@ bloating the typed schema.
   `(TP + TN − 1)² · ⟨σ_z σ_z⟩ + (TP − TN)²` at zero marginals);
   Dispatch O added §17.11 (sideband inference: short-time ratio
   formula, fidelity correction before ratio, independent RNG
-  streams via `SeedSequence.spawn`, NaN propagation). §17.12 lists
-  the estimator / CI rules still pending for Dispatch P.
+  streams via `SeedSequence.spawn`, NaN propagation); Dispatch P
+  added §17.12 (binomial confidence intervals: Wilson + Clopper–
+  Pearson formulas, non-nesting caveat, boundary snap, z / coverage
+  convention). **§17 freeze** — the measurement-layer section is
+  now a complete read-through for the v0.2 Convention Freeze gate.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the

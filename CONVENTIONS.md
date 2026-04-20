@@ -450,9 +450,36 @@ The protocol reports both the fidelity-corrected `n̄_estimate` (the principled 
 
 **NaN propagation.** The ratio is NaN wherever `p_up_bsb ≤ 0` (indeterminate) or `r ≥ 1` (unphysical: RSB ≥ BSB leaves the short-time regime). `n̄` inherits the NaN. Callers mask with `np.nanmean` / `np.nanmedian` rather than expecting the protocol to regularise.
 
-### 17.12 Pending (still in flight for Dispatch P)
+### 17.12 Binomial confidence intervals *(added in Dispatch P — §17 freeze target)*
 
-Rules governing estimator / CI semantics (Wilson, Clopper–Pearson) close the section. The §17 freeze lands with Dispatch P.
+Two estimators are supported for binomial proportion CIs on shot counts, both fully vectorised over ``(successes, trials)``:
+
+- **Wilson score** (``wilson_interval``). The recommended default. Closed-form arithmetic, well-behaved at ``p̂ ∈ {0, 1}``, near-nominal coverage for modest ``n`` (typically 93–97 % at nominal 95 %). Formula:
+
+        p̂ = k / n,   z = Φ⁻¹((1 + confidence) / 2)
+        centre     = (p̂ + z² / (2n)) / (1 + z² / n)
+        half_width = (z / (1 + z² / n)) · √(p̂(1 − p̂) / n + z² / (4n²))
+        (lower, upper) = (centre − half_width, centre + half_width)
+
+- **Clopper–Pearson** (``clopper_pearson_interval``). Exact binomial-quantile interval via the Beta distribution. Conservative — actual coverage ≥ nominal. Use for worst-case uncertainty reporting:
+
+        α = 1 − confidence
+        lower = Beta⁻¹(α / 2;     k,     n − k + 1)   (0 when k = 0)
+        upper = Beta⁻¹(1 − α / 2; k + 1, n − k)       (1 when k = n)
+
+No Wald interval is shipped: its coverage collapses near the ``p̂ ∈ {0, 1}`` extremes that arise routinely in ion-trap readout (ground-state RSB probes, high-fidelity detectors on |↓⟩ shots).
+
+**Non-nesting caveat.** Wilson and Clopper–Pearson do **not** strictly nest — neither interval contains the other uniformly. CP is conservative in coverage, Wilson is near-nominal, but at specific ``(k, n)`` values CP can be slightly *narrower* than Wilson on one side. Callers comparing methods should not assume one bounds the other.
+
+**z / confidence convention.** Two-sided intervals use ``z = Φ⁻¹((1 + confidence) / 2)`` via ``scipy.stats.norm.ppf``. ``confidence = 0.95`` therefore gives ``z ≈ 1.959963984…`` — the standard textbook value.
+
+**Boundary snap.** ``wilson_interval`` snaps ``k = 0`` to ``lower = 0`` exactly and ``k = n`` to ``upper = 1`` exactly, overriding sub-epsilon floating-point noise. CP produces exact 0 / 1 by construction. Callers comparing against 0 / 1 with ``==`` succeed at boundaries.
+
+**Input contract.** Both functions raise ``ValueError`` on ``confidence ∉ (0, 1)``, ``trials < 1``, ``successes < 0``, or ``successes > trials`` (element-wise). They do not silently clip or quietly skip — input-boundary errors are surfaced immediately.
+
+---
+
+**§17 freeze.** Dispatch P is the last staged extension to §17 under the v0.2 measurement-layer track. With the statistics surface in place, §17 is a complete read-through for the Convention Freeze gate at the v0.2 release. Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
 
 ---
 

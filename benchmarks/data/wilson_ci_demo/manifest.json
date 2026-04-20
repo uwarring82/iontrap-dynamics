@@ -1,0 +1,21 @@
+{
+  "cache_format_version": 1,
+  "expectation_labels": [
+    "sigma_z_0"
+  ],
+  "metadata": {
+    "backend_name": "qutip-mesolve",
+    "backend_version": "5.2.3",
+    "convention_version": "0.1-draft",
+    "fock_truncations": {
+      "axial": 3
+    },
+    "provenance_tags": [
+      "demo",
+      "wilson_ci"
+    ],
+    "request_hash": "b9f204be4b873da23aee422b098616d4351e89cffdc7b157a035cc767d2ca128",
+    "storage_mode": "omitted"
+  },
+  "warnings": []
+}
