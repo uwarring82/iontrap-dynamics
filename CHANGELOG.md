@@ -348,6 +348,35 @@ trajectory.
   concurrence grows monotonically to 1 at ``t_gate``; log-negativity
   loops (peaks at ~1.31) and returns to ~0 as motion disentangles.
 
+#### Phase 1 — systematics layer (`systematics/`, Dispatch R)
+
+Opens the §5 Phase 1 systematics surface. Jitter / drift / SPAM noise
+classes (§18.1) are distinguished; Dispatch R ships the first jitter
+primitive.
+
+- `systematics.RabiJitter` — frozen dataclass, `sigma` parameter,
+  zero-allowed for no-op tests. `.sample_multipliers(shots, rng)`
+  returns `(shots,)` float64 array of `(1 + ε)` factors with
+  `ε ~ Normal(0, σ)`.
+- `systematics.perturb_carrier_rabi(drive, jitter, shots, seed)` —
+  composition helper. Returns a `tuple[DriveConfig, ...]` of length
+  `shots`, each with `carrier_rabi_frequency_rad_s = Ω₀ · (1 + ε_i)`.
+  Non-Rabi `DriveConfig` fields pass through untouched.
+  Bit-reproducible given `(drive, jitter, shots, seed)`.
+- `CONVENTIONS.md §18` opened (staged, v0.2 Freeze target). §18.1
+  noise taxonomy; §18.2 jitter composition pattern (per-shot
+  ensemble of solves, NumPy aggregation); §18.3 RabiJitter
+  semantics; §18.4 lists pending rules for Dispatches S–U.
+- `tests/unit/test_systematics.py`: 19 cases across construction
+  guards, multiplier-distribution contract (mean → 1, std → σ at
+  50k shots), seed reproducibility, frozen-field preservation,
+  zero-sigma no-op, zero-shots rejection.
+- `tools/run_demo_rabi_jitter.py` — inhomogeneous-dephasing demo.
+  Runs 200 carrier-Rabi trajectories with `σ_Ω = 3 %` and overlays
+  the ideal `⟨σ_z⟩(t)`, ensemble mean (visibly damped), ±1σ
+  shot-to-shot spread band, and the analytic
+  `T₂* ≈ 1/(σ·Ω₀) ≈ 5.3 μs` marker.
+
 ### Changed
 
 - CONVENTIONS.md §17 *(staged — v0.2 Convention Freeze target)*

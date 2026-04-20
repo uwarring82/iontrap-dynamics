@@ -483,6 +483,51 @@ No Wald interval is shipped: its coverage collapses near the ``p̂ ∈ {0, 1}`` 
 
 ---
 
+## 18. Systematics layer *(staged — v0.2 Convention Freeze target)*
+
+**Status:** opened at Dispatch R (`src/iontrap_dynamics/systematics/`). Rules below are staged; additions across Dispatches S–U may tighten them, and the full section seals at the v0.2 release alongside §17. Treat any call-site depending on §18 details as provisional until the freeze.
+
+### 18.1 Noise taxonomy
+
+The systematics layer distinguishes three physically distinct noise classes, each with its own composition pattern:
+
+- **Jitter** (this dispatch) — *stochastic* shot-to-shot parameter fluctuations. Each shot sees a different Hamiltonian drawn from a zero-mean distribution around the nominal value. Physical sources: laser intensity noise, AOM amplitude noise, detuning drift over a detection window, magnetic-field fluctuations. Ensemble mean of an observable dephases from the noise-free signal — the inhomogeneous-dephasing signature.
+- **Drifts** (pending) — *systematic* bias shifts. A parameter sits at `p₀ + Δ` for the whole run, not `p₀`. Physical sources: calibration errors, uncorrected slow drifts, mis-set detuning. The signal acquires a constant offset; no ensemble averaging is needed, just a perturbation study.
+- **SPAM** (pending) — State Preparation And Measurement errors. Imperfect ground-state preparation shifts the initial state; measurement infidelity shifts the reported outcome. Detection-side SPAM is already captured by :class:`DetectorConfig` (§17.8); preparation-side SPAM will be Dispatch U.
+
+Each class composes differently with the solver: jitter via ensemble of solves (this dispatch), drifts via parameter perturbation (single solve), SPAM via initial-state perturbation (single solve from a noisy state). The three never get mixed in one call — callers stack them explicitly.
+
+### 18.2 Jitter composition pattern *(added in Dispatch R)*
+
+Jitter primitives are frozen dataclasses carrying a noise-amplitude parameter (e.g. `RabiJitter.sigma`). They expose a `.sample_multipliers` / `.sample_offsets` method that returns per-shot perturbation factors, and are materialised into perturbed input configs via module-level helpers (`perturb_carrier_rabi`, later `perturb_detuning`, etc.). The user-facing pattern is:
+
+```python
+drives = perturb_carrier_rabi(drive, jitter, shots=N, seed=0)
+results = [solve(..., drive=d, ...) for d in drives]
+expectations = np.stack(
+    [r.expectations["sigma_z_0"] for r in results], axis=0
+)  # shape (N, n_times)
+ensemble_mean = expectations.mean(axis=0)
+ensemble_std  = expectations.std(axis=0)
+```
+
+The `(N, n_times)` shape echoes the `(shots, n_times)` pattern from §17.1 — shot axis leading, time axis trailing — so jittered-dynamics aggregation looks identical to measurement-layer sampling from the caller's perspective. No new `Result` type is needed for Dispatch R; users compose with NumPy. A later dispatch may add an `EnsembleResult` wrapper once the pattern has been exercised by multiple jitter sources.
+
+### 18.3 RabiJitter semantics *(added in Dispatch R)*
+
+`RabiJitter(sigma=σ)` samples *multiplicative* Gaussian noise: each shot scales the carrier Rabi frequency by `(1 + ε)` with `ε ~ Normal(0, σ)`. Conventions:
+
+- `σ` is **dimensionless** — a relative jitter amplitude (e.g. `0.02` for 2 %).
+- `σ` must be ``>= 0``; ``σ = 0`` is a valid no-op for pipeline checks.
+- The drive sign can in principle flip at large ``σ`` (Gaussian tails), but realistic experimental values are ``σ ≲ 0.05``, for which sign-flip probability is negligible.
+- Bit-reproducibility follows the §17.3 convention: supplying an integer ``seed`` to the composition helper (``perturb_carrier_rabi``) makes the output tuple deterministic given ``(drive, jitter, shots, seed)``. Callers wanting independent streams across multiple jitter sources should use ``np.random.SeedSequence.spawn(n)`` to derive per-source seeds (same discipline as §17.11).
+
+### 18.4 Pending (still in flight across Dispatches S–U)
+
+Rules for detuning / phase jitter (S), static parameter drifts (T), and state-preparation errors (U) will be added in sequence. Each dispatch appends to §18 rather than rewriting it, so the read-through grows linearly. §18 freezes alongside §17 at the v0.2 release.
+
+---
+
 ## Endorsement Marker
 
 **Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version; extensions for Phase 1 measurement and systematics layers are staged and will carry explicit Convention Freeze gates.

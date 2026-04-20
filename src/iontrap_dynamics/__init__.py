@@ -46,6 +46,7 @@ from .results import (
     TrajectoryResult,
     WarningSeverity,
 )
+from .systematics import RabiJitter, perturb_carrier_rabi
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
@@ -66,6 +67,7 @@ __all__ = [
     "MeasurementResult",
     "ParityScan",
     "PoissonChannel",
+    "RabiJitter",
     "Result",
     "ResultMetadata",
     "ResultWarning",
@@ -81,6 +83,7 @@ __all__ = [
     "entanglement_of_formation_trajectory",
     "load_trajectory",
     "log_negativity_trajectory",
+    "perturb_carrier_rabi",
     "sample_outcome",
     "save_trajectory",
     "wilson_interval",
