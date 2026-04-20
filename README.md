@@ -96,22 +96,27 @@ every call.
   returns `(n_inputs,)` int64 counts (CONVENTIONS.md §17.7, shape
   classes). Distributionally equivalent to summing Bernoulli bits, not
   bit-identical under matched seed.
-- `iontrap_dynamics.measurement.sample_outcome(...)` — orchestrator that
-  seeds the RNG, dispatches uniformly on channel type, and inherits
-  upstream-trajectory metadata when supplied (per-channel bit-
-  reproducible given `(channel, seed, probabilities, shots)`).
+- `iontrap_dynamics.measurement.PoissonChannel` — per-shot photon-
+  counting channel; consumes non-negative rates (not probabilities) and
+  returns `(shots, n_inputs)` int64 counts via `rng.poisson(λ)`.
+- `iontrap_dynamics.measurement.sample_outcome(channel, inputs=...,
+  shots, seed, upstream)` — orchestrator that seeds the RNG, dispatches
+  uniformly on channel type, stores ``inputs`` under
+  ``ideal_outcome[channel.ideal_label]`` (``"probability"`` or
+  ``"rate"``), and inherits upstream-trajectory metadata when supplied.
 
-Dispatches K–P extend the layer with Poisson channels, detector models,
-protocols (spin readout, parity scan, sideband-flopping inference), and
+Dispatches L–P extend the layer with detector models, protocols
+(spin readout, parity scan, sideband-flopping inference), and
 statistics; `CONVENTIONS.md` §17 seals at v0.2 under a Convention
 Freeze gate.
 
 **Demo tools** (`tools/run_*.py` with canonical `manifest.json` +
 `arrays.npz` + `demo_report.json` artefacts under `benchmarks/data/`):
 `run_benchmark_sideband`, `run_demo_carrier`, `run_demo_gaussian_pulse`,
-`run_demo_ms_gate`, `run_demo_bernoulli_readout`, `run_demo_binomial_readout`.
+`run_demo_ms_gate`, `run_demo_bernoulli_readout`, `run_demo_binomial_readout`,
+`run_demo_poisson_readout`.
 
-Test suite: **532 passed, 3 skipped**. Skips are migration-tier
+Test suite: **547 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

@@ -349,9 +349,16 @@ The reference RNG is `numpy.random.default_rng`. Channel-facing APIs accept eith
 
 When a measurement is applied to an upstream `TrajectoryResult`, the measurement inherits that trajectory's `convention_version`, `backend_name`, `backend_version`, and `fock_truncations`; its `request_hash` is copied onto `MeasurementResult.trajectory_hash` so analysis code can rejoin a measurement to the dynamics that produced it. The measurement's `provenance_tags` start with the upstream tags and append `"measurement"` plus any caller-supplied extras.
 
-### 17.6 Probability-input range
+### 17.6 Channel input semantics
 
-Channels that consume probabilities (e.g. `BernoulliChannel`) raise `ValueError` at `.sample()` if any entry lies outside `[0, 1]`. This is a system-boundary input check, not a convention violation — observables can go out of range only if the caller miscomputed the probability reduction, which is a bug in caller code rather than a schema failure.
+Channels declare what they consume via a class-level `ideal_label`:
+
+- `"probability"` — dimensionless, bounded to `[0, 1]`. `BernoulliChannel`, `BinomialChannel` consume probabilities. `.sample()` raises `ValueError` on out-of-range entries.
+- `"rate"` — non-negative mean counts per shot. `PoissonChannel` consumes rates. `.sample()` raises `ValueError` on negative entries.
+
+The orchestrator `sample_outcome(channel, inputs, shots, seed, …)` is input-neutral: it passes `inputs` through to `channel.sample()` and stores them under `MeasurementResult.ideal_outcome[channel.ideal_label]`. The keyword is deliberately `inputs` (not `probabilities` or `rates`) so channels consuming new input types in later dispatches can slot in without breaking callers.
+
+Out-of-range violations are system-boundary input checks (`ValueError`), not convention violations — they indicate a bug in caller code (miscomputed probability / rate reduction), not a schema failure.
 
 ### 17.7 Per-shot vs aggregated output shape *(added in Dispatch J)*
 
@@ -362,9 +369,9 @@ Channels advertise their output shape by class, not by flag. The two shapes that
 
 Distributionally equivalent channels (Bernoulli-summed ≡ Binomial; per-click Poisson ≡ aggregated Poisson at matching rate) are **not** required to be bit-identical under a shared seed. Library implementations use the most efficient NumPy primitive (`rng.binomial`, `rng.poisson`, or threshold + aggregation), which consumes RNG bits differently depending on the path taken. Tests assert distributional — not bit — equivalence across channel types.
 
-### 17.8 Pending (still in flight across Dispatches K–P)
+### 17.8 Pending (still in flight across Dispatches L–P)
 
-Rules governing Poisson channels, detector efficiency / dark-count parameters, protocol composition (spin readout, parity scan, sideband-flopping inference), and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
+Rules governing detector efficiency / dark-count parameters, protocol composition (spin readout, parity scan, sideband-flopping inference), and estimator / CI semantics will be added in sequence. Each dispatch appends to §17 rather than rewriting it, so the read-through grows linearly.
 
 ---
 

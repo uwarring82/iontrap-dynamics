@@ -196,7 +196,7 @@ bloating the typed schema.
   `BackendError`, `IntegrityError`, `ConvergenceError`
   (`src/iontrap_dynamics/exceptions.py`).
 
-#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J)
+#### Phase 1 — measurement layer (`measurement/`, Dispatches H / J / K)
 
 - `MeasurementResult` — frozen / slotted / kw-only `Result` sibling
   carrying the ideal / sampled dual-view mandated by
@@ -222,17 +222,31 @@ bloating the typed schema.
 - `tools/run_demo_binomial_readout.py` — Binomial companion to the
   Bernoulli demo, overlaying the aggregate estimate `counts / shots`
   against the ideal `p_↑` with a normal-approximation CI band.
+- `PoissonChannel` (Dispatch K) — per-shot photon-counting path.
+  Returns `(shots, n_inputs)` int64 counts via `rng.poisson(λ)` for
+  non-negative input rates. New `ideal_label` `ClassVar` on each
+  channel advertises what it consumes (`"probability"` for
+  Bernoulli / Binomial, `"rate"` for Poisson); `sample_outcome`
+  renames its keyword `probabilities → inputs` (breaking change —
+  §17 is explicitly staged; existing demos and tests updated).
+- `tools/run_demo_poisson_readout.py` — photon-counting readout of
+  the carrier Rabi trajectory, using the canonical rate model
+  `λ(t) = λ_dark + (λ_bright − λ_dark) · p_↑(t)` with
+  `λ_bright = 10`, `λ_dark = 0.5`. Overlays the shot-averaged count
+  against `λ(t)` with the `±1σ` mean-of-Poisson band `sqrt(λ/N)`.
 
 ### Changed
 
 - CONVENTIONS.md §17 *(staged — v0.2 Convention Freeze target)*
   opened. Covers shot semantics, the ideal / sampled dual-view, RNG
   reproducibility, the `OMITTED` storage-mode tombstone for
-  `MeasurementResult`, provenance chaining, and probability-input
-  bounds. Dispatch H shipped §17.1–17.6; Dispatch J added §17.7
+  `MeasurementResult`, provenance chaining, and channel input
+  semantics. Dispatch H shipped §17.1–17.6; Dispatch J added §17.7
   (per-shot vs aggregated output shape; distributional- not bit-
-  equivalence across channel types). §17.8 lists the rules still
-  pending for Dispatches K–P.
+  equivalence across channel types); Dispatch K generalised §17.6
+  to cover `probability` and `rate` input types via the
+  `channel.ideal_label` ClassVar. §17.8 lists the rules still
+  pending for Dispatches L–P.
 - WORKPLAN v0.3.2: two amendments under Coastline authority.
   - §4.0 declares the interim `uwarring82/iontrap-dynamics` hosting
     and reconciles the §4 "Repository topology" clause and the

@@ -21,6 +21,7 @@ from iontrap_dynamics import (
     ConventionError,
     IonTrapError,
     MeasurementResult,
+    PoissonChannel,
     Result,
     ResultMetadata,
     StorageMode,
@@ -273,6 +274,74 @@ class TestBinomialChannelSample:
 
 
 # ----------------------------------------------------------------------------
+# PoissonChannel stochastic contract
+# ----------------------------------------------------------------------------
+
+
+class TestPoissonChannelSample:
+    def test_output_shape_and_dtype(self) -> None:
+        channel = PoissonChannel()
+        rates = np.array([0.5, 2.0, 10.0])
+        counts = channel.sample(rates, shots=200, rng=np.random.default_rng(0))
+        assert counts.shape == (200, 3)
+        assert counts.dtype == np.int64
+        assert np.all(counts >= 0)
+
+    def test_deterministic_given_seed(self) -> None:
+        channel = PoissonChannel()
+        rates = np.array([1.0, 5.0, 12.0])
+        first = channel.sample(rates, shots=50, rng=np.random.default_rng(123))
+        second = channel.sample(rates, shots=50, rng=np.random.default_rng(123))
+        np.testing.assert_array_equal(first, second)
+
+    def test_empirical_mean_matches_rate(self) -> None:
+        """Shot-averaged count must track the Poisson rate as shots grow."""
+        channel = PoissonChannel()
+        rates = np.array([0.5, 2.0, 5.0, 10.0])
+        counts = channel.sample(rates, shots=20_000, rng=np.random.default_rng(7))
+        estimated = counts.mean(axis=0)
+        # Standard error of the empirical mean is sqrt(λ / N); 20k shots
+        # gives ~1% on rate ≈ 10.
+        np.testing.assert_allclose(estimated, rates, atol=0.05)
+
+    def test_empirical_variance_matches_rate(self) -> None:
+        """Poisson has variance = mean; shot-wise variance should track rate."""
+        channel = PoissonChannel()
+        rates = np.array([1.0, 5.0, 15.0])
+        counts = channel.sample(rates, shots=50_000, rng=np.random.default_rng(42))
+        estimated_var = counts.var(axis=0, ddof=1)
+        # Sampling std of variance estimator ≈ sqrt(2/(N−1)) · λ; large N
+        # gives sub-1% relative accuracy — use 5% tolerance for safety.
+        np.testing.assert_allclose(estimated_var, rates, rtol=0.05)
+
+    def test_rate_zero_is_all_zeros(self) -> None:
+        channel = PoissonChannel()
+        counts = channel.sample(np.array([0.0, 0.0]), shots=100, rng=np.random.default_rng(0))
+        assert counts.sum() == 0
+
+    def test_negative_rate_raises(self) -> None:
+        channel = PoissonChannel()
+        with pytest.raises(ValueError, match="rates must be >= 0"):
+            channel.sample(np.array([1.0, -0.1]), shots=1, rng=np.random.default_rng(0))
+
+    def test_non_1d_input_raises(self) -> None:
+        channel = PoissonChannel()
+        with pytest.raises(ValueError, match="must be 1-D"):
+            channel.sample(np.array([[1.0, 2.0]]), shots=1, rng=np.random.default_rng(0))
+
+    def test_shots_zero_raises(self) -> None:
+        channel = PoissonChannel()
+        with pytest.raises(ValueError, match="shots must be >= 1"):
+            channel.sample(np.array([1.0]), shots=0, rng=np.random.default_rng(0))
+
+    def test_ideal_label_is_rate(self) -> None:
+        assert PoissonChannel.ideal_label == "rate"
+
+    def test_default_label_is_poisson(self) -> None:
+        assert PoissonChannel().label == "poisson"
+
+
+# ----------------------------------------------------------------------------
 # sample_outcome orchestrator
 # ----------------------------------------------------------------------------
 
@@ -282,7 +351,7 @@ class TestSampleOutcome:
         probs = np.array([0.25, 0.5, 0.75])
         result = sample_outcome(
             channel=BernoulliChannel(),
-            probabilities=probs,
+            inputs=probs,
             shots=100,
             seed=0,
         )
@@ -295,8 +364,8 @@ class TestSampleOutcome:
 
     def test_seed_is_reproducible(self) -> None:
         probs = np.array([0.3, 0.7])
-        first = sample_outcome(channel=BernoulliChannel(), probabilities=probs, shots=32, seed=99)
-        second = sample_outcome(channel=BernoulliChannel(), probabilities=probs, shots=32, seed=99)
+        first = sample_outcome(channel=BernoulliChannel(), inputs=probs, shots=32, seed=99)
+        second = sample_outcome(channel=BernoulliChannel(), inputs=probs, shots=32, seed=99)
         np.testing.assert_array_equal(
             first.sampled_outcome["bernoulli"],
             second.sampled_outcome["bernoulli"],
@@ -312,7 +381,7 @@ class TestSampleOutcome:
         probs = (1.0 + traj.expectations["sigma_z_0"]) / 2.0
         result = sample_outcome(
             channel=BernoulliChannel(),
-            probabilities=probs,
+            inputs=probs,
             shots=50,
             seed=1,
             upstream=traj,
@@ -331,7 +400,7 @@ class TestSampleOutcome:
     def test_freestanding_metadata_is_tagged_measurement(self) -> None:
         result = sample_outcome(
             channel=BernoulliChannel(),
-            probabilities=np.array([0.5]),
+            inputs=np.array([0.5]),
             shots=1,
             seed=0,
         )
@@ -342,7 +411,7 @@ class TestSampleOutcome:
         custom = BernoulliChannel(label="readout_ion_0")
         result = sample_outcome(
             channel=custom,
-            probabilities=np.array([0.5]),
+            inputs=np.array([0.5]),
             shots=1,
             seed=0,
         )
@@ -353,7 +422,7 @@ class TestSampleOutcome:
         probs = np.array([0.25, 0.5, 0.75])
         result = sample_outcome(
             channel=BinomialChannel(),
-            probabilities=probs,
+            inputs=probs,
             shots=200,
             seed=0,
         )
@@ -366,8 +435,8 @@ class TestSampleOutcome:
 
     def test_binomial_seed_reproducible(self) -> None:
         probs = np.array([0.3, 0.7])
-        first = sample_outcome(channel=BinomialChannel(), probabilities=probs, shots=500, seed=99)
-        second = sample_outcome(channel=BinomialChannel(), probabilities=probs, shots=500, seed=99)
+        first = sample_outcome(channel=BinomialChannel(), inputs=probs, shots=500, seed=99)
+        second = sample_outcome(channel=BinomialChannel(), inputs=probs, shots=500, seed=99)
         np.testing.assert_array_equal(
             first.sampled_outcome["binomial"],
             second.sampled_outcome["binomial"],
@@ -377,9 +446,64 @@ class TestSampleOutcome:
         custom = BinomialChannel(label="population_ion_0")
         result = sample_outcome(
             channel=custom,
-            probabilities=np.array([0.5]),
+            inputs=np.array([0.5]),
             shots=10,
             seed=0,
         )
         assert "population_ion_0" in result.sampled_outcome
         assert "binomial" not in result.sampled_outcome
+
+    def test_poisson_channel_dispatch(self) -> None:
+        rates = np.array([0.5, 2.0, 10.0])
+        result = sample_outcome(
+            channel=PoissonChannel(),
+            inputs=rates,
+            shots=100,
+            seed=0,
+        )
+        counts = result.sampled_outcome["poisson"]
+        assert counts.shape == (100, 3)
+        assert counts.dtype == np.int64
+        np.testing.assert_array_equal(result.ideal_outcome["rate"], rates)
+        assert "probability" not in result.ideal_outcome
+
+    def test_poisson_ideal_label_routing(self) -> None:
+        """ideal_outcome key follows channel.ideal_label, not a hard-coded string."""
+        result = sample_outcome(
+            channel=PoissonChannel(),
+            inputs=np.array([1.0]),
+            shots=1,
+            seed=0,
+        )
+        assert "rate" in result.ideal_outcome
+        assert "probability" not in result.ideal_outcome
+
+    def test_bernoulli_ideal_label_routing(self) -> None:
+        result = sample_outcome(
+            channel=BernoulliChannel(),
+            inputs=np.array([0.5]),
+            shots=1,
+            seed=0,
+        )
+        assert "probability" in result.ideal_outcome
+        assert "rate" not in result.ideal_outcome
+
+    def test_poisson_seed_reproducible(self) -> None:
+        rates = np.array([0.5, 5.0, 15.0])
+        first = sample_outcome(channel=PoissonChannel(), inputs=rates, shots=200, seed=99)
+        second = sample_outcome(channel=PoissonChannel(), inputs=rates, shots=200, seed=99)
+        np.testing.assert_array_equal(
+            first.sampled_outcome["poisson"],
+            second.sampled_outcome["poisson"],
+        )
+
+    def test_poisson_label_routed_into_sampled_outcome(self) -> None:
+        custom = PoissonChannel(label="photon_window_pmt0")
+        result = sample_outcome(
+            channel=custom,
+            inputs=np.array([5.0]),
+            shots=10,
+            seed=0,
+        )
+        assert "photon_window_pmt0" in result.sampled_outcome
+        assert "poisson" not in result.sampled_outcome

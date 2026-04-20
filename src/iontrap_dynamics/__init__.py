@@ -18,7 +18,12 @@ from .exceptions import (
     IonTrapError,
     IonTrapWarning,
 )
-from .measurement import BernoulliChannel, BinomialChannel, sample_outcome
+from .measurement import (
+    BernoulliChannel,
+    BinomialChannel,
+    PoissonChannel,
+    sample_outcome,
+)
 from .results import (
     MeasurementResult,
     Result,
@@ -44,6 +49,7 @@ __all__ = [
     "IonTrapError",
     "IonTrapWarning",
     "MeasurementResult",
+    "PoissonChannel",
     "Result",
     "ResultMetadata",
     "ResultWarning",

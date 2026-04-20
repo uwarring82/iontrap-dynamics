@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: MIT
 """Sampling channels for the measurement layer.
 
-A *channel* maps noise-free probability inputs to per-shot stochastic
-outcomes. Channels are intentionally thin: they do not know about
-operators, states, or detector hardware. Composition with detector
-models (Dispatch K) and with observable-to-probability reductions
-(Dispatches L–N) happens a layer up.
+A *channel* maps noise-free inputs (probabilities or rates) to per-shot
+or aggregated stochastic outcomes. Channels are intentionally thin:
+they do not know about operators, states, or detector hardware.
+Composition with detector models (Dispatch L) and with observable-to-
+input reductions (Dispatches M–N) happens a layer up.
 
 Dispatch H ships :class:`BernoulliChannel` — each input probability
 ``p ∈ [0, 1]`` produces ``shots`` independent bits in ``{0, 1}`` with
@@ -22,11 +22,21 @@ seed: Binomial uses :meth:`numpy.random.Generator.binomial` directly
 for efficiency, which consumes RNG bits differently than the Bernoulli
 threshold path. Downstream statistics (Wilson CI, Clopper–Pearson, …)
 in Dispatch P consume the Binomial counts directly.
+
+Dispatch K adds :class:`PoissonChannel` — per-shot photon-counting
+path. Inputs are **rates** (mean counts per shot, ``λ ≥ 0``), not
+probabilities, so the orchestrator keyword is ``inputs`` rather than
+``probabilities``; each channel names what it consumes through the
+``ideal_label`` class attribute (``"probability"`` for
+Bernoulli / Binomial, ``"rate"`` for Poisson). Output is
+``(shots, n_inputs)`` int64 counts via
+:meth:`numpy.random.Generator.poisson`.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -56,6 +66,7 @@ class BernoulliChannel:
         multiple Bernoulli channels on different sites or observables.
     """
 
+    ideal_label: ClassVar[str] = "probability"
     label: str = "bernoulli"
 
     def sample(
@@ -129,6 +140,7 @@ class BinomialChannel:
         channels on different sites or observables.
     """
 
+    ideal_label: ClassVar[str] = "probability"
     label: str = "binomial"
 
     def sample(
@@ -174,41 +186,117 @@ class BinomialChannel:
         return rng.binomial(shots, probs).astype(np.int64)
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PoissonChannel:
+    """Per-shot Poisson-counting channel.
+
+    Models photon-counting readout: for each input rate
+    ``λ_j ≥ 0`` (mean counts per shot), returns an independent Poisson
+    sample per shot. Output shape: ``(shots, n_inputs)`` — shot axis
+    leading per §17.1, matching :class:`BernoulliChannel`.
+
+    Physics note. In atomic-readout contexts the rate is typically
+    ``λ(t) = λ_dark + (λ_bright − λ_dark) · p_↑(t)``, so the Poisson
+    channel consumes a mixture of dark-count and fluorescence rates
+    weighted by the qubit state. The channel itself is state-agnostic:
+    it just samples Poisson(λ). Rate → probability conversion (if
+    needed for bright/dark thresholding) happens a layer up, in the
+    protocols module (Dispatches L–N).
+
+    Parameters
+    ----------
+    label
+        Identifier routed into :attr:`MeasurementResult.sampled_outcome`
+        when dispatched through :func:`sample_outcome`. Defaults to
+        ``"poisson"``; override to distinguish multiple Poisson channels
+        on different sites or detection windows.
+    """
+
+    ideal_label: ClassVar[str] = "rate"
+    label: str = "poisson"
+
+    def sample(
+        self,
+        rates: NDArray[np.floating],
+        *,
+        shots: int,
+        rng: np.random.Generator,
+    ) -> NDArray[np.int64]:
+        """Draw ``shots`` independent Poisson counts per input rate.
+
+        Parameters
+        ----------
+        rates
+            1-D array of non-negative Poisson rates (mean counts per
+            shot). Violations raise :class:`ValueError`
+            (system-boundary input).
+        shots
+            Number of independent Poisson draws per rate entry.
+            Must be ``>= 1``.
+        rng
+            NumPy random generator supplying the stochastic bits.
+
+        Returns
+        -------
+        NDArray[np.int64]
+            Array of shape ``(shots, rates.size)`` with non-negative
+            integer entries. ``int64`` accommodates large counts without
+            per-call overflow considerations.
+        """
+        lam = np.asarray(rates, dtype=np.float64)
+        if lam.ndim != 1:
+            raise ValueError(f"PoissonChannel.sample: rates must be 1-D; got shape {lam.shape}")
+        if shots < 1:
+            raise ValueError(f"PoissonChannel.sample: shots must be >= 1; got {shots}")
+        if np.any(lam < 0.0):
+            raise ValueError(f"PoissonChannel.sample: rates must be >= 0; got min={lam.min()}")
+        return rng.poisson(lam, size=(shots, lam.size)).astype(np.int64)
+
+
 def sample_outcome(
     *,
-    channel: BernoulliChannel | BinomialChannel,
-    probabilities: NDArray[np.floating],
+    channel: BernoulliChannel | BinomialChannel | PoissonChannel,
+    inputs: NDArray[np.floating],
     shots: int,
     seed: int | None = None,
     upstream: TrajectoryResult | None = None,
     provenance_tags: tuple[str, ...] = (),
 ) -> MeasurementResult:
-    """Apply ``channel`` to ``probabilities`` and wrap the output.
+    """Apply ``channel`` to ``inputs`` and wrap the output.
 
     The thin orchestrator leans on each channel's uniform
-    ``.sample(probabilities, *, shots, rng)`` signature; its return
-    shape is channel-dependent (Bernoulli → ``(shots, n_inputs)``,
-    Binomial → ``(n_inputs,)``). Poisson and detector-composed channels
-    (Dispatches K–L) will slot in without changing this signature.
+    ``.sample(inputs, *, shots, rng)`` signature; its return shape is
+    channel-dependent (Bernoulli → ``(shots, n_inputs)``, Binomial →
+    ``(n_inputs,)``, Poisson → ``(shots, n_inputs)``). Detector-composed
+    channels (Dispatch L) slot in without changing this signature.
+
+    The orchestrator is input-neutral: each channel's
+    :attr:`ideal_label` class attribute names what ``inputs`` means to
+    it (``"probability"`` for Bernoulli / Binomial, ``"rate"`` for
+    Poisson), and that label becomes the key in
+    :attr:`MeasurementResult.ideal_outcome`.
 
     Parameters
     ----------
     channel
         Sampling channel to apply. Its ``label`` names the entry in
-        :attr:`MeasurementResult.sampled_outcome`.
-    probabilities
-        1-D array of input probabilities. Typically derived from an
-        expectation-value trajectory (e.g.
-        ``p_up = (1 + sigma_z_traj) / 2``).
+        :attr:`MeasurementResult.sampled_outcome`; its ``ideal_label``
+        names the entry in :attr:`MeasurementResult.ideal_outcome`.
+    inputs
+        1-D array of channel inputs — probabilities in ``[0, 1]`` for
+        Bernoulli / Binomial, non-negative rates for Poisson. Typically
+        derived from an expectation-value trajectory
+        (e.g. ``p_up = (1 + sigma_z_traj) / 2``, or
+        ``lam = lam_dark + (lam_bright − lam_dark) * p_up``).
     shots
-        Number of independent shots per probability entry.
+        Number of independent shots per input entry.
     seed
         Optional seed for :func:`numpy.random.default_rng`. When
         supplied, the resulting :class:`MeasurementResult` is fully
-        reproducible for a given ``(channel, seed, probabilities,
-        shots)`` tuple. Bit-reproducibility across channel types is
-        *not* guaranteed — different channels consume RNG bits
-        differently for efficiency.
+        reproducible for a given ``(channel, seed, inputs, shots)``
+        tuple. Bit-reproducibility across channel types is *not*
+        guaranteed — different channels consume RNG bits differently
+        for efficiency.
     upstream
         Optional :class:`TrajectoryResult` that produced ``probabilities``.
         When supplied, its metadata (convention version, backend, Fock
@@ -221,13 +309,13 @@ def sample_outcome(
     Returns
     -------
     MeasurementResult
-        With ``ideal_outcome = {"probability": probabilities}``,
+        With ``ideal_outcome = {channel.ideal_label: inputs}``,
         ``sampled_outcome = {channel.label: samples}`` (shape depends on
         channel), and ``storage_mode = OMITTED`` in its inherited
         metadata.
     """
     rng = np.random.default_rng(seed)
-    samples = channel.sample(probabilities, shots=shots, rng=rng)
+    samples = channel.sample(inputs, shots=shots, rng=rng)
 
     metadata = _build_metadata(upstream=upstream, provenance_tags=provenance_tags)
     trajectory_hash = upstream.metadata.request_hash if upstream is not None else None
@@ -236,7 +324,7 @@ def sample_outcome(
         metadata=metadata,
         shots=shots,
         rng_seed=seed,
-        ideal_outcome={"probability": np.asarray(probabilities, dtype=np.float64)},
+        ideal_outcome={channel.ideal_label: np.asarray(inputs, dtype=np.float64)},
         sampled_outcome={channel.label: samples},
         trajectory_hash=trajectory_hash,
     )
@@ -280,5 +368,6 @@ def _build_metadata(
 __all__ = [
     "BernoulliChannel",
     "BinomialChannel",
+    "PoissonChannel",
     "sample_outcome",
 ]

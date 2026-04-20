@@ -1,36 +1,41 @@
 # SPDX-License-Identifier: MIT
-"""Bernoulli-readout demo — carrier Rabi flopping with shot noise.
+"""Poisson-readout demo — photon-counting model on carrier Rabi.
 
-Companion to ``run_demo_carrier.py``: takes the ideal ⟨σ_z⟩ trajectory,
-maps it to the spin-up projection probability
+Takes the same carrier Rabi trajectory as the Bernoulli / Binomial
+demos and runs it through a Poisson-counting detector model. The
+instantaneous scattering rate is built as
 
-    p_↑(t) = (1 + ⟨σ_z⟩(t)) / 2
+    λ(t) = λ_dark + (λ_bright − λ_dark) · p_↑(t)
 
-in the atomic-physics convention (CONVENTIONS.md §3: ⟨σ_z⟩ = +1 on |↑⟩,
-−1 on |↓⟩), applies :class:`BernoulliChannel` at a finite shot budget,
-and plots the ideal curve against the shot-averaged estimator
-``bits.mean(axis=0)``. The visible jitter is Bernoulli shot noise —
-standard error σ_p̂ = sqrt(p(1−p)/N).
+with ``λ_bright = 10`` counts/shot and ``λ_dark = 0.5`` counts/shot —
+figures loosely matched to typical atomic-fluorescence readout windows.
+:class:`PoissonChannel` samples ``(shots, n_times)`` photon counts, and
+the plot overlays the shot-averaged mean (with ``±1σ`` Poisson band
+``sqrt(λ/N)``) against the ideal rate.
 
-This is the first end-to-end exercise of the measurement boundary:
+Exercises the rate-side of the measurement boundary:
 
-    state trajectory  →  observable expectation  →  probability  →  channel  →  counts
+    state trajectory  →  observable expectation  →  probability  →  rate  →  channel  →  counts
+
+Threshold-based bright/dark discrimination (turning per-shot counts
+into a binary up / down classification) is a protocol-layer concern
+and arrives in Dispatch L.
 
 Usage::
 
-    python tools/run_demo_bernoulli_readout.py
+    python tools/run_demo_poisson_readout.py
 
 Requires matplotlib (``pip install -e ".[plot]"``). Falls back to
 "data only, no plot" if matplotlib is absent.
 
 Output::
 
-    benchmarks/data/bernoulli_readout_demo/
+    benchmarks/data/poisson_readout_demo/
       manifest.json     — canonical trajectory manifest
       arrays.npz        — times_s + ideal expectations
-      measurement.npz   — probabilities, bits, shot-averaged estimate
+      measurement.npz   — rate, counts, mean, 1σ Poisson band
       demo_report.json  — parameters, shot budget, seed, environment
-      plot.png          — ideal p_↑(t) overlaid with shot-noisy estimate
+      plot.png          — ideal λ(t) overlaid with shot-averaged counts
 """
 
 from __future__ import annotations
@@ -46,7 +51,7 @@ import numpy as np
 import qutip
 
 from iontrap_dynamics import (
-    BernoulliChannel,
+    PoissonChannel,
     sample_outcome,
 )
 from iontrap_dynamics.cache import compute_request_hash, save_trajectory
@@ -62,16 +67,20 @@ from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_DIR = REPO_ROOT / "benchmarks" / "data" / "bernoulli_readout_demo"
+OUTPUT_DIR = REPO_ROOT / "benchmarks" / "data" / "poisson_readout_demo"
 
 N_FOCK = 3
 N_STEPS = 200
 SHOTS = 500
-SEED = 20260420  # deterministic for archival reproducibility
+SEED = 20260420
 
 RABI_OVER_2PI_MHZ = 1.0
 MODE_FREQ_OVER_2PI_MHZ = 1.5
 LASER_WAVELENGTH_NM = 280.0
+
+# Photon-counting rates per shot (atomic-fluorescence-window typical).
+LAMBDA_BRIGHT = 10.0
+LAMBDA_DARK = 0.5
 
 RABI_RAD_S = 2 * np.pi * RABI_OVER_2PI_MHZ * 1e6
 MODE_FREQ_RAD_S = 2 * np.pi * MODE_FREQ_OVER_2PI_MHZ * 1e6
@@ -116,18 +125,21 @@ def main() -> int:
     rabi_period = 2 * np.pi / RABI_RAD_S
     tlist = np.linspace(0.0, 2 * rabi_period, N_STEPS)
 
-    print(">>> running Bernoulli-readout demo (carrier Rabi with shot noise)")
+    print(">>> running Poisson-readout demo (carrier Rabi, photon counts)")
     print(f"    shots = {SHOTS}, seed = {SEED}")
+    print(f"    λ_bright = {LAMBDA_BRIGHT}, λ_dark = {LAMBDA_DARK} counts/shot")
     print(f"    Ω/2π = {RABI_OVER_2PI_MHZ} MHz, steps = {N_STEPS}")
 
     parameters = {
-        "scenario": "bernoulli_readout_demo",
+        "scenario": "poisson_readout_demo",
         "N_fock": N_FOCK,
         "n_steps": N_STEPS,
         "shots": SHOTS,
         "seed": SEED,
         "rabi_over_2pi_MHz": RABI_OVER_2PI_MHZ,
         "phase_rad": 0.0,
+        "lambda_bright": LAMBDA_BRIGHT,
+        "lambda_dark": LAMBDA_DARK,
         "initial_state": "|↓, 0⟩",
     }
     request_hash = compute_request_hash(parameters)
@@ -141,56 +153,53 @@ def main() -> int:
         observables=[spin_z(hilbert, 0)],
         request_hash=request_hash,
         storage_mode=StorageMode.OMITTED,
-        provenance_tags=("demo", "bernoulli_readout"),
+        provenance_tags=("demo", "poisson_readout"),
     )
     elapsed = time.perf_counter() - t0
     print(f"    trajectory elapsed: {elapsed:.3f} s")
 
     sigma_z = trajectory.expectations["sigma_z_0"]
-    p_up = (1.0 + sigma_z) / 2.0  # CONVENTIONS.md §3
+    p_up = (1.0 + sigma_z) / 2.0
+    rate = LAMBDA_DARK + (LAMBDA_BRIGHT - LAMBDA_DARK) * p_up
 
     measurement = sample_outcome(
-        channel=BernoulliChannel(label="spin_up"),
-        inputs=p_up,
+        channel=PoissonChannel(label="photon_counts"),
+        inputs=rate,
         shots=SHOTS,
         seed=SEED,
         upstream=trajectory,
         provenance_tags=("carrier_rabi",),
     )
-    bits = measurement.sampled_outcome["spin_up"]
-    estimate = bits.mean(axis=0)
-    shot_noise_std = np.sqrt(p_up * (1.0 - p_up) / SHOTS)
-    max_error = float(np.max(np.abs(estimate - p_up)))
-    # Expected max of |Z| over N iid Normal(0, σ²) samples scales like
-    # σ · sqrt(2 log N) — the Gumbel extreme-value bound, not 3σ.
+    counts = measurement.sampled_outcome["photon_counts"]
+    mean_count = counts.mean(axis=0)
+    shot_noise_std = np.sqrt(rate / SHOTS)
+    max_error = float(np.max(np.abs(mean_count - rate)))
     expected_max = float(shot_noise_std.max() * np.sqrt(2.0 * np.log(N_STEPS)))
     print(
-        f"    max |estimate − p_↑| = {max_error:.3e}  "
+        f"    max |mean − λ| = {max_error:.3e}  "
         f"(extreme-value band σ·√(2 log N) = {expected_max:.3e})"
     )
 
-    # Canonical trajectory cache for reproducibility chain
     save_trajectory(trajectory, OUTPUT_DIR, overwrite=True)
 
-    # Measurement-specific arrays (separate from canonical schema)
     np.savez(
         OUTPUT_DIR / "measurement.npz",
-        probability=p_up,
-        counts=bits.sum(axis=0),
-        estimate=estimate,
+        rate=rate,
+        counts=counts,
+        mean_count=mean_count,
         shot_noise_std=shot_noise_std,
     )
 
     demo_report = {
-        "scenario": "bernoulli_readout_demo",
+        "scenario": "poisson_readout_demo",
         "purpose": (
-            "first end-to-end exercise of the measurement boundary — "
-            "ideal p_↑ vs. finite-shot Bernoulli estimator."
+            "rate-side counterpart to the Bernoulli / Binomial demos — "
+            "photon-counting Poisson channel on the carrier Rabi trajectory."
         ),
-        "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch H)",
+        "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch K)",
         "convention_references": [
             "§3 Spin basis (p_↑ = (1 + ⟨σ_z⟩)/2)",
-            "§17 Measurement layer (staged)",
+            "§17 Measurement layer (staged) — §17.6 rate semantics",
         ],
         "elapsed_seconds": elapsed,
         "max_estimator_error": max_error,
@@ -226,29 +235,32 @@ def main() -> int:
         return 0
 
     fig, ax = plt.subplots(figsize=(8.0, 4.5))
-    ax.plot(times_us, p_up, color="black", linewidth=1.5, label=r"ideal $p_\uparrow(t)$")
+    ax.plot(times_us, rate, color="black", linewidth=1.5, label=r"ideal $\lambda(t)$")
     ax.fill_between(
         times_us,
-        p_up - shot_noise_std,
-        p_up + shot_noise_std,
-        color="#1f77b4",
+        rate - shot_noise_std,
+        rate + shot_noise_std,
+        color="#ff7f0e",
         alpha=0.2,
-        label=r"$\pm 1\sigma$ shot-noise band",
+        label=r"$\pm 1\sigma$ mean-of-Poisson band",
     )
     ax.plot(
         times_us,
-        estimate,
-        color="#d62728",
+        mean_count,
+        color="#ff7f0e",
         linewidth=0.0,
         marker=".",
         markersize=3,
-        label=f"estimate ({SHOTS} shots)",
+        label=f"mean ({SHOTS} shots)",
     )
+    ax.axhline(LAMBDA_BRIGHT, color="grey", linewidth=0.3, linestyle="--")
+    ax.axhline(LAMBDA_DARK, color="grey", linewidth=0.3, linestyle="--")
     ax.set_xlabel(r"time (μs)")
-    ax.set_ylabel(r"$p_\uparrow$")
-    ax.set_ylim(-0.05, 1.05)
+    ax.set_ylabel(r"photon counts per shot")
     ax.set_title(
-        f"Bernoulli readout of carrier Rabi — Ω/2π = {RABI_OVER_2PI_MHZ} MHz, shots = {SHOTS}"
+        f"Poisson readout of carrier Rabi — "
+        f"$\\lambda_\\mathrm{{bright}}={LAMBDA_BRIGHT}$, "
+        f"$\\lambda_\\mathrm{{dark}}={LAMBDA_DARK}$, shots = {SHOTS}"
     )
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()

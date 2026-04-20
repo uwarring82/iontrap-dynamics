@@ -1,0 +1,42 @@
+{
+  "canonical_request_hash": "dac3683946fdc83bcc8af16bf4b8e08ed2df5b490c066a9c174446c5d8df7c1f",
+  "convention_references": [
+    "§3 Spin basis (p_↑ = (1 + ⟨σ_z⟩)/2)",
+    "§17 Measurement layer (staged) — §17.6 rate semantics"
+  ],
+  "elapsed_seconds": 0.0037018340080976486,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-20T07:09:09.978102+00:00",
+  "max_estimator_error": 0.29771460216567114,
+  "measurement_result_provenance_tags": [
+    "demo",
+    "poisson_readout",
+    "measurement",
+    "carrier_rabi"
+  ],
+  "parameters": {
+    "N_fock": 3,
+    "duration_us": 2.0,
+    "initial_state": "|↓, 0⟩",
+    "lambda_bright": 10.0,
+    "lambda_dark": 0.5,
+    "n_steps": 200,
+    "phase_rad": 0.0,
+    "rabi_over_2pi_MHz": 1.0,
+    "scenario": "poisson_readout_demo",
+    "seed": 20260420,
+    "shots": 500
+  },
+  "purpose": "rate-side counterpart to the Bernoulli / Binomial demos — photon-counting Poisson channel on the carrier Rabi trajectory.",
+  "scenario": "poisson_readout_demo",
+  "schema_version": 2,
+  "trajectory_hash": "dac3683946fdc83bcc8af16bf4b8e08ed2df5b490c066a9c174446c5d8df7c1f",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 measurement layer (Dispatch K)"
+}

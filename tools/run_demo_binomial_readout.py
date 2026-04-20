@@ -150,7 +150,7 @@ def main() -> int:
 
     measurement = sample_outcome(
         channel=BinomialChannel(label="spin_up"),
-        probabilities=p_up,
+        inputs=p_up,
         shots=SHOTS,
         seed=SEED,
         upstream=trajectory,
