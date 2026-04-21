@@ -95,6 +95,33 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — custom observables (Dispatch EE)
+
+Fifth entry in the tutorials track. First tutorial focused on a
+single architectural hook rather than a new physics scenario —
+it generalises the `Observable`-record foothold introduced in
+Tutorial 4 into the full construction surface.
+
+- `docs/tutorials/05_custom_observables.md` (new) — four patterns
+  over the shared MS-gate scenario from Tutorial 4: multi-subsystem
+  Bell-fidelity projector `|Φ⁻⟩⟨Φ⁻|` (coherent-superposition
+  target, not a computational-basis sum); two-ion `⟨σ_x σ_x⟩`
+  correlator via `HilbertSpace.spin_op_for_ion` (the MS-fringe
+  σ_x-basis signature); mode Fock-state projector `|1⟩⟨1|` via
+  `mode_op_for` (complements the built-in `number` / `⟨n̂⟩`
+  factory with direct `P(n)` access); non-Hermitian virtual
+  `|↓↓⟩⟨↑↑|` coherence diagnostic (with a warning about complex
+  expectations and measurement-protocol incompatibility). Verifies
+  all four against their expected Bell-gate targets at `t_gate`.
+  Closes with factory-vs-inline guidance (pointing at
+  `observables.py` as the factory template) and the
+  `StorageMode.EAGER` post-hoc-analysis route through the
+  registered `concurrence_trajectory` evaluator.
+- `docs/tutorials/index.md` — Tutorial 5 moved from *Planned* to
+  *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 5 entry beneath
+  Tutorials 1–4.
+
 #### Tutorials — Mølmer–Sørensen Bell gate (Dispatch DD)
 
 Fourth entry in the tutorials track. First two-ion scenario.

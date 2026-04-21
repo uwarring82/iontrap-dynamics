@@ -45,14 +45,22 @@ cover the same ground for users who prefer reading code to prose.
   1/2`, odd-parity `P_flip ≡ 0`, ion-exchange symmetry). First
   tutorial to wrap custom `qutip.Qobj` population projectors as
   `Observable` records. Parallels `tools/run_demo_ms_gate.py`.
+- [**Tutorial 5 — Custom observables**](05_custom_observables.md).
+  Generalises Tutorial 4's `Observable`-record foothold into the
+  full construction hook. Four patterns, one per case you'll
+  actually hit: multi-subsystem Bell-fidelity projector
+  `|Φ⁻⟩⟨Φ⁻|`, two-ion `⟨σ_x σ_x⟩` correlator via
+  `HilbertSpace.spin_op_for_ion`, mode Fock-state projector
+  `|1⟩⟨1|` via `mode_op_for`, and a non-Hermitian virtual
+  `|↓↓⟩⟨↑↑|` as a coherence-phase diagnostic. Closes with
+  factory-vs-inline guidance and the `StorageMode.EAGER`
+  post-hoc-analysis route (reduced-state partial traces, the
+  registered `concurrence_trajectory` evaluator).
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-5. **Custom observables.** How to wrap a QuTiP `Qobj` as an
-   `Observable` record — e.g. two-ion population projectors for the
-   MS demo.
 6. **Fock truncation diagnosis.** Reading `result.warnings`; the
    `FockConvergenceWarning` / `FockQualityWarning` /
    `ConvergenceError` ladder; using `fock_tolerance` to override ε.
