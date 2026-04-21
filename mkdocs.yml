@@ -66,6 +66,7 @@ nav:
       - "8. Full Lamb–Dicke for hot-ion regimes": tutorials/08_full_lamb_dicke.md
       - "9. Squeezed / coherent state preparation": tutorials/09_squeezed_coherent_prep.md
       - "10. Finite-shot statistics": tutorials/10_finite_shot_statistics.md
+      - "11. Systematics: jitter ensembles": tutorials/11_jitter_ensembles.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:

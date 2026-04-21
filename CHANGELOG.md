@@ -95,6 +95,36 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — systematics jitter ensembles (Dispatch KK)
+
+Eleventh entry in the tutorials track. First systematics-layer
+tutorial (opens the §18 surface that's been covered only
+peripherally up to now).
+
+- `docs/tutorials/11_jitter_ensembles.md` (new) — walks the
+  full shot-to-shot Rabi-jitter pipeline: `RabiJitter(σ=0.03)`
+  spec → `perturb_carrier_rabi(shots=200, seed=...)`
+  materialise → 200 Hamiltonians → `solve_ensemble(n_jobs=1)`
+  batch-solve → stack-and-aggregate. Verifies the ensemble
+  mean against the analytic Gaussian-envelope dephasing
+  prediction `⟨σ_z⟩ = −cos(Ω̄t)·exp(−(σΩ̄t)²/2)` at three
+  time points (t = 1 μs → −0.986 / −0.982; t = 4 μs → −0.801
+  / −0.753; t = 10 μs → −0.242 / −0.169), all numbers taken
+  from an actual ensemble run. Distinguishes three error
+  channels (ensemble mean / std / SEM); records the
+  `n_jobs=1` default with a performance note tying back to
+  Dispatch Y's benchmark; closes with a `DetuningJitter`
+  variation that produces an asymmetric Lorentzian-style
+  dephasing envelope instead of the Gaussian one. Opening
+  comparison table enumerates all three jitter primitives
+  (`RabiJitter` / `DetuningJitter` / `PhaseJitter`) with
+  their physical-source attribution and typical σ ranges.
+- `docs/tutorials/index.md` — Tutorial 11 moved from
+  *Planned* to *Available*; the planned-topics list
+  renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 11 entry beneath
+  Tutorials 1–10.
+
 #### Tutorials — finite-shot statistics (Dispatch JJ)
 
 Tenth entry in the tutorials track. Expands Tutorial 1's

@@ -115,15 +115,22 @@ cover the same ground for users who prefer reading code to prose.
   `n_required ≥ z²·p(1−p) / Δ²` shot-budget sizing formula.
   Expands Tutorial 1's single-CI step into the full
   finite-shot reporting surface.
+- [**Tutorial 11 — Systematics: jitter ensembles**](11_jitter_ensembles.md).
+  First systematics-layer tutorial. Layers a `RabiJitter(σ=3%)`
+  onto the Tutorial 1 carrier-Rabi scenario and runs a
+  200-trial ensemble through `solve_ensemble`. Verifies the
+  ensemble mean against the analytic Gaussian-envelope
+  dephasing prediction
+  `⟨σ_z⟩ = −cos(Ω̄t)·exp(−(σΩ̄t)²/2)`; contrasts ensemble
+  mean / std / SEM as three distinct error channels;
+  illustrates the `n_jobs=1` default with a performance note
+  and a DetuningJitter variation for the Lorentzian-dephasing
+  analogue.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-11. **Systematics — jitter ensembles.** Running an inhomogeneous-
-    dephasing study via `RabiJitter` + `perturb_carrier_rabi` and
-    aggregating an ensemble with `sequences.solve_ensemble`.
-    Parallels `tools/run_demo_rabi_jitter.py`.
 12. **Two-ion Bell-state entanglement.** The Mølmer–Sørensen
     gate with parity readout and nonlinear entanglement observables
     (concurrence, log-negativity). Parallels
