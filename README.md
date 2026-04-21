@@ -71,12 +71,16 @@ Today the importable code surface covers:
   bipartite splits). Consume `TrajectoryResult.states` under
   `storage_mode=EAGER`
 - `iontrap_dynamics.systematics` — dynamics-side noise models
-  (Phase 1, v0.2 track — staged per §18). Jitter primitives
-  `RabiJitter` (multiplicative on Ω), `DetuningJitter` (additive
-  on δ), `PhaseJitter` (additive on φ) with `perturb_*` ensemble
-  helpers; parallel drift primitives `RabiDrift`, `DetuningDrift`,
+  (§18 — frozen at v0.2). Jitter primitives `RabiJitter`
+  (multiplicative on Ω), `DetuningJitter` (additive on δ),
+  `PhaseJitter` (additive on φ) with `perturb_*` ensemble
+  helpers. Parallel drift primitives `RabiDrift`, `DetuningDrift`,
   `PhaseDrift` (deterministic single-value offsets) with
-  `apply_*_drift` composition helpers; SPAM (U) dispatch pending
+  `apply_*_drift` composition helpers. SPAM primitives
+  `SpinPreparationError`, `ThermalPreparationError` produce
+  per-subsystem density matrices via `imperfect_spin_ground` /
+  `imperfect_motional_ground` that compose into a full initial
+  state via `states.compose_density`.
 
 **Dynamics (Phase 1, full builder family)**
 
@@ -157,9 +161,10 @@ v0.2 Convention Freeze gate.
 `run_demo_spin_readout`, `run_demo_parity_scan`,
 `run_demo_sideband_inference`, `run_demo_wilson_ci`,
 `run_demo_bell_entanglement`, `run_demo_rabi_jitter`,
-`run_demo_detuning_jitter`, `run_demo_rabi_drift_scan`.
+`run_demo_detuning_jitter`, `run_demo_rabi_drift_scan`,
+`run_demo_spam_prep`.
 
-Test suite: **763 passed, 3 skipped**. Skips are migration-tier
+Test suite: **784 passed, 3 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

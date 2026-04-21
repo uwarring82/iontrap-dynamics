@@ -348,7 +348,7 @@ trajectory.
   concurrence grows monotonically to 1 at ``t_gate``; log-negativity
   loops (peaks at ~1.31) and returns to ~0 as motion disentangles.
 
-#### Phase 1 — systematics layer (`systematics/`, Dispatches R / S / T)
+#### Phase 1 — systematics layer (`systematics/`, Dispatches R / S / T / U)
 
 Opens the §5 Phase 1 systematics surface. Jitter / drift / SPAM noise
 classes (§18.1) are distinguished; Dispatch R ships the first jitter
@@ -416,6 +416,24 @@ primitive.
   the analytic `−cos((1+δ)π)` curve. Solver-vs-analytic max error
   is 9e-7. Reports `|δ| ≤ 6 %` as the 99 %-fidelity calibration
   tolerance window.
+- `systematics.SpinPreparationError(p_up_prep)` and
+  `systematics.ThermalPreparationError(n_bar_prep)` (Dispatch U)
+  — state-preparation (SPAM) error primitives. Each has a matching
+  `imperfect_spin_ground` / `imperfect_motional_ground` helper
+  that returns a per-subsystem density matrix suitable for
+  :func:`iontrap_dynamics.states.compose_density`. Deterministic
+  (classical mixture → no RNG); `imperfect_motional_ground` guards
+  against `n̄ ≥ fock_dim − 1` with a `ValueError`.
+- `CONVENTIONS.md §18.5` (new): state-preparation rules.
+  Density-matrix composition pattern, Fock-truncation guard,
+  no-RNG determinism note. **§18 freeze** — the systematics-layer
+  section is now a complete read-through for the v0.2 Convention
+  Freeze gate, alongside §17 (measurement) sealed at Dispatch P.
+- `tools/run_demo_spam_prep.py` — closing demo for the systematics
+  track. Runs carrier Rabi on three initial states (ideal ket,
+  `p_↑ = 3 %` spin-prep only, full SPAM with `n̄ = 0.1`) and
+  verifies the analytic `(1 − 2p)` amplitude-reduction signature
+  to solver-tolerance precision (3e-5 error).
 
 ### Changed
 

@@ -22,11 +22,15 @@ Dispatch R landed the first stochastic primitive — :class:`RabiJitter`
 Dispatch T adds static :class:`RabiDrift`, :class:`DetuningDrift`,
 and :class:`PhaseDrift` — deterministic single-value offsets that
 compose via ``apply_*`` helpers returning a single perturbed
-:class:`DriveConfig` (no ensemble). Jitter and drift together cover
-stochastic and systematic noise classes (§18.1). SPAM / state-prep
-errors (U) close the track. The ``CONVENTIONS.md`` §18 section is
-opened with Dispatch R as staged rules and will freeze at the close
-of the systematics track.
+:class:`DriveConfig` (no ensemble). Dispatch U closes the track
+with state-preparation (SPAM) primitives :class:`SpinPreparationError`
+and :class:`ThermalPreparationError`, plus the
+:func:`imperfect_spin_ground` and :func:`imperfect_motional_ground`
+helpers that produce per-subsystem density matrices for composition
+via :func:`iontrap_dynamics.states.compose_density`. With jitter
+(stochastic, ensemble), drift (systematic, single-solve), and SPAM
+(state-prep) all in place, the ``CONVENTIONS.md`` §18 section is a
+complete read-through and freezes at the v0.2 release.
 """
 
 from __future__ import annotations
@@ -47,6 +51,12 @@ from .jitter import (
     perturb_detuning,
     perturb_phase,
 )
+from .spam import (
+    SpinPreparationError,
+    ThermalPreparationError,
+    imperfect_motional_ground,
+    imperfect_spin_ground,
+)
 
 __all__ = [
     "DetuningDrift",
@@ -55,9 +65,13 @@ __all__ = [
     "PhaseJitter",
     "RabiDrift",
     "RabiJitter",
+    "SpinPreparationError",
+    "ThermalPreparationError",
     "apply_detuning_drift",
     "apply_phase_drift",
     "apply_rabi_drift",
+    "imperfect_motional_ground",
+    "imperfect_spin_ground",
     "perturb_carrier_rabi",
     "perturb_detuning",
     "perturb_phase",

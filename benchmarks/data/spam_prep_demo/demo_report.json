@@ -1,0 +1,38 @@
+{
+  "amplitude_error": 3.3719395399867125e-05,
+  "convention_references": [
+    "§3 Spin basis",
+    "§18.1 Noise taxonomy (SPAM — preparation side)",
+    "§18.5 State-preparation errors"
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "expected_spin_only_amplitude": 0.94,
+  "generated_at": "2026-04-21T07:34:53.904011+00:00",
+  "initial_trace_full_spam": 1.0,
+  "initial_trace_ideal": 1.0,
+  "initial_trace_spin_only": 1.0,
+  "measured_spin_only_amplitude": 0.9399662806046001,
+  "n_bar_prep": 0.1,
+  "p_up_prep": 0.03,
+  "parameters": {
+    "N_fock": 8,
+    "duration_us": 2.0,
+    "initial_state_full_spam": "spin-prep (0.03) ⊗ thermal(n̄=0.1) truncated to 8 Fock states",
+    "initial_state_ideal": "|↓, 0⟩ (pure ket)",
+    "initial_state_spin_only": "(1 − 0.03) |↓⟩⟨↓| + 0.03 |↑⟩⟨↑| ⊗ |0⟩⟨0|",
+    "n_steps": 300,
+    "rabi_over_2pi_MHz": 1.0
+  },
+  "purpose": "closing demo for the systematics track — preparation-side SPAM shifts the carrier-Rabi trajectory in an analytically tractable way; the (1 − 2p) amplitude factor is the classical-mixture signature of incomplete spin-state preparation.",
+  "scenario": "spam_prep_demo",
+  "schema_version": 2,
+  "solves_elapsed_seconds": 0.05056137504288927,
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 systematics layer (Dispatch U)"
+}

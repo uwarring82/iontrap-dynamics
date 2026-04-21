@@ -552,9 +552,32 @@ Shared rules:
     ]
     ```
 
-### 18.5 Pending (still in flight for Dispatch U)
+### 18.5 State-preparation (SPAM) errors *(added in Dispatch U — §18 freeze target)*
 
-Rules for state-preparation (SPAM) errors close the section. §18 freezes alongside §17 at the v0.2 release once Dispatch U ships.
+Measurement-side SPAM is already covered by §17.8 (`DetectorConfig` — `TP / TN` rates from threshold + rate parameters). §18.5 covers the **preparation side**: imperfect initial-state construction. Two primitives ship:
+
+- **`SpinPreparationError(p_up_prep)`** — probability `p ∈ [0, 1]` that the spin is pumped to `|↑⟩` instead of `|↓⟩`. Models incomplete optical pumping. The helper `imperfect_spin_ground(error)` returns the 2 × 2 classical-mixture density matrix `(1 − p) |↓⟩⟨↓| + p |↑⟩⟨↑|`. `p = 0` collapses to pure ground.
+- **`ThermalPreparationError(n_bar_prep)`** — residual mean phonon occupation `n̄ ≥ 0` after cooling. Models sub-ideal sideband cooling. The helper `imperfect_motional_ground(error, fock_dim)` returns the Fock-truncated thermal density matrix via `qutip.thermal_dm`. `n̄ = 0` collapses to pure `|0⟩⟨0|`.
+
+Composition rule (preparation side always lands a **density matrix**, never a ket):
+
+    from iontrap_dynamics.states import compose_density
+    rho_0 = compose_density(
+        hilbert,
+        spin_states_per_ion=[imperfect_spin_ground(spin_err)],
+        mode_states_by_label={"axial": imperfect_motional_ground(thermal_err, fock_dim=N)},
+    )
+    result = solve(..., initial_state=rho_0, ...)
+
+Because `compose_density` returns a density matrix, the downstream solver runs `mesolve` naturally — no additional wiring needed. The rest of the trajectory machinery is agnostic to whether the initial state is pure or mixed.
+
+**Fock-truncation guard.** `imperfect_motional_ground` raises `ValueError` when `n̄_prep ≥ fock_dim − 1` — at that point the thermal distribution extends past the truncation and the prepared state is a poor approximation of the intended physics. Callers either increase `fock_dim` (recommended: `≥ 4·n̄ + 4`) or reduce `n̄`. This guard is *preparation-time* and is distinct from the §13 Fock-saturation ladder, which runs at solver time.
+
+**No RNG, no seed.** SPAM errors produce deterministic mixed states — there is no sampling over shots. The classical mixture encoded in the density matrix already captures the ensemble average over preparation outcomes. Bit-reproducibility is automatic.
+
+---
+
+**§18 freeze.** Dispatch U is the last staged extension to §18 under the v0.2 systematics-layer track. With jitter (stochastic, §18.3), drift (systematic, §18.4), and SPAM (state preparation, §18.5) all documented, §18 is a complete read-through for the Convention Freeze gate at the v0.2 release, alongside §17 (measurement layer) which sealed at Dispatch P. Post-freeze additions to either section require a CONVENTIONS.md version bump per the Endorsement Marker below.
 
 ---
 

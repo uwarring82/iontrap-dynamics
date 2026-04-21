@@ -12,6 +12,7 @@ from dataclasses import FrozenInstanceError
 
 import numpy as np
 import pytest
+import qutip
 
 from iontrap_dynamics import (
     DetuningDrift,
@@ -20,9 +21,13 @@ from iontrap_dynamics import (
     PhaseJitter,
     RabiDrift,
     RabiJitter,
+    SpinPreparationError,
+    ThermalPreparationError,
     apply_detuning_drift,
     apply_phase_drift,
     apply_rabi_drift,
+    imperfect_motional_ground,
+    imperfect_spin_ground,
     perturb_carrier_rabi,
     perturb_detuning,
     perturb_phase,
@@ -480,3 +485,158 @@ class TestPhaseDrift:
         first = apply_phase_drift(base, d)
         second = apply_phase_drift(base, d)
         assert first.phase_rad == second.phase_rad
+
+
+# ----------------------------------------------------------------------------
+# SPAM — spin-preparation + thermal-motion errors
+# ----------------------------------------------------------------------------
+
+
+class TestSpinPreparationError:
+    def test_construction(self) -> None:
+        e = SpinPreparationError(p_up_prep=0.02)
+        assert e.p_up_prep == 0.02
+        assert e.label == "spin_prep_error"
+
+    def test_zero_is_noop(self) -> None:
+        rho = imperfect_spin_ground(SpinPreparationError(p_up_prep=0.0))
+        diag = np.diag(rho.full()).real
+        np.testing.assert_allclose(diag, [1.0, 0.0], atol=1e-12)
+
+    def test_one_is_full_flip(self) -> None:
+        """p = 1 → pure |↑⟩⟨↑|, as a limiting check."""
+        rho = imperfect_spin_ground(SpinPreparationError(p_up_prep=1.0))
+        diag = np.diag(rho.full()).real
+        np.testing.assert_allclose(diag, [0.0, 1.0], atol=1e-12)
+
+    def test_mixed_diagonal_matches_p(self) -> None:
+        for p in (0.01, 0.05, 0.15, 0.5):
+            rho = imperfect_spin_ground(SpinPreparationError(p_up_prep=p))
+            diag = np.diag(rho.full()).real
+            np.testing.assert_allclose(diag, [1.0 - p, p], atol=1e-12)
+
+    def test_result_is_density_matrix(self) -> None:
+        rho = imperfect_spin_ground(SpinPreparationError(p_up_prep=0.03))
+        assert rho.isoper
+        assert rho.dims == [[2], [2]]
+        np.testing.assert_allclose(rho.tr(), 1.0, atol=1e-12)
+
+    def test_hermitian(self) -> None:
+        rho = imperfect_spin_ground(SpinPreparationError(p_up_prep=0.07))
+        np.testing.assert_allclose(rho.full(), rho.full().conj().T, atol=1e-15)
+
+    def test_no_off_diagonal_coherence(self) -> None:
+        """Classical mixture: off-diagonal elements are zero."""
+        rho = imperfect_spin_ground(SpinPreparationError(p_up_prep=0.3))
+        assert abs(rho.full()[0, 1]) < 1e-12
+        assert abs(rho.full()[1, 0]) < 1e-12
+
+    def test_p_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match=r"must lie in \[0, 1\]"):
+            SpinPreparationError(p_up_prep=-0.01)
+
+    def test_p_greater_than_one_raises(self) -> None:
+        with pytest.raises(ValueError, match=r"must lie in \[0, 1\]"):
+            SpinPreparationError(p_up_prep=1.01)
+
+    def test_frozen(self) -> None:
+        e = SpinPreparationError(p_up_prep=0.05)
+        with pytest.raises(FrozenInstanceError):
+            e.p_up_prep = 0.1  # type: ignore[misc]
+
+
+class TestThermalPreparationError:
+    def test_construction(self) -> None:
+        e = ThermalPreparationError(n_bar_prep=0.05)
+        assert e.n_bar_prep == 0.05
+        assert e.label == "thermal_prep_error"
+
+    def test_zero_is_pure_ground(self) -> None:
+        rho = imperfect_motional_ground(ThermalPreparationError(n_bar_prep=0.0), fock_dim=5)
+        diag = np.diag(rho.full()).real
+        expected = np.zeros(5)
+        expected[0] = 1.0
+        np.testing.assert_allclose(diag, expected, atol=1e-12)
+
+    def test_thermal_distribution(self) -> None:
+        """Diagonal matches (n̄/(n̄+1))^n / (n̄+1) truncated."""
+        n_bar = 0.5
+        fock_dim = 8
+        rho = imperfect_motional_ground(
+            ThermalPreparationError(n_bar_prep=n_bar), fock_dim=fock_dim
+        )
+        diag = np.diag(rho.full()).real
+        p_n = np.array([(n_bar / (n_bar + 1.0)) ** n / (n_bar + 1.0) for n in range(fock_dim)])
+        # Truncation normalisation: qutip.thermal_dm renormalises to trace 1.
+        p_n = p_n / p_n.sum()
+        np.testing.assert_allclose(diag, p_n, atol=1e-10)
+
+    def test_mean_occupation_recovered(self) -> None:
+        """⟨n̂⟩ = Tr(n̂ ρ) should return the prep n̄ (within truncation)."""
+        n_bar = 0.2
+        fock_dim = 10
+        rho = imperfect_motional_ground(
+            ThermalPreparationError(n_bar_prep=n_bar), fock_dim=fock_dim
+        )
+        n_op = qutip.num(fock_dim)
+        measured = float((rho * n_op).tr().real)
+        np.testing.assert_allclose(measured, n_bar, rtol=1e-6)
+
+    def test_result_is_density_matrix(self) -> None:
+        rho = imperfect_motional_ground(ThermalPreparationError(n_bar_prep=0.1), fock_dim=5)
+        assert rho.isoper
+        assert rho.dims == [[5], [5]]
+        np.testing.assert_allclose(rho.tr(), 1.0, atol=1e-10)
+
+    def test_no_coherence(self) -> None:
+        """Thermal state is diagonal in Fock basis."""
+        rho = imperfect_motional_ground(ThermalPreparationError(n_bar_prep=0.3), fock_dim=5)
+        off_diag = rho.full() - np.diag(np.diag(rho.full()))
+        np.testing.assert_allclose(off_diag, 0.0, atol=1e-12)
+
+    def test_negative_n_bar_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be >= 0"):
+            ThermalPreparationError(n_bar_prep=-0.01)
+
+    def test_fock_dim_below_one_raises(self) -> None:
+        with pytest.raises(ValueError, match="fock_dim must be >= 1"):
+            imperfect_motional_ground(ThermalPreparationError(n_bar_prep=0.0), fock_dim=0)
+
+    def test_n_bar_saturates_truncation_raises(self) -> None:
+        """n̄ ≥ fock_dim − 1 indicates the truncation is too tight."""
+        with pytest.raises(ValueError, match="extends past the Fock truncation"):
+            imperfect_motional_ground(ThermalPreparationError(n_bar_prep=2.0), fock_dim=3)
+
+    def test_frozen(self) -> None:
+        e = ThermalPreparationError(n_bar_prep=0.1)
+        with pytest.raises(FrozenInstanceError):
+            e.n_bar_prep = 0.2  # type: ignore[misc]
+
+
+class TestSPAMIntegrationWithComposeDensity:
+    def test_compose_full_spam_state(self) -> None:
+        """Imperfect spin + thermal motion → full density matrix via compose_density."""
+        from iontrap_dynamics.hilbert import HilbertSpace
+        from iontrap_dynamics.modes import ModeConfig
+        from iontrap_dynamics.species import mg25_plus
+        from iontrap_dynamics.states import compose_density
+        from iontrap_dynamics.system import IonSystem
+
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=1e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
+        hilbert = HilbertSpace(system=system, fock_truncations={"axial": 5})
+
+        rho_spin = imperfect_spin_ground(SpinPreparationError(p_up_prep=0.02))
+        rho_mode = imperfect_motional_ground(ThermalPreparationError(n_bar_prep=0.1), fock_dim=5)
+        full = compose_density(
+            hilbert,
+            spin_states_per_ion=[rho_spin],
+            mode_states_by_label={"axial": rho_mode},
+        )
+        assert full.isoper
+        assert full.dims == [[2, 5], [2, 5]]
+        np.testing.assert_allclose(full.tr(), 1.0, atol=1e-10)
