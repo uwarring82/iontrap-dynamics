@@ -95,6 +95,35 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — full Lamb–Dicke for hot-ion regimes (Dispatch HH)
+
+Eighth entry in the tutorials track. Back to physics-focused
+material after the two architectural-layer tutorials (FF, GG).
+
+- `docs/tutorials/08_full_lamb_dicke.md` (new) — when the
+  `full_lamb_dicke=True` flag on the sideband builders matters,
+  and when leading-order is enough. Covers the Wineland–Itano
+  closed form `Ω_{n,n−1}^full = Ω·|η|·e^(−η²/2)·
+  √((n−1)!/n!)·L_{n−1}^(1)(η²)`; the `η²·n ≳ 0.1`
+  rule-of-thumb crossover; a quantitative three-scenario
+  comparison over the Tutorial 2 scenario with `n = 1, 5, 10`
+  showing 3 % → 16 % → 30 % rate shortfall (Debye–Waller +
+  Laguerre); the cost of flipping the flag (one-time mode-level
+  matrix exponentiation at build time, zero solve-time
+  overhead); the uniform applicability across every sideband
+  builder in the library (red / blue / detuned / two-ion /
+  MS-gate composition). Closes with a five-branch when-to-flip
+  decision tree (pure Fock vs thermal start, MS gate tuning,
+  sideband cooling cascades, publication-grade runs). Rate
+  numbers spot-checked against the actual
+  `_full_ld_lowering_single_mode` engine via a one-shot run
+  and `scipy.special.eval_genlaguerre` cross-verification.
+- `docs/tutorials/index.md` — Tutorial 8 moved from *Planned*
+  to *Available*; the planned-topics list renumbers
+  accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 8 entry beneath
+  Tutorials 1–7.
+
 #### Tutorials — hash-verified cache round-trip (Dispatch GG)
 
 Seventh entry in the tutorials track. Second architectural-layer

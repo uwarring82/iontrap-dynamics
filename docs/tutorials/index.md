@@ -80,15 +80,21 @@ cover the same ground for users who prefer reading code to prose.
   skip-recompute, committed reference results, cross-process
   sharing) and the "don't commit 1000-trial sweep bundles"
   caveat.
+- [**Tutorial 8 — Full Lamb–Dicke for hot-ion regimes**](08_full_lamb_dicke.md).
+  When the `full_lamb_dicke=True` flag on the sideband builders
+  matters. Covers the Wineland–Itano closed form
+  `Ω_{n,n−1}^full = Ω·|η|·e^(−η²/2)·√((n−1)!/n!)·L_{n−1}^(1)(η²)`,
+  the `η²·n ≳ 0.1` rule-of-thumb crossover, and a quantitative
+  three-scenario comparison showing 3 % → 16 % → 30 % rate
+  shortfall as `n` climbs from 1 to 10 at fixed `η = 0.26`.
+  Closes with a when-to-flip decision tree covering
+  thermal-start scenarios, MS-gate tuning, and sideband
+  cooling cascades.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-8. **Full Lamb–Dicke for hot-ion regimes.** When the
-   `full_lamb_dicke=True` flag matters (Wineland–Itano Laguerre
-   structure on `|n⟩ → |n ± 1⟩` rates) and when the leading-order
-   sideband Hamiltonian is sufficient.
 9. **Squeezed / coherent state-prep.** `coherent_mode`,
    `squeezed_vacuum_mode`, `squeezed_coherent_mode`; composing via
    `states.compose_density`; how the squeeze-then-displace ordering

@@ -63,6 +63,7 @@ nav:
       - "5. Custom observables": tutorials/05_custom_observables.md
       - "6. Fock truncation diagnosis": tutorials/06_fock_truncation.md
       - "7. Hash-verified cache round-trip": tutorials/07_cache_round_trip.md
+      - "8. Full Lamb–Dicke for hot-ion regimes": tutorials/08_full_lamb_dicke.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:
