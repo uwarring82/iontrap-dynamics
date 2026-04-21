@@ -95,6 +95,35 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — Fock truncation diagnosis (Dispatch FF)
+
+Sixth entry in the tutorials track. First diagnostic-layer
+tutorial (no new physics scenario; teaches a single
+architectural layer end-to-end).
+
+- `docs/tutorials/06_fock_truncation.md` (new) — walks a single
+  scenario (thermal initial state `n̄ = 0.5`, static carrier)
+  through all four CONVENTIONS §15 statuses by varying `N_Fock`
+  alone: silent OK (`N = 13`), Level 1
+  `FockConvergenceWarning` (`N = 11`), Level 2
+  `FockQualityWarning` (`N = 7, 9`), Level 3 `ConvergenceError`
+  raise (`N = 5`). Numbers spot-checked against the actual solver
+  output — the quoted `p_top` values match the run-time results
+  to the digit. Covers: reading the Python-warnings channel with
+  `warnings.catch_warnings`; reading the structured
+  `result.warnings` tuple with its machine-readable `diagnostics`
+  dict (preferred for CI gates); the
+  `fock_tolerance` per-call override for
+  publication-grade tightening; the
+  `fock_tolerance=0` ConventionError trap; a cross-ensemble
+  worst-case `p_top_max` aggregation recipe; and a diagnosis
+  recipe for turning a `ConvergenceError` message into a
+  remediation plan.
+- `docs/tutorials/index.md` — Tutorial 6 moved from *Planned*
+  to *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 6 entry beneath
+  Tutorials 1–5.
+
 #### Tutorials — custom observables (Dispatch EE)
 
 Fifth entry in the tutorials track. First tutorial focused on a

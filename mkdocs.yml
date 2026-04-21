@@ -61,6 +61,7 @@ nav:
       - "3. Gaussian π-pulse with modulated_carrier": tutorials/03_gaussian_pi_pulse.md
       - "4. Mølmer–Sørensen Bell gate": tutorials/04_ms_gate_bell.md
       - "5. Custom observables": tutorials/05_custom_observables.md
+      - "6. Fock truncation diagnosis": tutorials/06_fock_truncation.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:

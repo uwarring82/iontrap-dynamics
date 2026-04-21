@@ -56,14 +56,22 @@ cover the same ground for users who prefer reading code to prose.
   factory-vs-inline guidance and the `StorageMode.EAGER`
   post-hoc-analysis route (reduced-state partial traces, the
   registered `concurrence_trajectory` evaluator).
+- [**Tutorial 6 — Fock truncation diagnosis**](06_fock_truncation.md).
+  First diagnostic-layer tutorial. Walks a single scenario
+  (thermal initial state `n̄ = 0.5`, static carrier) through all
+  four CONVENTIONS §15 statuses — silent OK, Level 1
+  `FockConvergenceWarning`, Level 2 `FockQualityWarning`, Level 3
+  `ConvergenceError` — by varying `N_Fock` alone. Shows how to
+  read `result.warnings` as both a Python warning and a
+  structured `ResultWarning` record with diagnostics dict; how to
+  tighten ε via the `fock_tolerance` override for
+  publication-grade runs; and a diagnosis recipe for a
+  `ConvergenceError` from its message.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-6. **Fock truncation diagnosis.** Reading `result.warnings`; the
-   `FockConvergenceWarning` / `FockQualityWarning` /
-   `ConvergenceError` ladder; using `fock_tolerance` to override ε.
 7. **Hash-verified cache round-trip.** `cache.save_trajectory` /
    `cache.load_trajectory`; `compute_request_hash` usage; the
    `[Unreleased]` demo-bundle layout (`manifest.json` + `arrays.npz`
