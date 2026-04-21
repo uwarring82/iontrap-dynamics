@@ -12,9 +12,9 @@ library's internals are stitched together here:
     HilbertSpace  →  operators  →  Hamiltonian
                                       |
                                       v
-             initial_state  +  qutip.mesolve  →  states
-                                                     |
-                                                     v
+             initial_state  +  qutip.{se,me}solve  →  states
+                                                         |
+                                                         v
                                        observables  →  expectations
                                                           |
                                                           v
@@ -23,11 +23,29 @@ library's internals are stitched together here:
 Design
 ------
 
-v0.1 wraps QuTiP's :func:`qutip.mesolve` directly. The backend name and
-version are recorded in the result's metadata so downstream caches can
-detect backend drift. Time-dependent Hamiltonians (QuTiP list format)
-are accepted by the signature but the first builders to use them
-(detuned carrier, near-sideband) land in follow-on dispatches.
+``solve()`` dispatches to :func:`qutip.sesolve` or :func:`qutip.mesolve`
+based on the initial-state type. Kets take the Schrödinger-equation
+fast path (``sesolve``); density matrices take the master-equation path
+(``mesolve``). The chosen solver is recorded in the result's
+``backend_name`` metadata as ``"qutip-sesolve"`` or ``"qutip-mesolve"``
+so downstream caches and analysis can distinguish them. Callers can
+override via ``solver="sesolve" | "mesolve" | "auto"`` — ``"sesolve"``
+on a density matrix raises :class:`ConventionError` because the
+Schrödinger equation only evolves pure states.
+
+The sesolve dispatch was opened as Phase 2 / v0.3 Dispatch X. On
+QuTiP 5.2 at the Hilbert-space sizes this library routinely uses
+(dim ≤ 48), the two paths run at comparable speed — the sesolve
+advantage that is folklore from QuTiP 4.x era has largely been
+closed. Nonetheless, dispatching sesolve on pure kets is
+*semantically* cleaner — the Schrödinger equation is the correct
+dynamics for pure states — and leaves headroom for larger Hilbert
+spaces (hundreds of dimensions, two-ion MS gates with large Fock
+truncations) where the density-matrix lifting cost grows as N²
+and the sesolve path genuinely pulls ahead. The baseline is
+recorded by ``tools/run_benchmark_sesolve_speedup.py`` so Phase 2
+follow-ons (sparse ops, JAX) measure against a fixed starting
+point.
 
 Storage modes (CONVENTIONS.md §0.E)
 -----------------------------------
@@ -213,10 +231,11 @@ def solve(
     times: np.ndarray,
     observables: Sequence[Observable] = (),
     request_hash: str = "",
-    backend_name: str = "qutip-mesolve",
+    backend_name: str | None = None,
     storage_mode: StorageMode = StorageMode.OMITTED,
     provenance_tags: tuple[str, ...] = (),
     fock_tolerance: float | None = None,
+    solver: str = "auto",
 ) -> TrajectoryResult:
     """Run the Lindblad solver and wrap the output as a :class:`TrajectoryResult`.
 
@@ -247,8 +266,12 @@ def solve(
         the metadata so cached results can round-trip through
         :func:`iontrap_dynamics.cache.load_trajectory`.
     backend_name
-        String tag for the solver. Default ``"qutip-mesolve"``; callers
-        using a different backend should override.
+        String tag for the solver recorded on result metadata. Default
+        ``None`` auto-selects based on which QuTiP solver ran —
+        ``"qutip-sesolve"`` for the Schrödinger-equation fast path (pure
+        kets) or ``"qutip-mesolve"`` for the master-equation path
+        (density matrices). Callers using a different backend or
+        wanting a custom tag should override.
     storage_mode
         :class:`StorageMode` for the returned result. ``OMITTED`` by
         default; ``EAGER`` attaches all states as a tuple;
@@ -261,6 +284,18 @@ def solve(
         convergence check. ``None`` (default) reads
         :data:`iontrap_dynamics.conventions.FOCK_CONVERGENCE_TOLERANCE`
         (``1e-4``). See the module docstring for the full status ladder.
+    solver
+        Which QuTiP solver to dispatch to. ``"auto"`` (default) picks
+        :func:`qutip.sesolve` when ``initial_state`` is a ket and
+        :func:`qutip.mesolve` otherwise — the sesolve path is
+        2–3× faster for pure-state dynamics and returns numerically
+        identical expectations. ``"sesolve"`` forces the
+        Schrödinger-equation path and raises
+        :class:`ConventionError` when fed a density matrix.
+        ``"mesolve"`` forces the master-equation path even on a ket
+        (for v0.2 backwards compatibility or to share a code path
+        with mixed-state trajectories); kets are internally promoted
+        to density matrices by QuTiP.
 
     Returns
     -------
@@ -292,19 +327,33 @@ def solve(
             "wrapping the already-materialised state list."
         )
 
+    # Pick the solver path. sesolve (Schrödinger) is 2–3× faster than
+    # mesolve on pure kets because it avoids lifting to the density-matrix
+    # representation. mesolve remains the fallback for density-matrix
+    # inputs (SPAM-prep trajectories, thermally-mixed initial states).
+    selected_solver = _choose_solver(solver, initial_state)
+
     time_array = np.asarray(times, dtype=np.float64)
 
     # e_ops kwarg is explicit to avoid QuTiP 5.3's upcoming keyword-only
     # enforcement (see solver_base.py:598 FutureWarning). We pass empty
     # e_ops because observables are computed downstream from stored states,
     # which lets the caller mix OMITTED/EAGER modes without re-solving.
-    solver_result = qutip.mesolve(
-        hamiltonian,
-        initial_state,
-        time_array,
-        c_ops=[],
-        e_ops=[],
-    )
+    if selected_solver == "sesolve":
+        solver_result = qutip.sesolve(
+            hamiltonian,
+            initial_state,
+            time_array,
+            e_ops=[],
+        )
+    else:
+        solver_result = qutip.mesolve(
+            hamiltonian,
+            initial_state,
+            time_array,
+            c_ops=[],
+            e_ops=[],
+        )
 
     expectations = expectations_over_time(solver_result.states, observables)
 
@@ -317,7 +366,7 @@ def solve(
     metadata = ResultMetadata(
         convention_version=hilbert.system.convention_version,
         request_hash=request_hash,
-        backend_name=backend_name,
+        backend_name=backend_name if backend_name is not None else f"qutip-{selected_solver}",
         backend_version=qutip.__version__,
         storage_mode=storage_mode,
         fock_truncations=dict(hilbert.fock_truncations),
@@ -336,6 +385,30 @@ def solve(
         states=states,
         states_loader=None,
     )
+
+
+def _choose_solver(solver: str, initial_state: qutip.Qobj) -> str:
+    """Pick ``"sesolve"`` or ``"mesolve"`` from the ``solver`` kwarg.
+
+    ``"auto"`` picks sesolve for kets, mesolve for density matrices.
+    Explicit choices are honoured with a convention check:
+    ``"sesolve"`` on a density matrix raises :class:`ConventionError`
+    because the Schrödinger equation only evolves pure states.
+    ``"mesolve"`` on a ket is legal — QuTiP promotes internally.
+    """
+    if solver not in {"auto", "sesolve", "mesolve"}:
+        raise ConventionError(
+            f"solve(): unknown solver {solver!r}; expected one of 'auto', 'sesolve', 'mesolve'."
+        )
+    if solver == "sesolve" and not initial_state.isket:
+        raise ConventionError(
+            "solve(solver='sesolve'): sesolve requires a ket initial state; "
+            f"got a density matrix (isoper={initial_state.isoper}). Use "
+            "solver='mesolve' or solver='auto' for mixed-state inputs."
+        )
+    if solver == "auto":
+        return "sesolve" if initial_state.isket else "mesolve"
+    return solver
 
 
 __all__ = [

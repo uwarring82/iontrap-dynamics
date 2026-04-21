@@ -7,6 +7,37 @@ Versioning once the public package surface reaches its first alpha release.
 
 ## [Unreleased]
 
+### Added
+
+#### Phase 2 — performance track opener (Dispatch X)
+
+- `sequences.solve` gains a ``solver`` kwarg (``"auto"`` default,
+  explicit ``"sesolve"``/``"mesolve"`` overrides). ``"auto"``
+  dispatches pure kets to :func:`qutip.sesolve` and density
+  matrices to :func:`qutip.mesolve`; ``"sesolve"`` on a density
+  matrix raises :class:`ConventionError` (Schrödinger evolves pure
+  states only). The selected solver is recorded on the result's
+  ``backend_name`` metadata (``"qutip-sesolve"`` or
+  ``"qutip-mesolve"``); the default value of ``backend_name`` is
+  now ``None`` (auto-resolve) rather than a hard-coded string.
+- `tools/run_benchmark_sesolve_speedup.py` — Phase 2 baseline.
+  Measures mesolve-vs-sesolve wall-clock across three Hilbert-space
+  sizes and two sideband builders. **Empirical finding:** on QuTiP
+  5.2 at library-scale Hilbert spaces (dim ≤ 48), sesolve is *not*
+  faster than mesolve — the folklore 2–3× advantage from the
+  QuTiP 4.x era has largely been closed. The dispatch opts into
+  sesolve on ket inputs for semantic correctness; measurable wins
+  are left to later Phase 2 dispatches (sparse ops, JAX).
+- 8 new unit-test cases in `tests/unit/test_sequences.py` covering
+  the dispatch matrix: auto-dispatch on ket/density-matrix,
+  explicit sesolve/mesolve selection, sesolve-on-density-matrix
+  rejection, unknown-solver rejection, numerical-equivalence
+  cross-check between the two paths, backend-name override still
+  wins over auto.
+- Module docstring of `sequences.py` updated: "v0.1 wraps mesolve
+  directly" → dispatcher documentation covering the solver choice,
+  backend-name auto-tagging, and the QuTiP-5 performance baseline.
+
 ## [0.2.0] — 2026-04-21
 
 First tagged release. Combines the Phase 0 + Phase 1 core surface that

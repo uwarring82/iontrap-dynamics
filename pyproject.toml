@@ -222,6 +222,7 @@ ignore = [
 "tests/unit/test_states.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_system.py" = ["RUF002", "RUF003"]
 "tools/generate_migration_references.py" = ["RUF002", "RUF003"]
+"tools/run_benchmark_sesolve_speedup.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sideband.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_bell_entanglement.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_bernoulli_readout.py" = ["RUF001", "RUF002", "RUF003"]

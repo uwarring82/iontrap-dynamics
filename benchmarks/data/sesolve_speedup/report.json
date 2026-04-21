@@ -1,0 +1,66 @@
+{
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-21T08:51:28.349562+00:00",
+  "mean_speedup": 0.9998476403671154,
+  "n_repeats": 3,
+  "n_steps": 400,
+  "purpose": "Phase 2 / v0.3 Dispatch X baseline — measures sesolve fast-path speedup on pure-ket trajectories across several Hilbert-space sizes and Hamiltonian builders.",
+  "results": [
+    {
+      "fock_dim": 4,
+      "hilbert_dim": 8,
+      "max_expectation_error": 0.0,
+      "mesolve_seconds": 0.0038679169956594706,
+      "scenario": "carrier_fock04",
+      "sesolve_seconds": 0.003965416981372982,
+      "speedup": 0.9754124254343226
+    },
+    {
+      "fock_dim": 12,
+      "hilbert_dim": 24,
+      "max_expectation_error": 0.0,
+      "mesolve_seconds": 0.004065375018399209,
+      "scenario": "carrier_fock12",
+      "sesolve_seconds": 0.00415450002765283,
+      "speedup": 0.9785473562016139
+    },
+    {
+      "fock_dim": 24,
+      "hilbert_dim": 48,
+      "max_expectation_error": 0.0,
+      "mesolve_seconds": 0.0043395410175435245,
+      "scenario": "carrier_fock24",
+      "sesolve_seconds": 0.0042168329819105566,
+      "speedup": 1.0290995721574374
+    },
+    {
+      "builder": "red_sideband",
+      "fock_dim": 8,
+      "hilbert_dim": 16,
+      "max_expectation_error": 0.0,
+      "mesolve_seconds": 0.0037499169702641666,
+      "scenario": "rsb_fock08",
+      "sesolve_seconds": 0.003700333007145673,
+      "speedup": 1.0133998650993687
+    },
+    {
+      "builder": "blue_sideband",
+      "fock_dim": 8,
+      "hilbert_dim": 16,
+      "max_expectation_error": 0.0,
+      "mesolve_seconds": 0.003758917038794607,
+      "scenario": "bsb_fock08",
+      "sesolve_seconds": 0.00374850002117455,
+      "speedup": 1.002778982942834
+    }
+  ],
+  "scenario": "sesolve_speedup",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 2 — performance (Dispatch X: sesolve dispatch)"
+}

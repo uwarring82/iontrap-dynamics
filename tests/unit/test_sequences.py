@@ -195,10 +195,11 @@ class TestMetadata:
         )
         assert result.metadata.request_hash == hash_value
 
-    def test_backend_name_default(self) -> None:
+    def test_backend_name_default_ket_uses_sesolve(self) -> None:
+        """Default solver='auto' dispatches a ket input to sesolve."""
         h, H, psi_0, times, _ = _carrier_scenario()
         result = solve(hilbert=h, hamiltonian=H, initial_state=psi_0, times=times)
-        assert result.metadata.backend_name == "qutip-mesolve"
+        assert result.metadata.backend_name == "qutip-sesolve"
 
     def test_backend_name_override(self) -> None:
         h, H, psi_0, times, _ = _carrier_scenario()
@@ -535,3 +536,97 @@ class TestFockSaturationMultiMode:
         h, H, rho_0, times = _saturation_scenario(5e-3, target_mode="radial")
         with pytest.raises(ConvergenceError, match="radial"):
             solve(hilbert=h, hamiltonian=H, initial_state=rho_0, times=times)
+
+
+# ----------------------------------------------------------------------------
+# Dispatch X — sesolve / mesolve solver selection
+# ----------------------------------------------------------------------------
+
+
+class TestSolverDispatch:
+    """``solver`` kwarg controls the QuTiP backend — sesolve vs mesolve."""
+
+    def test_ket_defaults_to_sesolve(self) -> None:
+        h, H, psi_0, times, _ = _carrier_scenario()
+        result = solve(hilbert=h, hamiltonian=H, initial_state=psi_0, times=times)
+        assert result.metadata.backend_name == "qutip-sesolve"
+
+    def test_density_matrix_defaults_to_mesolve(self) -> None:
+        h, H, psi_0, times, _ = _carrier_scenario()
+        rho_0 = qutip.ket2dm(psi_0)
+        result = solve(hilbert=h, hamiltonian=H, initial_state=rho_0, times=times)
+        assert result.metadata.backend_name == "qutip-mesolve"
+
+    def test_explicit_sesolve_on_ket(self) -> None:
+        h, H, psi_0, times, _ = _carrier_scenario()
+        result = solve(hilbert=h, hamiltonian=H, initial_state=psi_0, times=times, solver="sesolve")
+        assert result.metadata.backend_name == "qutip-sesolve"
+
+    def test_explicit_mesolve_on_ket_also_works(self) -> None:
+        """Forcing mesolve on a ket is legal — QuTiP promotes internally."""
+        h, H, psi_0, times, _ = _carrier_scenario()
+        result = solve(hilbert=h, hamiltonian=H, initial_state=psi_0, times=times, solver="mesolve")
+        assert result.metadata.backend_name == "qutip-mesolve"
+
+    def test_explicit_sesolve_on_density_matrix_raises(self) -> None:
+        """sesolve can't evolve density matrices — the Schrödinger equation
+        only acts on pure states."""
+        h, H, psi_0, times, _ = _carrier_scenario()
+        rho_0 = qutip.ket2dm(psi_0)
+        with pytest.raises(ConventionError, match="requires a ket initial state"):
+            solve(
+                hilbert=h,
+                hamiltonian=H,
+                initial_state=rho_0,
+                times=times,
+                solver="sesolve",
+            )
+
+    def test_unknown_solver_raises(self) -> None:
+        h, H, psi_0, times, _ = _carrier_scenario()
+        with pytest.raises(ConventionError, match="unknown solver"):
+            solve(
+                hilbert=h,
+                hamiltonian=H,
+                initial_state=psi_0,
+                times=times,
+                solver="bogus",
+            )
+
+    def test_sesolve_and_mesolve_give_same_expectations(self) -> None:
+        """Physics-preservation: on a ket, the two solver paths agree on
+        every observable to within ODE tolerance."""
+        h, H, psi_0, times, _ = _carrier_scenario(n_steps=200)
+        obs = [spin_x(h, 0), spin_y(h, 0), spin_z(h, 0), number(h, "axial")]
+        res_se = solve(
+            hilbert=h,
+            hamiltonian=H,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            solver="sesolve",
+        )
+        res_me = solve(
+            hilbert=h,
+            hamiltonian=H,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            solver="mesolve",
+        )
+        for key in ("sigma_x_0", "sigma_y_0", "sigma_z_0", "n_axial"):
+            np.testing.assert_allclose(
+                res_se.expectations[key], res_me.expectations[key], atol=1e-6
+            )
+
+    def test_backend_name_override_beats_auto(self) -> None:
+        """Explicit backend_name suppresses the auto-generated tag."""
+        h, H, psi_0, times, _ = _carrier_scenario()
+        result = solve(
+            hilbert=h,
+            hamiltonian=H,
+            initial_state=psi_0,
+            times=times,
+            backend_name="qutip-sesolve-custom-tag",
+        )
+        assert result.metadata.backend_name == "qutip-sesolve-custom-tag"
