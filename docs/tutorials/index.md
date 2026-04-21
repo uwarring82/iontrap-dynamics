@@ -67,15 +67,24 @@ cover the same ground for users who prefer reading code to prose.
   tighten ε via the `fock_tolerance` override for
   publication-grade runs; and a diagnosis recipe for a
   `ConvergenceError` from its message.
+- [**Tutorial 7 — Hash-verified cache round-trip**](07_cache_round_trip.md).
+  End-to-end walk through the persistence layer over the
+  Tutorial 2 RSB scenario. Covers the three cache functions —
+  `compute_request_hash`, `save_trajectory`, `load_trajectory` —
+  the `manifest.json` + `arrays.npz` bundle layout and its
+  `StorageMode.OMITTED`-only scope, bit-identical round-trip of
+  times + expectations + warnings, and four distinct
+  `IntegrityError` failure modes (mismatched hash, missing
+  files, tampered manifest, extra/missing npz arrays). Closes
+  with three practical-use patterns for the cache (notebook
+  skip-recompute, committed reference results, cross-process
+  sharing) and the "don't commit 1000-trial sweep bundles"
+  caveat.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-7. **Hash-verified cache round-trip.** `cache.save_trajectory` /
-   `cache.load_trajectory`; `compute_request_hash` usage; the
-   `[Unreleased]` demo-bundle layout (`manifest.json` + `arrays.npz`
-   + `demo_report.json`).
 8. **Full Lamb–Dicke for hot-ion regimes.** When the
    `full_lamb_dicke=True` flag matters (Wineland–Itano Laguerre
    structure on `|n⟩ → |n ± 1⟩` rates) and when the leading-order

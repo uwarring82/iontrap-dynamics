@@ -95,6 +95,39 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — hash-verified cache round-trip (Dispatch GG)
+
+Seventh entry in the tutorials track. Second architectural-layer
+tutorial (complementing the Dispatch FF diagnostics tutorial);
+covers the persistence contract that every committed
+`benchmarks/data/<scenario>/` bundle in the repo rides on.
+
+- `docs/tutorials/07_cache_round_trip.md` (new) — end-to-end
+  walk through `compute_request_hash`, `save_trajectory`,
+  `load_trajectory` applied to the Tutorial 2 RSB scenario.
+  Contents: the parameter-dict → SHA-256 hex → embedded-manifest
+  contract as a single-picture data-flow; what belongs in the
+  hash payload vs the demo-report sidecar (primary inputs in,
+  derived quantities out); why `StorageMode.OMITTED` is the only
+  supported cache input (no-pickle policy, backend-agnostic
+  round-trip); bit-identical round-trip assertion across times +
+  expectations + metadata + warnings; four independent
+  `IntegrityError` failure-mode walkthroughs (mismatched
+  expected hash, missing file, tampered manifest hash, extra
+  npz key) each with the exact diagnostic the library emits;
+  three practical use patterns (notebook skip-recompute try /
+  `IntegrityError` / solve, committed reference bundles for CI
+  diff-check, cross-process sharing as a reproducibility
+  contract); and the "don't commit 1000-trial sweep bundles"
+  caveat. Hash values and manifest contents spot-checked against
+  an actual run — the `d3c81eef…` hash and the `"0.1-draft"`
+  `convention_version` in the quoted manifest match what a
+  reader running the tutorial verbatim will see.
+- `docs/tutorials/index.md` — Tutorial 7 moved from *Planned* to
+  *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 7 entry beneath
+  Tutorials 1–6.
+
 #### Tutorials — Fock truncation diagnosis (Dispatch FF)
 
 Sixth entry in the tutorials track. First diagnostic-layer
