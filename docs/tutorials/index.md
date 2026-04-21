@@ -1,11 +1,14 @@
 # Tutorials
 
 Task-oriented walkthroughs of `iontrap-dynamics`. Each tutorial takes
-~10 min to read and ~1 s to run. They are Sail material — adaptive
-guidance with specific parameter choices, not coastline constraints.
+~10–15 min to read and ~1–3 s to run. They are Sail material —
+adaptive guidance with specific parameter choices, not coastline
+constraints.
 
-The first tutorial is live; the rest are planned topics roughly in
-order of reader dependency. The runnable demo tools under `tools/`
+The track is complete at twelve tutorials, covering every
+architectural layer of the library (configuration, Hamiltonians,
+solve, observables, measurement, systematics, persistence,
+entanglement diagnostics). The runnable demo tools under `tools/`
 and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.
@@ -126,15 +129,21 @@ cover the same ground for users who prefer reading code to prose.
   illustrates the `n_jobs=1` default with a performance note
   and a DetuningJitter variation for the Lorentzian-dephasing
   analogue.
-
-## Planned
-
-Sequenced roughly in order of reader dependency on prior tutorials:
-
-12. **Two-ion Bell-state entanglement.** The Mølmer–Sørensen
-    gate with parity readout and nonlinear entanglement observables
-    (concurrence, log-negativity). Parallels
-    `tools/run_demo_bell_entanglement.py` + `run_demo_parity_scan.py`.
+- [**Tutorial 12 — Two-ion Bell-state entanglement**](12_bell_entanglement.md).
+  Closes the tutorials track. Takes the Tutorial 4 MS-gate
+  scenario and reads it out through both the `ParityScan`
+  protocol (finite-shot parity estimator with explicit
+  detector envelope) and the three registered entanglement
+  trajectory evaluators (`concurrence_trajectory`,
+  `entanglement_of_formation_trajectory`,
+  `log_negativity_trajectory`). Three witnesses on one gate
+  show complementary information: mid-gate spin-motion
+  entanglement (log-negativity peaking at 1.31) disappears as
+  the phase-space loop closes, while spin-spin concurrence
+  rises from 0 to exactly 1.0 at `t_gate`. Explains the
+  `OMITTED` vs `EAGER` storage-mode split required by the
+  two surfaces and points the reader at the remaining
+  library-surface learning paths beyond the tutorial track.
 
 ## Scope and licensing
 

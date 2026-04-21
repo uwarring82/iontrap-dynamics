@@ -95,6 +95,43 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — two-ion Bell-state entanglement (Dispatch LL)
+
+Twelfth and **final** entry in the tutorials track. Closes the
+track originally planned in Dispatch F (placeholder) and opened
+in Dispatch AA (Tutorial 1).
+
+- `docs/tutorials/12_bell_entanglement.md` (new) — takes the
+  Tutorial 4 MS-gate scenario and reads it out through two
+  complementary measurement surfaces: (1) `ParityScan` protocol
+  with explicit detector-classification envelope, showing the
+  ideal `⟨σ_z σ_z⟩(t_gate) = +1.0` attenuate to
+  `parity_envelope = +0.9928` under the 85%-efficiency /
+  0.3-dark-count detector, with a 500-shot Wilson estimator
+  tracking it at `+0.992`; (2) three registered trajectory
+  evaluators (`concurrence_trajectory`,
+  `entanglement_of_formation_trajectory`,
+  `log_negativity_trajectory`). Three-witness narrative: at
+  t=0 all three measures are 0 (product state); mid-gate
+  (t≈13.6 μs) log-negativity peaks at 1.31 (spin-motion
+  entanglement) while spin-spin concurrence sits at only 0.27
+  (reduced state is mixed because entangled with phonons); at
+  `t_gate` concurrence = EoF = 1.0 (Bell state) and
+  log-negativity drops back to 0 (motion has disentangled).
+  All nine quoted numbers spot-checked against an actual
+  two-solve run. Also clarifies two easy-to-confuse API
+  details: `concurrence_trajectory` uses `ion_indices=(i, j)`
+  (two-qubit-specific) while `log_negativity_trajectory` uses
+  `partition="spins" | "modes"` (bipartite-generic). Closes
+  with pointers to remaining library surface not directly
+  covered by the twelve tutorials (SPAM, drift, sideband
+  inference, factory contributions).
+- `docs/tutorials/index.md` — Tutorial 12 promoted to
+  *Available*; the "Planned" section is removed and the
+  introductory prose rewritten to reflect the completed track.
+- `mkdocs.yml` nav adds an explicit Tutorial 12 entry beneath
+  Tutorials 1–11.
+
 #### Tutorials — systematics jitter ensembles (Dispatch KK)
 
 Eleventh entry in the tutorials track. First systematics-layer
