@@ -1,0 +1,58 @@
+{
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-21T10:26:23.916139+00:00",
+  "purpose": "Phase 2 Dispatch Y baseline — identifies where joblib parallelism begins to pay off. At the library's current Hilbert-space scales (dim ≤ 48), process-based parallelism is *not* faster than serial due to pickle + process-spawn overhead; solve_ensemble default is n_jobs=1. Callers hitting longer single-solve cost (>100–500 ms) can flip to n_jobs=-1 after measuring here.",
+  "regimes": [
+    {
+      "backends": {
+        "n_jobs=-1 loky": 1.9538183340337127,
+        "n_jobs=-1 threading": 0.07225887500680983,
+        "n_jobs=1 (serial)": 0.08765125001082197
+      },
+      "ensemble_size": 20,
+      "hilbert_dim": 6,
+      "n_steps": 200,
+      "regime": "small  fock=3  n=200",
+      "single_solve_ms": 2.7203329955227673,
+      "winner_backend": "n_jobs=-1 threading",
+      "winner_speedup_vs_serial": 1.2130170861719274
+    },
+    {
+      "backends": {
+        "n_jobs=-1 loky": 0.09064987499732524,
+        "n_jobs=-1 threading": 0.15719041699776426,
+        "n_jobs=1 (serial)": 0.08476437500212342
+      },
+      "ensemble_size": 20,
+      "hilbert_dim": 24,
+      "n_steps": 500,
+      "regime": "medium fock=12 n=500",
+      "single_solve_ms": 6.164166959933937,
+      "winner_backend": "n_jobs=1 (serial)",
+      "winner_speedup_vs_serial": 1.0
+    },
+    {
+      "backends": {
+        "n_jobs=-1 loky": 0.18606349994661286,
+        "n_jobs=-1 threading": 0.6173051250516437,
+        "n_jobs=1 (serial)": 0.49859133298741654
+      },
+      "ensemble_size": 20,
+      "hilbert_dim": 48,
+      "n_steps": 2000,
+      "regime": "large  fock=24 n=2000",
+      "single_solve_ms": 15.487750002648681,
+      "winner_backend": "n_jobs=-1 loky",
+      "winner_speedup_vs_serial": 2.679683726955997
+    }
+  ],
+  "scenario": "ensemble_parallel_crossover",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 2 — parallel sweeps via joblib (Dispatch Y)"
+}

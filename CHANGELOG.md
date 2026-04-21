@@ -38,6 +38,34 @@ Versioning once the public package surface reaches its first alpha release.
   directly" → dispatcher documentation covering the solver choice,
   backend-name auto-tagging, and the QuTiP-5 performance baseline.
 
+#### Phase 2 — parallel sweeps via joblib (Dispatch Y)
+
+- `sequences.solve_ensemble(hilbert, hamiltonians, ...)` — batch
+  API over a sequence of Hamiltonians, wrapping
+  :class:`joblib.Parallel`. Returns `tuple[TrajectoryResult, ...]`
+  in the same order as the input hamiltonians. Shared solve-kwargs
+  (``initial_state``, ``times``, ``observables``, ``storage_mode``,
+  ``solver``, etc.) apply to every trial; per-trial variation is
+  encoded in the Hamiltonian list.
+- Default `n_jobs=1` runs serially in the main process with zero
+  joblib overhead — measured by the benchmark tool below as faster
+  than any parallel backend for the typical small/medium ion-trap
+  scenarios. `n_jobs=-1` with `parallel_backend="loky"` becomes
+  faster once single-solve cost exceeds ~15 ms and n_steps ≥ 2000.
+- `joblib>=1.3` promoted from the `[legacy]` extra to base
+  dependencies (was the qc.py generator's only caller; now core).
+- `tests/unit/test_sequences.py`: 8 new cases covering batch-API
+  shape, empty-list rejection, output-order preservation across
+  varied Hamiltonians, serial / loky bit-equivalence, shared-kwarg
+  propagation, default-n_jobs serial execution.
+- `tools/run_benchmark_ensemble_parallel.py`: measures loky /
+  threading / sequential backends across three scale regimes.
+  **Empirical findings:** at small (fock=3, 2.7 ms single-solve)
+  loky is 22× slower than serial; at medium (fock=12, 6 ms) serial
+  and loky tie; at large (fock=24, 16 ms, 2000 steps) loky gives
+  a 2.68× speedup over serial. Threading hurts at large scale
+  (Python-level stepper overhead).
+
 ## [0.2.0] — 2026-04-21
 
 First tagged release. Combines the Phase 0 + Phase 1 core surface that

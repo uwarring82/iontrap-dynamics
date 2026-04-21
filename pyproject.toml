@@ -60,6 +60,7 @@ dependencies = [
     "numpy>=1.24,<3",
     "scipy>=1.10,<2",
     "pyyaml>=6.0",
+    "joblib>=1.3",  # solve_ensemble parallel dispatch (Phase 2 Dispatch Y)
 ]
 
 [project.optional-dependencies]
@@ -222,6 +223,7 @@ ignore = [
 "tests/unit/test_states.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_system.py" = ["RUF002", "RUF003"]
 "tools/generate_migration_references.py" = ["RUF002", "RUF003"]
+"tools/run_benchmark_ensemble_parallel.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sesolve_speedup.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sideband.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_bell_entanglement.py" = ["RUF001", "RUF002", "RUF003"]
@@ -261,7 +263,7 @@ show_error_codes = true
 files = ["src/iontrap_dynamics"]
 
 [[tool.mypy.overrides]]
-module = ["qutip", "qutip.*", "dynamiqs", "dynamiqs.*", "jax", "jax.*", "jaxlib.*", "scipy", "scipy.*"]
+module = ["qutip", "qutip.*", "dynamiqs", "dynamiqs.*", "jax", "jax.*", "jaxlib.*", "scipy", "scipy.*", "joblib", "joblib.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

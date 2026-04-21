@@ -387,6 +387,139 @@ def solve(
     )
 
 
+def solve_ensemble(
+    *,
+    hilbert: HilbertSpace,
+    hamiltonians: Sequence[MesolveHamiltonian],
+    initial_state: qutip.Qobj,
+    times: np.ndarray,
+    observables: Sequence[Observable] = (),
+    request_hash: str = "",
+    backend_name: str | None = None,
+    storage_mode: StorageMode = StorageMode.OMITTED,
+    provenance_tags: tuple[str, ...] = (),
+    fock_tolerance: float | None = None,
+    solver: str = "auto",
+    n_jobs: int = 1,
+    parallel_backend: str = "loky",
+) -> tuple[TrajectoryResult, ...]:
+    """Run ``solve()`` across a sequence of Hamiltonians (batch API, optional parallelism).
+
+    The canonical aggregation pattern for jitter ensembles (§18.2):
+    given ``N`` perturbed :class:`DriveConfig`\\s, build one Hamiltonian
+    per config, then call this function to run all ``N`` trajectories
+    and collect a tuple of :class:`TrajectoryResult`.
+
+    Phase 2 Dispatch Y — workplan §5 "parallel sweeps via joblib". The
+    function wraps :class:`joblib.Parallel` so callers can opt into
+    process- or thread-based parallelism via ``n_jobs``.
+
+    **Performance reality.** Measured crossover on QuTiP 5.2 +
+    Python 3.13 (single-core laptop, see
+    ``tools/run_benchmark_ensemble_parallel.py``):
+
+    - single-solve < ~5 ms — serial wins; loky is ~20× slower
+      (process-spawn + pickle overhead dominates).
+    - single-solve ~5–10 ms — serial ≈ loky; noise-dominated.
+    - single-solve > ~15 ms — loky pulls ahead; typical speedup
+      2–3× at 20 trials on a 10-core machine.
+
+    The default is therefore ``n_jobs=1`` (serial in the main
+    process, zero joblib overhead). Callers hitting the large
+    single-solve regime (MS gates with Fock > 24, two-ion full-LD
+    builders, long-duration parameter scans) can flip to
+    ``n_jobs=-1`` — benchmark before committing to a backend.
+
+    Parameters
+    ----------
+    hilbert, initial_state, times, observables, request_hash,
+    backend_name, storage_mode, provenance_tags, fock_tolerance,
+    solver
+        Shared across all trials — identical to :func:`solve`
+        semantics. Metadata fields that would be per-trial (e.g. a
+        varying seed recorded in provenance_tags) must be baked into
+        the Hamiltonian or passed to ``solve()`` manually in a
+        per-trial comprehension.
+    hamiltonians
+        One Hamiltonian per trial. The ensemble length is
+        ``len(hamiltonians)``; zero-length is rejected.
+    n_jobs
+        Number of parallel workers. Default ``1`` runs serially in
+        the main process with zero joblib overhead (recommended at
+        the current library scales). ``-1`` uses all available CPUs;
+        any positive integer pins to that many workers. Passed
+        straight to :class:`joblib.Parallel`.
+    parallel_backend
+        Joblib backend — ``"loky"`` (default, process-based, works
+        for CPU-bound numpy/QuTiP), ``"threading"`` (shares memory,
+        GIL-limited for CPU-bound), or ``"sequential"`` (serial).
+        See :mod:`joblib` docs for details.
+
+    Returns
+    -------
+    tuple[TrajectoryResult, ...]
+        One result per Hamiltonian, in the same order. Aggregation is
+        the caller's responsibility — typically::
+
+            results = solve_ensemble(hilbert=h, hamiltonians=hams, ...)
+            stack = np.stack(
+                [r.expectations["sigma_z_0"] for r in results], axis=0
+            )
+            ensemble_mean = stack.mean(axis=0)
+
+    Raises
+    ------
+    ConventionError
+        Propagated from any individual solve — e.g. invalid
+        ``storage_mode``, ``solver``, or Level-3 Fock saturation on
+        any trial. When the parallel backend is process-based, only
+        the first failing trial's traceback is reported.
+
+    Notes
+    -----
+    **Determinism.** Each :func:`solve` call is deterministic given
+    its inputs, so the ensemble output is bit-reproducible regardless
+    of worker scheduling — order of the output tuple matches the
+    input ``hamiltonians`` order.
+
+    **Serialization.** Process-based ``loky`` backend pickles
+    everything (Hamiltonians, initial state, observable operators).
+    QuTiP ``Qobj`` objects are pickleable. The pickling cost is
+    non-trivial for large trajectories — for trivial solves (<10 ms)
+    serial execution is typically faster overall.
+
+    **Warnings.** Fock-saturation warnings emitted by worker
+    processes do not propagate to the parent's ``warnings`` channel
+    (joblib limitation), but they *are* recorded as
+    :class:`ResultWarning` entries on each trial's
+    :attr:`TrajectoryResult.warnings` tuple.
+    """
+    from joblib import Parallel, delayed
+
+    if len(hamiltonians) == 0:
+        raise ConventionError(
+            "solve_ensemble: hamiltonians must be non-empty; got an empty sequence."
+        )
+
+    solve_kwargs = {
+        "hilbert": hilbert,
+        "initial_state": initial_state,
+        "times": times,
+        "observables": tuple(observables),
+        "request_hash": request_hash,
+        "backend_name": backend_name,
+        "storage_mode": storage_mode,
+        "provenance_tags": provenance_tags,
+        "fock_tolerance": fock_tolerance,
+        "solver": solver,
+    }
+
+    results = Parallel(n_jobs=n_jobs, backend=parallel_backend)(
+        delayed(solve)(hamiltonian=h, **solve_kwargs) for h in hamiltonians
+    )
+    return tuple(results)
+
+
 def _choose_solver(solver: str, initial_state: qutip.Qobj) -> str:
     """Pick ``"sesolve"`` or ``"mesolve"`` from the ``solver`` kwarg.
 
@@ -413,4 +546,5 @@ def _choose_solver(solver: str, initial_state: qutip.Qobj) -> str:
 
 __all__ = [
     "solve",
+    "solve_ensemble",
 ]

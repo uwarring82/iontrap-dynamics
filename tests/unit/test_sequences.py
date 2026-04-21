@@ -31,7 +31,7 @@ from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.observables import number, spin_x, spin_y, spin_z
 from iontrap_dynamics.operators import spin_down
 from iontrap_dynamics.results import StorageMode, TrajectoryResult, WarningSeverity
-from iontrap_dynamics.sequences import solve
+from iontrap_dynamics.sequences import solve, solve_ensemble
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.states import ground_state
 from iontrap_dynamics.system import IonSystem
@@ -630,3 +630,148 @@ class TestSolverDispatch:
             backend_name="qutip-sesolve-custom-tag",
         )
         assert result.metadata.backend_name == "qutip-sesolve-custom-tag"
+
+
+# ----------------------------------------------------------------------------
+# Dispatch Y — solve_ensemble batch API
+# ----------------------------------------------------------------------------
+
+
+class TestSolveEnsemble:
+    """Batch API over a sequence of Hamiltonians. Default n_jobs=1 is serial."""
+
+    def test_returns_tuple_of_results(self) -> None:
+        h, H, psi_0, times, _ = _carrier_scenario()
+        results = solve_ensemble(
+            hilbert=h,
+            hamiltonians=[H, H, H],
+            initial_state=psi_0,
+            times=times,
+        )
+        assert isinstance(results, tuple)
+        assert len(results) == 3
+        for r in results:
+            assert isinstance(r, TrajectoryResult)
+
+    def test_length_matches_hamiltonians(self) -> None:
+        h, H, psi_0, times, _ = _carrier_scenario()
+        hams = [H] * 7
+        results = solve_ensemble(hilbert=h, hamiltonians=hams, initial_state=psi_0, times=times)
+        assert len(results) == 7
+
+    def test_empty_hamiltonians_rejected(self) -> None:
+        h, _, psi_0, times, _ = _carrier_scenario()
+        with pytest.raises(ConventionError, match="must be non-empty"):
+            solve_ensemble(hilbert=h, hamiltonians=[], initial_state=psi_0, times=times)
+
+    def test_output_order_preserved(self) -> None:
+        """Ordered Hamiltonians must produce ordered results."""
+        # Build three subtly-different Hamiltonians by scaling the Rabi.
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
+        hil = HilbertSpace(system=system, fock_truncations={"axial": 3})
+        deltas = [-0.1, 0.0, 0.1]
+        drives = [
+            DriveConfig(
+                k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+                carrier_rabi_frequency_rad_s=2 * np.pi * 1.0e6 * (1.0 + d),
+                phase_rad=0.0,
+            )
+            for d in deltas
+        ]
+        hams = [carrier_hamiltonian(hil, dr, ion_index=0) for dr in drives]
+        psi = ground_state(hil)
+        rabi_period = 2 * np.pi / (2 * np.pi * 1.0e6)
+        tlist = np.linspace(0.0, rabi_period, 50)
+
+        results = solve_ensemble(
+            hilbert=hil,
+            hamiltonians=hams,
+            initial_state=psi,
+            times=tlist,
+            observables=[spin_z(hil, 0)],
+        )
+        # Different Hamiltonians produce distinct trajectories (by delta sign).
+        first = results[0].expectations["sigma_z_0"]
+        middle = results[1].expectations["sigma_z_0"]
+        last = results[-1].expectations["sigma_z_0"]
+        assert not np.allclose(first, middle, atol=1e-3)
+        assert not np.allclose(middle, last, atol=1e-3)
+
+    def test_matches_serial_for_loop(self) -> None:
+        """Ensemble output should be bit-identical to a serial for-loop."""
+        h, H, psi_0, times, _ = _carrier_scenario()
+        hams = [H] * 4
+        ensemble = solve_ensemble(
+            hilbert=h,
+            hamiltonians=hams,
+            initial_state=psi_0,
+            times=times,
+            observables=[spin_z(h, 0)],
+        )
+        serial = [
+            solve(
+                hilbert=h,
+                hamiltonian=H,
+                initial_state=psi_0,
+                times=times,
+                observables=[spin_z(h, 0)],
+            )
+            for _ in range(4)
+        ]
+        for e, s in zip(ensemble, serial, strict=True):
+            np.testing.assert_array_equal(e.expectations["sigma_z_0"], s.expectations["sigma_z_0"])
+
+    def test_propagates_shared_kwargs(self) -> None:
+        """Shared args (observables, storage_mode, solver) apply to every trial."""
+        h, H, psi_0, times, _ = _carrier_scenario()
+        results = solve_ensemble(
+            hilbert=h,
+            hamiltonians=[H, H],
+            initial_state=psi_0,
+            times=times,
+            observables=[number(h, "axial")],
+            storage_mode=StorageMode.EAGER,
+            solver="sesolve",
+        )
+        for r in results:
+            assert r.metadata.storage_mode is StorageMode.EAGER
+            assert r.metadata.backend_name == "qutip-sesolve"
+            assert "n_axial" in r.expectations
+            assert r.states is not None
+
+    def test_default_n_jobs_is_serial(self) -> None:
+        """Default n_jobs=1 runs serially and still returns the full tuple."""
+        h, H, psi_0, times, _ = _carrier_scenario()
+        results = solve_ensemble(hilbert=h, hamiltonians=[H, H], initial_state=psi_0, times=times)
+        assert len(results) == 2
+
+    def test_loky_parallel_matches_serial(self) -> None:
+        """n_jobs=-1 with loky backend must produce the same results."""
+        h, H, psi_0, times, _ = _carrier_scenario(n_steps=50)
+        obs = [spin_z(h, 0)]
+        serial = solve_ensemble(
+            hilbert=h,
+            hamiltonians=[H, H, H],
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            n_jobs=1,
+        )
+        parallel = solve_ensemble(
+            hilbert=h,
+            hamiltonians=[H, H, H],
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            n_jobs=-1,
+            parallel_backend="loky",
+        )
+        for s, p in zip(serial, parallel, strict=True):
+            np.testing.assert_allclose(
+                s.expectations["sigma_z_0"], p.expectations["sigma_z_0"], atol=1e-10
+            )
