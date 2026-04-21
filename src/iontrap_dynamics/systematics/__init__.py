@@ -18,18 +18,27 @@ from a parameter distribution. The user composes by:
 Dispatch R landed the first stochastic primitive — :class:`RabiJitter`
 — plus a thin :func:`perturb_carrier_rabi` helper. Dispatch S adds
 :class:`DetuningJitter` and :class:`PhaseJitter` with matching
-``perturb_detuning`` and ``perturb_phase`` composition helpers. All
-three jitter primitives share the same aggregation pattern: sample
-shot-to-shot perturbations, build a tuple of perturbed
-:class:`DriveConfig`\\s, run solve() per entry, aggregate with NumPy.
-Parameter drifts (T) and SPAM / state-prep errors (U) close the
-track. The ``CONVENTIONS.md`` §18 section is opened with Dispatch R
-as staged rules and will freeze at the close of the systematics
-track.
+``perturb_detuning`` and ``perturb_phase`` composition helpers.
+Dispatch T adds static :class:`RabiDrift`, :class:`DetuningDrift`,
+and :class:`PhaseDrift` — deterministic single-value offsets that
+compose via ``apply_*`` helpers returning a single perturbed
+:class:`DriveConfig` (no ensemble). Jitter and drift together cover
+stochastic and systematic noise classes (§18.1). SPAM / state-prep
+errors (U) close the track. The ``CONVENTIONS.md`` §18 section is
+opened with Dispatch R as staged rules and will freeze at the close
+of the systematics track.
 """
 
 from __future__ import annotations
 
+from .drift import (
+    DetuningDrift,
+    PhaseDrift,
+    RabiDrift,
+    apply_detuning_drift,
+    apply_phase_drift,
+    apply_rabi_drift,
+)
 from .jitter import (
     DetuningJitter,
     PhaseJitter,
@@ -40,9 +49,15 @@ from .jitter import (
 )
 
 __all__ = [
+    "DetuningDrift",
     "DetuningJitter",
+    "PhaseDrift",
     "PhaseJitter",
+    "RabiDrift",
     "RabiJitter",
+    "apply_detuning_drift",
+    "apply_phase_drift",
+    "apply_rabi_drift",
     "perturb_carrier_rabi",
     "perturb_detuning",
     "perturb_phase",

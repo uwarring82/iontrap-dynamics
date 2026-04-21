@@ -348,7 +348,7 @@ trajectory.
   concurrence grows monotonically to 1 at ``t_gate``; log-negativity
   loops (peaks at ~1.31) and returns to ~0 as motion disentangles.
 
-#### Phase 1 — systematics layer (`systematics/`, Dispatches R / S)
+#### Phase 1 — systematics layer (`systematics/`, Dispatches R / S / T)
 
 Opens the §5 Phase 1 systematics surface. Jitter / drift / SPAM noise
 classes (§18.1) are distinguished; Dispatch R ships the first jitter
@@ -398,6 +398,24 @@ primitive.
   (each shot's effective Rabi rate depends on δ, and its amplitude
   is reduced by `Ω² / (Ω² + δ²)`). Max |ensemble mean − ideal| ≈
   0.72; terminal-offset-from-`−1` ≈ 0.46 at `t ≈ 5 T_Ω`.
+- `systematics.RabiDrift(delta)`, `systematics.DetuningDrift(
+  delta_rad_s)`, `systematics.PhaseDrift(delta_rad)` (Dispatch T)
+  — deterministic single-value parameter offsets. Unlike jitter
+  primitives, deltas are **unsigned** (either direction is
+  physical: tuned-low or tuned-high). Each has a matching
+  `systematics.apply_*_drift(drive, drift)` helper returning a
+  single perturbed `DriveConfig` (no ensemble). Two `apply_*` calls
+  with the same inputs are bit-identical.
+- `CONVENTIONS.md §18.4` (new) — drift primitives rules (unsigned
+  deltas, single-solve composition pattern, scan-by-comprehension
+  idiom, `DriveConfig`-invariant interaction). §18.5 repoints to
+  Dispatch U (SPAM).
+- `tools/run_demo_rabi_drift_scan.py` — π-pulse miscalibration
+  scan. Fixes pulse duration at nominal `t_π = π / Ω₀`, sweeps
+  `RabiDrift.delta ∈ [−20 %, +20 %]`, plots final `⟨σ_z⟩` against
+  the analytic `−cos((1+δ)π)` curve. Solver-vs-analytic max error
+  is 9e-7. Reports `|δ| ≤ 6 %` as the 99 %-fidelity calibration
+  tolerance window.
 
 ### Changed
 

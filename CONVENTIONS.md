@@ -528,9 +528,33 @@ All three share these rules:
 - Module-level `perturb_*` helpers materialise a `tuple[DriveConfig, ...]` of length `shots` from the sampled perturbations; other `DriveConfig` fields pass through untouched via `dataclasses.replace`.
 - Bit-reproducibility follows §17.3: supplying an integer `seed` to the composition helper makes the output tuple deterministic given `(drive, jitter, shots, seed)`. Callers wanting independent streams across multiple jitter sources should use `np.random.SeedSequence.spawn(n)` to derive per-source seeds (same discipline as §17.11).
 
-### 18.4 Pending (still in flight across Dispatches T–U)
+### 18.4 Drift primitives *(added in Dispatch T)*
 
-Rules for static parameter drifts (T) and state-preparation errors (U) will be added in sequence. Each dispatch appends to §18 rather than rewriting it, so the read-through grows linearly. §18 freezes alongside §17 at the v0.2 release.
+Drifts are *systematic* single-value offsets, not stochastic noise. Parallels to §18.3's jitter primitives, one per `DriveConfig` field:
+
+- **`RabiDrift(delta)`** — multiplicative relative offset on `carrier_rabi_frequency_rad_s`. Applies `Ω → Ω · (1 + delta)` once. `delta` dimensionless, **unsigned** (unlike `RabiJitter`'s `σ ≥ 0`) — a drift models a directional mis-calibration (tuned low or high).
+- **`DetuningDrift(delta_rad_s)`** — additive offset on `detuning_rad_s`. Units rad·s⁻¹ (SI per §1). Either sign.
+- **`PhaseDrift(delta_rad)`** — additive offset on `phase_rad`. Units rad. Phase not wrapped per §18.3.
+
+Shared rules:
+
+- Drifts are **deterministic** — two `apply_*(drive, drift)` calls with the same inputs produce bit-identical outputs. No seed, no RNG.
+- `apply_*` returns a single :class:`DriveConfig` (contrast with `perturb_*` which returns a tuple over shots). There is no ensemble.
+- Non-drifted `DriveConfig` fields pass through via `dataclasses.replace`.
+- Drift respects `DriveConfig` invariants: `apply_rabi_drift` with `delta ≤ −1` causes a non-positive Rabi frequency, which `DriveConfig.__post_init__` rejects with `ConventionError`. Callers sweeping through `delta = −1` must flip `phase_rad` by `π` instead of crossing the sign boundary.
+- Canonical scan pattern (no dedicated helper — just a Python comprehension):
+
+    ```python
+    deltas = np.linspace(-0.1, 0.1, 21)
+    results = [
+        solve(..., drive=apply_rabi_drift(base_drive, RabiDrift(delta=d)))
+        for d in deltas
+    ]
+    ```
+
+### 18.5 Pending (still in flight for Dispatch U)
+
+Rules for state-preparation (SPAM) errors close the section. §18 freezes alongside §17 at the v0.2 release once Dispatch U ships.
 
 ---
 

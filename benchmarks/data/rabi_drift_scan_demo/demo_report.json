@@ -1,0 +1,31 @@
+{
+  "convention_references": [
+    "§3 Spin basis",
+    "§18.1 Noise taxonomy (drifts are systematic, not stochastic)",
+    "§18.4 Drift primitives"
+  ],
+  "delta_max": 0.2,
+  "delta_tolerance_at_99pct_fidelity": 0.06,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-21T07:10:33.272189+00:00",
+  "max_numerical_vs_analytic_error": 8.889949714152579e-07,
+  "n_deltas": 61,
+  "parameters": {
+    "N_fock": 3,
+    "initial_state": "|↓, 0⟩",
+    "rabi_over_2pi_MHz": 1.0
+  },
+  "purpose": "deterministic Rabi-amplitude scan — shows how a systematic calibration error rotates the spin past or short of the π target, and quantifies the calibration tolerance for 99 % π-pulse fidelity.",
+  "scan_elapsed_seconds": 0.06049470801372081,
+  "scenario": "rabi_drift_scan_demo",
+  "schema_version": 2,
+  "t_pi_us": 0.5,
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 1 systematics layer (Dispatch T)"
+}

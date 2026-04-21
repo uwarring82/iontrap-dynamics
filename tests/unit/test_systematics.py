@@ -14,14 +14,21 @@ import numpy as np
 import pytest
 
 from iontrap_dynamics import (
+    DetuningDrift,
     DetuningJitter,
+    PhaseDrift,
     PhaseJitter,
+    RabiDrift,
     RabiJitter,
+    apply_detuning_drift,
+    apply_phase_drift,
+    apply_rabi_drift,
     perturb_carrier_rabi,
     perturb_detuning,
     perturb_phase,
 )
 from iontrap_dynamics.drives import DriveConfig
+from iontrap_dynamics.exceptions import ConventionError
 
 
 def _drive(
@@ -342,3 +349,134 @@ class TestPerturbPhase:
         phases = np.array([d.phase_rad for d in drives])
         # Some phases will land > π or < 0 — check the spread reaches outside [0, 2π].
         assert phases.min() < 0.5 or phases.max() > 2 * np.pi
+
+
+# ----------------------------------------------------------------------------
+# Drift primitives — static deterministic offsets
+# ----------------------------------------------------------------------------
+
+
+class TestRabiDrift:
+    def test_construction(self) -> None:
+        d = RabiDrift(delta=0.03)
+        assert d.delta == 0.03
+        assert d.label == "rabi_drift"
+
+    def test_negative_delta_accepted(self) -> None:
+        """Unlike jitter's σ ≥ 0, drift accepts either sign."""
+        d = RabiDrift(delta=-0.05)
+        assert d.delta == -0.05
+
+    def test_frozen(self) -> None:
+        d = RabiDrift(delta=0.01)
+        with pytest.raises(FrozenInstanceError):
+            d.delta = 0.05  # type: ignore[misc]
+
+    def test_apply_scales_rabi(self) -> None:
+        base = _drive(rabi=1.0e6)
+        drifted = apply_rabi_drift(base, RabiDrift(delta=0.03))
+        assert drifted.carrier_rabi_frequency_rad_s == 1.03e6
+
+    def test_apply_zero_delta_noop(self) -> None:
+        base = _drive(rabi=2.5e6, detuning=1e3, phase=0.2)
+        drifted = apply_rabi_drift(base, RabiDrift(delta=0.0))
+        assert drifted.carrier_rabi_frequency_rad_s == 2.5e6
+        assert drifted.detuning_rad_s == 1e3
+        assert drifted.phase_rad == 0.2
+
+    def test_apply_preserves_other_fields(self) -> None:
+        base = _drive(rabi=1.0e6, detuning=300.0, phase=0.5)
+        drifted = apply_rabi_drift(base, RabiDrift(delta=0.1))
+        assert drifted.detuning_rad_s == 300.0
+        assert drifted.phase_rad == 0.5
+
+    def test_apply_deterministic(self) -> None:
+        """Same (drive, drift) → bit-identical result on every call."""
+        base = _drive(rabi=1.0e6)
+        d = RabiDrift(delta=0.07)
+        first = apply_rabi_drift(base, d)
+        second = apply_rabi_drift(base, d)
+        assert first.carrier_rabi_frequency_rad_s == second.carrier_rabi_frequency_rad_s
+
+    def test_apply_negative_drift_that_flips_sign_raises(self) -> None:
+        """delta <= −1 → ΩNew <= 0, which DriveConfig rejects."""
+        base = _drive(rabi=1.0e6)
+        with pytest.raises(ConventionError, match="must be positive"):
+            apply_rabi_drift(base, RabiDrift(delta=-1.5))
+
+    def test_drift_scan_composes(self) -> None:
+        """Canonical pattern: for d in deltas, apply_rabi_drift(...)."""
+        base = _drive(rabi=1.0e6)
+        deltas = [-0.1, 0.0, 0.1]
+        drifted = [apply_rabi_drift(base, RabiDrift(delta=d)) for d in deltas]
+        rabis = np.array([d.carrier_rabi_frequency_rad_s for d in drifted])
+        np.testing.assert_allclose(rabis, [0.9e6, 1.0e6, 1.1e6])
+
+
+class TestDetuningDrift:
+    def test_construction(self) -> None:
+        d = DetuningDrift(delta_rad_s=500.0)
+        assert d.delta_rad_s == 500.0
+        assert d.label == "detuning_drift"
+
+    def test_negative_delta_accepted(self) -> None:
+        d = DetuningDrift(delta_rad_s=-1000.0)
+        assert d.delta_rad_s == -1000.0
+
+    def test_apply_adds_offset(self) -> None:
+        base = _drive(detuning=2e3)
+        drifted = apply_detuning_drift(base, DetuningDrift(delta_rad_s=500.0))
+        assert drifted.detuning_rad_s == 2500.0
+
+    def test_apply_preserves_other_fields(self) -> None:
+        base = _drive(rabi=3.0e6, detuning=0.0, phase=0.1)
+        drifted = apply_detuning_drift(base, DetuningDrift(delta_rad_s=100.0))
+        assert drifted.carrier_rabi_frequency_rad_s == 3.0e6
+        assert drifted.phase_rad == 0.1
+
+    def test_apply_zero_is_noop(self) -> None:
+        base = _drive(detuning=1e3)
+        drifted = apply_detuning_drift(base, DetuningDrift(delta_rad_s=0.0))
+        assert drifted.detuning_rad_s == base.detuning_rad_s
+
+    def test_apply_deterministic(self) -> None:
+        base = _drive()
+        d = DetuningDrift(delta_rad_s=750.0)
+        first = apply_detuning_drift(base, d)
+        second = apply_detuning_drift(base, d)
+        assert first.detuning_rad_s == second.detuning_rad_s
+
+
+class TestPhaseDrift:
+    def test_construction(self) -> None:
+        d = PhaseDrift(delta_rad=0.3)
+        assert d.delta_rad == 0.3
+        assert d.label == "phase_drift"
+
+    def test_negative_delta_accepted(self) -> None:
+        d = PhaseDrift(delta_rad=-0.5)
+        assert d.delta_rad == -0.5
+
+    def test_apply_adds_offset(self) -> None:
+        base = _drive(phase=0.5)
+        drifted = apply_phase_drift(base, PhaseDrift(delta_rad=0.3))
+        np.testing.assert_allclose(drifted.phase_rad, 0.8)
+
+    def test_apply_preserves_other_fields(self) -> None:
+        base = _drive(rabi=2.0e6, detuning=500.0, phase=0.0)
+        drifted = apply_phase_drift(base, PhaseDrift(delta_rad=0.25))
+        assert drifted.carrier_rabi_frequency_rad_s == 2.0e6
+        assert drifted.detuning_rad_s == 500.0
+
+    def test_large_phase_not_wrapped(self) -> None:
+        """Phase is not wrapped — 10 rad stays 10 rad."""
+        base = _drive(phase=0.0)
+        drifted = apply_phase_drift(base, PhaseDrift(delta_rad=10.0))
+        assert drifted.phase_rad == 10.0
+
+    def test_apply_deterministic(self) -> None:
+        base = _drive(phase=0.0)
+        d = PhaseDrift(delta_rad=0.42)
+        first = apply_phase_drift(base, d)
+        second = apply_phase_drift(base, d)
+        assert first.phase_rad == second.phase_rad
