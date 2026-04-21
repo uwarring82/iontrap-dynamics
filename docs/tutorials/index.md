@@ -90,15 +90,23 @@ cover the same ground for users who prefer reading code to prose.
   Closes with a when-to-flip decision tree covering
   thermal-start scenarios, MS-gate tuning, and sideband
   cooling cascades.
+- [**Tutorial 9 — Squeezed / coherent state preparation**](09_squeezed_coherent_prep.md).
+  Move past `qutip.basis` and `qutip.thermal_dm` for the motional
+  initial state. Walks through the three named factories —
+  `coherent_mode`, `squeezed_vacuum_mode`,
+  `squeezed_coherent_mode` — plus `compose_density` for the
+  full-space composition. Verifies each factory's ⟨n̂⟩ formula
+  and squeezing-quadrature variances against analytic
+  predictions, records the `ξ = r·e^(2iφ)` and
+  squeeze-then-displace ordering conventions, and closes with
+  a red-sideband collapse scenario from `|↓, α = 2⟩` that
+  exhibits the canonical Rabi-rate dephasing invisible from a
+  pure-Fock start.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-9. **Squeezed / coherent state-prep.** `coherent_mode`,
-   `squeezed_vacuum_mode`, `squeezed_coherent_mode`; composing via
-   `states.compose_density`; how the squeeze-then-displace ordering
-   maps to the qc.py scenario 5 convention.
 10. **Finite-shot statistics.** Wilson vs Clopper–Pearson
     confidence intervals on `BinomialChannel` counts;
     `BinomialSummary` dataclass usage and choice of estimator.

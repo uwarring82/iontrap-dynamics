@@ -95,6 +95,39 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — squeezed / coherent state prep (Dispatch II)
+
+Ninth entry in the tutorials track. Covers the three named
+single-mode state factories and their full-space composition —
+the last major physics primitive in the state-prep surface that
+hadn't been walked through in prose yet.
+
+- `docs/tutorials/09_squeezed_coherent_prep.md` (new) —
+  `coherent_mode`, `squeezed_vacuum_mode`,
+  `squeezed_coherent_mode` plus `compose_density`. Each
+  factory's ⟨n̂⟩ formula spot-checked (|α|² = 4 for α=2;
+  sinh²(r) = 1.381 for r=1; |α|² + sinh²(|ξ|) = 5.381 for the
+  combined case); squeezing-quadrature variances verified
+  (e^(±2r)/2 asymmetry); CONVENTIONS §6 `ξ = r·e^(2iφ)` phase
+  factor-of-2 convention recorded, and CONVENTIONS §7
+  squeeze-then-displace ordering (matching qc.py) explained
+  with a note on why it is keyword-only. `compose_density`
+  covered as the multi-subsystem composition helper —
+  spin-per-ion list + mode-label-keyed mode-state mapping, with
+  the ConventionError guardrails for missing / extra modes.
+  Closes with a collapse-and-revive red-sideband scenario from
+  `|↓, α = 2⟩` running through `full_lamb_dicke=True`: σ_z
+  oscillation amplitude decays to σ(σ_z) ≈ 0.26 over 8 periods
+  at ⟨n̂⟩ = 4, the Rabi-rate-spread dephasing signature absent
+  from a pure-Fock start. Two variations suggested
+  (squeezed-vacuum drive with even-only Fock support;
+  heterogeneous motional prep on a two-mode system via
+  `compose_density`).
+- `docs/tutorials/index.md` — Tutorial 9 moved from *Planned*
+  to *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 9 entry beneath
+  Tutorials 1–8.
+
 #### Tutorials — full Lamb–Dicke for hot-ion regimes (Dispatch HH)
 
 Eighth entry in the tutorials track. Back to physics-focused
