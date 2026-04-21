@@ -18,14 +18,18 @@ cover the same ground for users who prefer reading code to prose.
   `HilbertSpace`, `carrier_hamiltonian`, `sequences.solve`,
   `SpinReadout`, `binomial_summary`. Written as the canonical "Hello
   world" for the library post-v0.2 Convention Freeze.
+- [**Tutorial 2 — Red-sideband flopping from Fock ∣1⟩**](02_red_sideband_fock1.md).
+  The four-step pattern from Tutorial 1 with the carrier swapped for
+  the leading-order red-sideband Hamiltonian and motion initialised
+  in `|n = 1⟩`. Introduces the `lamb_dicke_parameter` analytic helper,
+  the `number` observable factory, and the `⟨σ_z⟩ + 2⟨n̂⟩ = 1`
+  single-phonon-manifold conservation law as a sanity check.
+  Parallels `tools/run_benchmark_sideband.py`.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-2. **Red-sideband physics at Fock ∣1⟩.** Parallels
-   `tools/run_benchmark_sideband.py`. Introduces the Lamb–Dicke
-   parameter helper and the leading-order sideband Hamiltonian.
 3. **Pulse shaping with `modulated_carrier_hamiltonian`.** Parallels
    `tools/run_demo_gaussian_pulse.py`. Gaussian envelope with
    calibrated pulse area → clean π-rotation; reader writes their own

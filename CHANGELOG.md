@@ -95,6 +95,32 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — red-sideband flopping (Dispatch BB)
+
+Second entry in the tutorials track. Parallels
+`tools/run_benchmark_sideband.py` (Phase 0.F tripwire) and
+embeds the scenario's committed artefact plot.
+
+- `docs/tutorials/02_red_sideband_fock1.md` (new) — red-sideband
+  flopping from `|↓, n = 1⟩` with spin-and-motion readout. ~10 min
+  read, ~1 s runtime. Covers: four-step pattern inherited from
+  Tutorial 1 with the Hamiltonian builder swapped to
+  `red_sideband_hamiltonian`; first use of the
+  `analytic.lamb_dicke_parameter` helper to derive η from laser
+  wavevector, mode eigenvector, ion mass, and mode frequency;
+  first use of the `observables.number` phonon-number factory;
+  single-phonon-manifold conservation law
+  `⟨σ_z⟩ + 2⟨n̂⟩ = 1` as an inline sanity check. Closes with
+  three "physics you can probe next" extensions (detuned sideband
+  via `detuned_red_sideband_hamiltonian`; higher-`n` starting
+  Fock; full Lamb–Dicke Wineland–Itano coupling via
+  `full_lamb_dicke=True`). Inline plot served from the committed
+  `benchmarks/data/01_single_ion_sideband_flopping/plot.png`.
+- `docs/tutorials/index.md` — Tutorial 2 moved from *Planned* to
+  *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 2 entry beneath
+  Tutorial 1 under the Tutorials section.
+
 #### Phase 2 — benchmarks documentation (Dispatch Z)
 
 - `docs/benchmarks.md` — consolidates every Phase 2 dispatch's
