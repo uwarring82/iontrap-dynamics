@@ -56,6 +56,7 @@ nav:
   - Benchmarks: benchmarks.md
   - Tutorials:
       - Overview: tutorials/index.md
+      - "1. Carrier Rabi with shot-noise readout": tutorials/01_first_rabi_readout.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:

@@ -1,22 +1,28 @@
 # Tutorials
 
-!!! note "Placeholder — Phase 1.E in progress"
+Task-oriented walkthroughs of `iontrap-dynamics`. Each tutorial takes
+~10 min to read and ~1 s to run. They are Sail material — adaptive
+guidance with specific parameter choices, not coastline constraints.
 
-    This section is the designated home for task-oriented walkthroughs
-    on `iontrap-dynamics`. The content landing here is scoped for Phase
-    1.E (Sail material). Until then, most of the public-API surface is
-    covered by the [Phase 1 Architecture](../phase-1-architecture.md)
-    reference plus the four runnable demo tools under `tools/`, whose
-    output bundles live at [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data).
+The first tutorial is live; the rest are planned topics roughly in
+order of reader dependency. The runnable demo tools under `tools/`
+and their committed output bundles under
+[`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
+cover the same ground for users who prefer reading code to prose.
 
-## What will live here
+## Available
 
-Planned tutorial topics (roughly in order of reader dependency):
+- [**Tutorial 1 — Carrier Rabi flopping with finite-shot readout**](01_first_rabi_readout.md).
+  End-to-end pipeline exercising every architectural layer through
+  v0.2: configuration (`IonSystem`, `DriveConfig`, `ModeConfig`),
+  `HilbertSpace`, `carrier_hamiltonian`, `sequences.solve`,
+  `SpinReadout`, `binomial_summary`. Written as the canonical "Hello
+  world" for the library post-v0.2 Convention Freeze.
 
-1. **First simulation end-to-end.** Parallels
-   `tools/run_demo_carrier.py` — configure an ion, a mode, a drive;
-   build a carrier Hamiltonian; call `sequences.solve`; plot ⟨σ_z⟩(t)
-   and compare to the analytic cosine.
+## Planned
+
+Sequenced roughly in order of reader dependency on prior tutorials:
+
 2. **Red-sideband physics at Fock ∣1⟩.** Parallels
    `tools/run_benchmark_sideband.py`. Introduces the Lamb–Dicke
    parameter helper and the leading-order sideband Hamiltonian.
@@ -46,6 +52,19 @@ Planned tutorial topics (roughly in order of reader dependency):
    `squeezed_vacuum_mode`, `squeezed_coherent_mode`; composing via
    `states.compose_density`; how the squeeze-then-displace ordering
    maps to the qc.py scenario 5 convention.
+10. **Finite-shot statistics.** Wilson vs Clopper–Pearson
+    confidence intervals on `BinomialChannel` counts;
+    `BinomialSummary` dataclass usage and choice of estimator.
+    Parallels `tools/run_demo_wilson_ci.py`; treated briefly in
+    Tutorial 1 and expanded here.
+11. **Systematics — jitter ensembles.** Running an inhomogeneous-
+    dephasing study via `RabiJitter` + `perturb_carrier_rabi` and
+    aggregating an ensemble with `sequences.solve_ensemble`.
+    Parallels `tools/run_demo_rabi_jitter.py`.
+12. **Two-ion Bell-state entanglement.** The Mølmer–Sørensen
+    gate with parity readout and nonlinear entanglement observables
+    (concurrence, log-negativity). Parallels
+    `tools/run_demo_bell_entanglement.py` + `run_demo_parity_scan.py`.
 
 ## Scope and licensing
 
@@ -53,10 +72,11 @@ Tutorials are Sail material — adaptive guidance with specific
 parameter choices, not coastline constraints. Licensed under
 **CC BY-NC-SA 4.0** per [`docs/LICENCE`](https://github.com/uwarring82/iontrap-dynamics/blob/main/docs/LICENCE).
 
-## Current learning path (until tutorials land)
+## Complementary references
 
 - **Install + first run** — [Getting Started](../getting-started.md).
 - **Architectural overview** — [Phase 1 Architecture](../phase-1-architecture.md).
 - **Binding physics conventions** — [Conventions](../conventions.md) (rendered live from the repo root `CONVENTIONS.md`).
+- **Performance baselines** — [Benchmarks](../benchmarks.md).
 - **Contributor scope** — [Boundary Decision Tree](../boundary-decision-tree.md).
-- **Runnable examples** — the four tools under `tools/run_demo_*.py` and the committed bundles under `benchmarks/data/<scenario>/` (each holding `manifest.json` + `arrays.npz` + `demo_report.json` + `plot.png`).
+- **Runnable examples** — the tools under `tools/run_demo_*.py` and the committed bundles under `benchmarks/data/<scenario>/` (each holding `manifest.json` + `arrays.npz` + `demo_report.json` + `plot.png`).

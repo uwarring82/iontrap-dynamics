@@ -66,6 +66,35 @@ Versioning once the public package surface reaches its first alpha release.
   a 2.68× speedup over serial. Threading hurts at large scale
   (Python-level stepper overhead).
 
+#### Tutorials — first end-to-end walkthrough (Dispatch AA)
+
+Closes the Dispatch F `docs/tutorials/` placeholder with a real
+entry. The first tutorial is the canonical "Hello world" for the
+library post-v0.2: an end-to-end pipeline that exercises every
+architectural layer introduced through v0.2.
+
+- `docs/tutorials/01_first_rabi_readout.md` (new) — carrier Rabi
+  flopping with finite-shot readout and 95 % Wilson CIs. ~10 min
+  read, ~1 s runtime. Covers: four-step pattern (configure → build
+  → solve → read out), public-surface use of `IonSystem`,
+  `DriveConfig`, `ModeConfig`, `HilbertSpace`, `carrier_hamiltonian`,
+  `sequences.solve`, `SpinReadout`, `DetectorConfig`,
+  `binomial_summary`. Uses the same parameter values as
+  `tools/run_demo_wilson_ci.py` so readers can diff prose against
+  the working script. Includes an inline plot (served from the
+  committed `benchmarks/data/wilson_ci_demo/plot.png`).
+- `docs/tutorials/index.md` updated from placeholder to live page.
+  Moves the planned-topics list from a single block to "Available"
+  (Tutorial 1) + "Planned" (Tutorials 2–12). Adds three new
+  planned topics covering Wilson / Clopper–Pearson statistics,
+  jitter ensembles, and two-ion Bell-state entanglement — each
+  paralleling a specific demo tool.
+- `mkdocs.yml` nav gains an explicit Tutorial 1 entry nested under
+  "Tutorials" so the first tutorial is one click from the docs
+  landing page.
+- README: updated docs-site scaffold listing notes that
+  `docs/tutorials/` is no longer a pure placeholder.
+
 #### Phase 2 — benchmarks documentation (Dispatch Z)
 
 - `docs/benchmarks.md` — consolidates every Phase 2 dispatch's

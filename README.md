@@ -188,8 +188,9 @@ Docs site scaffold:
 - `docs/benchmarks.md` — honest performance baselines for every
   Phase 2 dispatch (closes the §5 Phase 2 `docs/benchmarks.md` item)
 - `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
-- `docs/tutorials/index.md` — tutorials landing page (placeholder; content
-  arrives in Phase 1.E)
+- `docs/tutorials/` — task-oriented walkthroughs. Tutorial 1
+  (*Carrier Rabi flopping with finite-shot readout*) ships with
+  v0.2; Tutorials 2–12 are planned and tracked in the index
 - `docs/stylesheets/tokens.css` — vendored from `threehouse-plus-ec/cd-rules`
 
 The authoritative project documents are:
