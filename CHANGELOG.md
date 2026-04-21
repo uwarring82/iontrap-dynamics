@@ -95,6 +95,33 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — finite-shot statistics (Dispatch JJ)
+
+Tenth entry in the tutorials track. Expands Tutorial 1's
+single-CI step into the full finite-shot reporting surface.
+
+- `docs/tutorials/10_finite_shot_statistics.md` (new) — deep
+  dive on the measurement layer's three statistics functions
+  (`wilson_interval`, `clopper_pearson_interval`,
+  `binomial_summary`) and the `BinomialSummary` dataclass.
+  Anchor table covers Wilson vs Clopper–Pearson 95 % CIs at
+  seven canonical `(k, n)` points — numbers verified against
+  the actual library output (e.g. `5/10` → Wilson
+  `[0.2366, 0.7634]`, CP `[0.1871, 0.8129]`; `50/100` → both
+  `[0.40, 0.60]`). Vectorised `binomial_summary` across a full
+  200-point carrier-Rabi trajectory with the correct
+  `spin_readout_bits.sum(axis=0)` → bright-count path (earlier
+  draft had a non-existent `spin_readout_bright_count` key —
+  caught and corrected against actual
+  `measurement.sampled_outcome` output). No-Wald rationale,
+  Wilson vs CP decision tree, and a
+  `n_required ≥ z²·p(1-p) / Δ²` shot-budget sizing formula.
+- `docs/tutorials/index.md` — Tutorial 10 moved from *Planned*
+  to *Available*; the planned-topics list renumbers
+  accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 10 entry beneath
+  Tutorials 1–9.
+
 #### Tutorials — squeezed / coherent state prep (Dispatch II)
 
 Ninth entry in the tutorials track. Covers the three named

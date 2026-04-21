@@ -102,16 +102,24 @@ cover the same ground for users who prefer reading code to prose.
   a red-sideband collapse scenario from `|↓, α = 2⟩` that
   exhibits the canonical Rabi-rate dephasing invisible from a
   pure-Fock start.
+- [**Tutorial 10 — Finite-shot statistics**](10_finite_shot_statistics.md).
+  Deep dive on the three statistics functions —
+  `wilson_interval`, `clopper_pearson_interval`,
+  `binomial_summary` — and the `BinomialSummary` dataclass. A
+  seven-row anchor table of Wilson vs Clopper–Pearson 95 % CIs
+  across canonical `(k, n)` points (showing CP's 10–30 %
+  width penalty at low `n` and convergence at `n = 100`); a
+  fully-vectorised `binomial_summary` call across a 200-point
+  carrier-Rabi trajectory with no Python loop; a four-branch
+  Wilson-vs-CP decision tree; and a
+  `n_required ≥ z²·p(1−p) / Δ²` shot-budget sizing formula.
+  Expands Tutorial 1's single-CI step into the full
+  finite-shot reporting surface.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-10. **Finite-shot statistics.** Wilson vs Clopper–Pearson
-    confidence intervals on `BinomialChannel` counts;
-    `BinomialSummary` dataclass usage and choice of estimator.
-    Parallels `tools/run_demo_wilson_ci.py`; treated briefly in
-    Tutorial 1 and expanded here.
 11. **Systematics — jitter ensembles.** Running an inhomogeneous-
     dephasing study via `RabiJitter` + `perturb_carrier_rabi` and
     aggregating an ensemble with `sequences.solve_ensemble`.
