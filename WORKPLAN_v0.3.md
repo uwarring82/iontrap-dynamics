@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3 (with §5.0 release-mapping amendment 2026-04-19) · Drafted 2026-04-17 · Status: Phase 0 + Phase 1 core shipped on `main`; see §5.0
+Version 0.3.4 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main`) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 opener and full tutorial bundle on `main` under `[Unreleased]`; see §5.2
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -359,6 +359,20 @@ Read these through the WCAG bullet above: **WCAG 2 Level A is the hard CI gate (
 
 **What's next on `main`.** Migration-scenario-3 coupling audit, migration-scenario-4 full-exponential Lamb–Dicke builder feature, and tutorial content are in the backlog but not v0.2-blocking. Phase 2 (performance — JAX backend, sparse-matrix tuning, parallel sweeps) is the next phase-level milestone, target `v0.3`.
 
+### 5.2 — Post-v0.2.0 on-`main` amendment (2026-04-21) *(Coastline, new in v0.3.4)*
+
+Added after `v0.2.0` was tagged (Dispatch W on 2026-04-21) to record subsequent work that has since landed on `main` under a fresh `[Unreleased]` block in `CHANGELOG.md`. No phase-level milestone is re-scoped here; the amendment exists so the §5.0 and §5.1 read-throughs stay honest against what is currently on `main`, and so the header status line plus the bottom Endorsement Marker can be updated in lock-step.
+
+**Shipped on `main` after `v0.2.0` as of 2026-04-21:**
+
+- **Migration-tier debt paydown** (Dispatch V, landed with `v0.2.0`). Migration-scenario 2 is active via the invariant tier (trace / Hermiticity / positivity checks on the reference trajectory). The §5.0 line *"scenarios 1 and 5 active (2/3/4 skipped)"* should be read as **scenarios 1, 2, 5 active; 3, 4 skipped** with the probe-informed blockers unchanged (coupling audit for scenario 3, full-exponential Lamb–Dicke builder for scenario 4).
+- **Phase 2 opener** (Dispatches X, Y, Z). `sequences.solve` gains an `"auto"` / `"sesolve"` / `"mesolve"` dispatch with backend-name auto-tagging; `sequences.solve_ensemble` wraps `joblib.Parallel` for parallel sweeps (default `n_jobs=1` serial, `loky` wins once single-solve cost exceeds ~15 ms); `docs/benchmarks.md` records the `v0.2` performance baseline. Empirical finding: sesolve / mesolve parity on QuTiP 5.2 at library-scale Hilbert spaces (dim ≤ 48) — the folklore 2–3× advantage has closed, so measurable wins are deferred to later Phase 2 dispatches (sparse ops, JAX). Phase 2 remains the target for `v0.3`; these dispatches land Phase 2's opening deliverables against that target, not a re-scope.
+- **Tutorial bundle** (Dispatches AA–LL, twelve entries). `docs/tutorials/01_first_rabi_readout.md` through `12_bell_entanglement.md` cover the public-surface pipeline end-to-end: carrier Rabi + Wilson CIs, red-sideband from |1⟩, Gaussian π-pulses, MS Bell gate, custom observables, Fock-truncation diagnosis, hash-verified cache round-trip, full Lamb–Dicke for hot-ion regimes, squeezed / coherent state preparation, finite-shot statistics, systematics jitter ensembles, two-ion Bell-state entanglement. This substantially discharges the Phase 3 deliverable *"≥5 worked examples; Clock-School tutorial bundle"* ahead of its `v0.5` target. Phase 3 is retained as the milestone for governance document, contribution guide with Boundary Decision Tree, and JOSS submission — the tutorial-count condition is effectively already met.
+
+**Consequence for §5 below.** No re-scoping; §5.0 migration-tier line reads through to scenarios 1 / 2 / 5 active, §5.1 "what's next on `main`" reads through to Phase 2 opener and tutorial bundle now landed (with the three remaining non-v0.2-blocking items — scenarios 3 / 4, sparse / JAX performance — unchanged).
+
+**Consequence for the Endorsement Marker.** The bottom Endorsement Marker is updated in the same commit as this amendment to bump the `CONVENTIONS.md` reference from v0.1 to v0.2 (frozen 2026-04-21 at the `v0.2.0` release, per §5.1) and to list §4.0, §5.0, §5.1, §5.2 in its workplan-version line.
+
 ---
 
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
@@ -630,6 +644,6 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Council status:** Guardian cleared (scope honest, split licence protects downstream). Architect approved (configuration-layer architecture, Lamb–Dicke 3D-native, richer backend contract, three-layer physics/apparatus/observation separation, CD structural compliance). Scout horizon signals addressed (two-repo topology resolves bus-factor; Model B prevents design drift). Integrator has sequenced Phase 0: conventions → legacy-stability → schema → scaffolding → regression → example → corporate-design bootstrap.
 
-**Convention version:** references `CONVENTIONS.md` v0.1 (to be drafted Week 1).
+**Convention version:** references `CONVENTIONS.md` v0.2 (frozen 2026-04-21 at the `v0.2.0` release, closing §17 measurement layer and §18 systematics layer; §1–16 carry through unchanged from the v0.1 draft).
 **Corporate design version:** **PROVISIONAL — no upstream tag yet** (decision D2). `cd-rules v1.7.0` is the intended target named throughout this document, but `threehouse-plus-ec/cd-rules` had no tagged releases at Phase 0 commencement (2026-04-17) and still does not today. Assets are pinned to a specific commit hash documented in [`assets/SOURCE.md`](assets/SOURCE.md), which carries the authoritative PROVISIONAL banner. Before any v0.1-alpha release the upstream first-tag action must complete, `SOURCE.md` must re-pin to the tagged commit and drop its banner, and only then does the CI hash-drift check activate as a permanent gate. Until then, every reference to `cd-v1.7.0` in this workplan reads as "the CD blueprint we will consume once tagged"; in-flight work continues against the pinned commit per D2.
-**Workplan version:** 0.3 (amended §5.0 on 2026-04-19) · Phase 0 complete and Phase 1 core builder / observable / state-prep / diagnostic surface shipped on `main` ahead of tag cut.
+**Workplan version:** 0.3.4 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); Phase 2 opener (sesolve dispatch, `solve_ensemble`, benchmark baseline) and twelve tutorials on `main` under `[Unreleased]`.
