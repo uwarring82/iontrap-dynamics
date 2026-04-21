@@ -35,15 +35,21 @@ cover the same ground for users who prefer reading code to prose.
   `θ(t) = ∫₀^t Ω · f(t') dt'`. Closes with Blackman / stroboscopic
   / adiabatic-ramp envelope extensions. Parallels
   `tools/run_demo_gaussian_pulse.py`.
+- [**Tutorial 4 — Mølmer–Sørensen Bell gate**](04_ms_gate_bell.md).
+  First two-ion scenario. Builds a two-²⁵Mg⁺ system sharing an
+  axial COM mode, derives the Bell-closing detuning `δ = 2|Ωη|√K`
+  and gate time `t_gate = π√K / |Ωη|` from physics inputs via the
+  `ms_gate_closing_detuning` / `ms_gate_closing_time` analytic
+  helpers, and verifies the four final-state invariants (loop
+  closure `⟨n̂⟩ → 0`, equal Bell populations `P(|↓↓⟩) = P(|↑↑⟩) =
+  1/2`, odd-parity `P_flip ≡ 0`, ion-exchange symmetry). First
+  tutorial to wrap custom `qutip.Qobj` population projectors as
+  `Observable` records. Parallels `tools/run_demo_ms_gate.py`.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-4. **Mølmer–Sørensen Bell gate.** Parallels
-   `tools/run_demo_ms_gate.py`. Uses `ms_gate_closing_detuning` and
-   `ms_gate_closing_time` analytic helpers to derive gate parameters
-   from physics inputs.
 5. **Custom observables.** How to wrap a QuTiP `Qobj` as an
    `Observable` record — e.g. two-ion population projectors for the
    MS demo.

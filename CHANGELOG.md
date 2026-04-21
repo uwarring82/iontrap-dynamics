@@ -95,6 +95,35 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — Mølmer–Sørensen Bell gate (Dispatch DD)
+
+Fourth entry in the tutorials track. First two-ion scenario.
+Parallels `tools/run_demo_ms_gate.py` and embeds the scenario's
+committed artefact plot.
+
+- `docs/tutorials/04_ms_gate_bell.md` (new) — detuned MS gate on
+  two ²⁵Mg⁺ ions sharing the axial COM mode. ~15 min read,
+  ~10 ms runtime. First tutorial to scale past a single ion;
+  introduces the direct `IonSystem(...)` constructor (vs
+  `.homogeneous`) as the template for heterogeneous chains, the
+  `ms_gate_closing_detuning` / `ms_gate_closing_time` analytic
+  helpers (Bell-closing δ and gate time derived from Ω, η, K —
+  not magic numbers), and the `Observable` record as the hook for
+  custom population projectors (`P(|↓↓⟩)`, `P(|↑↑⟩)`,
+  `P_flip`). Walks through four final-state invariants at
+  `t_gate`: loop closure `⟨n̂⟩ → 0`, equal Bell populations
+  `= 1/2`, odd-parity `P_flip ≡ 0`, and ion-exchange-symmetric
+  `⟨σ_z⁽⁰⁾⟩ = ⟨σ_z⁽¹⁾⟩` to machine precision. Closes with three
+  "physics you can probe next" extensions (higher-K multi-loop
+  gates, thermal-state start with leading-order fidelity loss,
+  detuning miscalibration sweep via `solve_ensemble`). Inline
+  plot served from the committed
+  `benchmarks/data/ms_gate_bell_demo/plot.png`.
+- `docs/tutorials/index.md` — Tutorial 4 moved from *Planned* to
+  *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 4 entry beneath
+  Tutorials 1–3.
+
 #### Tutorials — Gaussian π-pulse (Dispatch CC)
 
 Third entry in the tutorials track. Parallels
