@@ -319,6 +319,48 @@ In `tests/benchmarks/test_performance_smoke.py`: add a fourth threshold
 constant + test function. Use `time.perf_counter()` around the `mesolve`
 call; threshold must be the published WORKPLAN_v0.3 §0.F number.
 
+## Result family vs. backend variety (D5)
+
+`iontrap-dynamics` separates two axes that look similar from a distance but
+belong to different governance layers:
+
+- **Result family** (subclass axis). `Result` is abstract; `TrajectoryResult`
+  and `MeasurementResult` are concrete siblings. New subclasses are justified
+  only when the *semantic contract* of the output changes — e.g. a planned
+  `StochasticTrajectoryResult` (a batch of unravellings, not a single
+  trajectory) will land as its own subclass, because downstream code must
+  handle it structurally differently from a deterministic trajectory.
+- **Backend variety** (metadata axis). `mesolve`, `sesolve`, a future
+  sparse-path dispatch, and a future JAX / Dynamiqs backend all produce the
+  *same* `TrajectoryResult` object. They identify themselves through
+  `ResultMetadata.backend_name` + `backend_version`. Downstream code never
+  branches on backend type; Design Principle 5 ("one way to do it at the
+  public API level") applies. If a future backend needs more provenance than
+  those two strings carry, extend `ResultMetadata` with an additional
+  free-form field (mirroring `provenance_tags`) rather than subclassing the
+  result.
+
+**Rule for contributors adding a new Phase 2 backend.** Reuse
+`TrajectoryResult`. Set `backend_name` to a unique string (e.g.
+`"qutip-mesolve-sparse"`, `"jax-dynamiqs"`); add the string to any test that
+asserts on backend identity. Do **not** introduce a `SparseTrajectoryResult`
+or `JaxTrajectoryResult` subclass — these would fracture the public API and
+force every analysis tool to branch. If a new backend genuinely returns a
+different in-memory state object (e.g. a JAX pytree instead of a tuple of
+`Qobj`), keep that representation inside the backend module and convert it
+to the canonical `TrajectoryResult` at the `sequences.solve` boundary.
+
+**Rule for contributors adding a new semantic output.** New subclass of
+`Result`. Document the distinguishing contract in the docstring ("what does
+this carry that `TrajectoryResult` doesn't?"). Cache I/O may need a new
+writer — treat this as a Phase 1-style dispatch with its own tests and
+`CHANGELOG.md` entry.
+
+This is decision **D5** from Phase 0 planning. It is already recorded in the
+[`results.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/src/iontrap_dynamics/results.py)
+module docstring; it is surfaced here so it is discoverable from the
+architecture doc before the first Phase 2 backend dispatch lands.
+
 ## Non-goals for Phase 1
 
 Explicitly deferred to Phase 2 or later:
