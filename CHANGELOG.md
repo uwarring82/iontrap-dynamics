@@ -66,6 +66,24 @@ Versioning once the public package surface reaches its first alpha release.
   a 2.68× speedup over serial. Threading hurts at large scale
   (Python-level stepper overhead).
 
+#### Phase 2 — benchmarks documentation (Dispatch Z)
+
+- `docs/benchmarks.md` — consolidates every Phase 2 dispatch's
+  measured baselines into one narrative page. Covers the Phase 0.F
+  smoke-test thresholds (three tripwires, all comfortably green),
+  the sesolve-vs-mesolve wall-clock comparison (Dispatch X) with
+  the "no advantage at library scale — QuTiP 5.2 closed the
+  QuTiP-4-era gap" finding, and the `solve_ensemble` parallelism
+  crossover (Dispatch Y) with the per-regime table. Includes a
+  when-to-opt-in decision guide table so users sizing up the
+  library can match their scenario to recommended settings
+  directly. Closes the §5 Phase 2 `docs/benchmarks.md` item.
+- `mkdocs.yml` nav gains a **Benchmarks** entry between Phase 1
+  Architecture and Tutorials — discoverable from the docs-site
+  top-level nav.
+- README `Docs site scaffold` listing updated to advertise the new
+  page.
+
 ## [0.2.0] — 2026-04-21
 
 First tagged release. Combines the Phase 0 + Phase 1 core surface that

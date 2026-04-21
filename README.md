@@ -185,6 +185,8 @@ Docs site scaffold:
   (single source of truth via `pymdownx.snippets`)
 - `docs/phase-1-architecture.md` — concrete public-API reference
   (module map, per-module surface, extension points, non-goals)
+- `docs/benchmarks.md` — honest performance baselines for every
+  Phase 2 dispatch (closes the §5 Phase 2 `docs/benchmarks.md` item)
 - `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
 - `docs/tutorials/index.md` — tutorials landing page (placeholder; content
   arrives in Phase 1.E)
