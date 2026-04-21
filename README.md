@@ -172,8 +172,17 @@ v0.2 Convention Freeze gate.
 `run_demo_detuning_jitter`, `run_demo_rabi_drift_scan`,
 `run_demo_spam_prep`.
 
-Test suite: **785 passed, 2 skipped**. Skips are migration-tier
-builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
+**Phase 2 benchmark tools** (`tools/run_benchmark_*.py` with
+`report.json` + `plot.png` artefacts under `benchmarks/data/`):
+`run_benchmark_sesolve_speedup` (Dispatch X — sesolve / mesolve
+parity on QuTiP 5), `run_benchmark_ensemble_parallel` (Dispatch Y —
+serial / loky / threading crossover), `run_benchmark_sparse_vs_dense`
+(Dispatch OO — CSR / dense operator-dtype baseline; closes the
+Phase 2 sparse-matrix-tuning open item).
+
+Test suite: **795 passed, 2 skipped** (797 collected). Skips are
+migration-tier builder-comparison slots (scenarios 3 and 4) with
+probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:
 
@@ -188,9 +197,10 @@ Docs site scaffold:
 - `docs/benchmarks.md` — honest performance baselines for every
   Phase 2 dispatch (closes the §5 Phase 2 `docs/benchmarks.md` item)
 - `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
-- `docs/tutorials/` — task-oriented walkthroughs. Tutorial 1
-  (*Carrier Rabi flopping with finite-shot readout*) ships with
-  v0.2; Tutorials 2–12 are planned and tracked in the index
+- `docs/tutorials/` — task-oriented walkthroughs. Twelve tutorials
+  shipped (Tutorials 1–12 cover the full public-surface pipeline
+  end-to-end, from carrier Rabi + Wilson CIs through two-ion
+  Bell-state entanglement); see `docs/tutorials/index.md`
 - `docs/stylesheets/tokens.css` — vendored from `threehouse-plus-ec/cd-rules`
 
 The authoritative project documents are:
@@ -250,8 +260,11 @@ python -m pip install -e ".[dev,docs]"
 - `docs/` — mkdocs-material source for the documentation site
 - `assets/` — design assets consumed from `threehouse-plus-ec/cd-rules`
 - `legacy/` — pinned legacy `qc.py` used by migration-tier regression
-- `WORKPLAN_v0.3.md` — project workplan (v0.3.2 amendments applied)
-- `CONVENTIONS.md` — binding conventions document (§17 staged)
+- `WORKPLAN_v0.3.md` — project workplan (v0.3.4 amendments applied:
+  §4.0 repo-hosting, §5.0 release-mapping, §5.1 v0.2 release,
+  §5.2 post-v0.2 on-`main`)
+- `CONVENTIONS.md` — binding conventions document (v0.2 frozen:
+  §17 measurement and §18 systematics closed at the v0.2.0 release)
 - `CHANGELOG.md` — Keep-a-Changelog log of dispatches on `main`
 
 ## Licence
