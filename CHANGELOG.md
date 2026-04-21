@@ -7,6 +7,66 @@ Versioning once the public package surface reaches its first alpha release.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-21
+
+First tagged release. Combines the Phase 0 + Phase 1 core surface that
+was scoped to ``v0.1-alpha`` with the Phase 1 measurement, systematics,
+and registered-entanglement additions that were scoped to ``v0.2``,
+per the WORKPLAN §5.0 release-mapping amendment (Dispatch E). The
+``v0.1-alpha`` milestone is therefore subsumed rather than
+separately-tagged — the release bundle below names every dispatch
+that contributed.
+
+**Convention Freeze.** ``CONVENTIONS.md`` bumps from ``0.1-draft``
+to ``0.2``. §1–16 carry through unchanged from Phase 0; §17
+(measurement layer, Dispatch P) and §18 (systematics layer,
+Dispatch U) are newly frozen. Post-freeze additions to any section
+require a new version bump with an explicit Convention Freeze gate
+per the Endorsement Marker.
+
+**Release bundle — dispatches on ``main`` at v0.2.0:**
+
+- Phase 0 scaffold (pre-dispatch period): conventions, split-licence,
+  asset provenance, regression harness (analytic + invariant
+  permanent tiers + migration tier with 5 qc.py references),
+  cache-integrity, performance smoke, docs-site scaffold with
+  cd-rules tokens.
+- Phase 1 core (pre-dispatch period): configuration layer
+  (operators, species, drives, modes, system, hilbert, states),
+  full four-family Hamiltonian surface (carrier / red-sideband /
+  blue-sideband / MS × exact / detuned), analytic helpers,
+  observable factories, sequences.solve dispatcher, hash-verified
+  cache I/O.
+- Dispatches A–F: migration-test activation, doc alignment,
+  tutorials placeholder.
+- Dispatch G: v0.3.2 WORKPLAN amendments (§4.0 repo hosting, §5.0
+  WCAG read-through).
+- Dispatches H–P: measurement layer — ``MeasurementResult``,
+  ``BernoulliChannel`` (H), README refresh (I), ``BinomialChannel``
+  (J), ``PoissonChannel`` + ``inputs`` keyword rename (K),
+  ``DetectorConfig`` (L), ``SpinReadout`` protocol (M),
+  ``ParityScan`` + ``parity`` observable (N), ``SidebandInference``
+  (O), Wilson + Clopper–Pearson CIs + §17 freeze (P).
+- Dispatch Q: registered entanglement observables — concurrence,
+  EoF, log-negativity trajectory evaluators.
+- Dispatches R–U: systematics layer — ``RabiJitter`` + §18 opener
+  (R), ``DetuningJitter`` + ``PhaseJitter`` (S), drift primitives
+  ``RabiDrift`` / ``DetuningDrift`` / ``PhaseDrift`` (T), SPAM
+  primitives ``SpinPreparationError`` + ``ThermalPreparationError``
+  + §18 freeze (U).
+- Dispatch V: migration-tier debt paydown — scenario 2 activated
+  via invariant comparison; scenario 3 and 4 skip reasons refined
+  with today's empirical findings.
+
+**Health at release.** Test suite: 785 pass / 2 skipped (scenarios
+3 and 4 — migration-tier blockers with documented activation
+paths). Every demo under ``tools/run_demo_*.py`` runs to
+completion and emits the canonical ``benchmarks/data/<scenario>/``
+artefact bundle. CI green: ruff check, ruff format, mypy-strict
+on 27 src files, pytest (including regression-migration +
+benchmarks tiers), pa11y WCAG 2 Level A hard-gated with triaged
+ignores.
+
 ### Added
 
 #### Phase 0 scaffold

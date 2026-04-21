@@ -10,27 +10,35 @@ as the Phase 0 reference backend.
 
 ## Status
 
-Phase 0 and the Phase 1 *core* (configuration, builders, observables, state
-preparation, diagnostics) have shipped on `main` and are part of the
-`v0.1-alpha` cut per `WORKPLAN_v0.3.md` §5.0 (release-mapping amendment,
-v0.3.1). The Phase 1 *measurement layer* opened at Dispatch H and is
-in-flight toward `v0.2`; its conventions are staged, not yet frozen
-(`CONVENTIONS.md` §17). End-to-end dynamics works
-(`DriveConfig` → `carrier_hamiltonian` → `qutip.mesolve` → expected π-pulse
-flip); end-to-end *measurement* works
-(`TrajectoryResult` → `p_↑` → `BernoulliChannel` → `MeasurementResult`).
+**v0.2.0 released 2026-04-21.** Phase 0, Phase 1 core (configuration,
+builders, observables, state preparation, diagnostics), the Phase 1
+measurement layer (channels, detector, protocols, statistics), the
+Phase 1 systematics layer (jitter, drift, SPAM), and the registered
+entanglement observables (concurrence, EoF, log-negativity) are all
+shipped on `main`. `CONVENTIONS.md` is frozen at v0.2 — §1–16 from
+the Phase 0 draft carry through unchanged; §17 (measurement) and §18
+(systematics) are newly frozen.
 
-Phase 0 artefacts (all done):
+End-to-end stacks work dynamics-through-statistics:
 
-- Public conventions locked in `CONVENTIONS.md` v0.1-draft; §17 (measurement
-  layer) opened as staged rules.
-- Three-layer regression harness populated: migration (5 / 5 scenarios with
-  legacy `qc.py`-generated references, bit-identical across three runs;
-  2 / 5 active comparisons, 3 / 5 skipped with probe-informed blockers),
-  analytic (6 closed-form formulas), invariant (9 checks).
-- Cache-integrity contract + the corresponding tests.
-- CI with ruff, ruff-format, mypy strict, pytest, pa11y WCAG 2 Level A
-  (hard gate, AA advisory per the v0.3.2 amendment).
+- `DriveConfig` → `carrier_hamiltonian` → `qutip.mesolve` → expected
+  π-pulse flip (Phase 1 core).
+- `TrajectoryResult` → `SpinReadout.run` → `MeasurementResult` →
+  Wilson CI band on finite-shot estimator (Phase 1 measurement).
+- Base `DriveConfig` → `perturb_carrier_rabi` → ensemble of solves
+  → inhomogeneous-dephasing signature (Phase 1 systematics).
+
+Phase 0 + Phase 1 artefacts delivered:
+
+- Public conventions frozen in `CONVENTIONS.md` v0.2 (§1–18 complete).
+- Three-layer regression harness populated: migration (5 / 5 scenarios
+  with legacy `qc.py`-generated references, bit-identical across
+  three runs; 3 / 5 active comparisons, 2 / 5 skipped with
+  probe-informed blockers), analytic (6 closed-form formulas),
+  invariant (9 checks).
+- Cache-integrity contract + tests.
+- CI with ruff, ruff-format, mypy strict, pytest, pa11y WCAG 2
+  Level A (hard gate, AA advisory per v0.3.2 amendment).
 
 Today the importable code surface covers:
 

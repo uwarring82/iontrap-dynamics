@@ -343,6 +343,22 @@ The boundary-tree between "what's in `v0.1-alpha`" and "what's in `v0.2`" is: do
 
 Read these through the WCAG bullet above: **WCAG 2 Level A is the hard CI gate (with the triaged theme-level rule-code ignores documented inline in `.github/workflows/ci.yml`); AA is advisory only.** The shift from "AA as gate" to "Level A gated, AA advisory" landed in commit `f370fe7` ahead of this amendment. The AA rule set is retained as a reporting target — re-promotion to a hard gate remains on the table once the triaged ignores can be retired.
 
+### 5.1 — v0.2 release amendment (2026-04-21) *(Coastline, new in v0.3.3)*
+
+**v0.2.0 shipped.** Every row in the §5.0 release-mapping table that was targeted at `v0.2` is now on `main`:
+
+| §5.0 row | Delivered via |
+|---|---|
+| Phase 1 measurement layer (`measurement/`) | Dispatches H–P; §17 frozen |
+| Phase 1 systematics layer (`systematics/`) | Dispatches R–U; §18 frozen |
+| Phase 1 logarithmic negativity / EoF as registered observables | Dispatch Q (`entanglement.py`) |
+
+`CONVENTIONS.md` freezes at version 0.2 at the same commit — §1–16 from the Phase 0 draft carry through unchanged; §17 (measurement layer) and §18 (systematics layer) are newly closed under Convention Freeze. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit freeze gate (§18 / §17 closing paragraphs).
+
+**Consequence for §5 below.** The Phase 0 and Phase 1 section headers still read "target: v0.1-alpha" and "target: v0.2". Read them through both §5.0 and this amendment: the former collapsed `v0.1-alpha` into `v0.2.0`; this amendment records that `v0.2.0` is now tagged. Subsequent dispatches land under a new `[Unreleased]` block in `CHANGELOG.md` pending a v0.3 target.
+
+**What's next on `main`.** Migration-scenario-3 coupling audit, migration-scenario-4 full-exponential Lamb–Dicke builder feature, and tutorial content are in the backlog but not v0.2-blocking. Phase 2 (performance — JAX backend, sparse-matrix tuning, parallel sweeps) is the next phase-level milestone, target `v0.3`.
+
 ---
 
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)

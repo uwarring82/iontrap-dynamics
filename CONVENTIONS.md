@@ -2,11 +2,11 @@
 
 **Physical, numerical, and notational conventions for `iontrap-dynamics`**
 
-Version 0.1-draft · Drafted 2026-04-17 · Status: Phase 0 working document
+Version 0.2 · Drafted 2026-04-17 · Frozen 2026-04-21 · Status: v0.2 Convention Freeze
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
 **Licence:** CC BY-SA 4.0.
-**Scope:** Conventions sufficient for Phase 0 (v0.1-alpha). Phase 1 extensions (measurement channels, systematics parameterisations) will be staged in `CONVENTIONS.md` v0.2+ with explicit Convention Freeze gates at each library minor-version release. Convention **additions** are permitted without a freeze; convention **changes** require one.
+**Scope:** Conventions covering §1–18. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze adds §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
 **Endorsement Marker:** Local candidate framework. No external endorsement implied.
 
 This document is authoritative. Every `IonSystem` records the `CONVENTIONS.md` version it was built against; every `TrajectoryResult` carries that version in its metadata. When code and this document disagree, this document wins and the code is the bug.
@@ -583,7 +583,7 @@ Because `compose_density` returns a density matrix, the downstream solver runs `
 
 ## Endorsement Marker
 
-**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version; extensions for Phase 1 measurement and systematics layers are staged and will carry explicit Convention Freeze gates.
+**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §1–16 carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
 
-**Convention version:** 0.1-draft · 2026-04-17 · Phase 0 working document.
+**Convention version:** 0.2 · 2026-04-21 · v0.2 Convention Freeze.
 **Workplan reference:** `WORKPLAN_v0.3.md` §0.A.
