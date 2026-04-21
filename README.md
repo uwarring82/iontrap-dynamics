@@ -164,7 +164,7 @@ v0.2 Convention Freeze gate.
 `run_demo_detuning_jitter`, `run_demo_rabi_drift_scan`,
 `run_demo_spam_prep`.
 
-Test suite: **784 passed, 3 skipped**. Skips are migration-tier
+Test suite: **785 passed, 2 skipped**. Skips are migration-tier
 builder-comparison slots with probe-informed blockers (see `CHANGELOG.md`).
 
 Docs site scaffold:

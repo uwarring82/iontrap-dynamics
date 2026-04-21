@@ -435,6 +435,40 @@ primitive.
   verifies the analytic `(1 − 2p)` amplitude-reduction signature
   to solver-tolerance precision (3e-5 error).
 
+#### Migration-tier debt paydown (Dispatch V)
+
+Activates one of the three skipped migration-comparison tests that
+have been carrying activation notes since the Phase 0 regression
+harness. The other two are refined with today's empirical probe
+data so the skip reasons name the exact physics gap rather than a
+generic placeholder.
+
+- **Scenario 2** (single-ion RSB from Fock |1⟩) **ACTIVATED**.
+  Element-wise trajectory comparison is replaced with *invariant
+  comparison* — the alternative path named in the original skip.
+  Verifies σ_z swing amplitude (`|(max − min)/2| ≈ 1`) matches qc.py
+  to within 0.03, and ⟨n̂⟩ minimum matches to within 0.02. Both
+  invariants are phase/rate-independent and tolerate the 1.5×
+  flop-rate gap between qc.py's lab-frame and our RWA-reduced
+  dynamics. Reference module docstring updated.
+- **Scenario 3** (two-ion single-tone blue sideband) — skip reason
+  tightened with an empirical probe showing the discrepancy is
+  ~2× on *amplitude* (σ_z peak 0.79 ours vs 0.27 qc.py; n_mode peak
+  1.79 vs 1.13) rather than the original "1.5× on rate" hypothesis.
+  The invariant-comparison fix (scenario 2's path) is therefore
+  ruled out. New suggested activation paths: re-derive qc.py's
+  two-spin coupling pre-factor for our `two_ion_blue_sideband_
+  hamiltonian`, or retire in favour of an internal analytic
+  reference.
+- **Scenario 4** (stroboscopic AC-π/2) — skip reason clarified to
+  note that this is a *missing physics feature* (full-exponential
+  Lamb–Dicke operator) not a frame reconciliation, so the scenario-2
+  invariant-comparison path does not apply. Activation path now
+  suggests an `ld_order` parameter on `modulated_carrier_hamiltonian`
+  or a dedicated frequency-modulated-carrier builder.
+
+785 tests pass / 2 skipped (was 3).
+
 ### Changed
 
 - CONVENTIONS.md §17 *(staged — v0.2 Convention Freeze target)*
