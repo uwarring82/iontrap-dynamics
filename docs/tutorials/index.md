@@ -25,15 +25,21 @@ cover the same ground for users who prefer reading code to prose.
   the `number` observable factory, and the `⟨σ_z⟩ + 2⟨n̂⟩ = 1`
   single-phonon-manifold conservation law as a sanity check.
   Parallels `tools/run_benchmark_sideband.py`.
+- [**Tutorial 3 — Gaussian π-pulse with `modulated_carrier_hamiltonian`**](03_gaussian_pi_pulse.md).
+  First time-dependent Hamiltonian in the series. Swap the static
+  carrier for a Gaussian-enveloped drive, normalise the envelope
+  amplitude so the pulse area integrates to exactly π, and watch
+  the Bloch vector trace a clean y–z meridian. Introduces the
+  list-format dispatch through `sequences.solve` and the
+  cumulative-integral analytic overlay
+  `θ(t) = ∫₀^t Ω · f(t') dt'`. Closes with Blackman / stroboscopic
+  / adiabatic-ramp envelope extensions. Parallels
+  `tools/run_demo_gaussian_pulse.py`.
 
 ## Planned
 
 Sequenced roughly in order of reader dependency on prior tutorials:
 
-3. **Pulse shaping with `modulated_carrier_hamiltonian`.** Parallels
-   `tools/run_demo_gaussian_pulse.py`. Gaussian envelope with
-   calibrated pulse area → clean π-rotation; reader writes their own
-   Blackman / stroboscopic envelope.
 4. **Mølmer–Sørensen Bell gate.** Parallels
    `tools/run_demo_ms_gate.py`. Uses `ms_gate_closing_detuning` and
    `ms_gate_closing_time` analytic helpers to derive gate parameters

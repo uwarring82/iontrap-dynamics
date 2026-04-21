@@ -95,6 +95,32 @@ architectural layer introduced through v0.2.
 - README: updated docs-site scaffold listing notes that
   `docs/tutorials/` is no longer a pure placeholder.
 
+#### Tutorials — Gaussian π-pulse (Dispatch CC)
+
+Third entry in the tutorials track. Parallels
+`tools/run_demo_gaussian_pulse.py` and embeds the scenario's
+committed artefact plot.
+
+- `docs/tutorials/03_gaussian_pi_pulse.md` (new) — Gaussian-shaped
+  π-rotation through `modulated_carrier_hamiltonian`. ~10 min
+  read, ~1 s runtime. First tutorial to exercise the
+  time-dependent list-format Hamiltonian path through
+  `sequences.solve`; introduces the pulse-area normalisation
+  `A = π / (Ω·σ·√(2π))` that turns a chosen Gaussian width into
+  a clean π-rotation; three-observable Bloch trajectory
+  (`spin_x` / `spin_y` / `spin_z`) with an analytic overlay built
+  from the cumulative-trapezoidal integral
+  `θ(t) = ∫₀^t Ω·f(t') dt'`; sub-ppm agreement demonstrated.
+  Closes with three envelope extensions (Blackman-window π-pulse
+  with `scipy.integrate.quad` normalisation, stroboscopic
+  square-wave drive, adiabatic raised-cosine ramp). Inline plot
+  served from the committed
+  `benchmarks/data/gaussian_pi_pulse_demo/plot.png`.
+- `docs/tutorials/index.md` — Tutorial 3 moved from *Planned* to
+  *Available*; the planned-topics list renumbers accordingly.
+- `mkdocs.yml` nav adds an explicit Tutorial 3 entry beneath
+  Tutorials 1 and 2.
+
 #### Tutorials — red-sideband flopping (Dispatch BB)
 
 Second entry in the tutorials track. Parallels

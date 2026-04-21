@@ -58,6 +58,7 @@ nav:
       - Overview: tutorials/index.md
       - "1. Carrier Rabi with shot-noise readout": tutorials/01_first_rabi_readout.md
       - "2. Red-sideband flopping from Fock |1⟩": tutorials/02_red_sideband_fock1.md
+      - "3. Gaussian π-pulse with modulated_carrier": tutorials/03_gaussian_pi_pulse.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:
