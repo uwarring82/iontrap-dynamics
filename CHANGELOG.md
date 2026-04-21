@@ -9,6 +9,32 @@ Versioning once the public package surface reaches its first alpha release.
 
 ### Added
 
+#### Phase 2 — csr-vs-dense ops baseline (Dispatch OO)
+
+- `tools/run_benchmark_sparse_vs_dense.py` — measures CSR-vs-dense
+  operator-dtype wall-clock across the four canonical Hamiltonian
+  builders at eight Hilbert-space sizes (single-ion carrier / RSB /
+  BSB at fock 4–60, two-ion RSB at fock 15). At library-typical
+  Hilbert sizes (dim ≤ 60) the two dtypes tie within ~5 %; CSR
+  pulls ahead to 1.36–1.49× at single-ion fock=60 (dim 120). Mean
+  dense/csr ratio across the scenario set is 1.11×.
+- `docs/benchmarks.md` gains a new "`csr` vs `dense` operator dtype
+  (Dispatch OO)" section with the measured table, an interpretation
+  of why CSR never loses materially, and a note that QuTiP 5's
+  default CSR dtype already discharges the "sparse-matrix tuning"
+  Phase 2 open item. The headline paragraph is updated to reflect
+  that Dispatches X / Y / OO have landed and only the JAX backend
+  remains open on the Phase 2 track. The "Open Phase 2 items"
+  subsection at the bottom retires the sparse-matrix entry.
+- Artefact committed under `benchmarks/data/sparse_vs_dense/`
+  (`report.json` with per-scenario wall-clock + environment metadata,
+  `plot.png` with the dense/csr ratio bar chart).
+- **No public API change.** `sequences.solve` does not gain a
+  `matrix_format` kwarg. Design Principle 5 ("one way to do it at the
+  public API level") applies — CSR is the one way because it never
+  loses. Users needing a dense representation for debugging can
+  still call `hamiltonian.to("dense")` manually.
+
 #### Phase 2 — performance track opener (Dispatch X)
 
 - `sequences.solve` gains a ``solver`` kwarg (``"auto"`` default,

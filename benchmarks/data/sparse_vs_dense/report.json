@@ -1,0 +1,91 @@
+{
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-21T21:56:21.278080+00:00",
+  "mean_dense_over_csr": 1.1109748965426354,
+  "n_repeats": 3,
+  "n_steps": 400,
+  "purpose": "Phase 2 Dispatch OO — measures CSR-vs-dense operator dtype speedup across canonical builders and Hilbert-space sizes on the sesolve fast path. Confirms that QuTiP 5.2's default CSR dtype is at worst tied with dense at library-typical scales and pulls ahead at larger single-ion Fock truncations.",
+  "results": [
+    {
+      "builder": "carrier",
+      "csr_seconds": 0.0030256250174716115,
+      "dense_over_csr": 1.024912215008272,
+      "dense_seconds": 0.0031010000384412706,
+      "hilbert_dim": 8,
+      "max_expectation_error": 0.0,
+      "scenario": "carrier_fock04"
+    },
+    {
+      "builder": "carrier",
+      "csr_seconds": 0.003205499961040914,
+      "dense_over_csr": 0.9898090923073096,
+      "dense_seconds": 0.0031728330068290234,
+      "hilbert_dim": 24,
+      "max_expectation_error": 0.0,
+      "scenario": "carrier_fock12"
+    },
+    {
+      "builder": "carrier",
+      "csr_seconds": 0.003176000027451664,
+      "dense_over_csr": 1.0221190025926785,
+      "dense_seconds": 0.0032462499802932143,
+      "hilbert_dim": 48,
+      "max_expectation_error": 0.0,
+      "scenario": "carrier_fock24"
+    },
+    {
+      "builder": "red_sideband",
+      "csr_seconds": 0.0028402500320225954,
+      "dense_over_csr": 0.9848900476203319,
+      "dense_seconds": 0.002797333989292383,
+      "hilbert_dim": 16,
+      "max_expectation_error": 0.0,
+      "scenario": "rsb_fock08"
+    },
+    {
+      "builder": "blue_sideband",
+      "csr_seconds": 0.0028289170004427433,
+      "dense_over_csr": 1.009780058708953,
+      "dense_seconds": 0.002856583974789828,
+      "hilbert_dim": 16,
+      "max_expectation_error": 0.0,
+      "scenario": "bsb_fock08"
+    },
+    {
+      "builder": "red_sideband",
+      "csr_seconds": 0.0035239579738117754,
+      "dense_over_csr": 1.3617381516967546,
+      "dense_seconds": 0.004798708017915487,
+      "hilbert_dim": 120,
+      "max_expectation_error": 0.0,
+      "scenario": "rsb_fock60"
+    },
+    {
+      "builder": "blue_sideband",
+      "csr_seconds": 0.003579166019335389,
+      "dense_over_csr": 1.4924566110394857,
+      "dense_seconds": 0.005341749987564981,
+      "hilbert_dim": 120,
+      "max_expectation_error": 0.0,
+      "scenario": "bsb_fock60"
+    },
+    {
+      "builder": "two_ion_red_sideband",
+      "csr_seconds": 0.0030042920261621475,
+      "dense_over_csr": 1.0020939933672965,
+      "dense_seconds": 0.0030105829937383533,
+      "hilbert_dim": 60,
+      "max_expectation_error": 0.0,
+      "scenario": "two_ion_rsb_fock15"
+    }
+  ],
+  "scenario": "sparse_vs_dense",
+  "workplan_reference": "WORKPLAN_v0.3.md §5 Phase 2 — performance (closes the sparse-matrix-tuning open item)"
+}

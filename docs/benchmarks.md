@@ -7,9 +7,10 @@ deciding whether the library's performance fits their use case, and
 against a fixed starting point.
 
 **Phase** and **status** per §5 Phase 2: performance. Dispatches X
-(`sesolve` dispatch) and Y (`solve_ensemble` parallel sweeps) have
-landed; sparse-matrix tuning and a JAX backend are pending. This page
-summarises every baseline measured so far.
+(`sesolve` dispatch), Y (`solve_ensemble` parallel sweeps), and
+OO (`csr`-vs-`dense` ops baseline) have landed; the remaining Phase 2
+deliverable is a JAX backend. This page summarises every baseline
+measured so far.
 
 ## Headline
 
@@ -123,6 +124,59 @@ Run with:
 python tools/run_benchmark_ensemble_parallel.py
 ```
 
+## `csr` vs `dense` operator dtype (Dispatch OO)
+
+QuTiP 5 changed the default `Qobj.data` representation from dense
+(QuTiP 4) to compressed-sparse-row. The library inherits that default
+without any explicit selection in `hamiltonians.py` / `operators.py`,
+so the practical question is **how much of the Phase-2 "sparse-matrix
+tuning" plan is already done for free by upstream**. Measured
+wall-clock at both dtypes on the `sesolve` fast path:
+
+| Scenario                 | Hilbert dim | CSR     | Dense   | Dense / CSR |
+|--------------------------|------------:|--------:|--------:|------------:|
+| carrier fock=4           | 8           | 3.03 ms | 3.10 ms | 1.02×       |
+| carrier fock=12          | 24          | 3.21 ms | 3.17 ms | 0.99×       |
+| carrier fock=24          | 48          | 3.18 ms | 3.25 ms | 1.02×       |
+| RSB fock=8               | 16          | 2.84 ms | 2.80 ms | 0.98×       |
+| BSB fock=8               | 16          | 2.83 ms | 2.86 ms | 1.01×       |
+| RSB fock=60              | 120         | 3.52 ms | 4.80 ms | **1.36×**   |
+| BSB fock=60              | 120         | 3.58 ms | 5.34 ms | **1.49×**   |
+| two-ion RSB fock=15      | 60          | 3.00 ms | 3.01 ms | 1.00×       |
+| **Mean**                 |             |         |         | **1.11×**   |
+
+**Interpretation.**
+
+- **At library-typical Hilbert sizes** (dim ≤ 60, covering all three
+  Phase 0.F smoke tests and the entire tutorial bundle), CSR and
+  dense tie within ~5 %. The headline `mesolve` cost on QuTiP 5.2 is
+  dominated by the SciPy ODE stepper, not by per-step matrix–vector
+  product cost, so the dtype choice is lost in the noise.
+- **At single-ion Fock ≥ 60** (dim ≥ 120), CSR pulls ahead to
+  1.3–1.5×. These regimes appear in hot-ion simulations (Tutorial 8)
+  and in the squeezed-state builder family (Tutorial 9) when the
+  squeezing parameter pushes the Fock support out.
+- **CSR never loses materially.** The smallest ratio recorded is
+  0.98× (RSB fock=8), which is within repeat-to-repeat noise.
+
+**What this means for the Phase 2 plan.** The "sparse-matrix tuning"
+open item in the original Phase 2 scope is **effectively discharged
+by QuTiP 5 defaults** — there is no residual dense-matrix build to
+replace with sparse primitives in the library's builder chain. The
+library therefore **does not expose a `matrix_format` kwarg** on
+`sequences.solve`; Design Principle 5 ("one way to do it at the
+public API level") applies, and CSR is the one way because it
+never loses. Users who genuinely need a dense representation (e.g.
+for debugging with `qutip.Qobj.full()`) can still call
+`hamiltonian.to("dense")` manually before handing the operator to
+`solve`.
+
+Run with:
+
+```bash
+python tools/run_benchmark_sparse_vs_dense.py
+```
+
 ## When to opt into each feature
 
 A quick decision guide distilled from the numbers above:
@@ -160,14 +214,11 @@ auditable.
 
 Per `WORKPLAN_v0.3.md` §5 Phase 2, still to land:
 
-- **Sparse-matrix profiling.** Audit the Hamiltonian builders for
-  hidden dense constructions (e.g. full-dim identities tensored into
-  embedded operators) and replace with sparse primitives where the
-  builder's output is sparse-natured.
 - **JAX backend.** Opt-in `solve` variant that runs on JAX arrays
   with JIT-compiled stepping. Biggest potential win for larger
   Hilbert spaces; also opens GPU execution paths. Will include ≥1
   worked example matching the QuTiP reference within cross-platform
   tolerance.
 
-Both are pending dispatches on the `main` branch.
+Sparse-matrix tuning, originally listed here, has been closed by
+Dispatch OO — see the dedicated section above.
