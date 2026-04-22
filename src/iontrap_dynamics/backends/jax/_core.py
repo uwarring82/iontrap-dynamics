@@ -122,7 +122,7 @@ def _require_jax() -> None:
 def solve_via_jax(
     *,
     hilbert: HilbertSpace,
-    hamiltonian: "qutip.Qobj | list[object] | TimeQArray",
+    hamiltonian: qutip.Qobj | list[object] | TimeQArray,
     initial_state: qutip.Qobj,
     times: np.ndarray,
     observables: Sequence[Observable] = (),
@@ -177,8 +177,8 @@ def solve_via_jax(
             "returns a dynamiqs.TimeQArray that this solver accepts. "
             "See docs/phase-2-jax-time-dep-design.md §2 for the list "
             "of JAX-enabled builders. Builders still covered only "
-            "by the QuTiP path emit a QuTiP list and remain β.4.2–β.4.4 "
-            "scope."
+            "by the QuTiP path emit a QuTiP list and remain "
+            "β.4.2 through β.4.4 scope."
         )
 
     import dynamiqs as dq

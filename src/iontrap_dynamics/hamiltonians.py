@@ -196,7 +196,7 @@ def detuned_carrier_hamiltonian(
     *,
     ion_index: int,
     backend: str = "qutip",
-) -> "list[object] | TimeQArray":
+) -> list[object] | TimeQArray:
     """Return the off-resonance carrier Hamiltonian in QuTiP's
     time-dependent list format (or, with ``backend="jax"``, in
     Dynamiqs's :class:`TimeQArray` form).
@@ -735,7 +735,7 @@ def detuned_red_sideband_hamiltonian(
     ion_index: int,
     detuning_rad_s: float,
     backend: str = "qutip",
-) -> "list[object] | TimeQArray":
+) -> list[object] | TimeQArray:
     """Return the near-red-sideband Hamiltonian in QuTiP's time-dependent
     list format (or, with ``backend="jax"``, as a Dynamiqs
     :class:`TimeQArray`).
@@ -899,7 +899,7 @@ def detuned_blue_sideband_hamiltonian(
     ion_index: int,
     detuning_rad_s: float,
     backend: str = "qutip",
-) -> "list[object] | TimeQArray":
+) -> list[object] | TimeQArray:
     """Return the near-blue-sideband Hamiltonian in QuTiP's time-dependent
     list format (or, with ``backend="jax"``, as a Dynamiqs
     :class:`TimeQArray`).
@@ -1129,7 +1129,7 @@ def detuned_ms_gate_hamiltonian(
     ion_indices: tuple[int, int],
     detuning_rad_s: float,
     backend: str = "qutip",
-) -> "list[object] | TimeQArray":
+) -> list[object] | TimeQArray:
     """Return the gate-closing Mølmer–Sørensen Hamiltonian in QuTiP's
     time-dependent list format (or, with ``backend="jax"``, as a
     Dynamiqs :class:`TimeQArray`).
@@ -1351,7 +1351,7 @@ def modulated_carrier_hamiltonian(
     envelope: Callable[[float], float],
     envelope_jax: Callable[[float], object] | None = None,
     backend: str = "qutip",
-) -> "list[object] | TimeQArray":
+) -> list[object] | TimeQArray:
     """Return an on-resonance carrier Hamiltonian with a time-dependent
     envelope, in QuTiP's time-dependent list format (or, with
     ``backend="jax"``, as a Dynamiqs :class:`TimeQArray`).

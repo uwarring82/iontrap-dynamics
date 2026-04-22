@@ -55,7 +55,6 @@ from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture — carrier Rabi at Fock=12 (dim 24) for cross-backend tests.
 # Parameters match the design-note §7 α.2 scope: carrier Hamiltonian, 4 Rabi
@@ -1078,9 +1077,9 @@ class TestModulatedCarrierUserEnvelope:
         # β.4.4 returns a single-piece ModulatedTimeQArray (not a
         # SummedTimeQArray like the detuning builders) because the
         # modulated carrier has only one Hermitian piece × envelope.
-        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
-
         import jax.numpy as jnp
+
+        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
 
         hilbert, drive, *_ = modulated_setup
         H_jax = modulated_carrier_hamiltonian(
@@ -1102,9 +1101,9 @@ class TestModulatedCarrierUserEnvelope:
         # the same function; the numpy version is scipy-traceable,
         # the jnp version is JAX-traceable. Cross-backend agreement
         # should be under the library-default 1e-3 bound.
-        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
-
         import jax.numpy as jnp
+
+        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
 
         hilbert, drive, psi_0, times, obs = modulated_setup
         t0 = 0.5e-6
@@ -1169,12 +1168,12 @@ class TestModulatedCarrierUserEnvelope:
         # envelope_jax(t) = 1 should produce dynamics equivalent to
         # the static carrier on the JAX path (modulo library-default
         # integrator tolerances).
+        import jax.numpy as jnp
+
         from iontrap_dynamics.hamiltonians import (
             carrier_hamiltonian,
             modulated_carrier_hamiltonian,
         )
-
-        import jax.numpy as jnp
 
         hilbert, drive, psi_0, times, obs = modulated_setup
 

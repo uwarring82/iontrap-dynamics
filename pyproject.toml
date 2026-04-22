@@ -216,6 +216,11 @@ ignore = [
 "tests/unit/test_measurement.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_protocols.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_systematics.py" = ["RUF001", "RUF002", "RUF003"]
+# The Dynamiqs-gated backend test deliberately guards imports behind
+# ``pytest.importorskip`` so the module is skipped cleanly on base CI
+# without the [jax] extras — E402 (module-level import not at top of
+# file) is the cost of that pattern and is intentional here.
+"tests/unit/test_backends_jax_dynamiqs.py" = ["E402", "RUF001", "RUF002", "RUF003"]
 "tests/unit/test_statistics.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_species.py" = ["RUF002", "RUF003"]
 "tests/unit/test_observables.py" = ["RUF001", "RUF002", "RUF003"]
@@ -227,6 +232,7 @@ ignore = [
 "tools/run_benchmark_sesolve_speedup.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sideband.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sparse_vs_dense.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/run_benchmark_jax_timedep.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_bell_entanglement.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_bernoulli_readout.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_demo_binomial_readout.py" = ["RUF001", "RUF002", "RUF003"]

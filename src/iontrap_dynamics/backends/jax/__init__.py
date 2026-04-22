@@ -23,7 +23,7 @@ integrator tolerances to better than ``1e-3`` on every builder
 Phase 2 JAX-backend performance characterisation (β.4.5) returned
 a null result at library scale — the JAX backend's value is
 positioning, cross-backend consistency checking, and
-forward-looking capability (autograd via a future γ track,
+forward-looking capability (autograd via a future gamma track,
 GPU / TPU dispatch), not raw CPU wall-clock at dim ≤ 200.
 
 This subpackage is intentionally private-by-default: only
