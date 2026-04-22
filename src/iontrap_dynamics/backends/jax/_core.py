@@ -56,7 +56,7 @@ inputs.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -263,7 +263,7 @@ def solve_via_jax(
 
     # State materialisation per storage_mode.
     states_tuple: tuple[qutip.Qobj, ...] | None = None
-    states_loader: object | None = None  # Callable[[int], qutip.Qobj] | None
+    states_loader: Callable[[int], qutip.Qobj] | None = None
     if storage_mode is StorageMode.EAGER:
         raw_states = np.asarray(dq_result.states)
         # For kets: shape (N_times, dim, 1); for DMs: (N_times, dim, dim).
