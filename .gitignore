@@ -32,6 +32,12 @@ env/
 # Claude Code per-user settings (absolute-path permissions; do not share)
 .claude/
 
+# Legacy reference bundles: exclude nested git repos (embedded `.git`
+# would otherwise be added as a gitlink / pseudo-submodule). The whole
+# sbpaper subtree stays local-only so outer-repo clones are clean.
+# See `legacy/clos 2016 prl/INVENTORY.md` §4.7 for restore instructions.
+legacy/**/sbpaper/
+
 # Note: the six cd-rules design assets (emblem-*.svg, wordmark-*.svg,
 # tokens.css) are intentionally NOT ignored. Under Model B (CD 0.10), they
 # are vendored at a pinned upstream commit and integrity-checked against
