@@ -10,6 +10,76 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — β.4.1 detuned_carrier on JAX backend (Dispatch UU)
+
+First time-dependent Hamiltonian builder gains a `backend=` kwarg
+on the JAX-backend track. Scoped per
+`docs/phase-2-jax-time-dep-design.md` §5 as a v0.3.x follow-up
+(see WORKPLAN_v0.3.md §5.3 amendment).
+
+- New module `src/iontrap_dynamics/backends/jax/_coefficients.py`
+  with two JAX-traceable coefficient factory closures:
+  `cos_detuning_jax(delta)` returns `t ↦ jnp.cos(delta * t)`;
+  `sin_detuning_jax(delta)` returns `t ↦ jnp.sin(delta * t)`.
+  Each factory snapshots `delta` by value in the closure, safe
+  against caller mutation. Module-level `import jax.numpy as jnp`
+  means the module is only importable with `[jax]` extras;
+  it's imported lazily from the `backend="jax"` branch of
+  builders, so the top-level library import stays JAX-free.
+- `hamiltonians.detuned_carrier_hamiltonian` gains a
+  `backend: str = "qutip"` keyword-only parameter mirroring
+  `sequences.solve`'s surface. Default preserves v0.2 behaviour
+  (QuTiP time-dependent list). `backend="jax"` returns a Dynamiqs
+  `SummedTimeQArray` =
+  `dq.modulated(cos_detuning_jax(δ), A_φ) + dq.modulated(sin_detuning_jax(δ), A_⊥)`
+  consumable by `solve(backend="jax")`.
+- `backends.jax._core._require_jax()` — new helper lifted from
+  `solve_via_jax`'s inline availability check. Factor-out is
+  behaviour-preserving; the helper is now shared between
+  `solve_via_jax` and the `backend="jax"` branches of time-dep
+  builders so users see one consistent install-hint
+  `BackendError` across the library's JAX entries.
+- `solve(backend="jax")` `NotImplementedError` message on QuTiP
+  list-format input updated to point callers at the new builder
+  `backend="jax"` kwarg. Previously the message said β.4 was
+  deferred; now it names the β.4.1 entry that is on `main` and
+  mentions that β.4.2–β.4.4 builders (detuned RSB / BSB, detuned
+  MS gate, modulated carrier with user envelope) stay in
+  follow-up scope.
+- **Cross-backend agreement: 1.35e-5** max absolute σ_z delta over
+  4 detuned-Rabi periods at dim 8 (Ω/2π = 1 MHz, δ/2π = 0.5 MHz,
+  200 samples), Dynamiqs 0.3.4 + QuTiP 5.2.3, both at library-
+  default integrator tolerances. Under the β.2-style 1e-3 test
+  bound.
+
+Tests:
+- `tests/unit/test_backends_jax.py::TestTimeDependentBuilderKwarg`
+  — 3 install-agnostic tests (run in base CI): unknown-backend
+  rejection, install-hint `BackendError` via mocked availability,
+  default path regression (still returns QuTiP list).
+- `tests/unit/test_backends_jax_dynamiqs.py::TestTimeDependentDetunedCarrier`
+  — 4 integration tests gated on `[jax]` extras: JAX path returns
+  non-list TimeQArray, cross-backend σ_z equivalence, backend_name
+  tag (single `"jax-dynamiqs"` across time-independent and
+  time-dependent paths per design note §6 Q2 default), LAZY
+  storage mode composes correctly with time-dep results.
+- `tests/unit/test_backends_jax_dynamiqs.py::TestCoefficientFactories`
+  — 3 factory unit tests: `cos_detuning_jax` evaluates correctly
+  at t=0 and t=π/δ; `sin_detuning_jax` evaluates correctly at t=0
+  and t=(π/2)/δ; closure captures delta by value (mutating
+  caller's delta doesn't change the closure's behaviour).
+
+Test-surface:
+- Base CI (no extras): 805 → 808 passing (+3 new; kwarg surface
+  tests exercise QuTiP path + mocked availability).
+- With `[jax]` extras (venv / opt-in CI): 834 → 844 passing (+10
+  new = 3 builder-kwarg + 4 dynamiqs integration + 3 factory
+  unit tests).
+
+No `pyproject.toml` change — `[jax]` extras already declare the
+required dependencies. The QuTiP path is unchanged; existing
+callers who don't pass `backend=` observe no behaviour change.
+
 #### Phase 2 — JAX-backend LAZY storage (Dispatch β.3 / TT)
 
 Lifts `StorageMode.LAZY` from "`NotImplementedError` — β.3 scope" to

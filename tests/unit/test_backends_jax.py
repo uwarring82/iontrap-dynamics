@@ -329,6 +329,83 @@ class TestLazyStorageOnQutipBackend:
             )
 
 
+class TestTimeDependentBuilderKwarg:
+    """β.4.1 — ``detuned_carrier_hamiltonian`` gains a ``backend=``
+    kwarg. The install-agnostic surface (unknown-backend rejection,
+    install-hint when extras missing) is covered here; numeric
+    cross-backend equivalence lives in
+    ``test_backends_jax_dynamiqs.py::TestTimeDependentDetunedCarrier``.
+    """
+
+    @pytest.fixture
+    def detuned_carrier_args(
+        self,
+    ) -> tuple[HilbertSpace, DriveConfig]:
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        system = IonSystem.homogeneous(
+            species=mg25_plus(), n_ions=1, modes=(mode,)
+        )
+        hilbert = HilbertSpace(system=system, fock_truncations={"axial": 4})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+            detuning_rad_s=2 * np.pi * 0.5e6,
+            phase_rad=0.0,
+        )
+        return hilbert, drive
+
+    def test_unknown_backend_raises_convention_error(
+        self,
+        detuned_carrier_args: tuple[HilbertSpace, DriveConfig],
+    ) -> None:
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        hilbert, drive = detuned_carrier_args
+        with pytest.raises(ConventionError, match="unknown backend"):
+            detuned_carrier_hamiltonian(
+                hilbert, drive, ion_index=0, backend="numpy"
+            )
+
+    def test_jax_backend_without_extras_raises_backend_error(
+        self,
+        detuned_carrier_args: tuple[HilbertSpace, DriveConfig],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Same install-hint message as solve(backend="jax") uses —
+        # users see one consistent failure mode across library's JAX
+        # entries.
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        monkeypatch.setattr(jax_core, "_is_jax_available", lambda: False)
+        hilbert, drive = detuned_carrier_args
+        with pytest.raises(BackendError, match="iontrap-dynamics\\[jax\\]"):
+            detuned_carrier_hamiltonian(
+                hilbert, drive, ion_index=0, backend="jax"
+            )
+
+    def test_qutip_path_returns_list_format_unchanged(
+        self,
+        detuned_carrier_args: tuple[HilbertSpace, DriveConfig],
+    ) -> None:
+        # Regression: default backend kwarg preserves the v0.2
+        # behaviour (QuTiP time-dep list). No user-visible change
+        # for callers who don't pass backend=.
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        hilbert, drive = detuned_carrier_args
+        h_default = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0)
+        h_explicit = detuned_carrier_hamiltonian(
+            hilbert, drive, ion_index=0, backend="qutip"
+        )
+        assert isinstance(h_default, list)
+        assert isinstance(h_explicit, list)
+        assert len(h_default) == len(h_explicit) == 2
+
+
 class TestSolveEnsembleForwardsBackend:
     def test_ensemble_rejects_unknown_backend(
         self,

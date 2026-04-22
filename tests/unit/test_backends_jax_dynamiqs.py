@@ -504,12 +504,14 @@ class TestLazyStorage:
 
 
 # ---------------------------------------------------------------------------
-# Scope boundary: time-dependent Hamiltonian remains β.4 scope.
+# Scope boundary: direct QuTiP list-format time-dep rejected on JAX.
+# (The builder's backend="jax" kwarg is the supported entry — see
+# TestTimeDependentDetunedCarrier below.)
 # ---------------------------------------------------------------------------
 
 
 class TestNotImplementedScope:
-    def test_time_dependent_hamiltonian_rejected(
+    def test_qutip_list_format_rejected_on_jax_backend(
         self,
         carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
     ) -> None:
@@ -518,7 +520,7 @@ class TestNotImplementedScope:
         # callable is never evaluated — NotImplementedError fires
         # before Dynamiqs is invoked.
         list_ham = [[ham, lambda t, _args: 1.0]]
-        with pytest.raises(NotImplementedError, match="Dispatch β.4"):
+        with pytest.raises(NotImplementedError, match="backend='jax'"):
             solve(
                 hilbert=hilbert,
                 hamiltonian=list_ham,
@@ -528,6 +530,200 @@ class TestNotImplementedScope:
                 storage_mode=StorageMode.OMITTED,
                 backend="jax",
             )
+
+
+# ---------------------------------------------------------------------------
+# β.4.1 — detuned_carrier_hamiltonian with backend="jax" emits a
+# Dynamiqs TimeQArray; dq.modulated(cos, A_φ) + dq.modulated(sin, A_⊥).
+# Cross-backend numeric equivalence against the QuTiP time-dep list.
+# ---------------------------------------------------------------------------
+
+
+class TestTimeDependentDetunedCarrier:
+    TOLERANCE = 1e-3  # same as β.2 cross-backend target
+
+    @pytest.fixture
+    def detuned_setup(
+        self,
+    ) -> tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list]:
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        system = IonSystem.homogeneous(
+            species=mg25_plus(), n_ions=1, modes=(mode,)
+        )
+        hilbert = HilbertSpace(system=system, fock_truncations={"axial": 12})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+            detuning_rad_s=2 * np.pi * 0.5e6,
+            phase_rad=0.0,
+        )
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 0))
+        # 4 generalised-Rabi periods of a δ = Ω/2 detuned carrier
+        # (Ω_gen = √(Ω² + δ²) ≈ 1.118 Ω → T ≈ 0.894 μs). 200 samples.
+        times = np.linspace(0.0, 4e-6, 200)
+        observables = [spin_z(hilbert, 0)]
+        return hilbert, drive, psi_0, times, observables
+
+    def test_jax_backend_returns_time_qarray(
+        self,
+        detuned_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        hilbert, drive, *_ = detuned_setup
+        H_jax = detuned_carrier_hamiltonian(
+            hilbert, drive, ion_index=0, backend="jax"
+        )
+        # Exact class is a Dynamiqs internal (SummedTimeQArray); what
+        # matters is it's not a QuTiP list, and solve(backend="jax")
+        # accepts it (covered by cross-backend test below).
+        assert not isinstance(H_jax, list)
+        # Duck-typed TimeQArray: must be callable at a time point and
+        # return something matrix-shaped.
+        sample = H_jax(0.0)
+        assert sample is not None
+
+    def test_cross_backend_expectation_equivalence(
+        self,
+        detuned_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        hilbert, drive, psi_0, times, obs = detuned_setup
+        H_qutip = detuned_carrier_hamiltonian(
+            hilbert, drive, ion_index=0, backend="qutip"
+        )
+        H_jax = detuned_carrier_hamiltonian(
+            hilbert, drive, ion_index=0, backend="jax"
+        )
+        r_qutip = solve(
+            hilbert=hilbert,
+            hamiltonian=H_qutip,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="qutip",
+        )
+        r_jax = solve(
+            hilbert=hilbert,
+            hamiltonian=H_jax,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        for obs_label in r_qutip.expectations:
+            delta = np.max(
+                np.abs(
+                    r_qutip.expectations[obs_label]
+                    - r_jax.expectations[obs_label]
+                )
+            )
+            assert delta < self.TOLERANCE, (
+                f"observable {obs_label!r}: cross-backend disagreement "
+                f"{delta:.2e} exceeds tolerance {self.TOLERANCE:.0e}"
+            )
+
+    def test_backend_name_tag(
+        self,
+        detuned_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # β.4 results tag identically to β.2 (single "jax-dynamiqs"
+        # string across time-independent and time-dep paths — design
+        # note §6 Q2 default).
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        hilbert, drive, psi_0, times, obs = detuned_setup
+        H_jax = detuned_carrier_hamiltonian(
+            hilbert, drive, ion_index=0, backend="jax"
+        )
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=H_jax,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        assert r.metadata.backend_name == "jax-dynamiqs"
+
+    def test_lazy_storage_works_with_time_dependent_hamiltonian(
+        self,
+        detuned_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # Regression: β.3's LAZY loader must work for time-dep
+        # results too (the loader is storage-layer, orthogonal to
+        # the Hamiltonian shape).
+        from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
+
+        hilbert, drive, psi_0, times, obs = detuned_setup
+        H_jax = detuned_carrier_hamiltonian(
+            hilbert, drive, ion_index=0, backend="jax"
+        )
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=H_jax,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        assert r.states is None
+        assert r.states_loader is not None
+        first = r.states_loader(0)
+        assert first.isket
+        assert (first - psi_0).norm() < 1e-10
+
+
+# ---------------------------------------------------------------------------
+# β.4.1 coefficient-callable factory unit tests.
+# ---------------------------------------------------------------------------
+
+
+class TestCoefficientFactories:
+    def test_cos_detuning_evaluates_to_jnp_cos(self) -> None:
+        from iontrap_dynamics.backends.jax._coefficients import cos_detuning_jax
+
+        delta = 2 * np.pi * 1e6  # 1 MHz detuning
+        coeff = cos_detuning_jax(delta)
+        assert callable(coeff)
+        # At t = 0 → cos(0) = 1.
+        assert float(coeff(0.0)) == pytest.approx(1.0, abs=1e-14)
+        # At t = π / δ → cos(π) = -1.
+        assert float(coeff(np.pi / delta)) == pytest.approx(-1.0, abs=1e-10)
+
+    def test_sin_detuning_evaluates_to_jnp_sin(self) -> None:
+        from iontrap_dynamics.backends.jax._coefficients import sin_detuning_jax
+
+        delta = 2 * np.pi * 1e6
+        coeff = sin_detuning_jax(delta)
+        assert callable(coeff)
+        assert float(coeff(0.0)) == pytest.approx(0.0, abs=1e-14)
+        # sin(π/2) at t = (π/2) / δ → 1.
+        assert float(coeff(0.5 * np.pi / delta)) == pytest.approx(1.0, abs=1e-10)
+
+    def test_closure_captures_delta_by_value(self) -> None:
+        # Regression: the factory must snapshot delta so the caller
+        # can mutate their own local binding without perturbing the
+        # returned closure. JAX traces the closure when Dynamiqs
+        # builds the TimeQArray; late-bound delta would silently
+        # produce wrong dynamics.
+        from iontrap_dynamics.backends.jax._coefficients import cos_detuning_jax
+
+        delta = 1.0e6
+        coeff = cos_detuning_jax(delta)
+        delta = 999.0  # mutate caller's reference
+        # Closure still uses 1e6: cos(1e6 * 1e-6) = cos(1.0) ≈ 0.5403.
+        assert float(coeff(1e-6)) == pytest.approx(np.cos(1.0), abs=1e-10)
+        del delta  # appease linters
 
 
 

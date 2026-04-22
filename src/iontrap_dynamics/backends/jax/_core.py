@@ -98,6 +98,20 @@ _INSTALL_HINT = (
 )
 
 
+def _require_jax() -> None:
+    """Precondition check: the ``[jax]`` extras must be importable.
+
+    Raises :class:`~iontrap_dynamics.exceptions.BackendError` with
+    the shared install hint if any of the required dependencies are
+    missing. Call at the top of any code path that subsequently
+    imports ``jax`` or ``dynamiqs`` — both :func:`solve_via_jax` and
+    β.4's time-dependent Hamiltonian builders use this for a
+    consistent failure mode (one hint message, one exception type).
+    """
+    if not _is_jax_available():
+        raise BackendError(_INSTALL_HINT)
+
+
 def solve_via_jax(
     *,
     hilbert: HilbertSpace,
@@ -142,19 +156,22 @@ def solve_via_jax(
         scope per module docstring.
     """
     del solver  # validated upstream; only "auto" reaches here
-    if not _is_jax_available():
-        raise BackendError(_INSTALL_HINT)
+    _require_jax()
 
     if isinstance(hamiltonian, list):
         raise NotImplementedError(
-            "solve(backend='jax') does not yet accept QuTiP time-"
-            "dependent Hamiltonian lists (Dispatch β.4 scope). "
-            "Dynamiqs's dq.modulated requires JAX-traceable "
-            "coefficient callables (jnp-based), whereas the library's "
-            "builders emit scipy-traced callables (numpy / math). "
-            "Bridging the two is an architectural decision — see "
-            "docs/phase-2-jax-backend-design.md §3 Axis C. Only "
-            "time-independent Qobj Hamiltonians are supported today."
+            "solve(backend='jax') does not accept a QuTiP time-"
+            "dependent Hamiltonian list directly — the list-format "
+            "coefficient callables are scipy-traced (numpy / math) "
+            "whereas Dynamiqs requires JAX-traceable (jnp) "
+            "coefficients. Use the builder's backend='jax' kwarg "
+            "instead: e.g. "
+            "detuned_carrier_hamiltonian(..., backend='jax') "
+            "returns a dynamiqs.TimeQArray that this solver accepts. "
+            "See docs/phase-2-jax-time-dep-design.md §2 for the list "
+            "of JAX-enabled builders. Builders still covered only "
+            "by the QuTiP path emit a QuTiP list and remain β.4.2–β.4.4 "
+            "scope."
         )
 
     import dynamiqs as dq

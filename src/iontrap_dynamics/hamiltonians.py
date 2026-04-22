@@ -188,9 +188,11 @@ def detuned_carrier_hamiltonian(
     drive: DriveConfig,
     *,
     ion_index: int,
-) -> list[object]:
+    backend: str = "qutip",
+) -> object:
     """Return the off-resonance carrier Hamiltonian in QuTiP's
-    time-dependent list format.
+    time-dependent list format (or, with ``backend="jax"``, in
+    Dynamiqs's :class:`TimeQArray` form).
 
     Implements CONVENTIONS.md §5 for ``δ ≠ 0``:
 
@@ -253,24 +255,44 @@ def detuned_carrier_hamiltonian(
     ion_index
         Zero-based index of the ion the drive couples to.
         Keyword-only.
+    backend
+        Which backend shape to emit. ``"qutip"`` (default) returns
+        the QuTiP time-dependent list format
+        ``[[A_φ, cos_coeff], [A_⊥, sin_coeff]]`` with
+        :mod:`math`-based coefficient callables — the form
+        :func:`qutip.mesolve` consumes. ``"jax"`` returns a
+        Dynamiqs :class:`TimeQArray`
+        ``dq.modulated(jnp.cos(δt), A_φ) + dq.modulated(jnp.sin(δt), A_⊥)``
+        consumable by :func:`iontrap_dynamics.sequences.solve`
+        under ``backend="jax"``. β.4.1 of the JAX-backend track;
+        see ``docs/phase-2-jax-time-dep-design.md`` for the design
+        rationale and staging. Requires the ``[jax]`` extras; a
+        :class:`~iontrap_dynamics.exceptions.BackendError` with
+        install hint fires if they're missing. Unknown backend
+        strings raise :class:`ConventionError`.
 
     Returns
     -------
-    list[object]
-        Time-dependent list-format Hamiltonian
+    object
+        With ``backend="qutip"``: a ``list[object]`` time-dependent
+        list-format Hamiltonian
         ``[[A_φ, cos(δt)], [A_⊥, sin(δt)]]`` with
         ``A_φ = (Ω/2) σ_φ`` and
         ``A_⊥ = (Ω/2) σ_{φ+π/2}`` — each time-independent and
-        Hermitian. Ready for
-        :func:`iontrap_dynamics.sequences.solve` or
-        ``qutip.mesolve``.
+        Hermitian. With ``backend="jax"``: a
+        :class:`dynamiqs.TimeQArray` encoding the same form with
+        JAX-traceable coefficients.
 
     Raises
     ------
     ConventionError
         If ``drive.detuning_rad_s == 0`` — route zero-detuning
         cases through :func:`carrier_hamiltonian`, which returns a
-        time-independent Qobj without list-format overhead.
+        time-independent Qobj without list-format overhead. Also
+        raised if ``backend`` is an unknown string.
+    BackendError
+        If ``backend="jax"`` but the ``[jax]`` optional dependencies
+        are not importable.
     IndexError
         If ``ion_index`` is out of range.
 
@@ -295,6 +317,11 @@ def detuned_carrier_hamiltonian(
             "carrier_hamiltonian, which returns a time-independent Qobj "
             "without list-format overhead."
         )
+    if backend not in {"qutip", "jax"}:
+        raise ConventionError(
+            f"detuned_carrier_hamiltonian(backend={backend!r}): unknown "
+            "backend; expected one of ['qutip', 'jax']."
+        )
 
     omega = drive.carrier_rabi_frequency_rad_s
     phi = drive.phase_rad
@@ -310,6 +337,25 @@ def detuned_carrier_hamiltonian(
 
     a_phi = (omega / 2.0) * s_phi
     a_perp = (omega / 2.0) * s_perp
+
+    if backend == "jax":
+        # Lazy-guard the [jax] extras with a clean BackendError before
+        # any jax / dynamiqs import fires; same install-hint as
+        # solve(backend="jax") so users see one consistent failure
+        # mode across the library's JAX path.
+        from .backends.jax._core import _require_jax
+
+        _require_jax()
+        import dynamiqs as dq
+
+        from .backends.jax._coefficients import (
+            cos_detuning_jax,
+            sin_detuning_jax,
+        )
+
+        return dq.modulated(cos_detuning_jax(delta), a_phi) + dq.modulated(
+            sin_detuning_jax(delta), a_perp
+        )
 
     def cos_coeff(t: float, args: Any) -> float:
         return math.cos(delta * t)

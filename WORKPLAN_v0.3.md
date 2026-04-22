@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3.4 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main`) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 opener and full tutorial bundle on `main` under `[Unreleased]`; see §5.2
+Version 0.3.5 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -373,6 +373,50 @@ Added after `v0.2.0` was tagged (Dispatch W on 2026-04-21) to record subsequent 
 
 **Consequence for the Endorsement Marker.** The bottom Endorsement Marker is updated in the same commit as this amendment to bump the `CONVENTIONS.md` reference from v0.1 to v0.2 (frozen 2026-04-21 at the `v0.2.0` release, per §5.1) and to list §4.0, §5.0, §5.1, §5.2 in its workplan-version line.
 
+### 5.3 — β.4 time-dependent Hamiltonian track as v0.3.x follow-up (2026-04-22) *(Coastline, new in v0.3.5)*
+
+Added when Dispatch UU (β.4.1) landed on `main` —
+`detuned_carrier_hamiltonian` gains a `backend=` kwarg; new
+`src/iontrap_dynamics/backends/jax/_coefficients.py` module supplies
+JAX-traceable coefficient factories. Records the scoping decision that the
+full β.4 track — `detuned_{carrier, red_sideband, blue_sideband, ms_gate}_hamiltonian`
+and `modulated_carrier_hamiltonian` extended to emit Dynamiqs
+`TimeQArray` on `backend="jax"` — is a **v0.3.x follow-up**, not a
+`v0.3` blocker.
+
+**What the JAX backend covers at `v0.3`.** Time-independent Hamiltonians
+across the four canonical families (carrier, RSB, BSB, MS), storage modes
+OMITTED / EAGER / LAZY, Fock-saturation checks via exp_ops piggyback, and
+cross-backend numeric equivalence on the carrier-Rabi exit criterion — per
+Dispatches RR / RR.1 / SS / TT (β.1 skeleton, β.1 post-review tightening,
+β.2 Dynamiqs integrator, β.3 LAZY storage). The time-dependent Hamiltonian
+surface is extended incrementally under `v0.3.x` point releases.
+
+**Rationale.** β.4 is additive — every affected builder keeps
+`backend="qutip"` as the default, so existing callers observe no behaviour
+change when a v0.3.x point release lands a new sub-dispatch. Shipping `v0.3`
+with the time-independent half honest and complete, then extending under
+`v0.3.x`, matches the workplan's semver commitment: `v0.3` closes the
+Phase 2 milestone; point releases extend the deliverable surface without
+re-opening the phase.
+
+**On `main` toward β.4 at time of this amendment.** Dispatch UU = β.4.1
+(`_coefficients.py` factory module + `detuned_carrier_hamiltonian`
+`backend=` kwarg; cross-backend agreement 1.35e-5 at dim 8, 4 detuned-Rabi
+periods, 1e-3 tolerance bound).
+
+**Remaining β.4 sub-dispatches** (tracked for v0.3.x point releases, per
+`docs/phase-2-jax-time-dep-design.md` §5 staging): β.4.2 detuned RSB / BSB,
+β.4.3 detuned MS gate, β.4.4 `modulated_carrier_hamiltonian` with
+user-supplied `envelope_jax`, β.4.5 cross-backend equivalence benchmark at
+dim ≥ 100 / ≥ 5000 steps.
+
+**Consequence for §5 above.** No re-scoping of Phase 2's target; `v0.3`
+remains the Phase 2 milestone. The §5.2 "Phase 2 JAX backend — the
+substantive remaining Phase 2 deliverable" bullet reads through this
+amendment as: the time-independent portion satisfies `v0.3`; the
+time-dependent portion is scheduled for `v0.3.x` points.
+
 ---
 
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
@@ -646,4 +690,4 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Convention version:** references `CONVENTIONS.md` v0.2 (frozen 2026-04-21 at the `v0.2.0` release, closing §17 measurement layer and §18 systematics layer; §1–16 carry through unchanged from the v0.1 draft).
 **Corporate design version:** **PROVISIONAL — no upstream tag yet** (decision D2). `cd-rules v1.7.0` is the intended target named throughout this document, but `threehouse-plus-ec/cd-rules` had no tagged releases at Phase 0 commencement (2026-04-17) and still does not today. Assets are pinned to a specific commit hash documented in [`assets/SOURCE.md`](assets/SOURCE.md), which carries the authoritative PROVISIONAL banner. Before any v0.1-alpha release the upstream first-tag action must complete, `SOURCE.md` must re-pin to the tagged commit and drop its banner, and only then does the CI hash-drift check activate as a permanent gate. Until then, every reference to `cd-v1.7.0` in this workplan reads as "the CD blueprint we will consume once tagged"; in-flight work continues against the pinned commit per D2.
-**Workplan version:** 0.3.4 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); Phase 2 opener (sesolve dispatch, `solve_ensemble`, benchmark baseline) and twelve tutorials on `main` under `[Unreleased]`.
+**Workplan version:** 0.3.5 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); Phase 2 JAX-backend time-independent surface and twelve tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
