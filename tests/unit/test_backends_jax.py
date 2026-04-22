@@ -332,9 +332,7 @@ class TestLazyStorageOnQutipBackend:
 def _detuned_carrier_invoker(hilbert, drive, *, backend):
     from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
 
-    return detuned_carrier_hamiltonian(
-        hilbert, drive, ion_index=0, backend=backend
-    )
+    return detuned_carrier_hamiltonian(hilbert, drive, ion_index=0, backend=backend)
 
 
 def _detuned_rsb_invoker(hilbert, drive, *, backend):
@@ -404,9 +402,7 @@ def _detuned_ms_gate_invoker(hilbert, drive, *, backend):
             ]
         ),
     )
-    system = IonSystem.homogeneous(
-        species=mg25_plus(), n_ions=2, modes=(com,)
-    )
+    system = IonSystem.homogeneous(species=mg25_plus(), n_ions=2, modes=(com,))
     hilbert_ms = HilbertSpace(system=system, fock_truncations={"com": 4})
     drive_ms = DriveConfig(
         k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
@@ -450,9 +446,7 @@ class TestTimeDependentBuilderKwarg:
             frequency_rad_s=2 * np.pi * 1.5e6,
             eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
         )
-        system = IonSystem.homogeneous(
-            species=mg25_plus(), n_ions=1, modes=(mode,)
-        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
         hilbert = HilbertSpace(system=system, fock_truncations={"axial": 4})
         drive = DriveConfig(
             k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],

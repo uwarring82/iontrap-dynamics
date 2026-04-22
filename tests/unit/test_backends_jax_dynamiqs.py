@@ -122,9 +122,7 @@ class TestCrossBackendEquivalence:
             backend="jax",
         )
         for obs_label in r_qutip.expectations:
-            delta = np.max(
-                np.abs(r_qutip.expectations[obs_label] - r_jax.expectations[obs_label])
-            )
+            delta = np.max(np.abs(r_qutip.expectations[obs_label] - r_jax.expectations[obs_label]))
             assert delta < self.TOLERANCE, (
                 f"observable {obs_label!r}: cross-backend disagreement "
                 f"{delta:.2e} exceeds tolerance {self.TOLERANCE:.0e}"
@@ -158,9 +156,7 @@ class TestCrossBackendEquivalence:
             backend="jax",
         )
         for obs_label in r_se.expectations:
-            delta = np.max(
-                np.abs(r_se.expectations[obs_label] - r_me.expectations[obs_label])
-            )
+            delta = np.max(np.abs(r_se.expectations[obs_label] - r_me.expectations[obs_label]))
             assert delta < self.TOLERANCE
 
 
@@ -613,9 +609,7 @@ class TestTimeDependentDetunedCarrier:
             frequency_rad_s=2 * np.pi * 1.5e6,
             eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
         )
-        system = IonSystem.homogeneous(
-            species=mg25_plus(), n_ions=1, modes=(mode,)
-        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
         hilbert = HilbertSpace(system=system, fock_truncations={"axial": 12})
         drive = DriveConfig(
             k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
@@ -637,9 +631,7 @@ class TestTimeDependentDetunedCarrier:
         from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
 
         hilbert, drive, *_ = detuned_setup
-        H_jax = detuned_carrier_hamiltonian(
-            hilbert, drive, ion_index=0, backend="jax"
-        )
+        H_jax = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0, backend="jax")
         # Exact class is a Dynamiqs internal (SummedTimeQArray); what
         # matters is it's not a QuTiP list, and solve(backend="jax")
         # accepts it (covered by cross-backend test below).
@@ -656,12 +648,8 @@ class TestTimeDependentDetunedCarrier:
         from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
 
         hilbert, drive, psi_0, times, obs = detuned_setup
-        H_qutip = detuned_carrier_hamiltonian(
-            hilbert, drive, ion_index=0, backend="qutip"
-        )
-        H_jax = detuned_carrier_hamiltonian(
-            hilbert, drive, ion_index=0, backend="jax"
-        )
+        H_qutip = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0, backend="qutip")
+        H_jax = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0, backend="jax")
         r_qutip = solve(
             hilbert=hilbert,
             hamiltonian=H_qutip,
@@ -681,12 +669,7 @@ class TestTimeDependentDetunedCarrier:
             backend="jax",
         )
         for obs_label in r_qutip.expectations:
-            delta = np.max(
-                np.abs(
-                    r_qutip.expectations[obs_label]
-                    - r_jax.expectations[obs_label]
-                )
-            )
+            delta = np.max(np.abs(r_qutip.expectations[obs_label] - r_jax.expectations[obs_label]))
             assert delta < self.TOLERANCE, (
                 f"observable {obs_label!r}: cross-backend disagreement "
                 f"{delta:.2e} exceeds tolerance {self.TOLERANCE:.0e}"
@@ -702,9 +685,7 @@ class TestTimeDependentDetunedCarrier:
         from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
 
         hilbert, drive, psi_0, times, obs = detuned_setup
-        H_jax = detuned_carrier_hamiltonian(
-            hilbert, drive, ion_index=0, backend="jax"
-        )
+        H_jax = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0, backend="jax")
         r = solve(
             hilbert=hilbert,
             hamiltonian=H_jax,
@@ -726,9 +707,7 @@ class TestTimeDependentDetunedCarrier:
         from iontrap_dynamics.hamiltonians import detuned_carrier_hamiltonian
 
         hilbert, drive, psi_0, times, obs = detuned_setup
-        H_jax = detuned_carrier_hamiltonian(
-            hilbert, drive, ion_index=0, backend="jax"
-        )
+        H_jax = detuned_carrier_hamiltonian(hilbert, drive, ion_index=0, backend="jax")
         r = solve(
             hilbert=hilbert,
             hamiltonian=H_jax,
@@ -768,9 +747,7 @@ class TestTimeDependentDetunedSideband:
             frequency_rad_s=2 * np.pi * 1.5e6,
             eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
         )
-        system = IonSystem.homogeneous(
-            species=mg25_plus(), n_ions=1, modes=(mode,)
-        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
         hilbert = HilbertSpace(system=system, fock_truncations={"axial": 8})
         drive = DriveConfig(
             k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
@@ -865,12 +842,7 @@ class TestTimeDependentDetunedSideband:
             backend="jax",
         )
         for obs_label in r_qutip.expectations:
-            delta = np.max(
-                np.abs(
-                    r_qutip.expectations[obs_label]
-                    - r_jax.expectations[obs_label]
-                )
-            )
+            delta = np.max(np.abs(r_qutip.expectations[obs_label] - r_jax.expectations[obs_label]))
             assert delta < self.TOLERANCE, (
                 f"{builder_name} {obs_label!r}: cross-backend "
                 f"disagreement {delta:.2e} exceeds tolerance "
@@ -903,9 +875,7 @@ class TestTimeDependentDetunedMSGate:
                 ]
             ),
         )
-        system = IonSystem.homogeneous(
-            species=mg25_plus(), n_ions=2, modes=(com,)
-        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=2, modes=(com,))
         hilbert = HilbertSpace(system=system, fock_truncations={"com": 8})
         drive = DriveConfig(
             k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
@@ -944,9 +914,7 @@ class TestTimeDependentDetunedMSGate:
 
     def test_jax_backend_returns_time_qarray(
         self,
-        ms_gate_setup: tuple[
-            HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float
-        ],
+        ms_gate_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float],
     ) -> None:
         from iontrap_dynamics.hamiltonians import detuned_ms_gate_hamiltonian
 
@@ -964,9 +932,7 @@ class TestTimeDependentDetunedMSGate:
 
     def test_cross_backend_expectation_equivalence(
         self,
-        ms_gate_setup: tuple[
-            HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float
-        ],
+        ms_gate_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float],
     ) -> None:
         from iontrap_dynamics.hamiltonians import detuned_ms_gate_hamiltonian
 
@@ -1006,12 +972,7 @@ class TestTimeDependentDetunedMSGate:
             backend="jax",
         )
         for obs_label in r_qutip.expectations:
-            delta = np.max(
-                np.abs(
-                    r_qutip.expectations[obs_label]
-                    - r_jax.expectations[obs_label]
-                )
-            )
+            delta = np.max(np.abs(r_qutip.expectations[obs_label] - r_jax.expectations[obs_label]))
             assert delta < self.TOLERANCE, (
                 f"MS gate {obs_label!r}: cross-backend disagreement "
                 f"{delta:.2e} exceeds tolerance {self.TOLERANCE:.0e}"
@@ -1039,9 +1000,7 @@ class TestModulatedCarrierUserEnvelope:
             frequency_rad_s=2 * np.pi * 1.5e6,
             eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
         )
-        system = IonSystem.homogeneous(
-            species=mg25_plus(), n_ions=1, modes=(mode,)
-        )
+        system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
         hilbert = HilbertSpace(system=system, fock_truncations={"axial": 4})
         drive = DriveConfig(
             k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
@@ -1149,12 +1108,7 @@ class TestModulatedCarrierUserEnvelope:
             backend="jax",
         )
         for obs_label in r_qutip.expectations:
-            delta = np.max(
-                np.abs(
-                    r_qutip.expectations[obs_label]
-                    - r_jax.expectations[obs_label]
-                )
-            )
+            delta = np.max(np.abs(r_qutip.expectations[obs_label] - r_jax.expectations[obs_label]))
             assert delta < self.TOLERANCE, (
                 f"modulated carrier {obs_label!r}: cross-backend "
                 f"disagreement {delta:.2e} exceeds tolerance "
@@ -1205,12 +1159,7 @@ class TestModulatedCarrierUserEnvelope:
             backend="jax",
         )
         for obs_label in r_mod.expectations:
-            delta = np.max(
-                np.abs(
-                    r_mod.expectations[obs_label]
-                    - r_static.expectations[obs_label]
-                )
-            )
+            delta = np.max(np.abs(r_mod.expectations[obs_label] - r_static.expectations[obs_label]))
             assert delta < self.TOLERANCE
 
 
@@ -1334,7 +1283,6 @@ class TestCoefficientFactories:
         # Closure still uses 1e6: cos(1e6 * 1e-6) = cos(1.0) ≈ 0.5403.
         assert float(coeff(1e-6)) == pytest.approx(np.cos(1.0), abs=1e-10)
         del delta  # appease linters
-
 
 
 # ---------------------------------------------------------------------------

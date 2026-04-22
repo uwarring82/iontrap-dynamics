@@ -190,9 +190,7 @@ def solve_via_jax(
     # side effect on user-controlled JAX config.
     jax.config.update("jax_enable_x64", True)
 
-    tolerance = (
-        fock_tolerance if fock_tolerance is not None else FOCK_CONVERGENCE_TOLERANCE
-    )
+    tolerance = fock_tolerance if fock_tolerance is not None else FOCK_CONVERGENCE_TOLERANCE
     # Defer tolerance validation to the classifier; it already raises
     # ConventionError on non-positive values.
 
@@ -272,8 +270,7 @@ def solve_via_jax(
         # Either way, pass the slice to Qobj with the original dims
         # (which encodes ket-vs-operator) preserved from initial_state.
         states_tuple = tuple(
-            qutip.Qobj(raw_states[i], dims=initial_state.dims)
-            for i in range(raw_states.shape[0])
+            qutip.Qobj(raw_states[i], dims=initial_state.dims) for i in range(raw_states.shape[0])
         )
     elif storage_mode is StorageMode.LAZY:
         # Keep the JAX Array alive through a closure; each loader(i)
@@ -297,19 +294,14 @@ def solve_via_jax(
             normalised = i + n_steps if i < 0 else i
             if not 0 <= normalised < n_steps:
                 raise IndexError(
-                    f"states_loader index {i} out of range for a "
-                    f"trajectory of length {n_steps}."
+                    f"states_loader index {i} out of range for a trajectory of length {n_steps}."
                 )
-            return qutip.Qobj(
-                np.asarray(jax_states[normalised]), dims=dims_snapshot
-            )
+            return qutip.Qobj(np.asarray(jax_states[normalised]), dims=dims_snapshot)
 
         states_loader = _lazy_loader
     # StorageMode.OMITTED: leave both None.
 
-    resolved_backend_name = (
-        backend_name if backend_name is not None else "jax-dynamiqs"
-    )
+    resolved_backend_name = backend_name if backend_name is not None else "jax-dynamiqs"
     resolved_backend_version = f"dynamiqs-{dq.__version__}+jax-{jax.__version__}"
 
     metadata = ResultMetadata(
