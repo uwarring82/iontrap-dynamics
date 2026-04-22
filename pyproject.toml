@@ -278,6 +278,9 @@ check_untyped_defs = true
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# Guard against environments where the editable-install .pth is not honoured
+# (e.g. macOS UF_HIDDEN flag on site-packages/*.pth defeats site.addpackage).
+pythonpath = ["src"]
 addopts = [
     "-ra",
     "--strict-markers",
