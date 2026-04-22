@@ -16,15 +16,20 @@ python -m pip install -e ".[dev,docs]"
 
 ## What you can import today
 
-The implemented surface is still Phase 0 infrastructure rather than full solver
-coverage, but the foundational contracts are live:
+As of `v0.2.0` + the Phase 2 JAX-backend track on `main`, the library
+ships the full Phase 0 + Phase 1 surface plus the JAX backend:
 
-- `iontrap_dynamics.exceptions`
-- `iontrap_dynamics.conventions`
-- `iontrap_dynamics.results`
-- `iontrap_dynamics.cache`
-- `iontrap_dynamics.analytic`
-- `iontrap_dynamics.invariants`
+- `iontrap_dynamics.exceptions`, `.conventions`, `.results`, `.cache`,
+  `.analytic`, `.invariants` (Phase 0 foundations)
+- `.species`, `.drives`, `.modes`, `.system`, `.hilbert`, `.states`,
+  `.operators`, `.hamiltonians`, `.observables`, `.sequences`
+  (Phase 1 physics)
+- `.measurement`, `.systematics`, `.entanglement` (Phase 1 v0.2
+  layers: finite-shot sampling + apparatus systematics + entanglement
+  observables)
+- `.backends.jax` (Phase 2 on `main`: opt in via `backend="jax"` on
+  `solve` and on the time-dependent Hamiltonian builders; install
+  with the `[jax]` extras)
 
 ## Example
 

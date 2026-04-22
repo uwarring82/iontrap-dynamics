@@ -58,11 +58,15 @@ Storage modes (CONVENTIONS.md §0.E)
   tuple and attached to :attr:`TrajectoryResult.states`. Use when
   downstream code needs per-time density matrices (Wigner plots,
   entanglement-of-formation, partial traces).
-- ``StorageMode.LAZY`` — not supported from :func:`solve` in v0.1
-  because mesolve eagerly materialises all states anyway; there's no
-  per-call wins for lazy access here. Callers who want a
-  lazy-evaluated :class:`TrajectoryResult` can construct one manually
-  by wrapping a callable around an already-materialised state list.
+- ``StorageMode.LAZY`` — backend-dependent. On ``backend="qutip"``
+  it is **rejected** at validation time because :func:`qutip.mesolve`
+  eagerly materialises all states anyway, so a lazy loader buys
+  nothing. On ``backend="jax"`` (Dispatch β.3 and later) it is
+  **supported**: the returned :class:`TrajectoryResult` has
+  ``states=None`` and a callable ``states_loader(i) -> Qobj`` that
+  closes over the Dynamiqs-returned JAX array and materialises one
+  time-slice per access. No bulk host copy until the caller fetches
+  a state.
 
 Warnings
 --------
@@ -89,10 +93,17 @@ from __future__ import annotations
 
 import warnings as _warnings
 from collections.abc import Iterable, Sequence
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 import qutip
+
+if TYPE_CHECKING:
+    # Runtime-optional: only installed with the [jax] extras.
+    # Importing inside TYPE_CHECKING keeps the runtime import of
+    # ``iontrap_dynamics.sequences`` JAX-free while the type alias
+    # below can still reference the class for mypy.
+    from dynamiqs import TimeQArray
 
 from .conventions import FOCK_CONVERGENCE_TOLERANCE
 from .exceptions import (
@@ -111,12 +122,23 @@ from .results import (
     WarningSeverity,
 )
 
-# A Hamiltonian for mesolve can be a single Qobj (time-independent) or a
-# list in QuTiP's time-dependent format. The list holds either Qobj's
-# (constant pieces) or [Qobj, callable] / [Qobj, ndarray] pairs
-# (time-dependent pieces) — we type it loosely to match mesolve's
-# polymorphism without pretending to model each variant.
-MesolveHamiltonian: TypeAlias = qutip.Qobj | list[object]
+# A Hamiltonian accepted by :func:`solve` can be:
+#
+# * a single :class:`qutip.Qobj` — time-independent on either backend;
+# * a QuTiP time-dependent list (``[[Qobj, callable], ...]`` or
+#   ``[Qobj, [Qobj, ndarray], ...]``) — the scipy-traced form consumed
+#   by the QuTiP backend; rejected on ``backend="jax"`` with a
+#   pointer to the builder's ``backend="jax"`` kwarg;
+# * a :class:`dynamiqs.TimeQArray` (e.g. ``ModulatedTimeQArray`` from
+#   :func:`dynamiqs.modulated` or ``SummedTimeQArray`` from their sum)
+#   — consumed by the JAX backend; β.4's structured detuning builders
+#   and :func:`modulated_carrier_hamiltonian` emit this form when
+#   called with ``backend="jax"``.
+#
+# ``TimeQArray`` is imported under ``TYPE_CHECKING`` only — it lives
+# in the optional ``[jax]`` extras. The runtime type of the alias is
+# loose by design.
+MesolveHamiltonian: TypeAlias = "qutip.Qobj | list[object] | TimeQArray"
 
 
 def _fock_saturation_warnings(

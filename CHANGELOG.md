@@ -8,6 +8,91 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+### Fixed
+
+#### Post-β.4 review response (Dispatch ZZ)
+
+Addresses five findings from an architect-stance review of the
+β.4 track, in priority order.
+
+- **Medium — JAX backend silently relabeled archival IonSystems.**
+  `solve_via_jax` wrote `ResultMetadata.convention_version` from
+  the library-current `CONVENTION_VERSION` module constant
+  instead of `hilbert.system.convention_version`. The QuTiP
+  path did the right thing (sequences.py:446). A user who
+  archived an `IonSystem(..., convention_version="archive-v1.9")`
+  and re-ran it on the JAX backend got the library-current
+  string written into their result metadata — silent breakage
+  of the archival contract. Fixed: JAX path now reads from
+  `hilbert.system.convention_version`, matching the QuTiP
+  behaviour. Removed the now-unused `CONVENTION_VERSION` import
+  from `backends/jax/_core.py`.
+- **Medium — public type surface excluded `TimeQArray`.**
+  `MesolveHamiltonian` type alias in `sequences.py` was
+  `qutip.Qobj | list[object]`; typed callers passing a β.4
+  builder's JAX output (a `SummedTimeQArray` or
+  `ModulatedTimeQArray`) would get a mypy false negative on
+  the documented happy path. Fixed: widened the alias to
+  `"qutip.Qobj | list[object] | TimeQArray"` with a
+  `TYPE_CHECKING`-guarded import of `dynamiqs.TimeQArray`.
+  Same pattern applied to `solve_via_jax`'s parameter and to
+  the five β.4 builder return types (all now
+  `"list[object] | TimeQArray"` instead of bare `object`).
+  Runtime behaviour unchanged; mypy sees the correct union
+  when `[jax]` extras are installed.
+- **Low — stale "future / skeleton" text across user-facing
+  docs.** Six locations updated: `backends/jax/__init__.py`
+  module docstring (was "β.1 skeleton only"; now records
+  β.1–β.4 landed), `sequences.py` storage-modes docstring
+  (LAZY on JAX now supported via the β.3 loader), README scope
+  bullet ("JAX / Dynamiqs later" → opt-in backend with
+  pointer to benchmarks doc), README `.[jax]` extras
+  description ("future backend track" → "Phase 2 β.1–β.4 on
+  `main`"), `docs/index.md` hero ("JAX/Dynamiqs-ready boundary
+  later" → both backends on the same solve() surface),
+  `docs/getting-started.md` "What you can import today" (was
+  "still Phase 0 infrastructure"; now lists the full Phase 0
+  + Phase 1 + Phase 2 surface).
+- **Coverage gap — `solve_ensemble(..., backend="jax")` had no
+  real execution test.** The existing ensemble-JAX tests
+  covered kwarg validation / forwarding only. Added
+  `test_backends_jax_dynamiqs.py::TestSolveEnsembleOnJaxBackend::test_serial_ensemble_returns_per_trial_results`
+  — three trials at different Rabi frequencies, `n_jobs=1`,
+  `backend="jax"`. Asserts `TrajectoryResult` shape, `backend_name`
+  tag, and that different Hamiltonians produce observably
+  different trajectories (not a cached per-trial return).
+- **Risk — `backend_name` versioning policy undocumented.**
+  The `"jax-dynamiqs"` schema-commitment tag landed in β.2 but
+  the versioning policy for a future integrator swap was
+  deferred to §6 Q10 of the design note. Answered in the
+  design note: `backend_name` is frozen per **backend-family
+  identity**, not per integrator implementation. A hypothetical
+  swap (e.g. Dynamiqs → hand-rolled diffrax under the same
+  `backend="jax"` kwarg) requires a **new tag** (`"jax-diffrax"`),
+  not a version suffix on the existing one. Rationale: users'
+  cached `.npz` manifests already carry `"jax-dynamiqs"`; a
+  suffix bump would silently invalidate those on load-time
+  cross-check, while a new family-level string makes the
+  change visible at the `load_trajectory` call site and in
+  user-side post-hoc filtering. Complementary
+  `backend_version` (the `dynamiqs-{ver}+jax-{ver}` tuple)
+  still carries the precise dependency footprint.
+
+New test — convention_version archival regression:
+`TestResultMetadata::test_convention_version_honours_archival_pin`
+builds a pinned `IonSystem(convention_version="archive-vTEST.0.0")`,
+runs both backends, and asserts both report the archival
+version. Catches future regressions of the Medium-1 issue.
+Sibling `test_convention_version_read_from_system` replaced the
+old `test_convention_version_inherited` (which encoded the
+buggy contract). +2 tests on the venv suite; base CI unchanged.
+
+Test counts:
+- Base CI (no extras): 820 passing (unchanged — no new
+  base-CI tests in this dispatch).
+- With `[jax]` extras (venv / opt-in CI): 867 → 869 passing
+  (+2: archival-pin regression + ensemble JAX execution).
+
 ### Added
 
 #### Phase 2 — β.4.5 cross-backend benchmark at scale (Dispatch YY)

@@ -209,15 +209,15 @@ class TestResultMetadata:
         assert dq.__version__ in version
         assert jax.__version__ in version
 
-    def test_convention_version_inherited(
+    def test_convention_version_read_from_system(
         self,
         carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
     ) -> None:
-        # The JAX path writes the library's CONVENTION_VERSION into
-        # metadata — same contract as the QuTiP path. No per-backend
-        # convention divergence (that would be a schema break).
-        from iontrap_dynamics.conventions import CONVENTION_VERSION
-
+        # The JAX path must honour whatever ``convention_version`` the
+        # caller pinned on the IonSystem — not the library-current
+        # CONVENTION_VERSION module constant. Same contract as the
+        # QuTiP path (sequences.py reads from ``hilbert.system``).
+        # For the default-pinned system these two values coincide.
         hilbert, ham, psi_0, times, obs = carrier_fock12
         r = solve(
             hilbert=hilbert,
@@ -228,7 +228,70 @@ class TestResultMetadata:
             storage_mode=StorageMode.OMITTED,
             backend="jax",
         )
-        assert r.metadata.convention_version == CONVENTION_VERSION
+        assert r.metadata.convention_version == hilbert.system.convention_version
+
+    def test_convention_version_honours_archival_pin(
+        self,
+    ) -> None:
+        # Regression against silent relabeling of archived results.
+        # A user who archives an IonSystem with a pinned
+        # ``convention_version="archive-vX.Y"`` and re-runs it on the
+        # JAX backend must get that archival string in the result
+        # metadata — not the library-current CONVENTION_VERSION.
+        # Without this pin, cached results would round-trip under the
+        # wrong convention label on the JAX path while the QuTiP path
+        # does the right thing (see sequences.py line 446).
+        from iontrap_dynamics.conventions import CONVENTION_VERSION
+        from iontrap_dynamics.system import IonSystem
+
+        pinned_version = "archive-vTEST.0.0"
+        # Must differ from the library-current string so the test
+        # actually catches a regression.
+        assert pinned_version != CONVENTION_VERSION
+
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        pinned_system = IonSystem(
+            species_per_ion=(mg25_plus(),),
+            modes=(mode,),
+            convention_version=pinned_version,
+        )
+        hilbert = HilbertSpace(system=pinned_system, fock_truncations={"axial": 4})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+            phase_rad=0.0,
+        )
+        from iontrap_dynamics.hamiltonians import carrier_hamiltonian
+
+        ham = carrier_hamiltonian(hilbert, drive, ion_index=0)
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(4, 0))
+        times = np.linspace(0.0, 1e-6, 20)
+
+        r_jax = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=[spin_z(hilbert, 0)],
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        r_qutip = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=[spin_z(hilbert, 0)],
+            storage_mode=StorageMode.OMITTED,
+            backend="qutip",
+        )
+        # Both backends must report the archival version — parity check.
+        assert r_jax.metadata.convention_version == pinned_version
+        assert r_qutip.metadata.convention_version == pinned_version
 
     def test_backend_name_override_honoured(
         self,
@@ -1150,6 +1213,65 @@ class TestModulatedCarrierUserEnvelope:
                 )
             )
             assert delta < self.TOLERANCE
+
+
+# ---------------------------------------------------------------------------
+# solve_ensemble(..., backend="jax") — real execution coverage. The
+# kwarg-validation tests in test_backends_jax.py exercise the
+# dispatch surface; this test confirms that the full loop through
+# joblib + solve_via_jax + dq.sesolve actually produces the expected
+# TrajectoryResult tuple.
+# ---------------------------------------------------------------------------
+
+
+class TestSolveEnsembleOnJaxBackend:
+    def test_serial_ensemble_returns_per_trial_results(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # Three trials at slightly different Rabi frequencies —
+        # enough to distinguish trajectories so the test actually
+        # exercises the per-Hamiltonian dispatch, not just the
+        # kwarg-forwarding path. n_jobs=1 avoids joblib's
+        # process-spawn overhead and keeps the test deterministic
+        # and self-contained on CPU.
+        from iontrap_dynamics.hamiltonians import carrier_hamiltonian
+        from iontrap_dynamics.sequences import solve_ensemble
+
+        hilbert, _, psi_0, times, obs = carrier_fock12
+        rabis = [2 * np.pi * rate for rate in (0.9e6, 1.0e6, 1.1e6)]
+        hamiltonians = tuple(
+            carrier_hamiltonian(
+                hilbert,
+                DriveConfig(
+                    k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+                    carrier_rabi_frequency_rad_s=omega,
+                    phase_rad=0.0,
+                ),
+                ion_index=0,
+            )
+            for omega in rabis
+        )
+        results = solve_ensemble(
+            hilbert=hilbert,
+            hamiltonians=hamiltonians,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+            n_jobs=1,
+        )
+        assert len(results) == len(rabis)
+        for r in results:
+            assert isinstance(r, TrajectoryResult)
+            assert r.metadata.backend_name == "jax-dynamiqs"
+        # Different Rabi frequencies produce observably different
+        # σ_z trajectories — confirms each trial actually integrated
+        # its own Hamiltonian rather than sharing a cached result.
+        sz = [r.expectations["sigma_z_0"] for r in results]
+        assert float(np.max(np.abs(sz[0] - sz[1]))) > 1e-3
+        assert float(np.max(np.abs(sz[1] - sz[2]))) > 1e-3
 
 
 # ---------------------------------------------------------------------------

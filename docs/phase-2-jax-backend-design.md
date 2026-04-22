@@ -537,13 +537,27 @@ implementation start.
 8. **GPU.** First-class deliverable (CI runs a GPU smoke test) or
    opt-in-for-users-who-install-it-themselves?
 9. **Design choice α / α′ / β / γ.** Or a hybrid.
-10. **`backend_name` versioning policy (from §4.2).** Is
-    `backend_name` frozen per backend family (so changing the
-    under-the-hood integrator invalidates cached results), or
-    versioned per implementation swap (e.g.
-    `"jax-dynamiqs-v0.5"` → `"jax-diffrax-v0.6"` when swapping)?
-    Must be answered before α.2 / β.1 writes a tag into any
-    cache artefact.
+10. **`backend_name` versioning policy (from §4.2).** **Answered:**
+    `backend_name` is **frozen per backend-family identity**. The
+    library ships `"jax-dynamiqs"` today (committed in Dispatch SS /
+    β.2). A future swap of the under-the-hood integrator under the
+    same `backend="jax"` kwarg — e.g. replacing Dynamiqs with a
+    hand-rolled diffrax path — requires a **new tag**
+    (`"jax-diffrax"`), not a version suffix on the existing one.
+    Rationale: users' cached `.npz` manifests already carry
+    `"jax-dynamiqs"`; a suffix bump would silently invalidate those
+    on load-time cross-check, while a new family-level string makes
+    the change visible at both the `load_trajectory` call site and
+    in user-side post-hoc filtering. A version-suffix scheme would
+    only make sense if Dynamiqs changed API in a way that alters
+    numerical output under the same library code — which is why
+    `backend_version` (the complementary `dynamiqs-{ver}+jax-{ver}`
+    tuple) carries the precise dependency footprint separately.
+    Given β.4.5's null result confirms positioning, not
+    performance, as the Phase 2 JAX value, there is no near-term
+    motivation to swap integrators; if γ or a future performance
+    path ever does swap, the new-tag policy keeps cache integrity
+    intact.
 11. **QuTiP-only prior benchmark (from §1).** If A1 = performance,
     is a QuTiP-only scaling benchmark at dim ≥ 300 / long
     trajectories a precondition? Per §10, treated as a standalone

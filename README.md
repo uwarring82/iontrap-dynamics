@@ -217,7 +217,9 @@ Planned capabilities include:
 - Standard ion-trap Hamiltonians: carrier, sideband, Mølmer-Sørensen,
   parametric modulation, and stroboscopic drives
 - Standard state preparations and observables for spins and motional modes
-- Backend-agnostic architecture, with QuTiP first and JAX/Dynamiqs later
+- Backend-agnostic architecture: QuTiP reference backend + JAX /
+  Dynamiqs backend (opt-in via `backend="jax"` — see
+  `docs/benchmarks.md` for when each is the right choice)
 
 Explicitly out of scope:
 
@@ -240,7 +242,9 @@ Optional groups:
 
 - `.[docs]` for documentation tooling
 - `.[plot]` for plotting helpers used by examples and tutorials
-- `.[jax]` for the future JAX/Dynamiqs backend track
+- `.[jax]` for the JAX / Dynamiqs backend (Phase 2 β.1–β.4 on
+  `main`: opt in via `backend="jax"` on `solve` and on the
+  time-dependent Hamiltonian builders)
 
 Example:
 

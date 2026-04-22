@@ -57,11 +57,12 @@ inputs.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 import qutip
 
-from ...conventions import CONVENTION_VERSION, FOCK_CONVERGENCE_TOLERANCE
+from ...conventions import FOCK_CONVERGENCE_TOLERANCE
 from ...exceptions import BackendError
 from ...hilbert import HilbertSpace
 from ...observables import Observable
@@ -70,6 +71,12 @@ from ...results import (
     StorageMode,
     TrajectoryResult,
 )
+
+if TYPE_CHECKING:
+    # Optional dep: only installed with the [jax] extras. Keeps the
+    # runtime import of this module JAX-free so the availability
+    # check at _require_jax() fires cleanly.
+    from dynamiqs import TimeQArray
 
 
 def _is_jax_available() -> bool:
@@ -115,7 +122,7 @@ def _require_jax() -> None:
 def solve_via_jax(
     *,
     hilbert: HilbertSpace,
-    hamiltonian: qutip.Qobj | list[object],
+    hamiltonian: "qutip.Qobj | list[object] | TimeQArray",
     initial_state: qutip.Qobj,
     times: np.ndarray,
     observables: Sequence[Observable] = (),
@@ -306,7 +313,13 @@ def solve_via_jax(
     resolved_backend_version = f"dynamiqs-{dq.__version__}+jax-{jax.__version__}"
 
     metadata = ResultMetadata(
-        convention_version=CONVENTION_VERSION,
+        # Mirror the QuTiP path (sequences.py): honour whatever
+        # convention_version the caller pinned on the IonSystem.
+        # Using the CONVENTION_VERSION module constant directly would
+        # silently re-label archived / intentionally-pinned systems
+        # under the library-current string, breaking the archival
+        # contract. The system itself holds the authoritative value.
+        convention_version=hilbert.system.convention_version,
         request_hash=request_hash,
         backend_name=resolved_backend_name,
         backend_version=resolved_backend_version,

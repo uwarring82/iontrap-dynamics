@@ -13,7 +13,7 @@
     <a class="hero-button" href="framework/">See the framework</a>
   </div>
   <p class="hero-meta">
-    QuTiP-first architecture now. JAX/Dynamiqs-ready backend boundary later.
+    QuTiP reference backend + opt-in JAX / Dynamiqs backend on the same solve() surface.
   </p>
 </section>
 

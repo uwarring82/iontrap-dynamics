@@ -79,7 +79,7 @@ from __future__ import annotations
 import cmath
 import math
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import qutip
@@ -89,6 +89,13 @@ from .drives import DriveConfig
 from .exceptions import ConventionError
 from .hilbert import HilbertSpace
 from .operators import sigma_minus_ion, sigma_plus_ion, sigma_x_ion, sigma_y_ion
+
+if TYPE_CHECKING:
+    # ``TimeQArray`` is only importable with the [jax] extras. The β.4
+    # builders return this type on the ``backend="jax"`` branch; typing
+    # it under TYPE_CHECKING lets typed callers see the correct union
+    # without forcing JAX to be installed.
+    from dynamiqs import TimeQArray
 
 
 def carrier_hamiltonian(
@@ -189,7 +196,7 @@ def detuned_carrier_hamiltonian(
     *,
     ion_index: int,
     backend: str = "qutip",
-) -> object:
+) -> "list[object] | TimeQArray":
     """Return the off-resonance carrier Hamiltonian in QuTiP's
     time-dependent list format (or, with ``backend="jax"``, in
     Dynamiqs's :class:`TimeQArray` form).
@@ -728,7 +735,7 @@ def detuned_red_sideband_hamiltonian(
     ion_index: int,
     detuning_rad_s: float,
     backend: str = "qutip",
-) -> object:
+) -> "list[object] | TimeQArray":
     """Return the near-red-sideband Hamiltonian in QuTiP's time-dependent
     list format (or, with ``backend="jax"``, as a Dynamiqs
     :class:`TimeQArray`).
@@ -892,7 +899,7 @@ def detuned_blue_sideband_hamiltonian(
     ion_index: int,
     detuning_rad_s: float,
     backend: str = "qutip",
-) -> object:
+) -> "list[object] | TimeQArray":
     """Return the near-blue-sideband Hamiltonian in QuTiP's time-dependent
     list format (or, with ``backend="jax"``, as a Dynamiqs
     :class:`TimeQArray`).
@@ -1122,7 +1129,7 @@ def detuned_ms_gate_hamiltonian(
     ion_indices: tuple[int, int],
     detuning_rad_s: float,
     backend: str = "qutip",
-) -> object:
+) -> "list[object] | TimeQArray":
     """Return the gate-closing Mølmer–Sørensen Hamiltonian in QuTiP's
     time-dependent list format (or, with ``backend="jax"``, as a
     Dynamiqs :class:`TimeQArray`).
@@ -1344,7 +1351,7 @@ def modulated_carrier_hamiltonian(
     envelope: Callable[[float], float],
     envelope_jax: Callable[[float], object] | None = None,
     backend: str = "qutip",
-) -> object:
+) -> "list[object] | TimeQArray":
     """Return an on-resonance carrier Hamiltonian with a time-dependent
     envelope, in QuTiP's time-dependent list format (or, with
     ``backend="jax"``, as a Dynamiqs :class:`TimeQArray`).
