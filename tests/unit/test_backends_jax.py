@@ -363,6 +363,30 @@ def _detuned_bsb_invoker(hilbert, drive, *, backend):
     )
 
 
+def _modulated_carrier_invoker(hilbert, drive, *, backend):
+    # Modulated carrier demands detuning_rad_s == 0 — override the
+    # shared fixture's non-zero detuning here. Supply a placeholder
+    # envelope_jax so the "missing envelope_jax" ConventionError
+    # doesn't mask the ConventionError / BackendError paths these
+    # parametrized tests exercise.
+    from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
+
+    on_resonance = DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+        carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+        detuning_rad_s=0.0,
+        phase_rad=0.0,
+    )
+    return modulated_carrier_hamiltonian(
+        hilbert,
+        on_resonance,
+        ion_index=0,
+        envelope=lambda t: 1.0,
+        envelope_jax=lambda t: 1.0,
+        backend=backend,
+    )
+
+
 def _detuned_ms_gate_invoker(hilbert, drive, *, backend):
     # MS gate needs two distinct ions; the shared fixture gives a
     # single-ion system, so this invoker ignores `hilbert` and `drive`
@@ -404,6 +428,7 @@ _TIMEDEP_BUILDERS = [
     pytest.param(_detuned_rsb_invoker, id="detuned_red_sideband"),
     pytest.param(_detuned_bsb_invoker, id="detuned_blue_sideband"),
     pytest.param(_detuned_ms_gate_invoker, id="detuned_ms_gate"),
+    pytest.param(_modulated_carrier_invoker, id="modulated_carrier"),
 ]
 
 
@@ -470,11 +495,16 @@ class TestTimeDependentBuilderKwarg:
     ) -> None:
         # Regression: default backend preserves the v0.2 behaviour
         # (QuTiP time-dep list). No user-visible change for callers
-        # who don't pass backend=.
+        # who don't pass backend=. Length varies by builder —
+        # modulated_carrier emits a single-piece list
+        # (``[[H_carrier, coeff]]``); the four detuning builders emit
+        # two-piece lists (cos and sin envelopes paired with two
+        # Hermitian operators). Both shapes are legal QuTiP list
+        # format; the invariant is list-ness + non-empty.
         hilbert, drive = hilbert_drive
         h_default = invoker(hilbert, drive, backend="qutip")
         assert isinstance(h_default, list)
-        assert len(h_default) == 2
+        assert 1 <= len(h_default) <= 2
 
 
 class TestSolveEnsembleForwardsBackend:

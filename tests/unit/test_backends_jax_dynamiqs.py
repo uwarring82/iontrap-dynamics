@@ -44,7 +44,7 @@ dq = pytest.importorskip("dynamiqs")
 jax = pytest.importorskip("jax")
 
 from iontrap_dynamics.drives import DriveConfig
-from iontrap_dynamics.exceptions import ConvergenceError
+from iontrap_dynamics.exceptions import ConventionError, ConvergenceError
 from iontrap_dynamics.hamiltonians import carrier_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
@@ -954,6 +954,202 @@ class TestTimeDependentDetunedMSGate:
                 f"MS gate {obs_label!r}: cross-backend disagreement "
                 f"{delta:.2e} exceeds tolerance {self.TOLERANCE:.0e}"
             )
+
+
+# ---------------------------------------------------------------------------
+# β.4.4 — modulated_carrier_hamiltonian with a user-supplied
+# envelope_jax kwarg. Unlike the four structured detuning builders,
+# the modulated carrier wraps an arbitrary user envelope; the library
+# can't auto-translate scipy-traced callables to JAX, so the caller
+# supplies both envelope= (QuTiP path) and envelope_jax= (JAX path).
+# ---------------------------------------------------------------------------
+
+
+class TestModulatedCarrierUserEnvelope:
+    TOLERANCE = 1e-3
+
+    @pytest.fixture
+    def modulated_setup(
+        self,
+    ) -> tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list]:
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        system = IonSystem.homogeneous(
+            species=mg25_plus(), n_ions=1, modes=(mode,)
+        )
+        hilbert = HilbertSpace(system=system, fock_truncations={"axial": 4})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+            detuning_rad_s=0.0,  # modulated carrier requires on-resonance
+            phase_rad=0.0,
+        )
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(4, 0))
+        times = np.linspace(0.0, 1e-6, 200)
+        observables = [spin_z(hilbert, 0)]
+        return hilbert, drive, psi_0, times, observables
+
+    def test_missing_envelope_jax_raises_convention_error(
+        self,
+        modulated_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
+
+        hilbert, drive, *_ = modulated_setup
+        with pytest.raises(ConventionError, match="envelope_jax"):
+            modulated_carrier_hamiltonian(
+                hilbert,
+                drive,
+                ion_index=0,
+                envelope=lambda t: 1.0,
+                backend="jax",
+            )
+
+    def test_jax_backend_returns_modulated_time_qarray(
+        self,
+        modulated_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # β.4.4 returns a single-piece ModulatedTimeQArray (not a
+        # SummedTimeQArray like the detuning builders) because the
+        # modulated carrier has only one Hermitian piece × envelope.
+        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
+
+        import jax.numpy as jnp
+
+        hilbert, drive, *_ = modulated_setup
+        H_jax = modulated_carrier_hamiltonian(
+            hilbert,
+            drive,
+            ion_index=0,
+            envelope=lambda t: 1.0,
+            envelope_jax=lambda t: jnp.asarray(1.0),
+            backend="jax",
+        )
+        assert not isinstance(H_jax, list)
+        assert H_jax(0.0) is not None
+
+    def test_cross_backend_expectation_equivalence_gaussian_envelope(
+        self,
+        modulated_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # Canonical Gaussian-envelope pulse. Both callables compute
+        # the same function; the numpy version is scipy-traceable,
+        # the jnp version is JAX-traceable. Cross-backend agreement
+        # should be under the library-default 1e-3 bound.
+        from iontrap_dynamics.hamiltonians import modulated_carrier_hamiltonian
+
+        import jax.numpy as jnp
+
+        hilbert, drive, psi_0, times, obs = modulated_setup
+        t0 = 0.5e-6
+        sigma = 0.1e-6
+
+        def env_np(t: float) -> float:
+            return float(np.exp(-0.5 * ((t - t0) / sigma) ** 2))
+
+        def env_jax(t: float) -> object:
+            return jnp.exp(-0.5 * ((t - t0) / sigma) ** 2)
+
+        H_qutip = modulated_carrier_hamiltonian(
+            hilbert,
+            drive,
+            ion_index=0,
+            envelope=env_np,
+            backend="qutip",
+        )
+        H_jax = modulated_carrier_hamiltonian(
+            hilbert,
+            drive,
+            ion_index=0,
+            envelope=env_np,  # unused on JAX path but required by the signature
+            envelope_jax=env_jax,
+            backend="jax",
+        )
+        r_qutip = solve(
+            hilbert=hilbert,
+            hamiltonian=H_qutip,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="qutip",
+        )
+        r_jax = solve(
+            hilbert=hilbert,
+            hamiltonian=H_jax,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        for obs_label in r_qutip.expectations:
+            delta = np.max(
+                np.abs(
+                    r_qutip.expectations[obs_label]
+                    - r_jax.expectations[obs_label]
+                )
+            )
+            assert delta < self.TOLERANCE, (
+                f"modulated carrier {obs_label!r}: cross-backend "
+                f"disagreement {delta:.2e} exceeds tolerance "
+                f"{self.TOLERANCE:.0e}"
+            )
+
+    def test_constant_envelope_reproduces_static_carrier(
+        self,
+        modulated_setup: tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # envelope_jax(t) = 1 should produce dynamics equivalent to
+        # the static carrier on the JAX path (modulo library-default
+        # integrator tolerances).
+        from iontrap_dynamics.hamiltonians import (
+            carrier_hamiltonian,
+            modulated_carrier_hamiltonian,
+        )
+
+        import jax.numpy as jnp
+
+        hilbert, drive, psi_0, times, obs = modulated_setup
+
+        H_mod = modulated_carrier_hamiltonian(
+            hilbert,
+            drive,
+            ion_index=0,
+            envelope=lambda t: 1.0,
+            envelope_jax=lambda t: jnp.asarray(1.0),
+            backend="jax",
+        )
+        H_static = carrier_hamiltonian(hilbert, drive, ion_index=0)
+        r_mod = solve(
+            hilbert=hilbert,
+            hamiltonian=H_mod,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        r_static = solve(
+            hilbert=hilbert,
+            hamiltonian=H_static,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        for obs_label in r_mod.expectations:
+            delta = np.max(
+                np.abs(
+                    r_mod.expectations[obs_label]
+                    - r_static.expectations[obs_label]
+                )
+            )
+            assert delta < self.TOLERANCE
 
 
 # ---------------------------------------------------------------------------

@@ -10,6 +10,77 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — β.4.4 modulated carrier with user envelope_jax (Dispatch XX)
+
+Extends the JAX backend's time-dependent surface to the last of
+the five QuTiP time-dependent builders in `hamiltonians.py`.
+Unlike the four structured detuning builders (β.4.1 – β.4.3),
+the modulated carrier wraps an arbitrary user envelope. Per the
+design note §2.2 dual-callable contract, the caller supplies
+both `envelope=` (scipy-traced, used on the QuTiP path) and
+`envelope_jax=` (JAX-traced, used on the JAX path). The library
+cannot auto-translate user callables — Dynamiqs's
+`dq.modulated(f, Q)` traces `f` under JAX, so user code using
+`numpy` / `math` on the traced time argument would raise
+`jax.errors.ConcretizationTypeError` at Hamiltonian
+construction time.
+
+- `hamiltonians.modulated_carrier_hamiltonian` gains two new
+  keyword-only parameters: `envelope_jax: Callable | None = None`
+  (JAX-traceable mirror of `envelope`) and
+  `backend: str = "qutip"` (the dispatch discriminator shared
+  with the other β.4 builders). Default behaviour preserves
+  v0.2 — existing callers who don't pass either new kwarg see
+  a QuTiP list unchanged.
+- `backend="jax"` dispatches to
+  `dq.modulated(envelope_jax, H_carrier)` — a single
+  `ModulatedTimeQArray` piece (not a sum), reflecting the
+  single-operator × single-envelope form of the modulated
+  carrier.
+- Missing `envelope_jax` on `backend="jax"` raises
+  `ConventionError` with an actionable message pointing at the
+  design-note §2.2 rationale and the forthcoming tutorial. No
+  silent translation, no guessed default.
+- Cross-backend agreement on a canonical Gaussian-envelope pulse
+  (`envelope = exp(-½((t - t₀)/σ)²)`, t₀ = 0.5 μs, σ = 0.1 μs,
+  Ω/2π = 1 MHz, dim 8, 1 μs trajectory, 200 samples):
+  max |σ_z diff| = 2.47e-5. Under the 1e-3 test bound. Constant
+  envelope (`envelope_jax = lambda t: jnp.asarray(1.0)`)
+  reproduces the static `carrier_hamiltonian` dynamics on the
+  JAX path within the same bound.
+
+Tests:
+- `tests/unit/test_backends_jax.py::TestTimeDependentBuilderKwarg`
+  now parametrized over all **five** time-dependent builders
+  (carrier, RSB, BSB, MS gate, modulated carrier). 3 tests × 5
+  builders = 15 parametrized invocations. The `modulated_carrier`
+  invoker builds an on-resonance fixture (the shared one has
+  non-zero detuning; modulated carrier requires δ = 0) and
+  supplies a placeholder `envelope_jax` so the install-hint
+  path can be exercised without tripping the
+  "missing envelope_jax" ConventionError. Length assertion
+  loosened from `== 2` to `1 <= len <= 2` because the modulated
+  carrier emits a one-piece list `[[H_carrier, coeff]]`.
+- `tests/unit/test_backends_jax_dynamiqs.py::TestModulatedCarrierUserEnvelope`
+  — 4 tests: missing `envelope_jax` → ConventionError; JAX
+  path returns non-list `ModulatedTimeQArray`; Gaussian-envelope
+  cross-backend equivalence at 1e-3; constant envelope on JAX
+  matches `carrier_hamiltonian` within 1e-3.
+
+Test-surface:
+- Base CI (no extras): 817 → 820 passing (+3; modulated_carrier
+  × 3 parametrized tests).
+- With `[jax]` extras (venv / opt-in CI): 860 → 867 passing (+7;
+  3 parametrized base tests + 4 modulated-carrier integration
+  tests).
+
+**β.4 track status on `main` after β.4.4:** all five time-
+dependent builders in `hamiltonians.py` reach the JAX backend.
+The `backend="qutip"` path is the default on every builder, so
+callers who don't opt in see no behaviour change. Only β.4.5
+remains in the v0.3.x follow-up track (cross-backend benchmark
+at dim ≥ 100 / ≥ 5000 steps) per `WORKPLAN_v0.3.md` §5.3.
+
 #### Phase 2 — β.4.3 detuned MS gate on JAX backend (Dispatch WW)
 
 Extends the JAX backend's time-dependent surface to the two-ion

@@ -1342,9 +1342,12 @@ def modulated_carrier_hamiltonian(
     *,
     ion_index: int,
     envelope: Callable[[float], float],
-) -> list[object]:
+    envelope_jax: Callable[[float], object] | None = None,
+    backend: str = "qutip",
+) -> object:
     """Return an on-resonance carrier Hamiltonian with a time-dependent
-    envelope, in QuTiP's time-dependent list format.
+    envelope, in QuTiP's time-dependent list format (or, with
+    ``backend="jax"``, as a Dynamiqs :class:`TimeQArray`).
 
     .. math::
         H(t) / \\hbar = f(t) \\cdot \\tfrac{\\Omega}{2}
@@ -1403,23 +1406,61 @@ def modulated_carrier_hamiltonian(
         at time ``t`` (SI seconds). Pure-Python; no QuTiP
         ``(t, args)`` signature required — the wrapping is handled
         internally. Must be deterministic (the solver samples it
-        at every sub-step).
+        at every sub-step). Used on the ``backend="qutip"`` path;
+        the JAX path uses ``envelope_jax`` instead (see below).
+    envelope_jax
+        Optional JAX-traceable mirror of ``envelope``. Only consulted
+        when ``backend="jax"``. Must return a :class:`jax.Array`
+        (not a Python scalar) and must be traceable — use
+        :mod:`jax.numpy` primitives, no :mod:`numpy` / :mod:`math`
+        calls on the traced argument, no Python control flow
+        branching on traced values. Dynamiqs's
+        :func:`dynamiqs.modulated` calls this under a JAX trace;
+        a scipy-style callable will raise
+        :class:`jax.errors.ConcretizationTypeError` at
+        Hamiltonian-construction time.
+
+        If ``backend="jax"`` and ``envelope_jax`` is left as ``None``,
+        a :class:`ConventionError` fires with an actionable message
+        — the library cannot auto-translate arbitrary user callables
+        (see ``docs/phase-2-jax-time-dep-design.md`` §2.2).
+    backend
+        Which backend shape to emit. ``"qutip"`` (default) returns
+        the QuTiP time-dependent list format
+        ``[[H_carrier, coeff_fn]]`` using ``envelope``; ``"jax"``
+        returns a Dynamiqs :class:`TimeQArray`
+        ``dq.modulated(envelope_jax, H_carrier)`` using
+        ``envelope_jax``. β.4.4 of the JAX-backend track; see
+        ``docs/phase-2-jax-time-dep-design.md`` §2.2 for the
+        dual-callable rationale. Requires the ``[jax]`` extras; a
+        :class:`~iontrap_dynamics.exceptions.BackendError` fires
+        with install hint when they're missing. Unknown backend
+        strings raise :class:`ConventionError`.
 
     Returns
     -------
-    list[object]
-        QuTiP time-dependent list-format Hamiltonian
+    object
+        With ``backend="qutip"``: a ``list[object]`` QuTiP time-
+        dependent list-format Hamiltonian
         ``[[H_carrier, coeff_fn]]`` ready to pass to
-        :func:`iontrap_dynamics.sequences.solve` or ``qutip.mesolve``.
-        The single-term list (no constant ``H_0`` piece) is intentional
-        — the envelope can legally pass through zero, so there is no
-        always-on contribution to hoist out.
+        :func:`iontrap_dynamics.sequences.solve` or
+        ``qutip.mesolve``. The single-term list (no constant
+        ``H_0`` piece) is intentional — the envelope can legally
+        pass through zero, so there is no always-on contribution
+        to hoist out.
+        With ``backend="jax"``: a :class:`dynamiqs.ModulatedTimeQArray`
+        encoding the same physics with a JAX-traceable envelope.
 
     Raises
     ------
     ConventionError
-        If ``drive.detuning_rad_s != 0``. Detuned modulated carriers
-        require the detuned-carrier dispatch.
+        If ``drive.detuning_rad_s != 0`` (detuned modulated
+        carriers require the detuned-carrier dispatch);
+        if ``backend`` is an unknown string;
+        or if ``backend="jax"`` but ``envelope_jax`` is ``None``.
+    BackendError
+        If ``backend="jax"`` but the ``[jax]`` optional dependencies
+        are not importable.
     IndexError
         If ``ion_index`` is out of range.
     """
@@ -1429,8 +1470,36 @@ def modulated_carrier_hamiltonian(
             f"drives (detuning_rad_s == 0); got {drive.detuning_rad_s!r}. A detuned "
             "modulated carrier requires the detuned-carrier dispatch."
         )
+    if backend not in {"qutip", "jax"}:
+        raise ConventionError(
+            f"modulated_carrier_hamiltonian(backend={backend!r}): unknown "
+            "backend; expected one of ['qutip', 'jax']."
+        )
 
     base_H = carrier_hamiltonian(hilbert, drive, ion_index=ion_index)
+
+    if backend == "jax":
+        if envelope_jax is None:
+            raise ConventionError(
+                "modulated_carrier_hamiltonian(backend='jax') requires "
+                "envelope_jax= — a JAX-traceable mirror of envelope. "
+                "The library cannot auto-translate arbitrary user "
+                "callables: Dynamiqs's dq.modulated traces the "
+                "envelope under JAX, so it must use jax.numpy (not "
+                "numpy or math) and must not branch on the traced "
+                "`t` argument. See docs/phase-2-jax-time-dep-design.md "
+                "§2.2 for the dual-callable rationale; Tutorial "
+                "'Modulated carrier on JAX' shows a working "
+                "Gaussian-envelope example."
+            )
+        # Guard BEFORE importing any JAX module; same pattern as the
+        # detuned-carrier JAX branch (see that builder for reasoning).
+        from .backends.jax._core import _require_jax
+
+        _require_jax()
+        import dynamiqs as dq
+
+        return dq.modulated(envelope_jax, base_H)
 
     def coeff(t: float, args: Any) -> float:
         # QuTiP 5 passes (t, args) to coefficient callables; args is unused
