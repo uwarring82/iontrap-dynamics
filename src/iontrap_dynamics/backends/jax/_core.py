@@ -6,9 +6,11 @@ This module is private. It is imported lazily from
 ``backend="jax"``, so the library's top-level import does not require
 the ``[jax]`` extras to be installed.
 
-Dispatch β.2 replaces the β.1 :class:`NotImplementedError` stub with
-a real Dynamiqs :func:`sesolve` / :func:`mesolve` integrator. The
-module:
+Dispatch β.2 replaced the β.1 :class:`NotImplementedError` stub
+with a real Dynamiqs :func:`sesolve` / :func:`mesolve` integrator.
+Dispatch β.3 lifted the :class:`StorageMode.LAZY` restriction by
+wiring a JAX-backed ``states_loader`` that materialises one
+``Qobj`` per index on demand. The module:
 
 * Forces JAX x64 at solve entry so the integrator runs in complex128
   (the library's CONVENTIONS.md §1 unit commitment). This is a
@@ -27,9 +29,11 @@ module:
   ``OMITTED`` → no state materialisation (expectations already
   computed JAX-side via ``exp_ops``); ``EAGER`` → convert each time
   slice back to :class:`qutip.Qobj` with the original dims;
-  ``LAZY`` → not yet implemented (β.3 scope — needs thought about
-  JAX-array lifetime and whether the loader holds a JAX reference
-  or reconverts per access).
+  ``LAZY`` → ``states_loader`` closes over the JAX
+  :class:`~jax.Array` returned by Dynamiqs and materialises one
+  ``Qobj`` per ``loader(i)`` call via :func:`numpy.asarray` slicing.
+  The full trajectory is never bulk-copied to NumPy; per-index
+  cost is one dense slice.
 * Runs the CONVENTIONS.md §13 Fock-truncation check by piggybacking
   per-mode top-Fock projectors onto the Dynamiqs ``exp_ops`` list,
   so no state materialisation is needed to classify. The shared
@@ -40,8 +44,14 @@ module:
 Time-dependent Hamiltonians (QuTiP list-format with
 callables / piecewise arrays) are not yet supported on the JAX
 backend — Dynamiqs uses its own :class:`TimeQArray` wrapping for
-that, and the translation is β.3 scope. A clear :class:`NotImplementedError`
-fires on list-shaped Hamiltonian inputs.
+that, and the translation is β.4 scope (deferred from β.3 once
+investigation revealed Dynamiqs's :func:`dynamiqs.modulated`
+requires JAX-traceable coefficient callables, whereas the library's
+current time-dep builders emit scipy-traced callables using
+:mod:`numpy` and :mod:`math`; bridging the two is an architectural
+decision, not a mechanical translation). A clear
+:class:`NotImplementedError` fires on list-shaped Hamiltonian
+inputs.
 """
 
 from __future__ import annotations
@@ -138,16 +148,13 @@ def solve_via_jax(
     if isinstance(hamiltonian, list):
         raise NotImplementedError(
             "solve(backend='jax') does not yet accept QuTiP time-"
-            "dependent Hamiltonian lists (Dispatch β.3 scope). Only "
-            "time-independent Qobj Hamiltonians are supported in β.2."
-        )
-    if storage_mode is StorageMode.LAZY:
-        raise NotImplementedError(
-            "solve(backend='jax', storage_mode=StorageMode.LAZY) is "
-            "scoped for Dispatch β.3 — JAX-array lifetime and "
-            "loader-per-access conversion semantics need a design "
-            "pass before wiring. Use StorageMode.OMITTED (default) "
-            "or StorageMode.EAGER."
+            "dependent Hamiltonian lists (Dispatch β.4 scope). "
+            "Dynamiqs's dq.modulated requires JAX-traceable "
+            "coefficient callables (jnp-based), whereas the library's "
+            "builders emit scipy-traced callables (numpy / math). "
+            "Bridging the two is an architectural decision — see "
+            "docs/phase-2-jax-backend-design.md §3 Axis C. Only "
+            "time-independent Qobj Hamiltonians are supported today."
         )
 
     import dynamiqs as dq
@@ -234,6 +241,7 @@ def solve_via_jax(
 
     # State materialisation per storage_mode.
     states_tuple: tuple[qutip.Qobj, ...] | None = None
+    states_loader: object | None = None  # Callable[[int], qutip.Qobj] | None
     if storage_mode is StorageMode.EAGER:
         raw_states = np.asarray(dq_result.states)
         # For kets: shape (N_times, dim, 1); for DMs: (N_times, dim, dim).
@@ -243,7 +251,37 @@ def solve_via_jax(
             qutip.Qobj(raw_states[i], dims=initial_state.dims)
             for i in range(raw_states.shape[0])
         )
-    # StorageMode.OMITTED: leave states_tuple as None.
+    elif storage_mode is StorageMode.LAZY:
+        # Keep the JAX Array alive through a closure; each loader(i)
+        # call materialises a single time-slice via np.asarray. No bulk
+        # host copy is triggered until the caller actually fetches a
+        # state — OMITTED's memory-win shape at EAGER's per-state API.
+        #
+        # JAX silently clamps out-of-bounds indexing to the nearest
+        # valid index (unlike NumPy which raises IndexError). That
+        # would be a silent-degradation hazard (CONVENTIONS.md §15),
+        # so bounds-check explicitly here and raise IndexError to
+        # match the tuple-indexing contract the caller expects from
+        # a Sequence-like interface.
+        jax_states = dq_result.states
+        dims_snapshot = initial_state.dims
+        n_steps = int(jax_states.shape[0])
+
+        def _lazy_loader(i: int) -> qutip.Qobj:
+            # Normalise negative indices before the bounds check, as
+            # NumPy / tuple / list do. -1 → n_steps - 1, etc.
+            normalised = i + n_steps if i < 0 else i
+            if not 0 <= normalised < n_steps:
+                raise IndexError(
+                    f"states_loader index {i} out of range for a "
+                    f"trajectory of length {n_steps}."
+                )
+            return qutip.Qobj(
+                np.asarray(jax_states[normalised]), dims=dims_snapshot
+            )
+
+        states_loader = _lazy_loader
+    # StorageMode.OMITTED: leave both None.
 
     resolved_backend_name = (
         backend_name if backend_name is not None else "jax-dynamiqs"
@@ -266,5 +304,5 @@ def solve_via_jax(
         expectations=expectations,
         warnings=warning_records,
         states=states_tuple,
-        states_loader=None,
+        states_loader=states_loader,
     )

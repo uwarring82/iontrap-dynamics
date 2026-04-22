@@ -10,6 +10,78 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — JAX-backend LAZY storage (Dispatch β.3 / TT)
+
+Lifts `StorageMode.LAZY` from "`NotImplementedError` — β.3 scope" to
+a first-class storage mode on the JAX backend. The time-dependent
+Hamiltonian half of the original β.3 charter is **deferred to β.4**
+— see scope note below.
+
+- `solve(backend="jax", storage_mode=StorageMode.LAZY, ...)` now
+  returns a `TrajectoryResult` with `states=None` and a callable
+  `states_loader(i) -> qutip.Qobj`. The loader closes over the
+  Dynamiqs-returned JAX array and materialises a single time-slice
+  per call via `np.asarray(jax_states[i])`. No bulk host copy is
+  triggered until the caller actually fetches a state —
+  `OMITTED`'s memory-win shape at `EAGER`'s per-state API.
+- Bounds-checked: the loader raises `IndexError` on out-of-range
+  indices, with negative indices normalised Python-style
+  (`-1 → len-1`). JAX's default indexing semantics silently clamp
+  out-of-range to the nearest valid index — that would be a
+  CONVENTIONS.md §15 silent-degradation failure if left unguarded.
+  Trajectory length is snapshotted at solve time via
+  `int(jax_states.shape[0])` so the check doesn't re-query the
+  JAX array on every access.
+- Ket / density-matrix parity: LAZY supports both. `loader(i)` on
+  a ket run returns a ket `Qobj`; on a density-matrix run returns
+  an operator `Qobj`. Tensor dims (`[[2, 12], [1]]` etc.) preserved
+  exactly from `initial_state.dims`.
+- Bit-identical with `StorageMode.EAGER` at matching indices —
+  LAZY is EAGER with deferred materialisation, not a different
+  conversion or integrator path. Tested by `loader(i)` vs
+  `eager.states[i]` at five indices over a 200-step trajectory;
+  delta norm < 1e-12.
+
+Tests:
+- `tests/unit/test_backends_jax_dynamiqs.py::TestLazyStorage` —
+  new class with 6 test methods (9 invocations including
+  parametrized out-of-bounds cases): `returns_loader_and_no_states_tuple`,
+  `loader_reproduces_initial_state`,
+  `loader_matches_eager_states`,
+  `loader_negative_index_mirrors_python`,
+  `loader_out_of_bounds_raises` (parametrized `200, 1000, -201,
+  -10000`), `lazy_with_density_matrix_initial`.
+- `tests/unit/test_backends_jax.py`: retired
+  `test_lazy_storage_does_not_raise_on_jax_dispatch` (β.2-era
+  mocked-availability test that asserted `NotImplementedError` on
+  `LAZY + backend="jax"`). Post-β.3 that combination succeeds,
+  and mocked-availability testing without a real Dynamiqs install
+  is no longer meaningful for this path. The sibling
+  `test_lazy_storage_still_rejected_on_qutip_backend` stays —
+  the QuTiP backend's LAZY rejection is unchanged; β.3's LAZY
+  support is JAX-specific, not a general LAZY lift.
+
+**Scope note on time-dependent Hamiltonians (β.4 deferred).** The
+original β.3 charter in `docs/phase-2-jax-backend-design.md` §7
+included `QuTiP time-dep list → dq.TimeQArray` translation.
+Investigation during this dispatch revealed that Dynamiqs's
+`dq.modulated(f, Q)` requires `f` to be JAX-traceable (must use
+`jnp`, not `numpy` / `math`), whereas the library's time-dep
+builders (`modulated_carrier_hamiltonian`,
+`two_ion_{red,blue}_sideband_hamiltonian`'s coefficient pairs,
+etc.) emit scipy-traced callables built on `numpy` and `math`.
+Bridging the two is an architectural decision — parallel
+JAX-native coefficient callables, a `jnp`-based rewrite with
+numpy fallback, or a sample-based `dq.pwc` auto-translator —
+not a mechanical translation. Shipping that decision by accident
+inside a β.3 commit would be the wrong shape, so it rolls to
+β.4 with a proper scope discussion. The `NotImplementedError`
+now cites β.4 (was β.3) and points at the relevant design-note
+section.
+
+Test-surface: with `[jax]` extras: 821 → 834 passing (+13);
+without extras: 806 → 805 passing (−1 retired mock test).
+
 #### Phase 2 — JAX backend Dynamiqs integrator (Dispatch β.2 / SS)
 
 Replaces the β.1 `NotImplementedError` stub at

@@ -360,7 +360,151 @@ class TestFockSaturation:
 
 
 # ---------------------------------------------------------------------------
-# Scope boundaries: time-dependent Hamiltonian and LAZY are β.3 scope.
+# LAZY storage mode (Dispatch β.3): states_loader closure over the
+# Dynamiqs JAX Array; per-index Qobj materialisation on demand.
+# ---------------------------------------------------------------------------
+
+
+class TestLazyStorage:
+    def test_lazy_returns_loader_and_no_states_tuple(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        hilbert, ham, psi_0, times, obs = carrier_fock12
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        assert r.states is None
+        assert r.states_loader is not None
+        assert callable(r.states_loader)
+        assert r.metadata.storage_mode is StorageMode.LAZY
+
+    def test_lazy_loader_reproduces_initial_state(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        hilbert, ham, psi_0, times, obs = carrier_fock12
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        assert r.states_loader is not None
+        first = r.states_loader(0)
+        assert first.isket
+        assert first.dims == psi_0.dims
+        assert (first - psi_0).norm() < 1e-10
+
+    def test_lazy_loader_matches_eager_states(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        # Bit-identical: LAZY is just EAGER with per-index materialisation
+        # — no different integrator or conversion path. Compare both
+        # results at a handful of time indices.
+        hilbert, ham, psi_0, times, obs = carrier_fock12
+        r_lazy = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        r_eager = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.EAGER,
+            backend="jax",
+        )
+        assert r_lazy.states_loader is not None
+        assert r_eager.states is not None
+        for i in (0, 1, 50, 100, len(times) - 1):
+            assert (r_lazy.states_loader(i) - r_eager.states[i]).norm() < 1e-12
+
+    def test_lazy_loader_negative_index_mirrors_python(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        hilbert, ham, psi_0, times, obs = carrier_fock12
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        assert r.states_loader is not None
+        last_neg = r.states_loader(-1)
+        last_pos = r.states_loader(len(times) - 1)
+        assert (last_neg - last_pos).norm() < 1e-12
+
+    @pytest.mark.parametrize("bad_index", [200, 1000, -201, -10_000])
+    def test_lazy_loader_out_of_bounds_raises(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+        bad_index: int,
+    ) -> None:
+        # JAX silently clamps out-of-range indexing; the loader must
+        # raise IndexError instead (CONVENTIONS.md §15 "silent
+        # degradation forbidden"). The trajectory length is 200 so
+        # indices 200, 1000, -201, -10000 are all out of range.
+        hilbert, ham, psi_0, times, obs = carrier_fock12
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        assert r.states_loader is not None
+        with pytest.raises(IndexError, match="out of range"):
+            r.states_loader(bad_index)
+
+    def test_lazy_with_density_matrix_initial(
+        self,
+        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
+    ) -> None:
+        hilbert, ham, psi_0, times, obs = carrier_fock12
+        rho_0 = psi_0 * psi_0.dag()
+        r = solve(
+            hilbert=hilbert,
+            hamiltonian=ham,
+            initial_state=rho_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.LAZY,
+            backend="jax",
+        )
+        assert r.states_loader is not None
+        first = r.states_loader(0)
+        assert first.isoper
+        assert first.dims == rho_0.dims
+        # Trace preserved at t = 0 and at a mid-point.
+        assert abs(first.tr() - 1.0) < 1e-10
+        assert abs(r.states_loader(100).tr() - 1.0) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# Scope boundary: time-dependent Hamiltonian remains β.4 scope.
 # ---------------------------------------------------------------------------
 
 
@@ -374,7 +518,7 @@ class TestNotImplementedScope:
         # callable is never evaluated — NotImplementedError fires
         # before Dynamiqs is invoked.
         list_ham = [[ham, lambda t, _args: 1.0]]
-        with pytest.raises(NotImplementedError, match="Dispatch β.3"):
+        with pytest.raises(NotImplementedError, match="Dispatch β.4"):
             solve(
                 hilbert=hilbert,
                 hamiltonian=list_ham,
@@ -385,21 +529,6 @@ class TestNotImplementedScope:
                 backend="jax",
             )
 
-    def test_lazy_storage_mode_rejected(
-        self,
-        carrier_fock12: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray, list],
-    ) -> None:
-        hilbert, ham, psi_0, times, obs = carrier_fock12
-        with pytest.raises(NotImplementedError, match="β.3"):
-            solve(
-                hilbert=hilbert,
-                hamiltonian=ham,
-                initial_state=psi_0,
-                times=times,
-                observables=obs,
-                storage_mode=StorageMode.LAZY,
-                backend="jax",
-            )
 
 
 # ---------------------------------------------------------------------------
