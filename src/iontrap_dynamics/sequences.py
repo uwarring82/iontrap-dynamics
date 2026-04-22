@@ -236,6 +236,7 @@ def solve(
     provenance_tags: tuple[str, ...] = (),
     fock_tolerance: float | None = None,
     solver: str = "auto",
+    backend: str = "qutip",
 ) -> TrajectoryResult:
     """Run the Lindblad solver and wrap the output as a :class:`TrajectoryResult`.
 
@@ -295,7 +296,25 @@ def solve(
         ``"mesolve"`` forces the master-equation path even on a ket
         (for v0.2 backwards compatibility or to share a code path
         with mixed-state trajectories); kets are internally promoted
-        to density matrices by QuTiP.
+        to density matrices by QuTiP. **QuTiP-specific**:
+        ``"sesolve"``/``"mesolve"`` are QuTiP solver identifiers and
+        are only valid with ``backend="qutip"`` (the default).
+        Passing them with ``backend="jax"`` raises
+        :class:`ConventionError`; the JAX backend infers
+        Schrödinger-vs-Lindblad from the input dtype exactly like
+        ``solver="auto"`` does on QuTiP.
+    backend
+        Which solver backend to use. ``"qutip"`` (default) dispatches
+        to the QuTiP reference backend described above. ``"jax"``
+        opts into the JAX / Dynamiqs backend (Phase 2 deliverable —
+        Dispatch β.1 ships the skeleton + availability check; the
+        Dynamiqs integrator wiring is scoped for Dispatch β.2 per
+        ``docs/phase-2-jax-backend-design.md`` §7). Requires the
+        ``[jax]`` optional dependencies
+        (``pip install iontrap-dynamics[jax]``); if those are not
+        installed, a :class:`BackendError` is raised with an
+        install hint. Unknown backend strings raise
+        :class:`ConventionError`.
 
     Returns
     -------
@@ -318,6 +337,25 @@ def solve(
         during the trajectory (CONVENTIONS.md §15 Level 3). Increase
         ``fock_truncations`` for the affected mode and re-run.
     """
+    _validate_backend(backend, solver)
+
+    if backend == "jax":
+        from .backends.jax import solve_via_jax
+
+        return solve_via_jax(
+            hilbert=hilbert,
+            hamiltonian=hamiltonian,
+            initial_state=initial_state,
+            times=times,
+            observables=observables,
+            request_hash=request_hash,
+            backend_name=backend_name,
+            storage_mode=storage_mode,
+            provenance_tags=provenance_tags,
+            fock_tolerance=fock_tolerance,
+            solver=solver,
+        )
+
     if storage_mode is StorageMode.LAZY:
         raise ConventionError(
             "sequences.solve does not support StorageMode.LAZY in v0.1: "
@@ -400,6 +438,7 @@ def solve_ensemble(
     provenance_tags: tuple[str, ...] = (),
     fock_tolerance: float | None = None,
     solver: str = "auto",
+    backend: str = "qutip",
     n_jobs: int = 1,
     parallel_backend: str = "loky",
 ) -> tuple[TrajectoryResult, ...]:
@@ -494,6 +533,8 @@ def solve_ensemble(
     :class:`ResultWarning` entries on each trial's
     :attr:`TrajectoryResult.warnings` tuple.
     """
+    _validate_backend(backend, solver)
+
     from joblib import Parallel, delayed
 
     if len(hamiltonians) == 0:
@@ -512,12 +553,50 @@ def solve_ensemble(
         "provenance_tags": provenance_tags,
         "fock_tolerance": fock_tolerance,
         "solver": solver,
+        "backend": backend,
     }
 
     results = Parallel(n_jobs=n_jobs, backend=parallel_backend)(
         delayed(solve)(hamiltonian=h, **solve_kwargs) for h in hamiltonians
     )
     return tuple(results)
+
+
+_VALID_BACKENDS: frozenset[str] = frozenset({"qutip", "jax"})
+_QUTIP_SOLVER_VALUES: frozenset[str] = frozenset({"auto", "sesolve", "mesolve"})
+
+
+def _validate_backend(backend: str, solver: str) -> None:
+    """Validate the ``backend=`` kwarg and its interaction with ``solver=``.
+
+    Called at the top of :func:`solve` before any dispatch. Keeps the
+    per-backend validation close to the dispatch so invalid kwarg
+    combinations raise before any solver is touched.
+
+    ``solver=`` has a stable QuTiP-specific vocabulary (CONVENTIONS.md
+    §0.E and the ``solve`` docstring). On the JAX backend the QuTiP
+    solver identifiers are semantically inapplicable — the JAX path
+    infers Schrödinger-vs-Lindblad from the input dtype like
+    ``solver="auto"`` does on QuTiP — so explicit ``"sesolve"`` /
+    ``"mesolve"`` raises :class:`ConventionError`. Backend choice
+    changes the implementation, not the public kwarg's semantics;
+    see ``docs/phase-2-jax-backend-design.md`` §4.1.
+    """
+    if backend not in _VALID_BACKENDS:
+        raise ConventionError(
+            f"solve(backend={backend!r}): unknown backend; expected "
+            f"one of {sorted(_VALID_BACKENDS)!r}."
+        )
+    if backend == "jax":
+        if solver != "auto":
+            raise ConventionError(
+                f"solve(backend='jax', solver={solver!r}): the "
+                f"solver= kwarg carries QuTiP-specific identifiers "
+                f"('sesolve' / 'mesolve') that do not apply on the "
+                f"JAX backend. Use solver='auto' (default) — the JAX "
+                f"path infers Schrödinger-vs-Lindblad from the input "
+                f"dtype. See docs/phase-2-jax-backend-design.md §4.1."
+            )
 
 
 def _choose_solver(solver: str, initial_state: qutip.Qobj) -> str:

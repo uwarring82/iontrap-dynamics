@@ -8,6 +8,57 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+### Added
+
+#### Phase 2 — JAX backend skeleton (Dispatch β.1 / RR)
+
+Opens the JAX-backend track per `docs/phase-2-jax-backend-design.md`.
+Design β (Dynamiqs) is the selected path — it is default-aligned
+with the existing `[jax] = jax + jaxlib + dynamiqs>=0.2` extras
+block in `pyproject.toml:85` and realises the `WORKPLAN_v0.3.md` §1
+Dynamiqs-as-future-backend-target commitment directly. This
+dispatch ships the skeleton only; the Dynamiqs integrator wiring is
+scoped for Dispatch β.2 per the design note's §7 staging.
+
+- `sequences.solve` and `sequences.solve_ensemble` gain a
+  `backend: str = "qutip"` kwarg. Default value preserves the
+  existing QuTiP dispatch behaviour — no user-visible change unless
+  `backend="jax"` is explicitly passed.
+- `iontrap_dynamics.backends` subpackage created; houses the JAX
+  backend at `iontrap_dynamics.backends.jax` and is the registration
+  point for future alternative backends per D5 / Design Principle 5
+  (one public entry point, backend is an implementation choice).
+- `iontrap_dynamics.backends.jax._core` ships the availability check
+  (`_is_jax_available()` — importable JAX + Dynamiqs) and the solve
+  stub (`solve_via_jax`). When the `[jax]` extras are missing, the
+  stub raises `BackendError` with an actionable install hint
+  (`pip install iontrap-dynamics[jax]`). When the extras are present
+  but the integrator is not yet wired (β.1 → β.2), the stub raises
+  `NotImplementedError` pointing at the β.2 scope.
+- `_validate_backend(backend, solver)` helper centralises the
+  backend-kwarg validation surface. Unknown backend strings raise
+  `ConventionError` listing the valid options (`{'qutip', 'jax'}`).
+  `solver=` stays QuTiP-specific per `docs/phase-2-jax-backend-design.md`
+  §4.1: passing `solver="sesolve"` or `solver="mesolve"` together
+  with `backend="jax"` raises `ConventionError` because those are
+  QuTiP solver identifiers, not backend-agnostic semantics. On
+  `backend="jax"`, `solver="auto"` is the only accepted value —
+  matching the design note's rule that backend choice changes the
+  implementation, not the public kwarg's contract.
+- `tests/unit/test_backends_jax.py` — 18 new tests covering the
+  dispatch plumbing: default-backend-is-qutip regression,
+  unknown-backend rejection, solver/backend compatibility matrix
+  (explicit sesolve/mesolve rejected on JAX, auto passes
+  validation, QuTiP backend's existing solver contract unchanged),
+  JAX availability & stub behaviour (install hint present, β.2
+  NotImplementedError, `_is_jax_available` returns bool), and
+  `solve_ensemble` kwarg propagation.
+
+No `pyproject.toml` change in this dispatch — the `[jax]` extras
+block already declares the required dependencies (one of the
+reasons β was the default-aligned choice over α / α′). `backend="qutip"`
+remains the default; users opt into `backend="jax"` explicitly.
+
 ### Fixed
 
 #### Post-v0.2.0 metadata drift (Dispatch QQ)

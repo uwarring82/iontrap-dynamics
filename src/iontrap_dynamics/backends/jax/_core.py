@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: MIT
+"""JAX-backend dispatch entry point (skeleton).
+
+This module is private. It is imported lazily from
+:func:`iontrap_dynamics.sequences.solve` only when the caller selects
+``backend="jax"``, so the library's top-level import does not require
+the ``[jax]`` extras to be installed.
+
+Dispatch β.1 ships the availability check + stub; β.2 replaces the
+:class:`NotImplementedError` with a real Dynamiqs integrator call
+per ``docs/phase-2-jax-backend-design.md`` §7.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from ...exceptions import BackendError
+
+
+def _is_jax_available() -> bool:
+    """Return whether the ``[jax]`` extras (JAX + Dynamiqs) are importable.
+
+    Kept as a module-level function so tests can monkey-patch
+    availability without requiring a real install / uninstall cycle.
+    Imports are guarded and do not propagate — a missing dependency
+    is reported through the return value, not an exception.
+    """
+    try:
+        import dynamiqs  # noqa: F401
+        import jax  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+_INSTALL_HINT = (
+    "solve(backend='jax') requires the [jax] optional dependencies "
+    "(JAX + Dynamiqs). Install with:\n"
+    "    pip install iontrap-dynamics[jax]\n"
+    "or add the extras to your dependency manager's lockfile. The "
+    "existing [jax] block in pyproject.toml declares the required "
+    "versions; see docs/phase-2-jax-backend-design.md §4.5."
+)
+
+_BETA2_STUB_MESSAGE = (
+    "solve(backend='jax') skeleton landed in Dispatch β.1. The "
+    "Dynamiqs integrator wiring is scoped for Dispatch β.2 per "
+    "docs/phase-2-jax-backend-design.md §7 staging. Until β.2 lands, "
+    "use backend='qutip' (the default). When β.2 ships, this entry "
+    "will return a TrajectoryResult tagged with "
+    "backend_name='jax-dynamiqs'."
+)
+
+
+def solve_via_jax(**kwargs: Any) -> None:
+    """JAX-backend solve entry. Skeleton stub — see module docstring.
+
+    Raises
+    ------
+    BackendError
+        When the ``[jax]`` extras are not importable. Contains an
+        actionable install hint.
+    NotImplementedError
+        When the extras are installed but the Dynamiqs integrator
+        has not yet been wired (Dispatch β.2 work).
+    """
+    if not _is_jax_available():
+        raise BackendError(_INSTALL_HINT)
+    raise NotImplementedError(_BETA2_STUB_MESSAGE)
