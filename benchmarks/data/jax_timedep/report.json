@@ -1,0 +1,67 @@
+{
+  "environment": {
+    "dynamiqs": "0.3.4",
+    "jax": "0.6.2",
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-22T15:35:55.591134+00:00",
+  "max_cross_backend_delta": 0.00013664102684957102,
+  "mean_qutip_over_jax": 0.36263768791847506,
+  "n_repeats": 3,
+  "n_steps": 5000,
+  "purpose": "Phase 2 β.4.5 cross-backend benchmark — time-dependent Hamiltonians across all five β.4 builders, at Hilbert dim ≥ 100 and trajectory length ≥ 5000 steps. Establishes where (if anywhere) the JAX backend measurably outperforms QuTiP 5 at scale, and confirms cross-backend numeric equivalence at the 1e-3 design-target tolerance. Closes the β.4 track per docs/phase-2-jax-time-dep-design.md §5.",
+  "results": [
+    {
+      "builder": "detuned_carrier_hamiltonian",
+      "hilbert_dim": 100,
+      "jax_seconds": 0.09318416600581259,
+      "max_expectation_delta": 0.00013664102684957102,
+      "qutip_over_jax": 0.4279357178935159,
+      "qutip_seconds": 0.03987683297600597,
+      "scenario": "detuned_carrier_fock50"
+    },
+    {
+      "builder": "detuned_red_sideband_hamiltonian",
+      "hilbert_dim": 100,
+      "jax_seconds": 0.1259744589915499,
+      "max_expectation_delta": 4.34612917956656e-05,
+      "qutip_over_jax": 0.3347467521725376,
+      "qutip_seconds": 0.04216954100411385,
+      "scenario": "detuned_rsb_fock50"
+    },
+    {
+      "builder": "detuned_blue_sideband_hamiltonian",
+      "hilbert_dim": 100,
+      "jax_seconds": 0.12584391701966524,
+      "max_expectation_delta": 5.230068360950746e-05,
+      "qutip_over_jax": 0.34290294693809,
+      "qutip_seconds": 0.04315225000027567,
+      "scenario": "detuned_bsb_fock50"
+    },
+    {
+      "builder": "detuned_ms_gate_hamiltonian",
+      "hilbert_dim": 100,
+      "jax_seconds": 0.15976212499663234,
+      "max_expectation_delta": 7.69579463794079e-06,
+      "qutip_over_jax": 0.29093592734563356,
+      "qutip_seconds": 0.04648054199060425,
+      "scenario": "detuned_ms_fock25"
+    },
+    {
+      "builder": "modulated_carrier_hamiltonian",
+      "hilbert_dim": 100,
+      "jax_seconds": 0.08691120898583904,
+      "max_expectation_delta": 9.321976266091214e-05,
+      "qutip_over_jax": 0.41666709524259815,
+      "qutip_seconds": 0.036213040992151946,
+      "scenario": "modulated_carrier_fock50"
+    }
+  ],
+  "scenario": "jax_timedep_cross_backend",
+  "workplan_reference": "WORKPLAN_v0.3.md §5.3 (β.4 as v0.3.x follow-up); phase-2-jax-time-dep-design.md §5 staging"
+}

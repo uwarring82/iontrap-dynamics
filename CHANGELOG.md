@@ -10,6 +10,75 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — β.4.5 cross-backend benchmark at scale (Dispatch YY)
+
+Closes the β.4 track. Final sub-dispatch in the Phase 2 JAX-
+backend plan per `docs/phase-2-jax-time-dep-design.md` §5 and
+`WORKPLAN_v0.3.md` §5.3. Deliberate out-of-library-scale
+characterisation (dim ≥ 100, trajectory length 5000 steps)
+because Dispatches X / Y / OO already established that QuTiP 5 is
+near the floor at library-typical dim ≤ 60, so a smaller-scale
+JAX-vs-QuTiP comparison would be confirmatory rather than
+informative.
+
+- `tools/run_benchmark_jax_timedep.py` — new benchmark tool
+  running all five β.4 time-dependent builders (detuned carrier,
+  detuned RSB, detuned BSB, detuned MS gate, modulated carrier
+  with Gaussian envelope) on both backends at dim = 100 (Fock 50
+  single-ion or Fock 25 two-ion), 5000 steps, 8 Rabi periods.
+  Reports per-scenario wall-clock (min of 3 repeats), speedup
+  ratio (QuTiP / JAX), and max cross-backend expectation delta.
+  `benchmarks/data/jax_timedep/` artefact with `report.json` +
+  `plot.png` (two-panel bar chart: wall-clock + speedup ratio).
+- **Empirical null result on performance.** QuTiP 5 is **~2.8×
+  faster** than Dynamiqs + JAX across all five builders at dim
+  100 / 5000 steps. Mean ratio 0.36× (QuTiP / JAX); worst for
+  the MS gate at 0.29×, best for the modulated carrier at
+  0.43×. Consistent across structurally different Hamiltonians,
+  so it's integrator / dispatch overhead, not a per-builder
+  artefact. Dynamiqs + JAX's Python-dispatched Tsit5 stepping
+  inside `jax.lax.scan` doesn't amortise against QuTiP's lean
+  `scipy.integrate.solve_ivp` path at these scales.
+- **Cross-backend numeric equivalence confirmed.** Max observed
+  delta 1.4e-4 (detuned carrier σ_z); worst per-builder deltas
+  range 7.7e-6 (MS gate) to 1.4e-4. All under the 1e-3
+  design-target tolerance. Closes the β.4.x correctness story:
+  the five builders emit mathematically equivalent Hamiltonians
+  on both backends.
+- **Opt-in guidance updated** in `docs/benchmarks.md`. The JAX
+  backend's value at current library scales is positioning,
+  cross-backend consistency checking, and forward-looking
+  capability (autograd via future γ track, GPU / TPU dispatch) —
+  not raw wall-clock on CPU at dim ≤ 200. `backend="qutip"`
+  remains the default; users opt into `backend="jax"` when
+  autograd, GPU, or independent numeric cross-check is the
+  need. Table in the "When to opt into each feature" section
+  gains a `backend` row.
+
+- `docs/benchmarks.md` new section "JAX time-dependent
+  Hamiltonians at scale (Dispatch YY / β.4.5)" with the measured
+  table, interpretation, and opt-in guidance. Headline paragraph
+  updated to record the Phase 2 performance null result.
+- `docs/benchmarks.md` "Open Phase 2 items" section: reformatted
+  as a closure record. All Phase 2 open items are now closed or
+  re-scoped — sparse-matrix tuning closed by Dispatch OO, JAX
+  backend closed by β.1–β.4. Future items (γ autograd track,
+  GPU dispatch CI) are moved to Phase 3+ scope.
+- `docs/benchmarks.md` "Reproducing the numbers" adds the two
+  missing entries (`run_benchmark_sparse_vs_dense.py` from
+  Dispatch OO and the new `run_benchmark_jax_timedep.py`).
+
+**Phase 2 status after β.4.5:** complete at the `v0.3`
+milestone. The JAX backend covers both time-independent
+(β.1–β.3) and time-dependent (β.4.1–β.4.4) Hamiltonians with
+cross-backend numeric equivalence validated; β.4.5's honest
+null result documents where JAX actually wins (positioning,
+capability) vs. where it doesn't (wall-clock at library scale).
+
+No test-surface change — β.4.5 is a benchmark-tool-and-
+documentation dispatch. Base CI: 820 passing unchanged. With
+`[jax]` extras: 867 passing unchanged.
+
 #### Phase 2 — β.4.4 modulated carrier with user envelope_jax (Dispatch XX)
 
 Extends the JAX backend's time-dependent surface to the last of

@@ -6,11 +6,13 @@ deciding whether the library's performance fits their use case, and
 (b) a reference record so future optimisation work can be measured
 against a fixed starting point.
 
-**Phase** and **status** per §5 Phase 2: performance. Dispatches X
-(`sesolve` dispatch), Y (`solve_ensemble` parallel sweeps), and
-OO (`csr`-vs-`dense` ops baseline) have landed; the remaining Phase 2
-deliverable is a JAX backend. This page summarises every baseline
-measured so far.
+**Phase** and **status** per §5 Phase 2: performance. All Phase 2
+dispatches have landed: X (`sesolve` dispatch), Y (`solve_ensemble`
+parallel sweeps), OO (`csr`-vs-`dense` ops baseline), RR–XX (JAX
+backend skeleton → Dynamiqs integrator → LAZY storage → five
+time-dependent Hamiltonian builders on JAX), and YY / β.4.5
+(cross-backend benchmark at dim ≥ 100 / 5000 steps). This page
+summarises every baseline measured so far.
 
 ## Headline
 
@@ -29,9 +31,17 @@ the default settings favour simplicity over micro-optimisation:
   `parallel_backend="loky"` pulls ahead once single-solve cost
   exceeds ~15 ms with ≥ 2000 time steps.
 
-Raw performance at small scales is not the bottleneck; the bigger
-wins are elsewhere (sparse-matrix tuning on the builder side, JAX
-backend for dense-matrix reduction, larger-system scalability).
+Raw performance at small scales is not the bottleneck. Sparse-
+matrix tuning (Dispatch OO) found QuTiP 5's CSR default already
+optimal at library scales. The JAX-backend performance-
+characterisation benchmark (Dispatch YY / β.4.5) returned an
+honest null result: **QuTiP 5 is ~2.8× faster than Dynamiqs +
+JAX at dim 100 / 5000 steps** across all five time-dependent
+builders — the JAX backend's value is positioning, cross-backend
+consistency checking, and forward-looking capability (autograd
+via a future γ track, GPU dispatch), not wall-clock on CPU at
+current library scales. See the "JAX time-dependent Hamiltonians
+at scale" section below for the full table and opt-in guidance.
 
 ## Canonical smoke-test thresholds (Phase 0.F)
 
@@ -177,6 +187,89 @@ Run with:
 python tools/run_benchmark_sparse_vs_dense.py
 ```
 
+## JAX time-dependent Hamiltonians at scale (Dispatch YY / β.4.5)
+
+β.4.5 closes the Phase 2 JAX-backend track with a deliberately
+**out-of-library-scale** benchmark: all five β.4 time-dependent
+Hamiltonian builders run on both backends at Hilbert dim ≥ 100
+and trajectory length **5000 steps**. The design-note §7 α.4
+staging flagged this as the informative regime — Dispatches X /
+Y / OO already established QuTiP 5 is near the floor at
+library-typical dim ≤ 60 / few-hundred steps, so any
+JAX-vs-QuTiP comparison at small scale is confirmatory.
+
+Measured wall-clock (Dynamiqs 0.3.4 + QuTiP 5.2.3, Apple
+silicon, `jax>=0.4`):
+
+| Scenario                       | Hilbert dim | QuTiP [s] | JAX [s] | QuTiP / JAX | Cross-backend Δ |
+|--------------------------------|------------:|----------:|--------:|------------:|----------------:|
+| `detuned_carrier` (fock=50)    | 100         | 0.040     | 0.093   | 0.43×       | 1.4e-04         |
+| `detuned_red_sideband` (fock=50) | 100       | 0.042     | 0.126   | 0.33×       | 4.3e-05         |
+| `detuned_blue_sideband` (fock=50) | 100      | 0.043     | 0.126   | 0.34×       | 5.2e-05         |
+| `detuned_ms_gate` (two-ion, fock=25) | 100   | 0.046     | 0.160   | 0.29×       | 7.7e-06         |
+| `modulated_carrier` (Gaussian, fock=50) | 100 | 0.036    | 0.087   | 0.42×       | 9.3e-05         |
+| **Mean**                       |             |           |         | **0.36×**   |                 |
+
+**Interpretation.**
+
+- **Null result on performance.** QuTiP 5 is **~2.8× faster than
+  Dynamiqs + JAX** at dim 100 / 5000 steps across all five
+  time-dependent builders. The result is consistent across
+  structurally different Hamiltonians (carrier, sidebands, MS
+  gate, envelope-modulated carrier), so it's an integrator /
+  dispatch-overhead characterisation, not a per-builder artefact.
+- **Cross-backend numeric equivalence holds.** The worst
+  observed disagreement is 1.4e-4 (detuned carrier with σ_z)
+  — under the 1e-3 design-target tolerance. Confirms the five
+  β.4.1–β.4.4 builders emit mathematically equivalent
+  Hamiltonians on both backends; the wall-clock gap is
+  integrator-performance, not a translation bug.
+- **Why the null.** Dynamiqs + JAX's overhead comes from
+  Python-dispatched Tsit5 stepping inside `jax.lax.scan`: JIT
+  compile cost (~seconds for first call; not amortised in the
+  min-of-3-repeats we report) plus per-step Python dispatch on
+  `ModulatedTimeQArray` evaluation. At library scale the QuTiP
+  / scipy `solve_ivp` path is lean enough to hold the
+  advantage; JAX would need much larger Hilbert spaces (dim
+  ≥ 500, density-matrix lift dominated by matmul) or GPU
+  dispatch to see a crossover.
+
+**What this means for Phase 2.** The JAX backend's value is
+**positioning and capability**, not raw wall-clock — exactly as
+the design note's Axis-A framing flagged. The Phase 2
+commitment remains justified by: (a) keeping the workplan §1
+"Dynamiqs as future backend target" honest; (b) opening the
+architectural slot for autograd (γ / α′ design-note options)
+and GPU dispatch that QuTiP cannot deliver; (c) giving users a
+cross-backend consistency check — if a JAX result disagrees
+with QuTiP by more than 1e-3, both backends' convention
+interpretations are now on the table, reducing the
+convention-version ambiguity that single-backend results carry.
+
+**Opt-in guidance.** At current library scale, `backend="jax"`
+is the right choice when:
+
+- You need autograd through solver parameters (future γ scope).
+- You plan to run on GPU / TPU (Dynamiqs + JAX on CUDA / Metal).
+- You want an independent numerical check on a QuTiP result —
+  cross-backend agreement at 1e-4 is strong evidence against
+  translation or convention bugs.
+
+At current library scale, `backend="qutip"` (the default) is
+the right choice when:
+
+- You want the fastest time-to-result on CPU at dim ≤ ~200.
+- You're running ensembles via `solve_ensemble` where JIT
+  compile cost cannot be amortised across trials (per-trial
+  Hamiltonian means per-trial recompile).
+- You have no autograd or GPU requirement.
+
+Run with:
+
+```bash
+python tools/run_benchmark_jax_timedep.py
+```
+
 ## When to opt into each feature
 
 A quick decision guide distilled from the numbers above:
@@ -184,6 +277,7 @@ A quick decision guide distilled from the numbers above:
 | Concern                              | Default         | Opt in when …                           |
 |--------------------------------------|-----------------|-----------------------------------------|
 | `solver` (sesolve vs mesolve)        | `"auto"`        | Forcing `"mesolve"` to share code with mixed-state trajectories, or `"sesolve"` to assert a pure-state invariant. |
+| `backend` (qutip vs jax)             | `"qutip"`       | Autograd (future γ scope), GPU / TPU dispatch, or independent cross-backend numeric check. Not for raw performance at dim ≤ 200 on CPU — QuTiP is faster there (β.4.5). |
 | `solve_ensemble` parallelism         | `n_jobs=1`      | Single-solve cost ≥ 15 ms **and** ensemble size ≥ ~20. Use `parallel_backend="loky"`. |
 | `solve_ensemble` threading backend   | n/a             | Short ensembles (small regime, dozens of trials) where BLAS-release is plausible — this is a narrow niche; usually serial is simpler. |
 | `storage_mode`                       | `OMITTED`       | Nonlinear observables (concurrence, log-negativity) need full states — use `EAGER`. |
@@ -204,6 +298,15 @@ python tools/run_benchmark_sesolve_speedup.py
 # solve_ensemble parallelism crossover
 python tools/run_benchmark_ensemble_parallel.py
 #   → benchmarks/data/ensemble_parallel/report.json + plot.png
+
+# csr vs dense operator dtype
+python tools/run_benchmark_sparse_vs_dense.py
+#   → benchmarks/data/sparse_vs_dense/report.json + plot.png
+
+# JAX time-dependent Hamiltonians at scale (β.4.5)
+#   requires the [jax] extras: pip install iontrap-dynamics[jax]
+python tools/run_benchmark_jax_timedep.py
+#   → benchmarks/data/jax_timedep/report.json + plot.png
 ```
 
 The JSON reports record the exact environment (Python, NumPy, SciPy,
@@ -212,13 +315,30 @@ auditable.
 
 ## Open Phase 2 items
 
-Per `WORKPLAN_v0.3.md` §5 Phase 2, still to land:
+Per `WORKPLAN_v0.3.md` §5.3 (β.4 as v0.3.x follow-up), the Phase 2
+deliverable surface is complete at the `v0.3` milestone. The JAX
+backend covers both time-independent (β.1–β.3) and time-dependent
+(β.4.1–β.4.4) Hamiltonians with cross-backend numeric equivalence
+validated at the 1e-3 design-target tolerance; β.4.5 closed the
+performance-characterisation loop with the null-result analysis
+above.
 
-- **JAX backend.** Opt-in `solve` variant that runs on JAX arrays
-  with JIT-compiled stepping. Biggest potential win for larger
-  Hilbert spaces; also opens GPU execution paths. Will include ≥1
-  worked example matching the QuTiP reference within cross-platform
-  tolerance.
+Remaining items have been retired or re-scoped:
 
-Sparse-matrix tuning, originally listed here, has been closed by
-Dispatch OO — see the dedicated section above.
+- **Sparse-matrix tuning** — closed by Dispatch OO (QuTiP 5
+  defaults to CSR; the library inherits that default without
+  explicit opt-in).
+- **JAX backend performance characterisation** — closed by
+  Dispatch YY (β.4.5). Honest null result documented above:
+  QuTiP 5 is ~2.8× faster than Dynamiqs + JAX at dim 100 /
+  5000 steps. Phase 2 value is positioning + capability, not
+  wall-clock.
+
+Future follow-ups live outside the `v0.3` milestone:
+
+- **γ track — autograd through solver parameters.** Design-note
+  Axis-D. Would reuse β.4's parallel JAX-native builder
+  scaffolding at ~60 % coverage. Scoped as a Phase 3+ item.
+- **GPU dispatch validation.** CPU-only CI today; users with
+  CUDA / Metal JAX builds can run the JAX backend transparently
+  but we don't include a GPU-smoke-test in CI.
