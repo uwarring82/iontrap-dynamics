@@ -381,9 +381,16 @@ Explicitly deferred to Phase 2 or later:
 
 ## Status at this mark
 
-- **497 tests passing, 3 skipped** (migration-tier scenarios 2/3/4 with
-  specific probe-informed blockers documented in the test module).
-- **Ruff lint + format, mypy strict on 17 source files, pa11y Level A
-  report-only** — all green in CI.
+As of `v0.3.0` (2026-04-22):
+
+- **820 tests passing base CI, 869 with `[jax]` extras; 2 skipped**
+  (migration-tier scenarios 3 and 4 with probe-informed blockers;
+  scenario 2 has been activated via the invariant tier).
+- **Ruff lint + format, mypy strict on 31 source files, pa11y Level A
+  (hard gate, AA advisory)** — all green in CI.
 - **Phase 0.F benchmarks**: all three active and well under threshold
   (<5 s, <30 s, <60 s on the canonical hardware).
+- **Phase 2 JAX backend** on `main` via `backend="jax"` on
+  `sequences.solve` and every time-dependent Hamiltonian builder;
+  see `phase-2-jax-backend-design.md` and
+  `phase-2-jax-time-dep-design.md` for the design record.

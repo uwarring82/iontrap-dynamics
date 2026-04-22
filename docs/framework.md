@@ -15,8 +15,8 @@ The public design is driven by a few hard constraints:
 
 ```text
 physics layer      -> Hamiltonians, states, observables, deterministic solvers
-apparatus layer    -> drifts, calibration errors, jitter, later Phase 1+
-observation layer  -> finite-shot sampling, detectors, readout models
+apparatus layer    -> drifts, calibration errors, jitter, SPAM (v0.2, §18)
+observation layer  -> finite-shot sampling, detectors, readout models (v0.2, §17)
 ```
 
 The separation matters because it prevents noise or measurement shortcuts from
@@ -50,10 +50,12 @@ This is the line between “reproducible enough” and “quietly wrong”.
 - Coastline material states binding constraints.
 - Sail material carries adaptive guidance and tutorials.
 
-This docs folder carries Coastline-facing entry pages plus a concrete
-[Phase 1 Architecture](phase-1-architecture.md) reference describing the
-current public API surface. Richer tutorial material lands later under
-`docs/tutorials/`.
+This docs folder carries Coastline-facing entry pages plus concrete
+architecture references: [Phase 1 Architecture](phase-1-architecture.md)
+for the public API surface, and the two Phase 2 design notes
+([JAX backend deliberation](phase-2-jax-backend-design.md),
+[time-dependent Hamiltonian track](phase-2-jax-time-dep-design.md)).
+Twelve tutorials live under `docs/tutorials/`.
 
 ## Endorsement Marker
 

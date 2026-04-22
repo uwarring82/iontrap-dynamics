@@ -4,31 +4,39 @@ Open-system quantum dynamics of trapped-ion spin-motion systems.
 
 `iontrap-dynamics` is a domain-specific Python library for modelling trapped-ion
 spin-motion physics with explicit, typed configuration objects for species,
-drives, modes, and measurement conventions. The project is being built around a
-hard separation between physics, apparatus, and observation layers, with QuTiP
-as the Phase 0 reference backend.
+drives, modes, and measurement conventions. The project is built around a hard
+separation between physics, apparatus, and observation layers. QuTiP is the
+reference backend; a JAX / Dynamiqs backend is available on the same public
+solver surface via `backend="jax"`.
 
 ## Status
 
-**v0.2.0 released 2026-04-21.** Phase 0, Phase 1 core (configuration,
-builders, observables, state preparation, diagnostics), the Phase 1
-measurement layer (channels, detector, protocols, statistics), the
-Phase 1 systematics layer (jitter, drift, SPAM), and the registered
-entanglement observables (concurrence, EoF, log-negativity) are all
-shipped on `main`. `CONVENTIONS.md` is frozen at v0.2 — §1–16 from
-the Phase 0 draft carry through unchanged; §17 (measurement) and §18
-(systematics) are newly frozen.
+**v0.3.0 released 2026-04-22 — closes the Phase 2 performance
+milestone.** Phase 0 foundations, Phase 1 (dynamics core + measurement
+layer + systematics layer + registered entanglement observables), and
+Phase 2 (performance track + JAX / Dynamiqs backend end-to-end) are
+all shipped on `main`. `CONVENTIONS.md` stays frozen at v0.2 — no
+conventions-level changes between `v0.2.0` and `v0.3.0`; `v0.3.0`
+adds capability surface without breaking the v0.2 schema. Existing
+`v0.2.0` callers see no behaviour change: every new `backend=` kwarg
+defaults to `"qutip"`, every JAX-specific entry is behind
+`solve(backend="jax", ...)` or builder-level `backend="jax"`.
 
-End-to-end stacks work dynamics-through-statistics:
+End-to-end stacks work dynamics-through-statistics, on either backend:
 
-- `DriveConfig` → `carrier_hamiltonian` → `qutip.mesolve` → expected
-  π-pulse flip (Phase 1 core).
+- `DriveConfig` → `carrier_hamiltonian` → `solve(...)` → expected
+  π-pulse flip (Phase 1 core; QuTiP default, or `backend="jax"` for
+  the Dynamiqs path — cross-backend agreement under 1e-3 across all
+  builder families).
 - `TrajectoryResult` → `SpinReadout.run` → `MeasurementResult` →
   Wilson CI band on finite-shot estimator (Phase 1 measurement).
 - Base `DriveConfig` → `perturb_carrier_rabi` → ensemble of solves
   → inhomogeneous-dephasing signature (Phase 1 systematics).
+- `detuned_carrier_hamiltonian(..., backend="jax")` → `solve(..., backend="jax")`
+  → `TrajectoryResult(backend_name="jax-dynamiqs")` with `StorageMode.LAZY`
+  per-index loader (Phase 2 JAX backend end-to-end).
 
-Phase 0 + Phase 1 artefacts delivered:
+Phase 0 + Phase 1 + Phase 2 artefacts delivered:
 
 - Public conventions frozen in `CONVENTIONS.md` v0.2 (§1–18 complete).
 - Three-layer regression harness populated: migration (5 / 5 scenarios
@@ -109,7 +117,7 @@ all-orders operator via matrix exponentiation). Solver entry point:
 list-format Hamiltonians, enforces the §13 Fock-saturation ladder on
 every call.
 
-**Measurement (Phase 1, v0.2 — staged)**
+**Measurement (Phase 1, v0.2 — frozen)**
 
 - `iontrap_dynamics.results.MeasurementResult` — `Result` sibling carrying
   the ideal / sampled dual-view mandated by WORKPLAN §5; enforces
@@ -158,8 +166,54 @@ every call.
   default; Clopper–Pearson is exact and conservative.
 
 The measurement track is complete: `CONVENTIONS.md` §17.1–17.12
-close the read-through, with §17 now frozen as the target for the
-v0.2 Convention Freeze gate.
+close the read-through, with §17 frozen at the `v0.2.0` Convention
+Freeze gate.
+
+**Phase 2 — performance and JAX backend (v0.3)**
+
+- `sequences.solve(...)` gains a `backend: str = "qutip"` keyword-
+  only parameter; `backend="jax"` dispatches to the Dynamiqs
+  integrator via `iontrap_dynamics.backends.jax`. Solver / backend
+  compatibility is validated (explicit `solver="sesolve"` or
+  `"mesolve"` with `backend="jax"` raises `ConventionError`; only
+  `solver="auto"` is accepted on the JAX path).
+- `iontrap_dynamics.backends.jax.solve_via_jax(...)` — opt-in
+  JAX-backend entry. Dispatches to `dynamiqs.sesolve` for ket
+  inputs, `dynamiqs.mesolve` for density matrices. Honours all
+  three `StorageMode` values (OMITTED / EAGER / LAZY — the LAZY
+  loader closes over the Dynamiqs-returned JAX array, materialises
+  one `Qobj` per index on demand, bounds-checks against JAX's
+  silent-clamp behaviour). Forces JAX x64 at solve entry for
+  complex128 arithmetic (CONVENTIONS.md §1 unit commitment).
+- Results on the JAX backend are tagged with
+  `ResultMetadata.backend_name="jax-dynamiqs"` and
+  `backend_version=f"dynamiqs-{ver}+jax-{ver}"`. The
+  `backend_name` string is a **schema-commitment tag**: a future
+  integrator swap requires a new string (not a suffix), so users'
+  cache manifests stay consistent. `convention_version` is read
+  from `hilbert.system.convention_version`, honouring archival
+  pins exactly like the QuTiP path.
+- Every time-dependent Hamiltonian builder gains a `backend=`
+  kwarg on the same pattern (carrier, RSB, BSB, MS gate,
+  modulated carrier). The four structured detuning builders share
+  `backends.jax._coefficients.timeqarray_cos_sin` for
+  `dq.modulated(cos, H_static) + dq.modulated(sin, H_quadrature)`
+  assembly; `modulated_carrier_hamiltonian` takes a user-supplied
+  `envelope_jax` keyword (JAX-traceable mirror of `envelope`) for
+  arbitrary pulse shapes. Missing `envelope_jax` on
+  `backend="jax"` raises `ConventionError` — no silent
+  translation.
+- Cross-backend numeric equivalence validated at library-default
+  integrator tolerances across all five time-dependent builders:
+  worst-case 1.35e-5 absolute expectation delta, well under the
+  1e-3 design-target tolerance. Honest performance null result
+  at dim ≥ 100 / 5000 steps (QuTiP 5 is ~2.8× faster than
+  Dynamiqs + JAX on CPU at current library scales; see
+  `docs/benchmarks.md`). The JAX backend's value is positioning,
+  cross-backend consistency checking, and forward-looking
+  capability (autograd scaffolding ready via `envelope_jax`
+  coefficients; GPU / TPU dispatch if the user installs a
+  CUDA / Metal JAX build).
 
 **Demo tools** (`tools/run_*.py` with canonical `manifest.json` +
 `arrays.npz` + `demo_report.json` artefacts under `benchmarks/data/`):
@@ -178,11 +232,24 @@ v0.2 Convention Freeze gate.
 parity on QuTiP 5), `run_benchmark_ensemble_parallel` (Dispatch Y —
 serial / loky / threading crossover), `run_benchmark_sparse_vs_dense`
 (Dispatch OO — CSR / dense operator-dtype baseline; closes the
-Phase 2 sparse-matrix-tuning open item).
+Phase 2 sparse-matrix-tuning open item),
+`run_benchmark_jax_timedep` (Dispatch YY / β.4.5 — cross-backend
+QuTiP-vs-JAX at dim ≥ 100 / 5000 steps across all five
+time-dependent builders; needs the `[jax]` extras).
 
-Test suite: **795 passed, 2 skipped** (797 collected). Skips are
-migration-tier builder-comparison slots (scenarios 3 and 4) with
-probe-informed blockers (see `CHANGELOG.md`).
+Test suite at `v0.3.0`:
+
+- **Base CI (no extras): 820 passed, 3 skipped.** Two skipped
+  tests are migration-tier builder-comparison slots (scenarios 3
+  and 4) with probe-informed blockers (see `CHANGELOG.md`); one
+  skipped module is the Dynamiqs-gated integration test file
+  (`tests/unit/test_backends_jax_dynamiqs.py`, gated on
+  `pytest.importorskip("dynamiqs")`).
+- **With `[jax]` extras: 869 passed, 2 skipped.** Adds the 49
+  Dynamiqs-gated integration tests covering cross-backend
+  numeric equivalence, result metadata, storage modes,
+  Fock-saturation check, time-dependent builders, user-envelope
+  dual-callable contract, and `solve_ensemble` on JAX.
 
 Docs site scaffold:
 
@@ -193,9 +260,18 @@ Docs site scaffold:
 - `docs/conventions.md` — rendered live from root `CONVENTIONS.md`
   (single source of truth via `pymdownx.snippets`)
 - `docs/phase-1-architecture.md` — concrete public-API reference
-  (module map, per-module surface, extension points, non-goals)
+  (module map, per-module surface, extension points, non-goals;
+  now also hosts the result-family vs backend-variety decision
+  record from D5 / Dispatch NN)
+- `docs/phase-2-jax-backend-design.md` — deliberation note for the
+  Phase 2 JAX / Dynamiqs backend (design axes A-D, chosen Option
+  β, ten open questions + their recorded answers)
+- `docs/phase-2-jax-time-dep-design.md` — β.4 staging note for the
+  time-dependent Hamiltonian track (Option X parallel JAX-native
+  builders; 5-sub-dispatch plan; scope inventory)
 - `docs/benchmarks.md` — honest performance baselines for every
-  Phase 2 dispatch (closes the §5 Phase 2 `docs/benchmarks.md` item)
+  Phase 2 dispatch including the β.4.5 cross-backend benchmark at
+  dim ≥ 100 / 5000 steps
 - `docs/boundary-decision-tree.md` — contributor scope rules (closes D8)
 - `docs/tutorials/` — task-oriented walkthroughs. Twelve tutorials
   shipped (Tutorials 1–12 cover the full public-surface pipeline
@@ -264,11 +340,13 @@ python -m pip install -e ".[dev,docs]"
 - `docs/` — mkdocs-material source for the documentation site
 - `assets/` — design assets consumed from `threehouse-plus-ec/cd-rules`
 - `legacy/` — pinned legacy `qc.py` used by migration-tier regression
-- `WORKPLAN_v0.3.md` — project workplan (v0.3.4 amendments applied:
-  §4.0 repo-hosting, §5.0 release-mapping, §5.1 v0.2 release,
-  §5.2 post-v0.2 on-`main`)
+- `WORKPLAN_v0.3.md` — project workplan (v0.3.5 amendments
+  applied: §4.0 repo-hosting, §5.0 release-mapping, §5.1 v0.2
+  release, §5.2 post-v0.2 on-`main`, §5.3 β.4 as v0.3.x
+  follow-up)
 - `CONVENTIONS.md` — binding conventions document (v0.2 frozen:
-  §17 measurement and §18 systematics closed at the v0.2.0 release)
+  §17 measurement and §18 systematics closed at the v0.2.0 release;
+  unchanged at v0.3.0 — no conventions-level schema change)
 - `CHANGELOG.md` — Keep-a-Changelog log of dispatches on `main`
 
 ## Licence

@@ -1,7 +1,7 @@
 # Welcome
 
 <section class="hero-panel">
-  <p class="hero-kicker">iontrap-dynamics · Phase 0 scaffold</p>
+  <p class="hero-kicker">iontrap-dynamics · v0.3.0 — Phase 2 complete</p>
   <h1>Open-system quantum dynamics for trapped-ion spin-motion systems</h1>
   <p class="hero-lede">
     A Python library for deterministic, typed, convention-explicit modelling of
@@ -59,39 +59,58 @@ change rather than a solver rewrite.
 
 <div class="status-strip" markdown>
 
-`CONVENTIONS.md` v0.1-draft  
-Result schema and cache format  
-Analytic and invariant regression anchors  
-Strict package metadata and CI scaffold
+`CONVENTIONS.md` v0.2 frozen  
+Result schema, cache format, three-layer regression harness  
+QuTiP reference backend + JAX / Dynamiqs opt-in backend  
+Strict package metadata, CI (lint + mypy strict + tests + pa11y WCAG 2 A)
 
 </div>
 
-The current package surface covers both the foundation and the first
-Phase 1 dynamics:
+At `v0.3.0` the library covers Phase 0, Phase 1, and Phase 2 in full:
 
 Foundation (Phase 0):
 
-- Canonical exception hierarchy
-- Convention-version marker
-- Frozen result dataclasses and storage policy
-- Hash-verified cache round-trips
-- Analytic reference formulas
-- Backend-agnostic invariant diagnostics
+- Canonical exception hierarchy, convention-version marker, frozen
+  result dataclasses with declared storage policy, hash-verified
+  cache round-trips, analytic reference formulas, backend-agnostic
+  invariant diagnostics.
 
-Configuration layer (Phase 1):
+Configuration & dynamics (Phase 1):
 
 - Atomic-physics Pauli operators (`sigma_z_ion` etc. — sign-flipped
-  against QuTiP's native convention)
+  against QuTiP's native convention).
 - `IonSpecies`, `DriveConfig`, `ModeConfig`, `IonSystem` composition
-  with cross-validation at construction
+  with cross-validation at construction.
 - `HilbertSpace` implementing the §2 tensor ordering, operator
-  embedding, and motional primitives (a, a†, n̂)
-- `ground_state` + `compose_density` state-prep helpers
+  embedding, motional primitives (a, a†, n̂).
+- Full Hamiltonian builder surface: carrier, red / blue sideband,
+  MS gate — exact and detuned forms — plus `modulated_carrier`
+  (time-dependent envelope primitive) and `two_ion_{red,blue}_sideband`.
+- State prep (coherent, squeezed, squeezed-coherent), observable
+  registry, entanglement evaluators (concurrence, EoF, log-negativity).
 
-Dynamics (Phase 1, initial builder):
+Measurement + systematics (Phase 1, v0.2 frozen):
 
-- `carrier_hamiltonian` for on-resonance single-ion drives; end-to-end
-  π-pulse via `qutip.mesolve` verified against the analytic formula.
+- Sampling channels (Bernoulli, Binomial, Poisson), detector model
+  with efficiency / dark counts / thresholding, protocol composers
+  (`SpinReadout`, `ParityScan`, `SidebandInference`), Wilson /
+  Clopper–Pearson intervals (§17).
+- Jitter and drift primitives (Rabi / detuning / phase), SPAM
+  preparation errors (§18).
+
+Performance + JAX backend (Phase 2):
+
+- `sequences.solve(backend="jax", ...)` routes through
+  `dynamiqs.sesolve` / `dynamiqs.mesolve` with all three `StorageMode`
+  values supported and the same Fock-saturation check (§13) as the
+  QuTiP path.
+- Every time-dependent Hamiltonian builder accepts `backend="jax"`
+  and emits a Dynamiqs `TimeQArray` for the five canonical families
+  (carrier, RSB, BSB, MS gate, modulated carrier with user-supplied
+  `envelope_jax`).
+- Cross-backend numeric equivalence validated at 1e-3 tolerance;
+  honest performance characterisation (null result at dim ≥ 100 /
+  5000 steps on CPU) in `docs/benchmarks.md`.
 
 ## Boundaries
 

@@ -8,6 +8,78 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+(empty — next entry reopens after the `v0.3.0` tag cut.)
+
+## [0.3.0] — 2026-04-22
+
+**Release summary.** Closes the Phase 2 performance milestone per
+`WORKPLAN_v0.3.md` §5. The JAX / Dynamiqs backend covers both
+time-independent and time-dependent Hamiltonians end-to-end;
+cross-backend numeric equivalence is validated at the 1e-3
+design-target tolerance; performance characterisation at dim ≥ 100
+/ 5000 steps recorded an honest null result (QuTiP 5 is ~2.8×
+faster than Dynamiqs + JAX on CPU at current library scales —
+the JAX backend's value is positioning, autograd-ready
+scaffolding, and forward-looking GPU / TPU dispatch, not raw
+wall-clock). `backend="qutip"` remains the default on every
+solver entry and every time-dependent builder, so existing
+`v0.2.0` callers see no behaviour change.
+
+Workplan amendments since `v0.2.0`: §5.0, §5.1, §5.2 (post-v0.2
+on-`main`), §5.3 (β.4 as v0.3.x follow-up). Endorsement marker
+bumped to v0.3.5 in lock-step.
+
+**Dispatches bundled into `v0.3.0`** (all on `main` under the
+previous `[Unreleased]` block):
+
+- **Phase 2 performance track:** X (`sesolve` dispatch),
+  Y (`solve_ensemble` parallel sweeps), Z (benchmarks baseline),
+  OO (`csr`-vs-`dense` ops — closes sparse-matrix tuning), PP
+  (README refresh for Phase 2 benchmarks), QQ (post-v0.2.0
+  metadata drift fix: `CONVENTION_VERSION` bumped to `"0.2"`,
+  `measurement.channels` fallback `backend_version` from
+  `importlib.metadata`, CHANGELOG header semver phrasing).
+- **Phase 2 JAX backend track:** RR / RR.1 (β.1 skeleton +
+  post-review tightening), SS (β.2 Dynamiqs integrator), TT
+  (β.3 LAZY storage), UU (β.4.1 detuned carrier on JAX + factory
+  module), VV (β.4.2 detuned RSB / BSB + shared
+  `timeqarray_cos_sin` helper), WW (β.4.3 detuned MS gate),
+  XX (β.4.4 modulated carrier with user `envelope_jax`),
+  YY (β.4.5 cross-backend benchmark at scale + Phase 2 closure
+  record in `docs/benchmarks.md`), ZZ (post-review response:
+  `convention_version` archival fix, `TimeQArray` type surface,
+  stale-text hygiene, `solve_ensemble` JAX exec coverage,
+  `backend_name` versioning policy in design note).
+- **Tutorials track (shipped with `v0.3.0`):** AA – LL — twelve
+  tutorials covering the full public-surface pipeline end-to-end
+  (carrier Rabi + Wilson CIs through two-ion Bell-state
+  entanglement). Substantially discharges the Phase 3 "≥5
+  worked examples; Clock-School tutorial bundle" deliverable.
+
+**Cross-backend numeric equivalence at library defaults**
+(Dynamiqs 0.3.4 + QuTiP 5.2.3, max absolute expectation delta,
+all under the 1e-3 design target):
+
+| Builder                       | Worst delta |
+|-------------------------------|------------:|
+| `detuned_carrier` (β.4.1)     | 1.35e-5     |
+| `detuned_red_sideband` (β.4.2)| 7.23e-6     |
+| `detuned_blue_sideband` (β.4.2)| 1.12e-5    |
+| `detuned_ms_gate` (β.4.3)     | 1.35e-5     |
+| `modulated_carrier` (β.4.4)   | 2.47e-5     |
+
+**Test surface at `v0.3.0`:**
+
+- Base CI (no extras): 820 passing, 2 skipped (migration
+  scenarios 3 and 4, probe-informed blockers), 1 module
+  skipped (Dynamiqs gate).
+- With `[jax]` extras: 869 passing, 2 skipped.
+
+**Unchanged from `v0.2.0`:** the QuTiP backend, every public
+kwarg signature (new `backend=` kwargs all default to
+`"qutip"`), `CONVENTIONS.md` v0.2 frozen semantics. No schema
+break.
+
 ### Fixed
 
 #### Post-β.4 review response (Dispatch ZZ)
