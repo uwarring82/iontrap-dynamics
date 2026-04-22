@@ -384,9 +384,10 @@ deliberation. Design choice implications:
 `iontrap_dynamics.backends.jax` raises a clear `ImportError` with
 install instructions if the user calls `backend="jax"` without the
 extras installed. Pattern mirrors how optional dependencies are
-handled elsewhere in the scientific-Python stack. (The §7 α.1
-"NotImplemented fallback" wording is a staging detail — α.1 ships
-the error path itself, before any solver code lands — see §7.)
+handled elsewhere in the scientific-Python stack. Before the solver
+code lands (§7, α.1), the same entry point raises
+`NotImplementedError` when the extras *are* installed, so the two
+failure modes stay distinguishable by exception type.
 
 ---
 
@@ -398,9 +399,9 @@ is internally consistent; each makes different tradeoffs.
 **Integrator-default alignment with `pyproject.toml`.** The existing
 `[jax]` extras block declares `dynamiqs>=0.2`, not diffrax. Design β
 is therefore the *default-aligned* option — it inherits the
-declared dependency. Designs α and α′ require the extras to change
-in the same dispatch (see §4.5). Design γ's Axis-B choice is open
-but inherits whichever integrator α / α′ / β chose.
+declared dependency. Designs α, α′, and γ all specify diffrax (see
+each design's Axis-B bullet below) and therefore require the extras
+to change in the same dispatch (see §4.5).
 
 ### Design α — "Minimum viable JAX"
 
@@ -448,9 +449,9 @@ through autograd on a single gradient test.
 - **Integrator (B):** diffrax.
 - **Representation (C):** one-shot conversion on three families
   (RSB / BSB / MS); parallel JAX-native builder `carrier_jax`
-  kept in lockstep with `carrier_hamiltonian` via a
-  per-dispatch regression test asserting
-  `carrier_jax(...).astype(QuTiP.Qobj.full()) == carrier_hamiltonian(...).full()`
+  kept in lockstep with `carrier_hamiltonian` via a per-dispatch
+  regression test: the dense NumPy view of `carrier_jax(...)` must
+  agree element-wise with `carrier_hamiltonian(...).full()` to
   within 10⁻¹² at a representative configuration.
 - **Autograd (D):** single proof — `d fidelity / d Ω_Rabi` through
   diffrax's `solve_adjoint`. One test, one worked example in
@@ -497,7 +498,7 @@ rather than γ's 3–4 open-scope dispatches.
 |-----------------------------|------------------------|--------------------------|--------------------------|---------------------------|
 | Code cost                   | 4 dispatches           | ~5 dispatches            | 1–2 dispatches           | 3–4 dispatches            |
 | Test-surface growth         | ~10 new tests          | ~25 new tests            | ~20 new tests            | ~80 new tests             |
-| Dependency surface          | `jax + diffrax`*       | `jax + diffrax`*         | `jax + dynamiqs` ✓        | inherits α / α′ / β       |
+| Dependency surface          | `jax + diffrax`*       | `jax + diffrax`*         | `jax + dynamiqs` ✓        | `jax + diffrax`*          |
 | Aligned with existing extras | No (change required)   | No (change required)     | **Yes**                  | No (change required)      |
 | Performance win at dim ≤ 60 | None measurable        | None measurable          | None measurable          | None measurable           |
 | Performance win at dim ≥ 300| Likely modest          | Likely modest            | Likely modest–good       | Likely modest             |
@@ -545,9 +546,10 @@ implementation start.
     cache artefact.
 11. **QuTiP-only prior benchmark (from §1).** If A1 = performance,
     is a QuTiP-only scaling benchmark at dim ≥ 300 / long
-    trajectories a precondition to the first JAX dispatch? If
-    yes, that becomes a α.0 / β.0 dispatch before the chosen
-    design's α.1 / β.1.
+    trajectories a precondition? Per §10, treated as a standalone
+    dispatch independent of — and possibly superseding — any JAX
+    dispatch: the measured QuTiP ceiling may justify or retire the
+    JAX-backend deliverable entirely before any JAX code is written.
 
 ---
 
@@ -557,14 +559,20 @@ If Design α is chosen — the minimum-viable path — the dispatch
 decomposition could look like:
 
 1. **Dispatch α.1 — backend skeleton.** `iontrap_dynamics.backends.jax`
-   package; `pyproject.toml` `[jax]` extras; `backend=` kwarg on
-   `sequences.solve` with NotImplemented fallback. No solver code
-   yet; just the wiring + a unit test that the kwarg raises cleanly
-   when the extras aren't installed.
+   package; pinned update to the `[jax]` extras (swap `dynamiqs` for
+   `diffrax` per §4.5); `backend=` kwarg on `sequences.solve` with the
+   error paths from §4.5 wired in. Two unit tests: (i) calling
+   `backend="jax"` without the extras raises `ImportError` with
+   install instructions; (ii) calling it with the extras installed
+   raises `NotImplementedError` until α.2 lands the solver code. The
+   two failure modes stay distinguishable by exception type.
 2. **Dispatch α.2 — carrier Rabi end-to-end.** diffrax integrator
    for the carrier Hamiltonian, one-shot Qobj→jnp conversion,
    cross-backend equivalence test at 10⁻⁶ over 4 Rabi periods at
    dim 24. `ResultMetadata.backend_name = "jax-diffrax"` in place.
+   A `backends.jax._materialise(result, storage_mode)` helper
+   implements the OMITTED / EAGER / LAZY contract from §2 at the
+   solve boundary; tests cover all three modes.
 3. **Dispatch α.3 — remaining Hamiltonian families.** RSB / BSB /
    MS gate ported; cross-backend tolerance tests added for each.
 4. **Dispatch α.4 — benchmark artefact.**
