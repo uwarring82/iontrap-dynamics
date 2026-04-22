@@ -363,10 +363,47 @@ def _detuned_bsb_invoker(hilbert, drive, *, backend):
     )
 
 
+def _detuned_ms_gate_invoker(hilbert, drive, *, backend):
+    # MS gate needs two distinct ions; the shared fixture gives a
+    # single-ion system, so this invoker ignores `hilbert` and `drive`
+    # and builds its own 2-ion arrangement. Still tests the kwarg
+    # surface symmetrically with the single-ion builders.
+    from iontrap_dynamics.hamiltonians import detuned_ms_gate_hamiltonian
+
+    com = ModeConfig(
+        label="com",
+        frequency_rad_s=2 * np.pi * 1.5e6,
+        eigenvector_per_ion=np.array(
+            [
+                [0.0, 0.0, 1.0 / np.sqrt(2.0)],
+                [0.0, 0.0, 1.0 / np.sqrt(2.0)],
+            ]
+        ),
+    )
+    system = IonSystem.homogeneous(
+        species=mg25_plus(), n_ions=2, modes=(com,)
+    )
+    hilbert_ms = HilbertSpace(system=system, fock_truncations={"com": 4})
+    drive_ms = DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+        carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,
+        phase_rad=0.0,
+    )
+    return detuned_ms_gate_hamiltonian(
+        hilbert_ms,
+        drive_ms,
+        "com",
+        ion_indices=(0, 1),
+        detuning_rad_s=2 * np.pi * 30e3,
+        backend=backend,
+    )
+
+
 _TIMEDEP_BUILDERS = [
     pytest.param(_detuned_carrier_invoker, id="detuned_carrier"),
     pytest.param(_detuned_rsb_invoker, id="detuned_red_sideband"),
     pytest.param(_detuned_bsb_invoker, id="detuned_blue_sideband"),
+    pytest.param(_detuned_ms_gate_invoker, id="detuned_ms_gate"),
 ]
 
 

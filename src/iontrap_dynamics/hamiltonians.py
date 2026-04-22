@@ -1121,9 +1121,11 @@ def detuned_ms_gate_hamiltonian(
     *,
     ion_indices: tuple[int, int],
     detuning_rad_s: float,
-) -> list[object]:
+    backend: str = "qutip",
+) -> object:
     """Return the gate-closing Mølmer–Sørensen Hamiltonian in QuTiP's
-    time-dependent list format.
+    time-dependent list format (or, with ``backend="jax"``, as a
+    Dynamiqs :class:`TimeQArray`).
 
     .. math::
         H(t) / \\hbar = \\sum_{k \\in \\text{ions}}
@@ -1208,21 +1210,39 @@ def detuned_ms_gate_hamiltonian(
         negative values both close the loop; the sign flips the phase
         of the final Bell state (i.e. ``(|↓↓⟩ − i|↑↑⟩)/√2`` vs
         ``(|↓↓⟩ + i|↑↑⟩)/√2``).
+    backend
+        Which backend shape to emit. ``"qutip"`` (default) returns
+        the QuTiP time-dependent list format
+        ``[[A_X, cos_coeff], [A_P, sin_coeff]]``; ``"jax"`` returns a
+        Dynamiqs :class:`TimeQArray`
+        ``dq.modulated(jnp.cos(δt), A_X) + dq.modulated(jnp.sin(δt), A_P)``.
+        β.4.3 of the JAX-backend track; see
+        ``docs/phase-2-jax-time-dep-design.md``. Requires the ``[jax]``
+        extras; a :class:`~iontrap_dynamics.exceptions.BackendError`
+        fires with install hint when they're missing. Unknown backend
+        strings raise :class:`ConventionError`.
 
     Returns
     -------
-    list[object]
-        Time-dependent list-format Hamiltonian
+    object
+        With ``backend="qutip"``: a ``list[object]`` time-dependent
+        list-format Hamiltonian
         ``[[A_X, cos_coeff], [A_P, sin_coeff]]`` where
         ``A_X = (Ω/2) · Σ_k η_k σ_φ^{(k)} ⊗ (a + a†)`` and
         ``A_P = (Ω/2) · Σ_k η_k σ_φ^{(k)} ⊗ i(a - a†)``.
+        With ``backend="jax"``: a :class:`dynamiqs.TimeQArray`
+        encoding the same form with JAX-traceable coefficients.
 
     Raises
     ------
     ConventionError
         If ``ion_indices`` are duplicate, ``mode_label`` is unknown,
-        or ``detuning_rad_s == 0`` (route zero-detuning cases through
-        :func:`ms_gate_hamiltonian` instead).
+        ``detuning_rad_s == 0`` (route zero-detuning cases through
+        :func:`ms_gate_hamiltonian` instead), or ``backend`` is an
+        unknown string.
+    BackendError
+        If ``backend="jax"`` but the ``[jax]`` optional dependencies
+        are not importable.
     IndexError
         If either ion index is outside ``[0, n_ions)``.
 
@@ -1264,6 +1284,11 @@ def detuned_ms_gate_hamiltonian(
             "ms_gate_hamiltonian, which returns a time-independent Qobj "
             "without list-format overhead."
         )
+    if backend not in {"qutip", "jax"}:
+        raise ConventionError(
+            f"detuned_ms_gate_hamiltonian(backend={backend!r}): unknown "
+            "backend; expected one of ['qutip', 'jax']."
+        )
 
     omega = drive.carrier_rabi_frequency_rad_s
     phi = drive.phase_rad
@@ -1285,6 +1310,17 @@ def detuned_ms_gate_hamiltonian(
 
     a_x = (omega / 2.0) * s_generator * x_quadrature
     a_p = (omega / 2.0) * s_generator * p_quadrature
+
+    if backend == "jax":
+        # Guard BEFORE importing _coefficients (its jax.numpy import
+        # fires at module load); see detuned_carrier_hamiltonian's
+        # parallel branch for the full reasoning.
+        from .backends.jax._core import _require_jax
+
+        _require_jax()
+        from .backends.jax._coefficients import timeqarray_cos_sin
+
+        return timeqarray_cos_sin(a_x, a_p, delta)
 
     def cos_coeff(t: float, args: Any) -> float:
         return math.cos(delta * t)

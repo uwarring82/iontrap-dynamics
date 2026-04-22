@@ -817,7 +817,147 @@ class TestTimeDependentDetunedSideband:
 
 
 # ---------------------------------------------------------------------------
-# β.4.1 / β.4.2 shared helper: timeqarray_cos_sin.
+# β.4.3 — detuned Mølmer–Sørensen gate (two ions, single mode) with
+# backend="jax". Same cos/sin structural form as the single-ion
+# builders; the A_X / A_P operator pair is different but the
+# timeqarray_cos_sin assembly helper is shared.
+# ---------------------------------------------------------------------------
+
+
+class TestTimeDependentDetunedMSGate:
+    TOLERANCE = 1e-3
+
+    @pytest.fixture
+    def ms_gate_setup(
+        self,
+    ) -> tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float]:
+        com = ModeConfig(
+            label="com",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array(
+                [
+                    [0.0, 0.0, 1.0 / np.sqrt(2.0)],
+                    [0.0, 0.0, 1.0 / np.sqrt(2.0)],
+                ]
+            ),
+        )
+        system = IonSystem.homogeneous(
+            species=mg25_plus(), n_ions=2, modes=(com,)
+        )
+        hilbert = HilbertSpace(system=system, fock_truncations={"com": 8})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,
+            phase_rad=0.0,
+        )
+        # Bell-gate parameters derived from analytic helpers. One loop
+        # closes in t_gate ≈ 27 μs at δ/2π ≈ 36.85 kHz for the COM-
+        # mode on ²⁵Mg⁺ with Ω/2π = 100 kHz.
+        from iontrap_dynamics.analytic import (
+            lamb_dicke_parameter,
+            ms_gate_closing_detuning,
+        )
+
+        eta = lamb_dicke_parameter(
+            k_vec=[0.0, 0.0, 2 * np.pi / 280e-9],
+            mode_eigenvector=[0.0, 0.0, 1.0 / np.sqrt(2.0)],
+            ion_mass=mg25_plus().mass_kg,
+            mode_frequency=com.frequency_rad_s,
+        )
+        detuning = ms_gate_closing_detuning(
+            carrier_rabi_frequency=2 * np.pi * 0.1e6,
+            lamb_dicke_parameter=eta,
+            loops=1,
+        )
+        # Quarter of the gate-closing time — enough to see dynamics
+        # and cheap to integrate on both backends (dim = 4 × 8 = 32).
+        psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(8, 0))
+        times = np.linspace(0.0, 0.25 * 27e-6, 100)
+        observables = [
+            spin_z(hilbert, 0),
+            spin_z(hilbert, 1),
+            number(hilbert, "com"),
+        ]
+        return hilbert, drive, psi_0, times, observables, detuning
+
+    def test_jax_backend_returns_time_qarray(
+        self,
+        ms_gate_setup: tuple[
+            HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float
+        ],
+    ) -> None:
+        from iontrap_dynamics.hamiltonians import detuned_ms_gate_hamiltonian
+
+        hilbert, drive, *_, detuning = ms_gate_setup
+        H_jax = detuned_ms_gate_hamiltonian(
+            hilbert,
+            drive,
+            "com",
+            ion_indices=(0, 1),
+            detuning_rad_s=detuning,
+            backend="jax",
+        )
+        assert not isinstance(H_jax, list)
+        assert H_jax(0.0) is not None
+
+    def test_cross_backend_expectation_equivalence(
+        self,
+        ms_gate_setup: tuple[
+            HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float
+        ],
+    ) -> None:
+        from iontrap_dynamics.hamiltonians import detuned_ms_gate_hamiltonian
+
+        hilbert, drive, psi_0, times, obs, detuning = ms_gate_setup
+        H_qutip = detuned_ms_gate_hamiltonian(
+            hilbert,
+            drive,
+            "com",
+            ion_indices=(0, 1),
+            detuning_rad_s=detuning,
+            backend="qutip",
+        )
+        H_jax = detuned_ms_gate_hamiltonian(
+            hilbert,
+            drive,
+            "com",
+            ion_indices=(0, 1),
+            detuning_rad_s=detuning,
+            backend="jax",
+        )
+        r_qutip = solve(
+            hilbert=hilbert,
+            hamiltonian=H_qutip,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="qutip",
+        )
+        r_jax = solve(
+            hilbert=hilbert,
+            hamiltonian=H_jax,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        for obs_label in r_qutip.expectations:
+            delta = np.max(
+                np.abs(
+                    r_qutip.expectations[obs_label]
+                    - r_jax.expectations[obs_label]
+                )
+            )
+            assert delta < self.TOLERANCE, (
+                f"MS gate {obs_label!r}: cross-backend disagreement "
+                f"{delta:.2e} exceeds tolerance {self.TOLERANCE:.0e}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# β.4.1 / β.4.2 / β.4.3 shared helper: timeqarray_cos_sin.
 # ---------------------------------------------------------------------------
 
 

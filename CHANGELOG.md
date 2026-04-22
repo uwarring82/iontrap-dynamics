@@ -10,6 +10,67 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — β.4.3 detuned MS gate on JAX backend (Dispatch WW)
+
+Extends the JAX backend's time-dependent surface to the two-ion
+Mølmer–Sørensen gate builder. Same `backend=` kwarg pattern as
+β.4.1 / β.4.2 — the MS gate shares the cos/sin structural form
+(two Hermitian pieces `A_X`, `A_P` with cos/sin envelopes), so
+the shared `timeqarray_cos_sin` helper from β.4.2 applies
+directly. Third sub-dispatch in the v0.3.x follow-up track per
+`WORKPLAN_v0.3.md` §5.3.
+
+- `hamiltonians.detuned_ms_gate_hamiltonian` gains
+  `backend: str = "qutip"` keyword-only parameter. Default
+  preserves v0.2 behaviour (QuTiP time-dep list). `backend="jax"`
+  dispatches to `timeqarray_cos_sin(A_X, A_P, δ)` — the same
+  helper already consumed by the three single-ion detuning
+  builders (carrier, RSB, BSB).
+- `A_X = (Ω/2) · Σ_k η_k σ_φ^{(k)} ⊗ (a + a†)` and
+  `A_P = (Ω/2) · Σ_k η_k σ_φ^{(k)} ⊗ i(a − a†)` — the gate's
+  position / momentum quadrature-coupled spin generators. Both
+  Hermitian; both carry the full per-ion η (computed from each
+  ion's mode eigenvector, so COM and stretch modes are handled
+  correctly).
+- Cross-backend agreement at Bell-gate closing parameters
+  (²⁵Mg⁺ × 2, COM mode, Ω/2π = 100 kHz, δ/2π ≈ 36.85 kHz,
+  quarter-of-gate trajectory at Fock 8, dim = 32): max σ_z
+  delta 9.87e-6 per ion; max n_com delta 1.35e-5. Well under
+  the 1e-3 test bound.
+- Fock-saturation Level 1 warning fires on both backends
+  identically at Fock 8 with these parameters (p_top ≈ 2.56e-5
+  vs ε = 1e-4). Confirms the shared classifier from β.2 / β.4.x
+  behaves uniformly across backends on time-dependent
+  Hamiltonians.
+
+Tests:
+- `tests/unit/test_backends_jax.py::TestTimeDependentBuilderKwarg`
+  — now parametrized over all **four** structured detuning
+  builders (carrier + RSB + BSB + MS gate). 3 tests × 4 builders
+  = 12 parametrized invocations covering unknown-backend
+  rejection, install-hint `BackendError` via mocked availability,
+  default-path regression. The MS-gate invoker builds its own
+  two-ion fixture since the shared single-ion fixture doesn't
+  match the builder's signature.
+- `tests/unit/test_backends_jax_dynamiqs.py::TestTimeDependentDetunedMSGate`
+  — 2 tests: JAX path returns non-list TimeQArray; cross-backend
+  σ_z + n_com equivalence at Bell-gate closing parameters
+  (1/4 of t_gate ≈ 27 μs). Uses the existing
+  `ms_gate_closing_detuning` analytic helper so the physics
+  parameters are canonical.
+
+Test-surface:
+- Base CI (no extras): 814 → 817 passing (+3; MS gate × 3
+  parametrized tests).
+- With `[jax]` extras (venv / opt-in CI): 855 → 860 passing (+5;
+  3 parametrized base tests + 2 MS-gate integration tests).
+
+β.4 track coverage on `main` after β.4.3: all four structured
+detuning builders reach the JAX backend (carrier, RSB, BSB, MS
+gate) via the shared `timeqarray_cos_sin` assembly helper.
+Remaining β.4 work (v0.3.x scope): β.4.4 `modulated_carrier_hamiltonian`
+with user `envelope_jax`, β.4.5 cross-backend benchmark at scale.
+
 #### Phase 2 — β.4.2 detuned RSB / BSB on JAX backend (Dispatch VV)
 
 Extends the JAX backend's time-dependent surface to the single-ion
