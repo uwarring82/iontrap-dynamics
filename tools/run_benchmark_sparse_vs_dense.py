@@ -179,9 +179,7 @@ def _run_scenario(
         tlist=tlist,
         observables=observables,
     )
-    max_err = max(
-        float(np.max(np.abs(exps_csr[k] - exps_dense[k]))) for k in exps_csr
-    )
+    max_err = max(float(np.max(np.abs(exps_csr[k] - exps_dense[k]))) for k in exps_csr)
     ratio = t_dense / t_csr if t_csr > 0 else float("inf")
     hilbert_dim = int(hilbert.total_dim)
     return {
@@ -297,8 +295,7 @@ def main() -> int:
             "scales and pulls ahead at larger single-ion Fock truncations."
         ),
         "workplan_reference": (
-            "WORKPLAN_v0.3.md §5 Phase 2 — performance "
-            "(closes the sparse-matrix-tuning open item)"
+            "WORKPLAN_v0.3.md §5 Phase 2 — performance (closes the sparse-matrix-tuning open item)"
         ),
         "n_steps": N_STEPS,
         "n_repeats": N_REPEATS,
@@ -331,8 +328,7 @@ def main() -> int:
     ax.axhline(1.0, color="grey", linewidth=0.5, linestyle=":")
     ax.set_ylabel("dense / csr wall-clock ratio")
     ax.set_title(
-        f"csr-vs-dense operator dtype — qutip {qutip.__version__}, "
-        f"mean = {mean_ratio:.2f}×"
+        f"csr-vs-dense operator dtype — qutip {qutip.__version__}, mean = {mean_ratio:.2f}×"
     )
     for i, (ratio, dim) in enumerate(zip(ratios, dims, strict=True)):
         ax.text(i, ratio + 0.02, f"{ratio:.2f}×\n(dim {dim})", ha="center", fontsize=7)

@@ -33,7 +33,6 @@ from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures — a minimal carrier Rabi setup that exercises the solve()
 # entry point without caring about physics correctness (these are dispatch
@@ -107,9 +106,7 @@ class TestDefaultBackendIsQutip:
         )
         assert default.metadata.backend_name == explicit.metadata.backend_name
         for key in default.expectations:
-            np.testing.assert_array_equal(
-                default.expectations[key], explicit.expectations[key]
-            )
+            np.testing.assert_array_equal(default.expectations[key], explicit.expectations[key])
 
 
 # ---------------------------------------------------------------------------

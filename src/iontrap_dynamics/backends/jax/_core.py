@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from ...exceptions import BackendError
+from ...results import TrajectoryResult
 
 
 def _is_jax_available() -> bool:
@@ -53,8 +54,13 @@ _BETA2_STUB_MESSAGE = (
 )
 
 
-def solve_via_jax(**kwargs: Any) -> None:
+def solve_via_jax(**kwargs: Any) -> TrajectoryResult:
     """JAX-backend solve entry. Skeleton stub — see module docstring.
+
+    Annotated as returning :class:`TrajectoryResult` to match the
+    post-β.2 contract; the β.1 body unconditionally raises, so the
+    declared return type is satisfied vacuously until the integrator
+    lands.
 
     Raises
     ------

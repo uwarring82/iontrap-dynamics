@@ -587,16 +587,15 @@ def _validate_backend(backend: str, solver: str) -> None:
             f"solve(backend={backend!r}): unknown backend; expected "
             f"one of {sorted(_VALID_BACKENDS)!r}."
         )
-    if backend == "jax":
-        if solver != "auto":
-            raise ConventionError(
-                f"solve(backend='jax', solver={solver!r}): the "
-                f"solver= kwarg carries QuTiP-specific identifiers "
-                f"('sesolve' / 'mesolve') that do not apply on the "
-                f"JAX backend. Use solver='auto' (default) — the JAX "
-                f"path infers Schrödinger-vs-Lindblad from the input "
-                f"dtype. See docs/phase-2-jax-backend-design.md §4.1."
-            )
+    if backend == "jax" and solver != "auto":
+        raise ConventionError(
+            f"solve(backend='jax', solver={solver!r}): the "
+            f"solver= kwarg carries QuTiP-specific identifiers "
+            f"('sesolve' / 'mesolve') that do not apply on the "
+            f"JAX backend. Use solver='auto' (default) — the JAX "
+            f"path infers Schrödinger-vs-Lindblad from the input "
+            f"dtype. See docs/phase-2-jax-backend-design.md §4.1."
+        )
 
 
 def _choose_solver(solver: str, initial_state: qutip.Qobj) -> str:
