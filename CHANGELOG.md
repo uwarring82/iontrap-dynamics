@@ -2,10 +2,48 @@
 
 All notable changes to `iontrap-dynamics` will be documented in this file.
 
-The format follows Keep a Changelog, and the project aims to follow Semantic
-Versioning once the public package surface reaches its first alpha release.
+The format follows Keep a Changelog. Semantic Versioning has been adopted
+as of `v0.2.0` (tagged 2026-04-21); pre-`v0.2.0` versioning was
+placeholder-only and did not follow semver.
 
 ## [Unreleased]
+
+### Fixed
+
+#### Post-v0.2.0 metadata drift (Dispatch QQ)
+
+Three hygiene fixes that address stale version strings left behind
+when `v0.2.0` was tagged. None are user-visible behaviour changes;
+all three correct provenance metadata written into results / cache
+manifests / the project header.
+
+- `CONVENTION_VERSION` in `src/iontrap_dynamics/conventions.py`
+  bumped from `"0.1-draft"` to `"0.2"` — matches the
+  `CONVENTIONS.md` v0.2 Convention Freeze that happened at
+  `v0.2.0` (Dispatch W on 2026-04-21) but was not reflected in the
+  runtime constant. Every `TrajectoryResult` produced between
+  Dispatch W and this dispatch was tagged with the draft version
+  string; new results carry `"0.2"` as intended by the docstring's
+  bump policy ("additions are free; changes require a minor-version
+  bump and a CHANGELOG entry").
+- `backend_version` fallback in
+  `src/iontrap_dynamics/measurement/channels.py` no longer hard-
+  codes `"0.1.0.dev0"` (the pre-`v0.2.0` `pyproject.toml` version
+  string that was never updated). The fallback now resolves the
+  installed distribution version dynamically via
+  `importlib.metadata.version("iontrap-dynamics")`, with a
+  `PackageNotFoundError` fallback to `"unknown"` for editable-
+  install contexts where distribution metadata may be unresolved.
+  This path is only taken when a measurement is constructed
+  without an upstream `ResultMetadata` (i.e. a synthetic / test
+  measurement not attached to a solver trajectory).
+- `CHANGELOG.md` header no longer says semver adoption is future-
+  tense; the statement now records that semver is in effect from
+  `v0.2.0`.
+
+No test-surface change: existing tests import `CONVENTION_VERSION`
+as a symbol and assert against the imported value, so the constant
+bump propagates without test edits.
 
 ### Added
 

@@ -17,7 +17,7 @@ from __future__ import annotations
 #: Version of ``CONVENTIONS.md`` this release of the library is built against.
 #: Bumps follow CONVENTIONS.md Convention Freeze gates: additions are free,
 #: changes require a minor-version bump and a CHANGELOG entry.
-CONVENTION_VERSION: str = "0.1-draft"
+CONVENTION_VERSION: str = "0.2"
 
 #: Default Fock-truncation convergence tolerance ε (CONVENTIONS.md §13).
 #: The top-Fock-level population ``p_top = max_t ⟨N_Fock−1|ρ_m|N_Fock−1⟩``

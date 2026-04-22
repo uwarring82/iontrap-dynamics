@@ -36,6 +36,8 @@ Bernoulli / Binomial, ``"rate"`` for Poisson). Output is
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import ClassVar
 
 import numpy as np
@@ -47,6 +49,11 @@ from ..results import (
     StorageMode,
     TrajectoryResult,
 )
+
+try:
+    _LIBRARY_VERSION = _pkg_version("iontrap-dynamics")
+except PackageNotFoundError:
+    _LIBRARY_VERSION = "unknown"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -359,7 +366,7 @@ def _build_metadata(
         convention_version=CONVENTION_VERSION,
         request_hash="0" * 64,
         backend_name="iontrap-dynamics.measurement",
-        backend_version="0.1.0.dev0",
+        backend_version=_LIBRARY_VERSION,
         storage_mode=StorageMode.OMITTED,
         provenance_tags=("measurement", *provenance_tags),
     )
