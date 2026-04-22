@@ -59,6 +59,45 @@ block already declares the required dependencies (one of the
 reasons β was the default-aligned choice over α / α′). `backend="qutip"`
 remains the default; users opt into `backend="jax"` explicitly.
 
+#### β.1 post-review tightening (Dispatch RR.1)
+
+Three small cleanups + two tests added after an architect-stance
+review of the β.1 skeleton. Same-track follow-up; no user-visible
+contract change.
+
+- `_validate_backend` checks solver vocabulary through
+  `_QUTIP_SOLVER_VALUES` *before* the JAX / QuTiP-solver
+  compatibility rule. Previously `backend="jax", solver="banana"`
+  raised the "QuTiP-specific" `ConventionError`; it now raises
+  "unknown solver" first, which matches the actual failure mode.
+  Explicit `"sesolve"`/`"mesolve"` still surface the "QuTiP-
+  specific" message. Also closes the dead-constant status of
+  `_QUTIP_SOLVER_VALUES` (defined but previously unread).
+- `solve_via_jax` signature tightened from `**kwargs: Any` to the
+  explicit keyword-only parameter list that mirrors
+  `sequences.solve` (minus the `backend=` discriminator). Any
+  future `solve()` → `solve_via_jax` kwarg-name mismatch now
+  surfaces as a `TypeError` at call time rather than silently
+  landing in `**kwargs` and being dropped. β.2 consumes these
+  parameters in the Dynamiqs integrator call; β.1 ignores them
+  after the availability check (via a single `del` binding).
+- New test
+  `TestJaxAvailabilityAndStub::test_beta2_stub_reachable_through_sequences_solve`
+  covers the end-to-end dispatch path — the existing
+  `test_beta2_stub_raised_when_extras_present` only exercised
+  `solve_via_jax()` directly. The new test routes through
+  `sequences.solve(backend="jax")` with mocked availability and
+  confirms the kwarg-forwarding matches `solve_via_jax`'s locked
+  signature.
+- New `TestDispatchOrdering` class (2 tests) locking in the
+  validation order: `StorageMode.LAZY + backend="jax"` must reach
+  the JAX dispatch (not the QuTiP-only LAZY guard) so β.2 is free
+  to implement JAX-side lazy loaders per the design note §2. The
+  sibling test confirms `LAZY + backend="qutip"` still raises as
+  before — the ordering fix is not a general LAZY-support change.
+
+Test-surface growth: 805 → 808 passing (3 new).
+
 ### Fixed
 
 #### Post-v0.2.0 metadata drift (Dispatch QQ)

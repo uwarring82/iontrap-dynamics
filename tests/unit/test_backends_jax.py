@@ -176,8 +176,12 @@ class TestSolverBackendCompatibility:
         self,
         carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
     ) -> None:
+        # Unknown solver string → "unknown solver" message, *not* the
+        # "QuTiP-specific" message. Vocabulary check precedes the
+        # backend-compatibility check so the error matches the actual
+        # failure mode.
         hilbert, ham, psi_0, times = carrier_setup
-        with pytest.raises(ConventionError):
+        with pytest.raises(ConventionError, match="unknown solver"):
             solve(
                 hilbert=hilbert,
                 hamiltonian=ham,
@@ -239,33 +243,78 @@ class TestSolverBackendCompatibility:
 class TestJaxAvailabilityAndStub:
     def test_install_hint_raised_when_extras_missing(
         self,
+        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        hilbert, ham, psi_0, times = carrier_setup
         monkeypatch.setattr(jax_core, "_is_jax_available", lambda: False)
         with pytest.raises(BackendError) as excinfo:
-            solve_via_jax()
+            solve_via_jax(
+                hilbert=hilbert,
+                hamiltonian=ham,
+                initial_state=psi_0,
+                times=times,
+            )
         msg = str(excinfo.value)
         assert "iontrap-dynamics[jax]" in msg
         assert "JAX" in msg or "Dynamiqs" in msg
 
     def test_install_hint_text_lists_install_command(
         self,
+        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        hilbert, ham, psi_0, times = carrier_setup
         monkeypatch.setattr(jax_core, "_is_jax_available", lambda: False)
         with pytest.raises(BackendError) as excinfo:
-            solve_via_jax()
+            solve_via_jax(
+                hilbert=hilbert,
+                hamiltonian=ham,
+                initial_state=psi_0,
+                times=times,
+            )
         assert "pip install iontrap-dynamics[jax]" in str(excinfo.value)
 
     def test_beta2_stub_raised_when_extras_present(
         self,
+        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        # Direct-call path: the stub surfaces the NotImplementedError
+        # when the availability check reports extras present. Signature
+        # was locked in β.1, so all required kwargs must be supplied.
+        hilbert, ham, psi_0, times = carrier_setup
         monkeypatch.setattr(jax_core, "_is_jax_available", lambda: True)
         with pytest.raises(NotImplementedError) as excinfo:
-            solve_via_jax()
+            solve_via_jax(
+                hilbert=hilbert,
+                hamiltonian=ham,
+                initial_state=psi_0,
+                times=times,
+            )
         msg = str(excinfo.value)
         assert "Dispatch β.2" in msg or "β.2" in msg
+
+    def test_beta2_stub_reachable_through_sequences_solve(
+        self,
+        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # End-to-end regression for the dispatch wiring. Going through
+        # sequences.solve with backend="jax" and mocked availability
+        # must reach the same NotImplementedError surface as a direct
+        # solve_via_jax call — confirms the kwarg-forwarding in
+        # sequences.py matches solve_via_jax's locked signature.
+        hilbert, ham, psi_0, times = carrier_setup
+        monkeypatch.setattr(jax_core, "_is_jax_available", lambda: True)
+        with pytest.raises(NotImplementedError):
+            solve(
+                hilbert=hilbert,
+                hamiltonian=ham,
+                initial_state=psi_0,
+                times=times,
+                backend="jax",
+            )
 
     def test_availability_check_returns_bool(self) -> None:
         # Real call — whatever the local environment has, the predicate
@@ -284,6 +333,58 @@ class TestJaxAvailabilityAndStub:
 # ---------------------------------------------------------------------------
 # solve_ensemble — backend kwarg propagates through the batch entry.
 # ---------------------------------------------------------------------------
+
+
+class TestDispatchOrdering:
+    """Lock in that the JAX dispatch fires *before* QuTiP-path guards.
+
+    The QuTiP path rejects ``StorageMode.LAZY`` because ``qutip.mesolve``
+    materialises all states eagerly (see `sequences.solve` docstring).
+    The JAX path has its own storage-mode semantics (per the design
+    note §2: LAZY → ``states_loader`` stays JAX-lazy until the caller
+    fetches an index) and must not inherit the QuTiP-only restriction.
+    Verifying the ordering with a regression test now — before β.2
+    introduces real JAX behaviour that would mask an ordering bug.
+    """
+
+    def test_lazy_storage_does_not_raise_on_jax_dispatch(
+        self,
+        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        hilbert, ham, psi_0, times = carrier_setup
+        # Force availability to True so the call reaches the β.2 stub.
+        # The assertion we care about: the error is NotImplementedError
+        # (β.2 stub) or BackendError (if extras missing), not the
+        # ConventionError QuTiP raises on LAZY.
+        monkeypatch.setattr(jax_core, "_is_jax_available", lambda: True)
+        with pytest.raises(NotImplementedError):
+            solve(
+                hilbert=hilbert,
+                hamiltonian=ham,
+                initial_state=psi_0,
+                times=times,
+                storage_mode=StorageMode.LAZY,
+                backend="jax",
+            )
+
+    def test_lazy_storage_still_rejected_on_qutip_backend(
+        self,
+        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
+    ) -> None:
+        # The LAZY restriction on the QuTiP backend must persist —
+        # the dispatch-ordering fix on the JAX side is not a general
+        # LAZY-support change.
+        hilbert, ham, psi_0, times = carrier_setup
+        with pytest.raises(ConventionError, match="LAZY"):
+            solve(
+                hilbert=hilbert,
+                hamiltonian=ham,
+                initial_state=psi_0,
+                times=times,
+                storage_mode=StorageMode.LAZY,
+                backend="qutip",
+            )
 
 
 class TestSolveEnsembleForwardsBackend:

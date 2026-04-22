@@ -13,10 +13,15 @@ per ``docs/phase-2-jax-backend-design.md`` §7.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+
+import numpy as np
+import qutip
 
 from ...exceptions import BackendError
-from ...results import TrajectoryResult
+from ...hilbert import HilbertSpace
+from ...observables import Observable
+from ...results import StorageMode, TrajectoryResult
 
 
 def _is_jax_available() -> bool:
@@ -54,8 +59,30 @@ _BETA2_STUB_MESSAGE = (
 )
 
 
-def solve_via_jax(**kwargs: Any) -> TrajectoryResult:
+def solve_via_jax(
+    *,
+    hilbert: HilbertSpace,
+    hamiltonian: qutip.Qobj | list[object],
+    initial_state: qutip.Qobj,
+    times: np.ndarray,
+    observables: Sequence[Observable] = (),
+    request_hash: str = "",
+    backend_name: str | None = None,
+    storage_mode: StorageMode = StorageMode.OMITTED,
+    provenance_tags: tuple[str, ...] = (),
+    fock_tolerance: float | None = None,
+    solver: str = "auto",
+) -> TrajectoryResult:
     """JAX-backend solve entry. Skeleton stub — see module docstring.
+
+    The keyword-only signature mirrors
+    :func:`iontrap_dynamics.sequences.solve` exactly (minus the
+    ``backend=`` discriminator, which resolves here by definition).
+    Locking the contract at β.1 means any future solve() → solve_via_jax
+    kwarg mismatch surfaces as a :class:`TypeError` rather than
+    silently landing in ``**kwargs``. β.2 will consume these parameters
+    in the Dynamiqs integrator call; β.1 ignores them after the
+    availability check.
 
     Annotated as returning :class:`TrajectoryResult` to match the
     post-β.2 contract; the β.1 body unconditionally raises, so the
@@ -71,6 +98,19 @@ def solve_via_jax(**kwargs: Any) -> TrajectoryResult:
         When the extras are installed but the Dynamiqs integrator
         has not yet been wired (Dispatch β.2 work).
     """
+    del (  # signature-contract binding; unused until β.2
+        hilbert,
+        hamiltonian,
+        initial_state,
+        times,
+        observables,
+        request_hash,
+        backend_name,
+        storage_mode,
+        provenance_tags,
+        fock_tolerance,
+        solver,
+    )
     if not _is_jax_available():
         raise BackendError(_INSTALL_HINT)
     raise NotImplementedError(_BETA2_STUB_MESSAGE)
