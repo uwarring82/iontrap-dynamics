@@ -684,6 +684,159 @@ class TestTimeDependentDetunedCarrier:
 
 
 # ---------------------------------------------------------------------------
+# β.4.2 — detuned red / blue sideband Hamiltonians with backend="jax".
+# Both share the _list_format_cos_sin QuTiP helper; β.4.2 routes
+# backend="jax" through the sibling timeqarray_cos_sin helper in
+# backends/jax/_coefficients.py. Parametrized over (red, blue) — the
+# two builders produce structurally identical forms (H_static +
+# H_quadrature with cos/sin envelopes), differing only in the
+# spin-motion coupling pattern (σ_+ a for red, σ_+ a† for blue).
+# ---------------------------------------------------------------------------
+
+
+class TestTimeDependentDetunedSideband:
+    TOLERANCE = 1e-3  # same as β.4.1
+
+    @pytest.fixture
+    def sideband_setup(
+        self,
+    ) -> tuple[HilbertSpace, DriveConfig, qutip.Qobj, np.ndarray, list, float]:
+        mode = ModeConfig(
+            label="axial",
+            frequency_rad_s=2 * np.pi * 1.5e6,
+            eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+        )
+        system = IonSystem.homogeneous(
+            species=mg25_plus(), n_ions=1, modes=(mode,)
+        )
+        hilbert = HilbertSpace(system=system, fock_truncations={"axial": 8})
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 1e6,
+            phase_rad=0.0,
+        )
+        # Fock=1 so the red sideband has somewhere to lower into and
+        # the blue sideband isn't degenerate with vacuum.
+        psi_0 = qutip.tensor(spin_down(), qutip.basis(8, 1))
+        times = np.linspace(0.0, 4e-6, 200)
+        observables = [spin_z(hilbert, 0), number(hilbert, "axial")]
+        detuning = 2 * np.pi * 0.3e6  # 0.3 MHz off-resonance
+        return hilbert, drive, psi_0, times, observables, detuning
+
+    @pytest.mark.parametrize(
+        ("builder_name",),
+        [
+            ("detuned_red_sideband_hamiltonian",),
+            ("detuned_blue_sideband_hamiltonian",),
+        ],
+    )
+    def test_jax_backend_returns_time_qarray(
+        self,
+        sideband_setup,
+        builder_name: str,
+    ) -> None:
+        import iontrap_dynamics.hamiltonians as h_mod
+
+        builder = getattr(h_mod, builder_name)
+        hilbert, drive, *_, detuning = sideband_setup
+        H_jax = builder(
+            hilbert,
+            drive,
+            "axial",
+            ion_index=0,
+            detuning_rad_s=detuning,
+            backend="jax",
+        )
+        assert not isinstance(H_jax, list)
+        # Duck-check: TimeQArray is callable at a time point.
+        sample = H_jax(0.0)
+        assert sample is not None
+
+    @pytest.mark.parametrize(
+        ("builder_name",),
+        [
+            ("detuned_red_sideband_hamiltonian",),
+            ("detuned_blue_sideband_hamiltonian",),
+        ],
+    )
+    def test_cross_backend_expectation_equivalence(
+        self,
+        sideband_setup,
+        builder_name: str,
+    ) -> None:
+        import iontrap_dynamics.hamiltonians as h_mod
+
+        builder = getattr(h_mod, builder_name)
+        hilbert, drive, psi_0, times, obs, detuning = sideband_setup
+        H_qutip = builder(
+            hilbert,
+            drive,
+            "axial",
+            ion_index=0,
+            detuning_rad_s=detuning,
+            backend="qutip",
+        )
+        H_jax = builder(
+            hilbert,
+            drive,
+            "axial",
+            ion_index=0,
+            detuning_rad_s=detuning,
+            backend="jax",
+        )
+        r_qutip = solve(
+            hilbert=hilbert,
+            hamiltonian=H_qutip,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="qutip",
+        )
+        r_jax = solve(
+            hilbert=hilbert,
+            hamiltonian=H_jax,
+            initial_state=psi_0,
+            times=times,
+            observables=obs,
+            storage_mode=StorageMode.OMITTED,
+            backend="jax",
+        )
+        for obs_label in r_qutip.expectations:
+            delta = np.max(
+                np.abs(
+                    r_qutip.expectations[obs_label]
+                    - r_jax.expectations[obs_label]
+                )
+            )
+            assert delta < self.TOLERANCE, (
+                f"{builder_name} {obs_label!r}: cross-backend "
+                f"disagreement {delta:.2e} exceeds tolerance "
+                f"{self.TOLERANCE:.0e}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# β.4.1 / β.4.2 shared helper: timeqarray_cos_sin.
+# ---------------------------------------------------------------------------
+
+
+class TestTimeQArrayCosSin:
+    def test_returns_non_list_time_qarray(self) -> None:
+        from iontrap_dynamics.backends.jax._coefficients import (
+            timeqarray_cos_sin,
+        )
+
+        # Two trivial operators; the helper just needs QArrayLikes.
+        h_static = qutip.sigmax()
+        h_quadrature = qutip.sigmay()
+        result = timeqarray_cos_sin(h_static, h_quadrature, 1.0e6)
+        assert not isinstance(result, list)
+        # Callable at a time point.
+        assert result(0.0) is not None
+
+
+# ---------------------------------------------------------------------------
 # β.4.1 coefficient-callable factory unit tests.
 # ---------------------------------------------------------------------------
 

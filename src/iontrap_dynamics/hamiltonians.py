@@ -339,23 +339,17 @@ def detuned_carrier_hamiltonian(
     a_perp = (omega / 2.0) * s_perp
 
     if backend == "jax":
-        # Lazy-guard the [jax] extras with a clean BackendError before
-        # any jax / dynamiqs import fires; same install-hint as
-        # solve(backend="jax") so users see one consistent failure
-        # mode across the library's JAX path.
+        # Guard BEFORE importing _coefficients — that module's top-
+        # level `import jax.numpy as jnp` fires at import time, so
+        # the availability check must run first to surface a clean
+        # BackendError (not a raw ImportError) when [jax] is missing.
+        # Users see one consistent install-hint across the library.
         from .backends.jax._core import _require_jax
 
         _require_jax()
-        import dynamiqs as dq
+        from .backends.jax._coefficients import timeqarray_cos_sin
 
-        from .backends.jax._coefficients import (
-            cos_detuning_jax,
-            sin_detuning_jax,
-        )
-
-        return dq.modulated(cos_detuning_jax(delta), a_phi) + dq.modulated(
-            sin_detuning_jax(delta), a_perp
-        )
+        return timeqarray_cos_sin(a_phi, a_perp, delta)
 
     def cos_coeff(t: float, args: Any) -> float:
         return math.cos(delta * t)
@@ -733,9 +727,11 @@ def detuned_red_sideband_hamiltonian(
     *,
     ion_index: int,
     detuning_rad_s: float,
-) -> list[object]:
+    backend: str = "qutip",
+) -> object:
     """Return the near-red-sideband Hamiltonian in QuTiP's time-dependent
-    list format.
+    list format (or, with ``backend="jax"``, as a Dynamiqs
+    :class:`TimeQArray`).
 
     .. math::
         H(t) / \\hbar = \\frac{\\Omega \\, \\eta}{2}
@@ -810,17 +806,36 @@ def detuned_red_sideband_hamiltonian(
         rad·s⁻¹. Must be non-zero — use :func:`red_sideband_hamiltonian`
         for the ``δ = 0`` case, which returns a time-independent
         Qobj without list-format overhead.
+    backend
+        Which backend shape to emit. ``"qutip"`` (default) returns
+        the QuTiP time-dependent list format
+        ``[[H_static, cos_fn], [H_quadrature, sin_fn]]``; ``"jax"``
+        returns a Dynamiqs :class:`TimeQArray`
+        ``dq.modulated(jnp.cos(δt), H_static) + dq.modulated(jnp.sin(δt), H_quadrature)``.
+        β.4.2 of the JAX-backend track; see
+        ``docs/phase-2-jax-time-dep-design.md`` for the design
+        rationale. Requires the ``[jax]`` extras; a
+        :class:`~iontrap_dynamics.exceptions.BackendError` fires
+        with install hint when they're missing. Unknown backend
+        strings raise :class:`ConventionError`.
 
     Returns
     -------
-    list[object]
-        Time-dependent list-format Hamiltonian
+    object
+        With ``backend="qutip"``: a ``list[object]`` time-dependent
+        list-format Hamiltonian
         ``[[H_static, cos_fn], [H_quadrature, sin_fn]]``.
+        With ``backend="jax"``: a :class:`dynamiqs.TimeQArray`
+        encoding the same form with JAX-traceable coefficients.
 
     Raises
     ------
     ConventionError
-        If ``detuning_rad_s == 0`` or ``mode_label`` is unknown.
+        If ``detuning_rad_s == 0``, ``mode_label`` is unknown, or
+        ``backend`` is an unknown string.
+    BackendError
+        If ``backend="jax"`` but the ``[jax]`` optional dependencies
+        are not importable.
     IndexError
         If ``ion_index`` is out of range.
     """
@@ -830,6 +845,11 @@ def detuned_red_sideband_hamiltonian(
             "got detuning_rad_s == 0. For the exact-resonance case use "
             "red_sideband_hamiltonian, which returns a time-independent Qobj "
             "without list-format overhead."
+        )
+    if backend not in {"qutip", "jax"}:
+        raise ConventionError(
+            f"detuned_red_sideband_hamiltonian(backend={backend!r}): unknown "
+            "backend; expected one of ['qutip', 'jax']."
         )
 
     eta = _sideband_lamb_dicke(hilbert, drive, mode_label, ion_index)
@@ -850,6 +870,17 @@ def detuned_red_sideband_hamiltonian(
     h_static = coeff * (raise_part + lower_part)
     h_quadrature = coeff * 1j * (raise_part - lower_part)
 
+    if backend == "jax":
+        # Guard BEFORE importing _coefficients (its jax.numpy import
+        # fires at module load); see detuned_carrier_hamiltonian's
+        # parallel branch for the full reasoning.
+        from .backends.jax._core import _require_jax
+
+        _require_jax()
+        from .backends.jax._coefficients import timeqarray_cos_sin
+
+        return timeqarray_cos_sin(h_static, h_quadrature, detuning_rad_s)
+
     return _list_format_cos_sin(h_static, h_quadrature, detuning_rad_s)
 
 
@@ -860,9 +891,11 @@ def detuned_blue_sideband_hamiltonian(
     *,
     ion_index: int,
     detuning_rad_s: float,
-) -> list[object]:
+    backend: str = "qutip",
+) -> object:
     """Return the near-blue-sideband Hamiltonian in QuTiP's time-dependent
-    list format.
+    list format (or, with ``backend="jax"``, as a Dynamiqs
+    :class:`TimeQArray`).
 
     .. math::
         H(t) / \\hbar = \\frac{\\Omega \\, \\eta}{2}
@@ -888,6 +921,11 @@ def detuned_blue_sideband_hamiltonian(
             "blue_sideband_hamiltonian, which returns a time-independent Qobj "
             "without list-format overhead."
         )
+    if backend not in {"qutip", "jax"}:
+        raise ConventionError(
+            f"detuned_blue_sideband_hamiltonian(backend={backend!r}): unknown "
+            "backend; expected one of ['qutip', 'jax']."
+        )
 
     eta = _sideband_lamb_dicke(hilbert, drive, mode_label, ion_index)
     omega = drive.carrier_rabi_frequency_rad_s
@@ -906,6 +944,17 @@ def detuned_blue_sideband_hamiltonian(
     lower_part = phase_minus * sigma_m * a
     h_static = coeff * (raise_part + lower_part)
     h_quadrature = coeff * 1j * (raise_part - lower_part)
+
+    if backend == "jax":
+        # Guard BEFORE importing _coefficients (its jax.numpy import
+        # fires at module load); see detuned_carrier_hamiltonian's
+        # parallel branch for the full reasoning.
+        from .backends.jax._core import _require_jax
+
+        _require_jax()
+        from .backends.jax._coefficients import timeqarray_cos_sin
+
+        return timeqarray_cos_sin(h_static, h_quadrature, detuning_rad_s)
 
     return _list_format_cos_sin(h_static, h_quadrature, detuning_rad_s)
 

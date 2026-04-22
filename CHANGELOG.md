@@ -10,6 +10,71 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — β.4.2 detuned RSB / BSB on JAX backend (Dispatch VV)
+
+Extends the JAX backend's time-dependent surface to the single-ion
+detuned sideband builders. Same `backend=` kwarg pattern as β.4.1
+(`detuned_carrier_hamiltonian`). Second step in the v0.3.x follow-up
+track per `WORKPLAN_v0.3.md` §5.3.
+
+- `hamiltonians.detuned_red_sideband_hamiltonian` +
+  `detuned_blue_sideband_hamiltonian` gain
+  `backend: str = "qutip"` keyword-only parameters. Default
+  preserves v0.2 behaviour (QuTiP time-dep list via
+  `_list_format_cos_sin`). `backend="jax"` dispatches to the
+  shared helper `timeqarray_cos_sin(H_static, H_quadrature, δ)`
+  in `backends.jax._coefficients` — same assembly pattern as the
+  β.4.1 carrier path, now factored out.
+- `backends.jax._coefficients.timeqarray_cos_sin(H_static,
+  H_quadrature, δ)` — new shared assembly helper. JAX-side
+  sibling of `hamiltonians._list_format_cos_sin`. Returns
+  `dq.modulated(cos_detuning_jax(δ), H_static) + dq.modulated(sin_detuning_jax(δ), H_quadrature)`.
+  Consumed by all three structured detuning builders in the β.4
+  track (carrier from β.4.1, RSB + BSB from β.4.2); β.4.3 will
+  add the MS-gate builder as the fourth consumer.
+- `detuned_carrier_hamiltonian` (β.4.1) refactored to use
+  `timeqarray_cos_sin` on the JAX branch — replaces two inline
+  `dq.modulated` calls with a single helper call. Behaviour-
+  preserving; the β.4.1 TestTimeDependentDetunedCarrier tests
+  still pass at 1.35e-5 cross-backend agreement.
+- Cross-backend agreement on both sidebands (dim 8, Fock=1
+  initial state, 4 μs trajectory, δ/2π = 0.3 MHz): max σ_z delta
+  7.23e-6 (RSB) / 6.75e-6 (BSB); max n_axial delta 6.84e-6 (RSB)
+  / 1.12e-5 (BSB). Well under the 1e-3 test bound.
+- Import-ordering fix shared with β.4.1's JAX branch:
+  `_require_jax()` now runs **before** importing
+  `_coefficients` (whose top-level `import jax.numpy` would
+  otherwise raise `ImportError` rather than the clean
+  `BackendError` with install hint). Three builders corrected
+  in one pass.
+
+Tests:
+- `tests/unit/test_backends_jax.py::TestTimeDependentBuilderKwarg`
+  now parametrized over all three structured detuning builders
+  (`detuned_carrier`, `detuned_red_sideband`,
+  `detuned_blue_sideband`) — 3 tests × 3 builders = 9 parametrized
+  invocations covering unknown-backend rejection, install-hint
+  `BackendError` via mocked availability, default-path
+  regression (returns QuTiP list).
+- `tests/unit/test_backends_jax_dynamiqs.py::TestTimeDependentDetunedSideband`
+  — 2 tests parametrized over red / blue, 4 invocations total:
+  JAX path returns non-list TimeQArray; cross-backend σ_z + n
+  equivalence.
+- `tests/unit/test_backends_jax_dynamiqs.py::TestTimeQArrayCosSin`
+  — 1 test on the shared helper: non-list return, callable at
+  t=0.
+
+Test-surface:
+- Base CI (no extras): 808 → 814 passing (+6; 2 new builders
+  × 3 parametrized tests).
+- With `[jax]` extras (venv / opt-in CI): 844 → 855 passing (+11;
+  6 parametrized base tests now run in venv + 4 integration
+  tests + 1 helper test).
+
+Next in the β.4 track (v0.3.x scope per §5.3): β.4.3 detuned
+MS gate, β.4.4 `modulated_carrier_hamiltonian` with user
+`envelope_jax`, β.4.5 cross-backend benchmark at scale.
+
 #### Phase 2 — β.4.1 detuned_carrier on JAX backend (Dispatch UU)
 
 First time-dependent Hamiltonian builder gains a `backend=` kwarg

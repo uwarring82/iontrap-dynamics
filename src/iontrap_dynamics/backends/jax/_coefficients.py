@@ -35,20 +35,25 @@ a builder's ``backend="jax"`` branch, which calls
 a clean :class:`~iontrap_dynamics.exceptions.BackendError` with
 install hint.
 
-Scope (β.4.1)
--------------
+Scope
+-----
 
-Two factories:
+β.4.1 introduced the two factories:
 
 - :func:`cos_detuning_jax` — returns ``t ↦ jnp.cos(δ · t)``.
 - :func:`sin_detuning_jax` — returns ``t ↦ jnp.sin(δ · t)``.
 
-Used today by :func:`iontrap_dynamics.hamiltonians.
-detuned_carrier_hamiltonian` (β.4.1). Extensions to the other
-structured detuning builders — :func:`detuned_red_sideband_hamiltonian`,
+β.4.2 adds the assembly helper
+:func:`timeqarray_cos_sin(H_static, H_quadrature, δ)` — JAX-side
+sibling of :func:`iontrap_dynamics.hamiltonians._list_format_cos_sin`.
+Emits ``dq.modulated(cos_jax(δ), H_static) + dq.modulated(sin_jax(δ), H_quadrature)``
+so the four structured detuning builders
+(:func:`detuned_carrier_hamiltonian`,
+:func:`detuned_red_sideband_hamiltonian`,
 :func:`detuned_blue_sideband_hamiltonian`,
-:func:`detuned_ms_gate_hamiltonian` — land in β.4.2 and β.4.3 by
-consuming the same factories.
+:func:`detuned_ms_gate_hamiltonian`) share a single JAX assembly
+path. β.4.3 consumes the same helper for the MS gate's 2-piece
+cos/sin form.
 """
 
 from __future__ import annotations
@@ -103,4 +108,54 @@ def sin_detuning_jax(delta: float) -> Callable[[float], Array]:
     return coeff
 
 
-__all__ = ["cos_detuning_jax", "sin_detuning_jax"]
+def timeqarray_cos_sin(
+    h_static: object,
+    h_quadrature: object,
+    delta: float,
+) -> object:
+    """Assemble the ``cos(δt)·H_static + sin(δt)·H_quadrature``
+    time-dependent Hamiltonian as a Dynamiqs ``TimeQArray``.
+
+    JAX-path sibling of
+    :func:`iontrap_dynamics.hamiltonians._list_format_cos_sin`. Same
+    structural form — two Hermitian operators modulated by cos /
+    sin of a fixed detuning — but returns
+    ``dq.modulated(cos_jax(δ), H_static) + dq.modulated(sin_jax(δ), H_quadrature)``
+    so it can be consumed by :func:`dynamiqs.sesolve` /
+    :func:`dynamiqs.mesolve` under :func:`iontrap_dynamics.sequences.solve`
+    with ``backend="jax"``.
+
+    Parameters
+    ----------
+    h_static, h_quadrature
+        QuTiP ``Qobj`` or any ``QArrayLike`` Dynamiqs accepts.
+        Dims must match and must be compatible with the evolution
+        state's dims.
+    delta
+        Detuning in SI rad / s. Snapshotted in the closures returned
+        by :func:`cos_detuning_jax` / :func:`sin_detuning_jax`.
+
+    Returns
+    -------
+    object
+        A Dynamiqs ``SummedTimeQArray`` (type lives in
+        :mod:`dynamiqs.time_qarray`; exposed here as ``object`` to
+        keep this module's signature free of runtime Dynamiqs
+        imports at type-check time).
+
+    Notes
+    -----
+    Dynamiqs must be importable to call this helper — it imports
+    :mod:`dynamiqs` at call time. Callers should guard with
+    :func:`iontrap_dynamics.backends.jax._core._require_jax` for
+    a clean :class:`BackendError` when the ``[jax]`` extras are
+    missing.
+    """
+    import dynamiqs as dq
+
+    return dq.modulated(cos_detuning_jax(delta), h_static) + dq.modulated(
+        sin_detuning_jax(delta), h_quadrature
+    )
+
+
+__all__ = ["cos_detuning_jax", "sin_detuning_jax", "timeqarray_cos_sin"]
