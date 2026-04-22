@@ -10,6 +10,100 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+#### Phase 2 — JAX backend Dynamiqs integrator (Dispatch β.2 / SS)
+
+Replaces the β.1 `NotImplementedError` stub at
+`iontrap_dynamics.backends.jax._core.solve_via_jax` with a real
+Dynamiqs `sesolve` / `mesolve` integrator. The JAX backend now
+produces a canonical `TrajectoryResult` end-to-end; cross-backend
+equivalence against the QuTiP reference is exercised on carrier
+Rabi at dim 24, 4 Rabi periods, under library-default integrator
+tolerances.
+
+**Empirical cross-backend agreement** (Dynamiqs 0.3.4 + QuTiP 5.2.3,
+library-default `Tsit5` vs scipy's `solve_ivp` defaults): ~2e-5
+max absolute expectation delta. Both backends at tight tolerances
+(atol=rtol=1e-12): ~5e-11 agreement, confirming the two
+integrators are mathematically equivalent and the default-vs-
+default gap is integrator precision, not translation bug. The
+cross-backend test asserts 1e-3 as a conservative margin against
+integrator-version drift — see
+`docs/phase-2-jax-backend-design.md` §7 α.4 benchmark scale notes.
+
+- `solve_via_jax` wired end-to-end:
+  - x64 forced at solve entry via `jax.config.update("jax_enable_x64", True)`.
+    Process-wide side effect; documented in the module docstring.
+    The library's CONVENTIONS.md §1 unit commitment is double
+    precision, and JAX defaults to float32 — without the flip,
+    Dynamiqs would silently run in complex64 and systematics would
+    drift below the §13 Fock-saturation check threshold.
+  - Ket inputs → `dq.sesolve(H, psi0, tsave, exp_ops=...)`.
+  - Density-matrix inputs → `dq.mesolve(H, [], rho0, tsave, exp_ops=...)`
+    with empty jump-ops list (unitary Lindblad; matches the QuTiP
+    path's choice).
+  - QuTiP `Qobj` operators and states pass through directly —
+    Dynamiqs accepts them via `QArrayLike` duck typing. No explicit
+    `Qobj.full() → jnp.asarray` conversion at this layer.
+  - Progress-meter disabled (`dq.Options(progress_meter=None)`);
+    library calls are not interactive.
+- `StorageMode` handling per the design note §2:
+  - `OMITTED` — no state materialisation; expectations computed
+    JAX-side via `exp_ops` and NumPy arrays cross the boundary.
+  - `EAGER` — each time slice converted to `qutip.Qobj` with
+    the original tensor dims preserved from `initial_state.dims`
+    (ket-shape or operator-shape). Tested at dim 24 × 200 time
+    samples; round-trips `initial_state` within 1e-10.
+  - `LAZY` — raises `NotImplementedError` with a β.3-scope message.
+    The JAX-array lifetime and loader-per-access conversion
+    semantics need a design pass before wiring.
+- Fock-saturation check without state materialisation: top-Fock
+  projectors per mode are piggybacked onto the Dynamiqs `exp_ops`
+  list, so `p_top_by_mode` is obtained directly from the solver
+  output. Classification uses the shared
+  `sequences._classify_fock_saturation` (refactored out of
+  `_fock_saturation_warnings` in this dispatch), producing the
+  same §15 warning ladder + `ConvergenceError` on Level 3 as the
+  QuTiP path. Tested: saturated coherent state at Fock=4 raises
+  `ConvergenceError` identically.
+- Metadata:
+  - `backend_name` defaults to `"jax-dynamiqs"` (schema-commitment
+    string per design note §4.2 — written into cache manifests).
+    User override via the existing `backend_name` kwarg still works.
+  - `backend_version` is `f"dynamiqs-{dq.__version__}+jax-{jax.__version__}"`.
+  - `convention_version` inherited from the library's
+    `CONVENTION_VERSION` constant (`"0.2"` post-Dispatch QQ).
+- Time-dependent Hamiltonians (QuTiP list-format with callables /
+  piecewise arrays) raise `NotImplementedError` — Dynamiqs requires
+  its own `TimeQArray` wrapping that is β.3 scope.
+- `sequences._fock_saturation_warnings` split into a QuTiP-path
+  wrapper + a shared `_classify_fock_saturation(hilbert,
+  p_top_by_mode, tolerance)` classifier. Behaviour-preserving
+  refactor; all 808 existing tests pass unchanged.
+- `tests/unit/test_backends_jax_dynamiqs.py` — new 13-test module
+  gated on `pytest.importorskip("dynamiqs")`. Covers:
+  cross-backend expectation equivalence (sesolve path + DM path),
+  metadata surface (backend_name, backend_version format,
+  convention_version inheritance, user override), storage modes
+  (OMITTED non-materialisation, EAGER round-trip of kets + DMs),
+  Fock-saturation `ConvergenceError` fires on JAX too,
+  `NotImplementedError` on time-dependent and LAZY inputs,
+  `TrajectoryResult` return type.
+- `tests/unit/test_backends_jax.py`: removed two β.1-stub tests
+  (`test_beta2_stub_raised_when_extras_present`,
+  `test_beta2_stub_reachable_through_sequences_solve`) that
+  exercised the NotImplementedError stub β.2 replaced. The
+  install-hint tests (via monkey-patched availability) stay — they
+  cover the no-extras path independently of β.2.
+
+Test-surface growth: 808 → 821 passing with `[jax]` extras (13
+new in `test_backends_jax_dynamiqs.py`); 808 → 806 passing without
+extras (2 β.1 stub tests removed; the 13 new tests skip via
+`importorskip`). CI behaviour: tests pass in both the default
+CI (no extras) and the `[jax]`-enabled CI (extras installed).
+
+No `pyproject.toml` change — `[jax]` extras already declared.
+No `backend=` kwarg change — β.1's validator surface unchanged.
+
 #### Phase 2 — JAX backend skeleton (Dispatch β.1 / RR)
 
 Opens the JAX-backend track per `docs/phase-2-jax-backend-design.md`.

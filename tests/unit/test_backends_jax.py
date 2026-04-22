@@ -275,46 +275,12 @@ class TestJaxAvailabilityAndStub:
             )
         assert "pip install iontrap-dynamics[jax]" in str(excinfo.value)
 
-    def test_beta2_stub_raised_when_extras_present(
-        self,
-        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        # Direct-call path: the stub surfaces the NotImplementedError
-        # when the availability check reports extras present. Signature
-        # was locked in β.1, so all required kwargs must be supplied.
-        hilbert, ham, psi_0, times = carrier_setup
-        monkeypatch.setattr(jax_core, "_is_jax_available", lambda: True)
-        with pytest.raises(NotImplementedError) as excinfo:
-            solve_via_jax(
-                hilbert=hilbert,
-                hamiltonian=ham,
-                initial_state=psi_0,
-                times=times,
-            )
-        msg = str(excinfo.value)
-        assert "Dispatch β.2" in msg or "β.2" in msg
-
-    def test_beta2_stub_reachable_through_sequences_solve(
-        self,
-        carrier_setup: tuple[HilbertSpace, qutip.Qobj, qutip.Qobj, np.ndarray],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        # End-to-end regression for the dispatch wiring. Going through
-        # sequences.solve with backend="jax" and mocked availability
-        # must reach the same NotImplementedError surface as a direct
-        # solve_via_jax call — confirms the kwarg-forwarding in
-        # sequences.py matches solve_via_jax's locked signature.
-        hilbert, ham, psi_0, times = carrier_setup
-        monkeypatch.setattr(jax_core, "_is_jax_available", lambda: True)
-        with pytest.raises(NotImplementedError):
-            solve(
-                hilbert=hilbert,
-                hamiltonian=ham,
-                initial_state=psi_0,
-                times=times,
-                backend="jax",
-            )
+    # β.1's two NotImplementedError-stub tests were retired in β.2 —
+    # the stub no longer exists; real Dynamiqs integration tests live
+    # in tests/unit/test_backends_jax_dynamiqs.py, gated on the [jax]
+    # extras via pytest.importorskip. The install-hint tests above
+    # still exercise the no-extras path via monkey-patched
+    # availability; that coverage is independent of β.2's changes.
 
     def test_availability_check_returns_bool(self) -> None:
         # Real call — whatever the local environment has, the predicate

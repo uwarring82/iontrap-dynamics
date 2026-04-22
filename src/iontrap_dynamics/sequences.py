@@ -124,12 +124,14 @@ def _fock_saturation_warnings(
     states: Iterable[qutip.Qobj],
     tolerance: float,
 ) -> tuple[ResultWarning, ...]:
-    """Classify Fock-truncation saturation per mode and return the warning
-    records (emitting Python warnings along the way).
+    """QuTiP-path wrapper: compute per-mode ``p_top`` from a trajectory
+    and classify per CONVENTIONS.md §15.
 
-    Raises :class:`ConvergenceError` on any Level 3 failure — per
-    CONVENTIONS.md §13, a single mode exceeding ``10·ε`` is a hard
-    failure for the whole run, not a per-mode warning.
+    The top-level population ``p_top`` is obtained by iterating through
+    the already-materialised Qobj states. Other backends (JAX / Dynamiqs)
+    piggyback their projection onto the solver's ``exp_ops`` and call
+    :func:`_classify_fock_saturation` directly with the precomputed
+    per-mode maxima — avoiding state materialisation under OMITTED.
     """
     if tolerance <= 0.0:
         raise ConventionError(
@@ -140,13 +142,10 @@ def _fock_saturation_warnings(
             "suppressed check is required."
         )
 
-    # Materialise once — we iterate through the trajectory twice below for
-    # clarity, but want consistent views from both passes.
+    # Materialise once — we iterate through the trajectory per-mode below.
     states_list = list(states)
 
-    records: list[ResultWarning] = []
-    level3_failures: list[tuple[str, float]] = []
-
+    p_top_by_mode: dict[str, float] = {}
     for mode in hilbert.system.modes:
         fock_dim = hilbert.fock_truncations[mode.label]
         top_level_single = qutip.basis(fock_dim, fock_dim - 1).proj()
@@ -161,6 +160,48 @@ def _fock_saturation_warnings(
             p = float(qutip.expect(top_level_embedded, state).real)
             if p > p_top_max:
                 p_top_max = p
+        p_top_by_mode[mode.label] = p_top_max
+
+    return _classify_fock_saturation(hilbert, p_top_by_mode, tolerance)
+
+
+def _classify_fock_saturation(
+    hilbert: HilbertSpace,
+    p_top_by_mode: dict[str, float],
+    tolerance: float,
+) -> tuple[ResultWarning, ...]:
+    """Classify precomputed per-mode ``p_top`` values against the
+    CONVENTIONS.md §15 warning ladder.
+
+    Separated from :func:`_fock_saturation_warnings` so alternative
+    backends can supply ``p_top_by_mode`` via their own projection
+    machinery (e.g. Dynamiqs ``exp_ops`` piggyback) instead of
+    materialising states. Behaviour identical — same warnings on the
+    Python channel, same :class:`ResultWarning` records returned, same
+    :class:`ConvergenceError` on Level 3.
+
+    Raises
+    ------
+    ConventionError
+        If ``tolerance <= 0``.
+    ConvergenceError
+        If any mode's ``p_top_max >= 10·tolerance`` (§15 Level 3).
+    """
+    if tolerance <= 0.0:
+        raise ConventionError(
+            f"fock_tolerance must be positive; got {tolerance!r}. "
+            "Passing zero disables the convergence check entirely, which "
+            "is a silent-degradation hazard (CONVENTIONS.md §15). "
+            "Use a large positive tolerance (e.g. 1.0) if a truly "
+            "suppressed check is required."
+        )
+
+    records: list[ResultWarning] = []
+    level3_failures: list[tuple[str, float]] = []
+
+    for mode in hilbert.system.modes:
+        fock_dim = hilbert.fock_truncations[mode.label]
+        p_top_max = p_top_by_mode[mode.label]
 
         diagnostics = {
             "mode_label": mode.label,
