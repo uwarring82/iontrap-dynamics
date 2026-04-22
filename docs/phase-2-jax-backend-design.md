@@ -62,26 +62,50 @@ These are not mutually exclusive, but they lead to different
 architectures. Deliberation axis **A** below is: *what problem is this
 backend actually solving?*
 
+**Caveat on "A1 = performance".** If the framing answer is
+performance, then Design α below is *not* the right first step. The
+prior gap is a **QuTiP-only scaling benchmark** at dim ≥ 300 with
+long trajectories (≥ 5000 steps) to measure where the QuTiP floor
+actually sits outside the library's current tested range. Without
+that baseline, a JAX-vs-QuTiP benchmark at library-typical scales
+can only restate what Dispatches X / Y / OO already established —
+parity, because we are below the floor where either backend's
+implementation cost dominates.
+
 ---
 
 ## 2. Scope boundaries
 
-### In scope (any design)
+### In scope — Phase 2 exit (not any single dispatch)
+
+These are the deliverables that must be on `main` before the JAX
+backend can be considered closed at the Phase 2 / `v0.3` level.
+No single dispatch below ships all of them; the staging in §7
+defines incremental per-dispatch scope.
 
 - Forward-compute on pure-state and Lindblad trajectories for the
   four canonical Hamiltonian families (carrier, RSB, BSB, MS).
 - Cross-backend numerical equivalence within a declared tolerance
-  against the QuTiP reference on ≥ 1 worked example. (Phase 2 exit
-  criterion named in workplan §5 Phase 2.)
-- `ResultMetadata.backend_name` set to a distinct string (D5
-  rule): proposed `"jax-diffrax"`, `"jax-dynamiqs"`, or
-  `"jax-manual"` depending on design choice.
-- Reuse of the existing `TrajectoryResult` schema per D5. Any
-  JAX-native representation of states lives inside the backend
-  module and is converted to the canonical tuple-of-`Qobj` (or
-  equivalent) representation at the `sequences.solve` boundary.
-- Opt-in installation via an extras group: `pip install
-  iontrap-dynamics[jax]`. Not a base dependency.
+  against the QuTiP reference on ≥ 1 worked example per family.
+  (Phase 2 exit criterion named in workplan §5 Phase 2.)
+- `ResultMetadata.backend_name` set to a distinct string (D5 rule
+  + schema-commitment implications per §4.2).
+- Reuse of the existing `TrajectoryResult` schema per D5. The JAX
+  backend converts its output to the canonical `TrajectoryResult`
+  **schema** at the `sequences.solve` boundary — *not* eagerly to
+  `Qobj`. What happens to states is governed by `storage_mode`:
+  * `StorageMode.OMITTED` — no host materialisation of states;
+    expectations are computed JAX-side and only the expectation
+    NumPy arrays cross the boundary.
+  * `StorageMode.EAGER` — states materialise to the canonical
+    tuple-of-`Qobj` at the boundary (necessary for downstream
+    analysis that uses QuTiP primitives).
+  * `StorageMode.LAZY` — the `states_loader` can remain JAX-lazy,
+    with per-index `Qobj` conversion deferred until a specific
+    state is requested.
+- Opt-in installation via the existing `[jax]` extras group
+  already declared in `pyproject.toml` (see §4.5). Not a base
+  dependency.
 
 ### Out of scope (any design)
 
@@ -155,16 +179,19 @@ risk, but requires writing the integrator, step-size controller,
 and error reporting from scratch. This is probably too much for a
 first dispatch.
 
-**Open question B1.** Diffrax, Dynamiqs, or hand-rolled? The answer
-depends on how much trust we want to place in a third-party JAX
-library's long-term stability vs. the upfront cost of writing our
-own stepper. Default recommendation: **diffrax**, with a design
-note recorded on *why* diffrax over Dynamiqs so a future re-
-evaluation is easy.
+**Open question B1.** Diffrax, Dynamiqs, or hand-rolled? The
+answer depends on how much trust we want to place in a third-party
+JAX library's long-term stability vs. the upfront cost of writing
+our own stepper, **and** on whether A1 is positioning (where
+inheriting the existing `[jax] = dynamiqs>=0.2` extras block
+favours Dynamiqs) or capability (where diffrax's lower
+third-party-surface helps autograd). See §4.5 and §5 for the
+extras-alignment finding; §10 picks the integrator by A1 branch.
 
-**Open question B2.** If diffrax, pinned to a specific version
-range? JAX + diffrax version churn is real. Need a policy akin to
-the QuTiP-version pin in `pyproject.toml`.
+**Open question B2.** Whichever is chosen, pinned to a specific
+version range? JAX + diffrax + Dynamiqs version churn is real.
+Need a policy akin to the QuTiP-version pin in `pyproject.toml`
+(the current `>=0.4` / `>=0.2` ranges are too loose).
 
 ### Axis C — Operator representation and the conversion boundary
 
@@ -173,9 +200,23 @@ JAX solvers need `jax.Array`. Where does the conversion happen?
 
 | Option                                      | Pros                                                                 | Cons                                                                |
 |---------------------------------------------|----------------------------------------------------------------------|---------------------------------------------------------------------|
-| Convert at `solve` boundary (one-shot)      | No builder duplication; existing test surface unchanged.             | Conversion cost paid on every call; conversion is `Qobj.full()` → `jnp.asarray`, i.e. dense. |
+| Convert at `solve` boundary (one-shot)      | No builder duplication; existing test surface unchanged.             | Conversion cost paid on every call; conversion is `Qobj.full()` → `jnp.asarray`, i.e. dense. Closes the door on autograd through Hamiltonian parameters. |
 | JAX-native builders (parallel layer)        | Native dtype end-to-end; supports autograd on Hamiltonian parameters.| Duplicates the builder family; test surface doubles; maintenance cost ≈ 2× on builder code. |
-| Hybrid: lazy JAX views on Qobj outputs      | Deferred conversion; avoids duplication.                             | Complex; leaks QuTiP internals into the JAX path.                   |
+
+A third option — a lazy-view bridge that wraps `Qobj.data` in a
+JAX-compatible view — was considered and **rejected**. It couples to
+QuTiP's internal `Qobj.data` representation (which changed between
+QuTiP 4 and QuTiP 5; see the CSR default finding in Dispatch OO), so
+every QuTiP release carries a non-trivial maintenance risk against
+our bridge. The two options above are sufficient; the hybrid is not
+considered further.
+
+**Storage-mode interaction.** Whichever Axis-C choice is made, the
+states returned on the canonical `TrajectoryResult` must honour the
+declared `storage_mode` (see §2 In scope). In particular, the
+one-shot-conversion path must *not* materialise states when
+`storage_mode=OMITTED` — only the expectation arrays cross the
+boundary in that case.
 
 **Design Principle 5 tension.** A parallel JAX-native builder layer
 is the cleanest technical path for autograd (Axis D) but violates
@@ -239,10 +280,24 @@ public solver entry point (see `docs/phase-1-architecture.md`);
 adding a `backend` discriminator preserves that single entry. Option
 (ii) would fragment the public surface for no user benefit.
 
-When `backend="jax"` is selected, `solver=` is reinterpreted: the
-current sesolve / mesolve dispatcher is QuTiP-specific. On the JAX
-path there is no sesolve vs mesolve at the QuTiP level; the
-distinction becomes Schrödinger-vs-Lindblad inside the JAX module.
+The `backend=` kwarg is a **family** discriminator (`"qutip"`,
+`"jax"`) — separate from `ResultMetadata.backend_name`, which is a
+specific **identifier** for provenance (see §4.2). One user-facing
+kwarg, one metadata string; they don't share a vocabulary.
+
+**The existing `solver=` kwarg.** `solver=` already has a stable
+public meaning on the QuTiP backend (`"auto" | "sesolve" |
+"mesolve"`, validated in `sequences.py` `_choose_solver`); it is
+**not reinterpreted** on the JAX backend. On `backend="jax"`,
+`solver=` must be `"auto"` (or omitted); explicit values
+(`"sesolve"` / `"mesolve"`) are QuTiP-specific identifiers and
+passing them with `backend="jax"` raises `ConventionError`. The
+Schrödinger-vs-Lindblad decision on the JAX path is made from the
+input dtype (pure ket vs density matrix) — the same signal QuTiP's
+`"auto"` already uses. If JAX-specific solver control is ever
+needed, it is introduced as a new kwarg (e.g. `jax_integrator=`),
+not as an overload on `solver=`. Backend choice changes the
+implementation, not the semantic contract of existing public kwargs.
 
 ### 4.2 Backend-name tagging
 
@@ -256,7 +311,20 @@ backend. Proposed values:
 | Hand-rolled       | `"jax-manual"`     |
 
 `backend_version` records the version of the underlying library
-(e.g. diffrax version + JAX version; pattern TBD).
+(e.g. diffrax version + JAX version; pattern TBD per §6 Q3).
+
+**Schema-commitment implications.** `backend_name` is not free-form
+metadata. It appears in user `.npz` + JSON cache manifests (via
+`cache.save_trajectory`), and is cross-checked on load. Once a
+first JAX dispatch ships `"jax-dynamiqs"` (say), that string is
+written into every user's cache artefacts. Swapping the under-the-
+hood integrator later — e.g. moving from Dynamiqs to diffrax under
+the same `backend="jax"` kwarg — either **invalidates those
+cached results** or requires a versioned tag (e.g.
+`"jax-dynamiqs-v0.5"` → `"jax-diffrax-v0.6"`). This is a Coastline
+commitment, not a label choice; the first JAX dispatch should
+treat the chosen string as a user-visible contract and document the
+versioning policy at the same time (§6 Q10).
 
 ### 4.3 Convention-version binding
 
@@ -275,33 +343,64 @@ The cache layer (`cache.save_trajectory` / `load_trajectory`) writes
 result should round-trip through the cache identically — the states
 are materialised to NumPy at write time regardless of backend.
 
-**Open question 4.4.1.** Does the cache record the backend name in
-the manifest? Yes — it already does via `metadata.backend_name`.
-No code change needed; just verify round-trip parity in a new test.
+The cache already records `metadata.backend_name` in the manifest
+(see `cache.save_trajectory`) and cross-checks it on load. The
+round-trip through `.npz` + JSON must therefore preserve the JAX
+backend's identification; a round-trip parity test is added as
+part of the dispatch that first emits JAX results (α.2 in the §7
+staging).
 
 ### 4.5 Installation
 
-`pyproject.toml` extras block:
+**The `[jax]` extras block already exists** in `pyproject.toml`:
 
 ```toml
-[project.optional-dependencies]
+# from pyproject.toml (excerpt, line 85)
 jax = [
-  "jax>=0.4.30",
-  "diffrax>=0.6.0",     # or "dynamiqs>=0.3.0"
+    "jax>=0.4",
+    "jaxlib>=0.4",
+    "dynamiqs>=0.2",
 ]
 ```
+
+This is a pre-existing declaration of intent toward the **Dynamiqs**
+integrator (Axis B) — committed to the repo before this
+deliberation. Design choice implications:
+
+- **Designs β / γ** inherit the declared extras; no
+  `pyproject.toml` change needed to start implementation.
+- **Designs α / α′** (which favour diffrax) require the extras to
+  change in the same dispatch that lands the backend — either
+  *replacing* `dynamiqs` with `diffrax`, or *adding* `diffrax`
+  alongside. Mismatch between the declared extras and the
+  implementation is a correctness issue, not a documentation
+  issue.
+- Version ranges are currently loose (`>=0.4` on JAX) and were
+  last reviewed when the extras block was first added. Before
+  any first-JAX dispatch, the ranges should be re-pinned to the
+  release actually exercised in CI, matching the policy answer
+  to §6 Q3.
 
 `iontrap_dynamics.backends.jax` raises a clear `ImportError` with
 install instructions if the user calls `backend="jax"` without the
 extras installed. Pattern mirrors how optional dependencies are
-handled elsewhere in the scientific-Python stack.
+handled elsewhere in the scientific-Python stack. (The §7 α.1
+"NotImplemented fallback" wording is a staging detail — α.1 ships
+the error path itself, before any solver code lands — see §7.)
 
 ---
 
 ## 5. Candidate designs
 
-Combining the axes, three coherent candidate designs emerge. Each
+Combining the axes, four coherent candidate designs emerge. Each
 is internally consistent; each makes different tradeoffs.
+
+**Integrator-default alignment with `pyproject.toml`.** The existing
+`[jax]` extras block declares `dynamiqs>=0.2`, not diffrax. Design β
+is therefore the *default-aligned* option — it inherits the
+declared dependency. Designs α and α′ require the extras to change
+in the same dispatch (see §4.5). Design γ's Axis-B choice is open
+but inherits whichever integrator α / α′ / β chose.
 
 ### Design α — "Minimum viable JAX"
 
@@ -339,6 +438,42 @@ is internally consistent; each makes different tradeoffs.
   pin + a policy that Dynamiqs upgrades land as their own
   dispatches with regression checks.
 
+### Design α′ — "α plus a narrow autograd slice"
+
+Between α and γ: the full α (four families, one-shot conversion,
+deferred autograd) plus one parallel JAX-native builder exercised
+through autograd on a single gradient test.
+
+- **Framing (A):** Positioning + minimal capability probe.
+- **Integrator (B):** diffrax.
+- **Representation (C):** one-shot conversion on three families
+  (RSB / BSB / MS); parallel JAX-native builder `carrier_jax`
+  kept in lockstep with `carrier_hamiltonian` via a
+  per-dispatch regression test asserting
+  `carrier_jax(...).astype(QuTiP.Qobj.full()) == carrier_hamiltonian(...).full()`
+  within 10⁻¹² at a representative configuration.
+- **Autograd (D):** single proof — `d fidelity / d Ω_Rabi` through
+  diffrax's `solve_adjoint`. One test, one worked example in
+  `docs/tutorials/`.
+- **Scope:** α.1–α.3 unchanged; adds α.5 — `carrier_jax` parallel
+  builder, autograd gradient test, one tutorial example.
+- **Cost estimate:** ~5 dispatches (α.1–α.5); parallel-builder
+  scope limited to one Hamiltonian family.
+- **Risk:** Medium. The `carrier_jax` builder must stay in
+  lockstep with `carrier_hamiltonian`; divergence between the
+  QuTiP and JAX definitions of the same Hamiltonian would
+  silently fracture the library's "canonical form" guarantee.
+  Mitigated by the per-dispatch regression test above plus an
+  invariant check in CI. The pitfalls γ would hit across the
+  full builder surface — shape polymorphism, float32/64
+  defaults, trace-time correctness — are exercised on a
+  controlled single-family scope.
+
+α′ is the bridge design: it produces γ-transferable operational
+experience that α alone cannot (α's one-shot-conversion path does
+not exercise autograd), at a cost bounded by ~5 dispatches
+rather than γ's 3–4 open-scope dispatches.
+
 ### Design γ — "Autograd-ready parallel builders"
 
 - **Framing (A):** Capability.
@@ -358,16 +493,20 @@ is internally consistent; each makes different tradeoffs.
 
 ### Comparison table
 
-| Criterion                 | α (minimum)           | β (Dynamiqs)             | γ (autograd)              |
-|---------------------------|-----------------------|--------------------------|---------------------------|
-| Code cost                 | 1 dispatch            | 1–2 dispatches           | 3–4 dispatches            |
-| Test-surface growth       | ~10 new tests         | ~20 new tests            | ~80 new tests             |
-| Dependency surface        | `jax + diffrax`       | `jax + dynamiqs`         | `jax + diffrax`           |
-| Performance win at dim≤60 | None measurable       | None measurable          | None measurable           |
-| Performance win at dim≥300| Likely modest         | Likely modest–good       | Likely modest             |
-| Capability win            | None                  | Lindblad-native JAX      | Autograd on parameters    |
-| Positioning payoff        | High                  | Highest                  | Medium                    |
-| Long-term API risk        | Low                   | Medium–high              | Low                       |
+| Criterion                   | α (minimum)            | α′ (α + narrow autograd) | β (Dynamiqs)             | γ (autograd-full)         |
+|-----------------------------|------------------------|--------------------------|--------------------------|---------------------------|
+| Code cost                   | 4 dispatches           | ~5 dispatches            | 1–2 dispatches           | 3–4 dispatches            |
+| Test-surface growth         | ~10 new tests          | ~25 new tests            | ~20 new tests            | ~80 new tests             |
+| Dependency surface          | `jax + diffrax`*       | `jax + diffrax`*         | `jax + dynamiqs` ✓        | inherits α / α′ / β       |
+| Aligned with existing extras | No (change required)   | No (change required)     | **Yes**                  | No (change required)      |
+| Performance win at dim ≤ 60 | None measurable        | None measurable          | None measurable          | None measurable           |
+| Performance win at dim ≥ 300| Likely modest          | Likely modest            | Likely modest–good       | Likely modest             |
+| Capability win              | None                   | One-family autograd proof| Lindblad-native JAX      | Autograd on parameters    |
+| γ-transferable experience   | Plumbing only          | Plumbing + autograd      | Plumbing only            | N/A (γ itself)            |
+| Positioning payoff          | High                   | High                     | Highest                  | Medium                    |
+| Long-term API risk          | Low                    | Low                      | Medium–high              | Low                       |
+
+*requires a change to the existing `[jax]` extras block (§4.5).
 
 ---
 
@@ -396,7 +535,19 @@ implementation start.
    unspecified.
 8. **GPU.** First-class deliverable (CI runs a GPU smoke test) or
    opt-in-for-users-who-install-it-themselves?
-9. **Design choice α / β / γ.** Or a hybrid.
+9. **Design choice α / α′ / β / γ.** Or a hybrid.
+10. **`backend_name` versioning policy (from §4.2).** Is
+    `backend_name` frozen per backend family (so changing the
+    under-the-hood integrator invalidates cached results), or
+    versioned per implementation swap (e.g.
+    `"jax-dynamiqs-v0.5"` → `"jax-diffrax-v0.6"` when swapping)?
+    Must be answered before α.2 / β.1 writes a tag into any
+    cache artefact.
+11. **QuTiP-only prior benchmark (from §1).** If A1 = performance,
+    is a QuTiP-only scaling benchmark at dim ≥ 300 / long
+    trajectories a precondition to the first JAX dispatch? If
+    yes, that becomes a α.0 / β.0 dispatch before the chosen
+    design's α.1 / β.1.
 
 ---
 
@@ -416,14 +567,64 @@ decomposition could look like:
    dim 24. `ResultMetadata.backend_name = "jax-diffrax"` in place.
 3. **Dispatch α.3 — remaining Hamiltonian families.** RSB / BSB /
    MS gate ported; cross-backend tolerance tests added for each.
-4. **Dispatch α.4 — benchmark artefact.** `tools/run_benchmark_
-   jax_vs_qutip.py`; report + plot in `benchmarks/data/`; new
-   section in `docs/benchmarks.md`. Headline finding recorded
-   honestly regardless of whether JAX wins at current scales.
+4. **Dispatch α.4 — benchmark artefact.**
+   `tools/run_benchmark_jax_vs_qutip.py` at a deliberately
+   **informative** scale: dim ≥ 300 (single-ion Fock truncations
+   up to ~150) *and* trajectory length ≥ 5000 steps. Dispatches
+   X / Y / OO already established that library-typical scales
+   (dim ≤ 60) are a wash; α.4 at dim 24 would only restate that
+   finding. If A1 = performance and §6 Q11 is answered with a
+   QuTiP-only prior (α.0), α.4 measures the delta from that
+   prior. Report + plot in `benchmarks/data/jax_vs_qutip/`;
+   new section in `docs/benchmarks.md`. Headline finding
+   recorded honestly regardless of direction.
 
 Total estimated cost: **4 dispatches**, each sized like OO or PP
 (a few files each, one CHANGELOG entry each). Could compress to
-three by merging α.3 and α.4.
+three by merging α.3 and α.4; could expand to five if α.0 is
+required by §6 Q11 or if α′'s α.5 autograd dispatch is included.
+
+### 7.1 α → γ migration seams
+
+If α (or α′) ships and γ is later adopted, which α artefacts are
+retained and which are superseded? Naming this bounds γ's future
+cost and makes α's investment/yield ratio auditable.
+
+**Retained under γ unchanged.** These survive a γ promotion and
+γ builds on top of them:
+
+- `backend=` discriminator kwarg on `sequences.solve` (§4.1).
+- `ResultMetadata.backend_name` string and its schema-commitment
+  policy (§4.2).
+- The `[jax]` extras block once pinned (§4.5).
+- Cross-backend equivalence test harness (tolerance thresholds,
+  per-family worked examples) introduced in α.2 / α.3.
+- The benchmark tool at α.4 — γ extends it with larger Hilbert
+  spaces and autograd-specific timings, not replaces it.
+- The `ConventionError` path on `solver="sesolve"` +
+  `backend="jax"` from §4.1.
+
+**Superseded under γ.** These are specifically α-path artefacts
+that γ replaces:
+
+- One-shot `Qobj → jnp.asarray` conversion at the solve boundary
+  (§4 / Axis C choice). Under γ, parallel JAX-native builders
+  produce `jax.Array` end-to-end; the one-shot helpers become
+  vestigial.
+- The α.2 / α.3 cross-backend tests that compare one-shot-
+  converted JAX output against QuTiP. Under γ, the comparison
+  is between JAX-native-builder output and QuTiP-builder output
+  (converted); the test target shifts.
+
+**Written off.** The one-shot conversion helpers are α-specific
+code (est. ~100–200 lines in `backends/jax/conversion.py`) that γ
+deletes. α's test surface around them is similarly written off.
+This is the honest cost of α-before-γ staging.
+
+Under **α′**, the `carrier_jax` parallel builder from α.5 is the
+first γ-reusable artefact; the γ-transferable operational
+experience it produces is the reason to consider α′ over α when
+γ is a likely follow-on.
 
 ---
 
@@ -462,22 +663,49 @@ Listed so future readers do not mistake silence for implicit choice.
 
 ## 10. Recommendation (tentative, subject to deliberation)
 
-Ship **Design α** as four dispatches, with the understanding that
-**(a)** the performance story is likely to be a null result at
-current library scale and should be reported as such, and **(b)**
-the primary Phase 2 value is opening the architectural slot that
-future autograd / Dynamiqs / GPU work will fill. Design γ's
-autograd capability is the long-term prize but costs too much for
-a first cut; revisit after Design α ships and we have real
-operational experience with a JAX code path.
+The right answer depends on §6 Q1 (framing) and whether γ is
+likely to follow.
 
-Defer Design β (Dynamiqs) until after Design α lands — the
-Dynamiqs dependency is a larger commitment that's easier to make
-once the `backend=` discriminator and the cross-backend test
-surface already exist from α.
+**If A1 = positioning and γ is unlikely in the next release cycle:**
+Ship **Design β** (Dynamiqs). It is the *default-aligned* option —
+no `pyproject.toml` change, no extras mismatch, and it realises the
+workplan §1 commitment to Dynamiqs as a future backend target
+directly. Size: 1–2 dispatches. What α buys that β does not — the
+"one-shot conversion helpers" — is **written off under γ anyway**
+(§7.1), so α's detour has no γ-retained value that β lacks.
 
-**If the framing answer (A1) is instead "capability," invert the
-recommendation: Design γ first, staged.**
+**If A1 = positioning and γ is a likely follow-on:**
+Ship **Design α′** (α + narrow autograd slice). α′ produces
+γ-transferable operational experience that α alone does not —
+specifically the JAX pitfalls (shape polymorphism, x64 defaults,
+trace-time correctness) that γ will hit across the full builder
+surface. α′ exercises them on a controlled single-builder scope
+first. Requires changing `[jax]` extras from Dynamiqs to diffrax
+(§4.5). Size: ~5 dispatches.
+
+**If A1 = capability:**
+Ship **Design γ** directly, staged. α and α′ are both the wrong
+first step because the one-shot-conversion path closes the door on
+autograd through Hamiltonian parameters (§3 Axis C Cons column).
+Staged γ starts with a single-family parallel builder and
+expands — effectively α′'s α.5 promoted to the headline.
+
+**If A1 = performance:**
+Do **not** start a JAX dispatch yet. The prior is a QuTiP-only
+scaling benchmark at dim ≥ 300 with long trajectories (§1 caveat,
+§6 Q11). Answer *that* first; a JAX dispatch can only be
+justified against a measured QuTiP ceiling, not an assumed one.
+
+**Honest accounting.** The earlier draft of this note recommended
+α "because it buys operational experience for γ." That claim is
+false (§7.1): α's one-shot-conversion code is written off by γ.
+α's *plumbing* (discriminator, metadata, test harness, benchmark
+tool) is retained by every design — but so is β's, at lower cost.
+α is the right choice **only** when γ is genuinely unlikely *and*
+there is a reason to avoid β's Dynamiqs dependency (e.g. a
+specific concern about Dynamiqs's API stability). In practice,
+the choice collapses to **β or α′**, with γ a possibility if A1
+is capability.
 
 ---
 
