@@ -392,30 +392,97 @@ three tiers:
 - `dim ≳ 15 000` — extrapolated ≳ 20 min and ≳ 25 GB RSS. N = 5 at
   cutoff = 5 (dim = 15 552) crosses the 16 GB commodity boundary.
 
-**Implication for Clos 2016 N = 4 / N = 5 reproduction.** The
-`theo_dim_N_4.dat` convergence table plateaus by cutoff ~6, so the
-N = 4 reproduction is feasible in dense mode (one minute per
-detuning × 16 detunings ≈ 15 min per row). The N = 5 convergence
-table is still rising at its top cutoff of 4; a dense reproduction
-at a truly converged cutoff (≥ 5) crosses into 16 GB territory and
-is where AAG's interior-window iterative path would start to earn
-its keep.
+### Scaling laws and extrapolation to RAM limits
 
-**AAG gate status.** On the basis of this measurement, the dense
-path covers the AAE / AAF / AAI deliverables and N = 4 as a
-stretch target. Shipping the AAG shift-invert / PRIMME backend is
-**deferred** — it becomes justified when a user demonstrably needs
-N = 5 at cutoff ≥ 5, or when a 16 GB RAM budget is binding for an
-N = 4 at cutoff = 7+ use case. The workplan §5 AAG entry
-acknowledges this gate and keeps the dispatch in reserve rather
-than scheduled.
+The measured points fit the textbook eigh scaling cleanly. Closed-form
+fits (using only points with `dim ≥ 500` for the wall-clock fit, so
+the import / assemble baseline does not bend the cubic):
 
-Run with:
+- **Wall-clock**: $t_\text{solve}(d) = \alpha\,d^{3}$ with
+  $\alpha \approx 5.7 \times 10^{-10}$ s on the reference hardware.
+- **Peak RSS**: $m_\text{peak}(d) = m_{0} + \kappa\,d^{2}$ with
+  $m_{0} \approx 240$ MB (Python + numpy + scipy + qutip + dependency
+  imports) and $\kappa \approx 106$ B per matrix entry — i.e. the
+  per-element workspace is ~6.7× the 16 B `complex128` matrix entry,
+  matching the rule-of-thumb that LAPACK eigh keeps a copy of the
+  input plus eigenvectors plus per-column Householder workspace.
+
+`tools/plot_spectrum_envelope_extrapolation.py` rebuilds the figure
+below from `report.json`, overlays the fitted laws past the measured
+range, and projects them against the canonical wall-clock thresholds
+and consumer-RAM tiers.
+
+![exact-diag envelope extrapolation](https://github.com/uwarring82/iontrap-dynamics/blob/main/benchmarks/data/spectrum_envelope/plot_extrapolation.png?raw=true)
+
+**Per-RAM-tier envelope, projected from the RSS fit.** The numbers in
+the body of the table are the largest `n_c` you can dense-eigh at
+each `(N, RAM)` pair, derived from the Clos 2016 reproduction
+parameterisation `dim = 2 · (n_c + 1)^N`. Numbers ≤ converged-cutoff
+(N=1 → 7, N=2 → 8, N=3 → 10) mean the converged regression target
+is *not* reachable on that RAM tier; numbers above are the slack you
+have for cutoff-convergence sweeps.
+
+| RAM tier                  | max dim | wall @ max dim | N=1   | N=2 | N=3 | N=4 | N=5 |
+|---------------------------|--------:|---------------:|------:|----:|----:|----:|----:|
+| 8 GB (budget laptop)      |   8 849 | 6.6 min        | 4 423 |  65 |  15 |   7 |   4 |
+| 16 GB (standard laptop)   |  12 609 | 19 min         | 6 303 |  78 |  17 |   7 |   4 |
+| 32 GB (workstation)       |  17 898 | 55 min         | 8 948 |  93 |  19 |   8 |   5 |
+| 64 GB (high-end WS)       |  25 359 | 2.6 hr         | 12 678 | 111 |  22 |   9 |   5 |
+| 128 GB (lab server)       |  35 895 | 7.3 hr         | 17 946 | 132 |  25 |  10 |   6 |
+
+**Wall-clock is the binding constraint past 32 GB.** Reading off the
+extrapolated cubic, the time to a single eigh hits:
+
+| target wall-clock | max dim | comment |
+|-------------------|--------:|---------|
+| 1 s               |   1 205 | interactive notebook bound |
+| 10 s              |   2 597 | tight regression-suite point |
+| 1 min             |   4 719 | upper end of AAE / AAF / AAI test budget |
+| 10 min            |  10 167 | feasible for one-off runs |
+| 1 hr              |  18 475 | overnight-only |
+
+So while a 128 GB server *could* hold the matrix at `dim = 35 895`,
+that single eigh would take ~7 hours — and a 16-detuning sweep (the
+size of the Clos 2016 figure) would take ~5 days. Past the 32 GB
+tier the user's effective binding constraint flips from RAM to
+wall-clock.
+
+**Cross-checking the "AAG would help" cases.** N = 5 at the
+converged cutoff (probably `n_c ≈ 6`, since the published table
+truncates at 4 and is still rising) requires `dim = 2 · 7^5 =
+33 614`, i.e. a 128 GB-class machine for dense eigh, or AAG's
+interior-window iterative path on commodity hardware. N = 4 at
+`n_c = 7` (the next point past the inferred converged value) needs
+`dim = 2 · 8^4 = 8 192`, which already fits 8 GB but takes ~5 min
+per eigh — sweep cost would be the binding factor, not RAM.
+
+**AAG gate status.** On the basis of this projection, AAG's
+interior-window iterative path earns its keep in two specific
+cases:
+
+1. **N = 5 reproduction at converged cutoff.** Dense crosses 32 GB
+   here; iterative shift-invert around the initial-state mean
+   energy could plausibly stay under 16 GB by exploiting the
+   sparsity-after-tridiagonalisation that dense eigh discards.
+2. **Sweeping a single dense eigh across many detunings on a
+   16 GB laptop.** The 53 s solve at `dim = 4 802` becomes 14 min
+   for a 16-point detuning sweep; an iterative path that
+   amortises the factorisation across detuning-windows could cut
+   this materially.
+
+Neither is currently a binding library requirement, so AAG stays
+**deferred**. The numbers above give a clean re-activation
+trigger: ship AAG when a real user's reproduction work hits one
+of the two cases.
+
+Run the measurement and the projection with:
 
 ```bash
-python tools/run_benchmark_spectrum_envelope.py
+python tools/run_benchmark_spectrum_envelope.py        # measurement
+python tools/plot_spectrum_envelope_extrapolation.py   # fits + projection
 ```
 
 The benchmark is subprocess-isolated per grid point so peak RSS
 reflects a single-run baseline rather than cumulative allocator
-state; total runtime on the reference hardware is ~2 min.
+state; total runtime on the reference hardware is ~2 min for the
+measurement plus < 1 s for the extrapolation pass.
