@@ -197,13 +197,39 @@ def main() -> int:
 
     fig, (ax_wall, ax_rss) = plt.subplots(1, 2, figsize=(11.2, 4.6))
 
-    # Measured points, coloured by N
+    # Measured points, coloured by N. Distinguish the deliberate "16 GB
+    # push" probes (the three large-dim points launched via --include-large)
+    # from the core-grid points using a diamond marker so the swap-pushing
+    # block reads clearly off the figure.
+    LARGE_DIM_THRESHOLD = 6000
     for n_ions, colour in N_IONS_COLOURS.items():
         mask = n_ions_arr == n_ions
         if not mask.any():
             continue
-        ax_wall.loglog(dims[mask], walls[mask], "o", color=colour, label=f"N={n_ions}", zorder=3)
-        ax_rss.loglog(dims[mask], rsss[mask] / 1024**2, "o", color=colour, label=f"N={n_ions}", zorder=3)
+        is_large = dims[mask] >= LARGE_DIM_THRESHOLD
+        # Core grid -- circle marker
+        if (~is_large).any():
+            d_core = dims[mask][~is_large]
+            w_core = walls[mask][~is_large]
+            r_core = rsss[mask][~is_large]
+            ax_wall.loglog(d_core, w_core, "o", color=colour, label=f"N={n_ions}", zorder=3)
+            ax_rss.loglog(d_core, r_core / 1024**2, "o", color=colour, label=f"N={n_ions}", zorder=3)
+        # Large-dim probes -- diamond marker, no separate legend entry
+        if is_large.any():
+            d_lp = dims[mask][is_large]
+            w_lp = walls[mask][is_large]
+            r_lp = rsss[mask][is_large]
+            label = "16 GB push" if n_ions == max(N_IONS_COLOURS) else None
+            ax_wall.loglog(
+                d_lp, w_lp, "D", color=colour, markersize=9,
+                markeredgecolor="black", markeredgewidth=0.6,
+                label=label, zorder=4,
+            )
+            ax_rss.loglog(
+                d_lp, r_lp / 1024**2, "D", color=colour, markersize=9,
+                markeredgecolor="black", markeredgewidth=0.6,
+                label=label, zorder=4,
+            )
 
     # Fitted extrapolation
     ax_wall.loglog(
