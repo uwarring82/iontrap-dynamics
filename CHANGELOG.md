@@ -8,6 +8,73 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+### Added
+
+- **Clos/Porras 2016 PRL integration (Dispatches AAA–AAI, closed
+  2026-04-23).** Full-exponential Lamb–Dicke carrier builder,
+  exact-diagonalization entry point, spectrum analyses,
+  N = 1 / N = 2 / N = 3 regression against the bundled
+  publication data (`legacy/clos 2016 prl/theo_dim_N_*.dat`),
+  measured envelope on commodity hardware, and an end-to-end
+  tutorial. Scopes and ships the complete plan documented at
+  `docs/workplan-clos-2016-integration.md` — now a
+  shipped-capability record, decisions recorded 2026-04-23.
+
+  - **AAA** — axial-mode convention reconciliation; explicit
+    N = 2 / N = 3 analytic references in
+    `clos2016_axial_mode_reference` (values corrected during
+    AAF against the `cchain` Hessian output).
+  - **AAB** — `carrier_hamiltonian_full_ld`, the carrier-RWA
+    all-orders Lamb–Dicke builder with the diagonal
+    Debye–Waller / Laguerre dressing per mode. Leading-order
+    `carrier_hamiltonian` unchanged.
+  - **AAC** — `src/iontrap_dynamics/spectrum.py`:
+    `solve_spectrum`, `SpectrumResult`, `SpectrumMetadata`,
+    backed by `scipy.linalg.eigh`.
+    `backend_name = "spectrum-scipy"`.
+  - **AAD** — `src/iontrap_dynamics/spectrum_observables.py`:
+    textbook `effective_dimension`,
+    `inverse_participation_ratio`, `eth_diagonals`,
+    `phonon_number_diagonals`. The legacy mixed-state `IPR_av`
+    quantity lives alongside the non-RWA
+    `clos2016_spin_boson_hamiltonian`, the thermal initial-state
+    builder, and the Raman two-photon wavelength constant
+    (`CLOS2016_LEGACY_WAVELENGTH_M`) in
+    `src/iontrap_dynamics/clos2016.py`.
+  - **AAE / AAF** — Porras N = 1 regression at `rtol = 0.10`
+    against the 3-s.f. published `theo_dim_N_1.dat`;
+    N = 2 / N = 3 extensions at ~6.3 % / ~4.2 % max relative
+    deviation
+    (`tests/regression/reproduction/test_clos_2016_*.py`).
+  - **AAH** — `tools/run_benchmark_spectrum_envelope.py` with
+    subprocess-isolated peak-RSS capture;
+    `tools/plot_spectrum_envelope_extrapolation.py`
+    per-(N, RAM) envelope projection. Headline: on a 16 GB
+    consumer laptop, dense `eigh` reaches N = 4 at
+    `n_c = 7` (`dim = 8 192`; ~7 min wall-clock; ~3.6 GB peak
+    RSS). Documented in
+    `docs/benchmarks.md § Exact-diagonalization envelope`.
+  - **AAI** — `docs/tutorials/13_reproducing_clos_2016.md`,
+    wired into `mkdocs.yml` and the tutorials index.
+
+  **AAG (interior-window iterative solver) deferred** on
+  measurement grounds — dense `eigh` covers the
+  publication-validated reproduction at N ∈ {1, 2, 3} at fully
+  converged cutoffs. Re-activation trigger documented in
+  `docs/benchmarks.md § AAG gate status`.
+
+- **scipy vs JAX CPU `eigh` comparison** (post-AAH follow-up).
+  `tools/run_benchmark_spectrum_envelope_jax.py` +
+  `tools/plot_spectrum_envelope_backend_comparison.py` replay
+  the 23-point envelope grid through `jax.numpy.linalg.eigh`
+  and overlay it against the scipy baseline. Null result:
+  JAX is ~22 % slower than scipy at asymptotic scaling and
+  carries a ~130 MB higher baseline from XLA / jaxlib. No CPU
+  reason to wire a JAX-backed `solve_spectrum` path; GPU
+  dispatch and autograd through the eigensolve remain the
+  forward Phase 3+ rationale.
+  `docs/benchmarks.md § scipy vs JAX on CPU for dense eigh`.
+
 ### Changed
 
 - **D2 (release-gate) closed 2026-04-23.** Upstream
@@ -23,6 +90,38 @@ placeholder-only and did not follow semver.
   carries over unchanged; only the `Source tag`, `Source commit`,
   and per-file raw URLs change. `WORKPLAN_v0.3.md` endorsement
   marker updated to reflect the closed state.
+
+### Fixed
+
+- **Main-branch CI green across all gates** (lint, typecheck
+  strict, docs strict, tests on 3.11 / 3.12, install smoke, CD
+  upstream-drift, CD local-asset-integrity). Debt accumulated
+  during the AAA–AAI landings:
+  - `ruff check --fix`: 23 auto-fixes across the Clos 2016
+    surface (UP032 `.format()` → f-string, RUF100 unused
+    `noqa`, F401 unused imports, RUF046 redundant
+    `int(round(x))` casts).
+  - `ruff format`: 11 Clos 2016 files reformatted (pure
+    formatting; `pytest 883 / 883` unchanged).
+  - `pyproject.toml`: four spectrum-envelope tools added to
+    the `RUF001` / `RUF002` / `RUF003` scientific-file
+    allowlist, matching the pattern already used by every
+    other `tools/run_*.py`.
+  - `mypy`: `cast("NDArray[...]", ...)` wrappers on three
+    numpy return sites; `# type: ignore[assignment]` on
+    `SpectrumResult.metadata` (`SpectrumMetadata`
+    intentionally omits `storage_mode` because
+    `eigenvectors_loader` handles laziness differently);
+    dual-coded `# type: ignore[no-untyped-call, unused-ignore]`
+    on `jax.config.update` to accommodate both local (jax
+    stubs visible, original error fires) and CI (jax treated
+    as `Any`, would-be-unused ignore) environments.
+  - `mkdocs --strict`: drop two pre-existing cross-tree
+    markdown links in
+    `docs/workplan-clos-2016-integration.md` (`../legacy/...`
+    and `../tests/...` paths that never resolved from the
+    docs tree); replace with plain code references already
+    used elsewhere in the same doc.
 
 ## [0.3.0] — 2026-04-22
 
