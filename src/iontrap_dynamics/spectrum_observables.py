@@ -93,8 +93,10 @@ def phonon_number_diagonals(
     The returned mapping is keyed by mode label, each value holding the
     diagonal of that mode's number operator in the spectrum eigenbasis.
     """
-    labels = tuple(mode_labels) if mode_labels is not None else tuple(
-        mode.label for mode in hilbert.system.modes
+    labels = (
+        tuple(mode_labels)
+        if mode_labels is not None
+        else tuple(mode.label for mode in hilbert.system.modes)
     )
     return {label: eth_diagonal(spectrum, hilbert.number_for_mode(label)) for label in labels}
 

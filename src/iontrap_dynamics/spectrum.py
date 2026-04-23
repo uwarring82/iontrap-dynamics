@@ -63,9 +63,7 @@ class SpectrumResult(Result):
                 f"SpectrumResult method must be 'dense' or 'shift_invert'; got {self.method!r}."
             )
         if self.eigenvalues.ndim != 1:
-            raise ConventionError(
-                "SpectrumResult requires `eigenvalues` to be a 1-D real array."
-            )
+            raise ConventionError("SpectrumResult requires `eigenvalues` to be a 1-D real array.")
         have_vectors = self.eigenvectors is not None
         have_loader = self.eigenvectors_loader is not None
         if have_vectors and have_loader:
@@ -81,9 +79,7 @@ class SpectrumResult(Result):
         if have_vectors:
             assert self.eigenvectors is not None
             if self.eigenvectors.ndim != 2:
-                raise ConventionError(
-                    "SpectrumResult requires `eigenvectors` to be a 2-D array."
-                )
+                raise ConventionError("SpectrumResult requires `eigenvectors` to be a 2-D array.")
             if self.eigenvectors.shape[1] != self.eigenvalues.shape[0]:
                 raise ConventionError(
                     "SpectrumResult eigenvector columns must match the number of eigenvalues."
@@ -98,7 +94,10 @@ def solve_spectrum(
     backend_name: str | None = None,
     fock_truncations: Mapping[str, int] | None = None,
     provenance_tags: tuple[str, ...] = (),
-    initial_state: qutip.Qobj | NDArray[np.complexfloating[Any]] | NDArray[np.floating[Any]] | None = None,
+    initial_state: qutip.Qobj
+    | NDArray[np.complexfloating[Any]]
+    | NDArray[np.floating[Any]]
+    | None = None,
 ) -> SpectrumResult:
     """Diagonalize a Hermitian Hamiltonian and return a :class:`SpectrumResult`.
 
@@ -186,9 +185,7 @@ def _state_energy_moments(
     if state.ndim == 1 or (state.ndim == 2 and 1 in state.shape):
         ket = state.reshape(-1)
         if ket.shape[0] != dim:
-            raise ConventionError(
-                f"initial_state ket has length {ket.shape[0]}, expected {dim}."
-            )
+            raise ConventionError(f"initial_state ket has length {ket.shape[0]}, expected {dim}.")
         norm = np.vdot(ket, ket)
         if np.isclose(norm, 0.0):
             raise ConventionError("initial_state ket must have non-zero norm.")

@@ -91,7 +91,7 @@ def _invert_wall_for_dim(alpha: float, wall_budget_s: float) -> float:
 
 
 def _fmt_dim(d: float) -> str:
-    return f"{int(round(d)):,}"
+    return f"{round(d):,}"
 
 
 def main() -> int:
@@ -114,8 +114,10 @@ def main() -> int:
 
     print("scaling-law fits")
     print(f"  wall-clock  t = alpha * d^3     with alpha = {alpha:.3e} s")
-    print(f"  peak RSS    m = m0 + kappa*d^2  with m0 = {rss_baseline / 1024**2:.1f} MB, "
-          f"kappa = {kappa:.2f} B/entry (≈ {kappa / 16:.2f}× the matrix dtype)")
+    print(
+        f"  peak RSS    m = m0 + kappa*d^2  with m0 = {rss_baseline / 1024**2:.1f} MB, "
+        f"kappa = {kappa:.2f} B/entry (≈ {kappa / 16:.2f}× the matrix dtype)"
+    )
     print()
 
     envelope: dict[str, dict[str, object]] = {}
@@ -130,20 +132,17 @@ def main() -> int:
         per_n_max_cutoff: dict[int, int] = {}
         for n_ions in range(1, 6):
             nc_float = (d_max / 2.0) ** (1.0 / n_ions) - 1.0
-            per_n_max_cutoff[n_ions] = max(0, int(math.floor(nc_float)))
+            per_n_max_cutoff[n_ions] = max(0, math.floor(nc_float))
         envelope[label] = {
             "ram_gb": gb,
-            "max_dim": int(round(d_max)),
+            "max_dim": round(d_max),
             "wall_at_max_dim_s": wall_at,
             "max_n_c_per_n_ions": per_n_max_cutoff,
         }
         print(f"  {label:<26} {_fmt_dim(d_max):>16} {wall_at:>14.1f} s")
 
     print()
-    header = (
-        f"  {'RAM tier':<26} "
-        + " ".join(f"{'N=' + str(n):>6}" for n in range(1, 6))
-    )
+    header = f"  {'RAM tier':<26} " + " ".join(f"{'N=' + str(n):>6}" for n in range(1, 6))
     print(header)
     for label, entry in envelope.items():
         nc = entry["max_n_c_per_n_ions"]  # type: ignore[index]
@@ -158,7 +157,7 @@ def main() -> int:
         d_wall = _invert_wall_for_dim(alpha, seconds)
         wall_table[label] = {
             "budget_s": seconds,
-            "max_dim": int(round(d_wall)),
+            "max_dim": round(d_wall),
         }
         print(f"  {label:<14} {_fmt_dim(d_wall):>12}")
 
@@ -176,16 +175,19 @@ def main() -> int:
                 "wall_thresholds": wall_table,
                 "environment": report["environment"],
             },
-            indent=2, sort_keys=True, ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
         ),
         encoding="utf-8",
     )
     print(f"\nwrote {TABLE_PATH.relative_to(REPO_ROOT)}")
 
     try:
-        import matplotlib  # noqa: PLC0415
+        import matplotlib
+
         matplotlib.use("Agg")
-        import matplotlib.pyplot as plt  # noqa: PLC0415
+        import matplotlib.pyplot as plt
     except ImportError:
         print("matplotlib not available -- skipping plot")
         return 0
@@ -213,7 +215,9 @@ def main() -> int:
             w_core = walls[mask][~is_large]
             r_core = rsss[mask][~is_large]
             ax_wall.loglog(d_core, w_core, "o", color=colour, label=f"N={n_ions}", zorder=3)
-            ax_rss.loglog(d_core, r_core / 1024**2, "o", color=colour, label=f"N={n_ions}", zorder=3)
+            ax_rss.loglog(
+                d_core, r_core / 1024**2, "o", color=colour, label=f"N={n_ions}", zorder=3
+            )
         # Large-dim probes -- diamond marker, no separate legend entry
         if is_large.any():
             d_lp = dims[mask][is_large]
@@ -221,32 +225,59 @@ def main() -> int:
             r_lp = rsss[mask][is_large]
             label = "16 GB push" if n_ions == max(N_IONS_COLOURS) else None
             ax_wall.loglog(
-                d_lp, w_lp, "D", color=colour, markersize=9,
-                markeredgecolor="black", markeredgewidth=0.6,
-                label=label, zorder=4,
+                d_lp,
+                w_lp,
+                "D",
+                color=colour,
+                markersize=9,
+                markeredgecolor="black",
+                markeredgewidth=0.6,
+                label=label,
+                zorder=4,
             )
             ax_rss.loglog(
-                d_lp, r_lp / 1024**2, "D", color=colour, markersize=9,
-                markeredgecolor="black", markeredgewidth=0.6,
-                label=label, zorder=4,
+                d_lp,
+                r_lp / 1024**2,
+                "D",
+                color=colour,
+                markersize=9,
+                markeredgecolor="black",
+                markeredgewidth=0.6,
+                label=label,
+                zorder=4,
             )
 
     # Fitted extrapolation
     ax_wall.loglog(
-        d_model, wall_model, "-", color="black", linewidth=1.4,
-        label=r"fit $t = \alpha\,d^{3}$", zorder=2,
+        d_model,
+        wall_model,
+        "-",
+        color="black",
+        linewidth=1.4,
+        label=r"fit $t = \alpha\,d^{3}$",
+        zorder=2,
     )
     ax_rss.loglog(
-        d_model, rss_model / 1024**2, "-", color="black", linewidth=1.4,
-        label=r"fit $m = m_{0} + \kappa\,d^{2}$", zorder=2,
+        d_model,
+        rss_model / 1024**2,
+        "-",
+        color="black",
+        linewidth=1.4,
+        label=r"fit $m = m_{0} + \kappa\,d^{2}$",
+        zorder=2,
     )
 
     # Wall-clock threshold bands
     for label, seconds in WALL_THRESHOLDS_S.items():
         ax_wall.axhline(seconds, color="grey", linewidth=0.6, linestyle=":", alpha=0.8)
         ax_wall.text(
-            d_model[-1] * 0.95, seconds, f"  {label}",
-            ha="right", va="bottom", fontsize=8, color="grey",
+            d_model[-1] * 0.95,
+            seconds,
+            f"  {label}",
+            ha="right",
+            va="bottom",
+            fontsize=8,
+            color="grey",
         )
         # Mark the crossover dim
         d_cross = _invert_wall_for_dim(alpha, seconds)
@@ -257,8 +288,13 @@ def main() -> int:
     for label, gb in RAM_TIERS_GB.items():
         ax_rss.axhline(gb * 1024, color="grey", linewidth=0.6, linestyle=":", alpha=0.8)
         ax_rss.text(
-            d_model[-1] * 0.95, gb * 1024, f"  {label}",
-            ha="right", va="bottom", fontsize=8, color="grey",
+            d_model[-1] * 0.95,
+            gb * 1024,
+            f"  {label}",
+            ha="right",
+            va="bottom",
+            fontsize=8,
+            color="grey",
         )
         d_cross = _invert_rss_for_dim(rss_baseline, kappa, gb * 1024**3)
         if d_model[0] < d_cross < d_model[-1]:
@@ -271,7 +307,12 @@ def main() -> int:
         ax.text(
             math.sqrt(d_model[0] * d_measured_max),
             ax.get_ylim()[1] * 0.5 if ax is ax_wall else 1e4,
-            "measured", ha="center", va="top", fontsize=9, color="#555555", zorder=1,
+            "measured",
+            ha="center",
+            va="top",
+            fontsize=9,
+            color="#555555",
+            zorder=1,
         )
 
     ax_wall.set_xlabel("Hilbert dimension $d$")
@@ -283,8 +324,7 @@ def main() -> int:
     ax_rss.set_xlabel("Hilbert dimension $d$")
     ax_rss.set_ylabel("peak process RSS [MiB]")
     ax_rss.set_title(
-        f"Peak RSS: m$_0$ = {rss_baseline / 1024**2:.0f} MB, κ ≈ "
-        f"{kappa / 16:.1f}× matrix dtype"
+        f"Peak RSS: m$_0$ = {rss_baseline / 1024**2:.0f} MB, κ ≈ {kappa / 16:.1f}× matrix dtype"
     )
     ax_rss.grid(True, which="both", alpha=0.25)
     ax_rss.legend(title="N ions", loc="lower right", fontsize=8)

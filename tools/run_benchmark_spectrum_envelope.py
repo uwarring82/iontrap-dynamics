@@ -28,7 +28,6 @@ Writes::
 from __future__ import annotations
 
 import json
-import math
 import platform
 import subprocess
 import sys
@@ -56,16 +55,31 @@ N_BAR = 1.0
 # block can take 15–25 min on the reference hardware and is gated by the
 # `--include-large` CLI flag so casual reruns do not hammer the laptop.
 GRID_CORE: list[tuple[int, int]] = [
-    (1, 5), (1, 10), (1, 20), (1, 50), (1, 100),
-    (2, 5), (2, 10), (2, 15), (2, 20), (2, 25),
-    (3, 4), (3, 6), (3, 8), (3, 10), (3, 12),
-    (4, 3), (4, 4), (4, 5), (4, 6),
+    (1, 5),
+    (1, 10),
+    (1, 20),
+    (1, 50),
+    (1, 100),
+    (2, 5),
+    (2, 10),
+    (2, 15),
+    (2, 20),
+    (2, 25),
+    (3, 4),
+    (3, 6),
+    (3, 8),
+    (3, 10),
+    (3, 12),
+    (4, 3),
+    (4, 4),
+    (4, 5),
+    (4, 6),
     (5, 3),
 ]
 GRID_LARGE: list[tuple[int, int]] = [
     (5, 4),  # dim 6 250  -- predicted peak RSS ~3.4 GB, ~3 min
     (4, 7),  # dim 8 192  -- predicted peak RSS ~5.5 GB, ~5 min
-    (3, 14), # dim 10 368 -- predicted peak RSS ~11 GB,  ~10 min on swap
+    (3, 14),  # dim 10 368 -- predicted peak RSS ~11 GB,  ~10 min on swap
 ]
 
 # Child-process script. Lives inline so the benchmark is self-contained;
@@ -165,9 +179,9 @@ if __name__ == '__main__':
 
 
 def _environment() -> dict[str, str]:
-    import numpy  # noqa: PLC0415
-    import qutip  # noqa: PLC0415
-    import scipy  # noqa: PLC0415
+    import numpy
+    import qutip
+    import scipy
 
     return {
         "platform": platform.platform(),
@@ -193,12 +207,20 @@ def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 600) -> dict[str, f
     try:
         result = subprocess.run(
             [
-                sys.executable, "-c", CHILD_SCRIPT,
-                str(n_ions), str(cutoff),
-                str(AXIAL_MHZ * 1e6), str(RABI_MHZ * 1e6),
-                str(DETUNING_MHZ * 1e6), str(N_BAR),
+                sys.executable,
+                "-c",
+                CHILD_SCRIPT,
+                str(n_ions),
+                str(cutoff),
+                str(AXIAL_MHZ * 1e6),
+                str(RABI_MHZ * 1e6),
+                str(DETUNING_MHZ * 1e6),
+                str(N_BAR),
             ],
-            capture_output=True, text=True, check=True, timeout=timeout_s,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout_s,
         )
     except subprocess.CalledProcessError as exc:
         print(f"FAILED ({exc.returncode})")
@@ -222,14 +244,15 @@ def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 600) -> dict[str, f
 
 
 def main() -> int:
-    import argparse  # noqa: PLC0415
+    import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--include-large", action="store_true",
+        "--include-large",
+        action="store_true",
         help="Run the three large-dim points (dim 6 250 / 8 192 / 10 368). "
-             "These push a 16 GB system into measurable swap; total runtime "
-             "balloons to ~25 min on the reference hardware.",
+        "These push a 16 GB system into measurable swap; total runtime "
+        "balloons to ~25 min on the reference hardware.",
     )
     args = parser.parse_args()
 
@@ -285,9 +308,10 @@ def main() -> int:
     print(f"\nwrote {OUTPUT_DIR.relative_to(REPO_ROOT)}/report.json")
 
     try:
-        import matplotlib  # noqa: PLC0415
+        import matplotlib
+
         matplotlib.use("Agg")
-        import matplotlib.pyplot as plt  # noqa: PLC0415
+        import matplotlib.pyplot as plt
     except ImportError:
         print("matplotlib not available -- skipping plot")
         return 0

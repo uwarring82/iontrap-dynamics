@@ -32,7 +32,6 @@ import json
 import platform
 import subprocess
 import sys
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -45,14 +44,31 @@ DETUNING_MHZ = 0.5
 N_BAR = 1.0
 
 GRID_CORE: list[tuple[int, int]] = [
-    (1, 5), (1, 10), (1, 20), (1, 50), (1, 100),
-    (2, 5), (2, 10), (2, 15), (2, 20), (2, 25),
-    (3, 4), (3, 6), (3, 8), (3, 10), (3, 12),
-    (4, 3), (4, 4), (4, 5), (4, 6),
+    (1, 5),
+    (1, 10),
+    (1, 20),
+    (1, 50),
+    (1, 100),
+    (2, 5),
+    (2, 10),
+    (2, 15),
+    (2, 20),
+    (2, 25),
+    (3, 4),
+    (3, 6),
+    (3, 8),
+    (3, 10),
+    (3, 12),
+    (4, 3),
+    (4, 4),
+    (4, 5),
+    (4, 6),
     (5, 3),
 ]
 GRID_LARGE: list[tuple[int, int]] = [
-    (5, 4), (4, 7), (3, 14),
+    (5, 4),
+    (4, 7),
+    (3, 14),
 ]
 
 CHILD_SCRIPT = r"""
@@ -168,11 +184,11 @@ if __name__ == "__main__":
 
 
 def _environment() -> dict[str, str]:
-    import jax  # noqa: PLC0415
-    import jaxlib  # noqa: PLC0415
-    import numpy  # noqa: PLC0415
-    import qutip  # noqa: PLC0415
-    import scipy  # noqa: PLC0415
+    import jax
+    import jaxlib
+    import numpy
+    import qutip
+    import scipy
 
     return {
         "platform": platform.platform(),
@@ -200,12 +216,20 @@ def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 1800) -> dict[str, 
     try:
         result = subprocess.run(
             [
-                sys.executable, "-c", CHILD_SCRIPT,
-                str(n_ions), str(cutoff),
-                str(AXIAL_MHZ * 1e6), str(RABI_MHZ * 1e6),
-                str(DETUNING_MHZ * 1e6), str(N_BAR),
+                sys.executable,
+                "-c",
+                CHILD_SCRIPT,
+                str(n_ions),
+                str(cutoff),
+                str(AXIAL_MHZ * 1e6),
+                str(RABI_MHZ * 1e6),
+                str(DETUNING_MHZ * 1e6),
+                str(N_BAR),
             ],
-            capture_output=True, text=True, check=True, timeout=timeout_s,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout_s,
         )
     except subprocess.CalledProcessError as exc:
         print(f"FAILED ({exc.returncode})")
@@ -230,7 +254,8 @@ def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 1800) -> dict[str, 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--include-large", action="store_true",
+        "--include-large",
+        action="store_true",
         help="Run the three large-dim points (dim 6 250 / 6 750 / 8 192).",
     )
     args = parser.parse_args()

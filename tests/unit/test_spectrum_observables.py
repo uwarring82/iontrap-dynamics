@@ -110,7 +110,9 @@ class TestPhononNumberDiagonals:
         spectrum = solve_spectrum(hamiltonian, initial_state=rho0, fock_truncations={"axial": 4})
         diagonals = phonon_number_diagonals(spectrum, hilbert)
 
-        np.testing.assert_allclose(diagonals["axial"], np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0]))
+        np.testing.assert_allclose(
+            diagonals["axial"], np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0])
+        )
 
     def test_mode_subset_can_be_requested(self) -> None:
         hilbert = _single_ion_hilbert(fock=3)

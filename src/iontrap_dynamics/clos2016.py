@@ -121,7 +121,9 @@ def clos2016_spin_boson_hamiltonian(
 
     pol = 0 * spin_op(qutip.qeye(2))
     H_n = 0 * spin_op(qutip.qeye(2))
-    for mode_index, (ratio, weight) in enumerate(zip(mode_frequencies, center_weights, strict=True)):
+    for mode_index, (ratio, weight) in enumerate(
+        zip(mode_frequencies, center_weights, strict=True)
+    ):
         a_mode = mode_op(qutip.destroy(mode_dim), mode_index)
         eta_mode = eta_0 * weight / math.sqrt(float(ratio))
         pol = pol + eta_mode * (a_mode - a_mode.dag())

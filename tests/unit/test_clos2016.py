@@ -56,14 +56,11 @@ class TestClos2016SpinBosonHamiltonian:
             phase_rad=0.0,
         )
 
-        expected = (
-            qutip.tensor(
-                (rabi_frequency / 2.0) * sigma_x_ion() + (detuning / 2.0) * sigma_z_ion(),
-                qutip.qeye(mode_dim),
-            )
-            + axial_frequency
-            * dimensionless_mode_frequency
-            * qutip.tensor(qutip.qeye(2), qutip.num(mode_dim))
+        expected = qutip.tensor(
+            (rabi_frequency / 2.0) * sigma_x_ion() + (detuning / 2.0) * sigma_z_ion(),
+            qutip.qeye(mode_dim),
+        ) + axial_frequency * dimensionless_mode_frequency * qutip.tensor(
+            qutip.qeye(2), qutip.num(mode_dim)
         )
 
         assert (hamiltonian - expected).norm() < 5e-8
@@ -83,7 +80,9 @@ class TestClos2016SpinBosonHamiltonian:
 
 class TestClos2016InitialState:
     def test_zero_temperature_theta_zero_gives_spin_up_times_vacuum(self) -> None:
-        rho0 = clos2016_initial_state(max_phonons=2, mean_occupations=[0.0], theta_rad=0.0, phi_rad=0.0)
+        rho0 = clos2016_initial_state(
+            max_phonons=2, mean_occupations=[0.0], theta_rad=0.0, phi_rad=0.0
+        )
         expected = qutip.ket2dm(qutip.tensor(spin_up(), qutip.basis(3, 0)))
 
         assert rho0.dims == expected.dims

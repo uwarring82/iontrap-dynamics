@@ -60,8 +60,10 @@ def _load(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 def main() -> int:
     if not JAX_REPORT.exists():
-        print(f"error: {JAX_REPORT.relative_to(REPO_ROOT)} not found; "
-              f"run tools/run_benchmark_spectrum_envelope_jax.py first.")
+        print(
+            f"error: {JAX_REPORT.relative_to(REPO_ROOT)} not found; "
+            f"run tools/run_benchmark_spectrum_envelope_jax.py first."
+        )
         return 1
 
     sci_d, sci_wall, sci_rss = _load(SCIPY_REPORT)
@@ -74,28 +76,35 @@ def main() -> int:
     sci_m0, sci_kappa = _fit_rss_quadratic(sci_d, sci_rss)
     jax_m0, jax_kappa = _fit_rss_quadratic(jax_d, jax_rss)
 
-    print("scipy  : alpha = {:.3e} s/d^3,   m0 = {:.1f} MB,  kappa ≈ {:.2f}x dtype".format(
-        sci_alpha, sci_m0 / 1024**2, sci_kappa / 16.0))
-    print("jax    : alpha = {:.3e} s/d^3,   m0 = {:.1f} MB,  kappa ≈ {:.2f}x dtype".format(
-        jax_alpha, jax_m0 / 1024**2, jax_kappa / 16.0))
+    print(
+        f"scipy  : alpha = {sci_alpha:.3e} s/d^3,   m0 = {sci_m0 / 1024**2:.1f} MB,  kappa ≈ {sci_kappa / 16.0:.2f}x dtype"
+    )
+    print(
+        f"jax    : alpha = {jax_alpha:.3e} s/d^3,   m0 = {jax_m0 / 1024**2:.1f} MB,  kappa ≈ {jax_kappa / 16.0:.2f}x dtype"
+    )
     print()
 
     # Pairwise ratio table
     common = sorted(set(sci_d) & set(jax_d))
-    print(f"  {'dim':>8} {'scipy wall':>14} {'jax wall':>14} {'scipy/jax':>12}  "
-          f"{'scipy rss':>12} {'jax rss':>12} {'rss ratio':>12}")
+    print(
+        f"  {'dim':>8} {'scipy wall':>14} {'jax wall':>14} {'scipy/jax':>12}  "
+        f"{'scipy rss':>12} {'jax rss':>12} {'rss ratio':>12}"
+    )
     for d in common:
         si = int(np.flatnonzero(sci_d == d)[0])
         ji = int(np.flatnonzero(jax_d == d)[0])
         sw, jw = sci_wall[si], jax_wall[ji]
         sr, jr = sci_rss[si], jax_rss[ji]
-        print(f"  {d:>8} {sw:>13.3f}s {jw:>13.3f}s {sw / jw:>11.2f}x  "
-              f"{sr / 1024**2:>10.0f} MB {jr / 1024**2:>10.0f} MB {sr / jr:>11.2f}x")
+        print(
+            f"  {d:>8} {sw:>13.3f}s {jw:>13.3f}s {sw / jw:>11.2f}x  "
+            f"{sr / 1024**2:>10.0f} MB {jr / 1024**2:>10.0f} MB {sr / jr:>11.2f}x"
+        )
 
     try:
-        import matplotlib  # noqa: PLC0415
+        import matplotlib
+
         matplotlib.use("Agg")
-        import matplotlib.pyplot as plt  # noqa: PLC0415
+        import matplotlib.pyplot as plt
     except ImportError:
         print("matplotlib not available -- skipping plot")
         return 0
@@ -113,34 +122,92 @@ def main() -> int:
     sci_colour = "#1f77b4"  # blue
     jax_colour = "#d62728"  # red
 
-    ax_wall.loglog(sci_d, sci_wall, "o", color=sci_colour, markersize=7, label="scipy (measured)", zorder=3)
-    ax_wall.loglog(jax_d, jax_wall, "s", color=jax_colour, markersize=7, label="jax (measured)", zorder=3)
-    ax_wall.loglog(d_model, sci_wall_model, "-", color=sci_colour, linewidth=1.0, alpha=0.8,
-                   label=f"scipy fit: α={sci_alpha:.2e}", zorder=2)
-    ax_wall.loglog(d_model, jax_wall_model, "-", color=jax_colour, linewidth=1.0, alpha=0.8,
-                   label=f"jax fit: α={jax_alpha:.2e}", zorder=2)
+    ax_wall.loglog(
+        sci_d, sci_wall, "o", color=sci_colour, markersize=7, label="scipy (measured)", zorder=3
+    )
+    ax_wall.loglog(
+        jax_d, jax_wall, "s", color=jax_colour, markersize=7, label="jax (measured)", zorder=3
+    )
+    ax_wall.loglog(
+        d_model,
+        sci_wall_model,
+        "-",
+        color=sci_colour,
+        linewidth=1.0,
+        alpha=0.8,
+        label=f"scipy fit: α={sci_alpha:.2e}",
+        zorder=2,
+    )
+    ax_wall.loglog(
+        d_model,
+        jax_wall_model,
+        "-",
+        color=jax_colour,
+        linewidth=1.0,
+        alpha=0.8,
+        label=f"jax fit: α={jax_alpha:.2e}",
+        zorder=2,
+    )
     for s, lbl in [(1.0, "1 s"), (60.0, "1 min"), (3600.0, "1 hr")]:
         ax_wall.axhline(s, color="grey", linewidth=0.5, linestyle=":", alpha=0.6)
-        ax_wall.text(d_model[-1] * 0.95, s, f"  {lbl}", ha="right", va="bottom",
-                     fontsize=8, color="grey")
+        ax_wall.text(
+            d_model[-1] * 0.95, s, f"  {lbl}", ha="right", va="bottom", fontsize=8, color="grey"
+        )
     ax_wall.set_xlabel("Hilbert dimension $d$")
     ax_wall.set_ylabel("solve wall-clock [s]")
     ax_wall.set_title("Wall-clock")
     ax_wall.grid(True, which="both", alpha=0.25)
     ax_wall.legend(loc="lower right", fontsize=8)
 
-    ax_rss.loglog(sci_d, sci_rss / 1024**2, "o", color=sci_colour, markersize=7,
-                  label="scipy (measured)", zorder=3)
-    ax_rss.loglog(jax_d, jax_rss / 1024**2, "s", color=jax_colour, markersize=7,
-                  label="jax (measured)", zorder=3)
-    ax_rss.loglog(d_model, sci_rss_model / 1024**2, "-", color=sci_colour, linewidth=1.0, alpha=0.8,
-                  label=f"scipy: κ/dtype ≈ {sci_kappa / 16:.1f}", zorder=2)
-    ax_rss.loglog(d_model, jax_rss_model / 1024**2, "-", color=jax_colour, linewidth=1.0, alpha=0.8,
-                  label=f"jax: κ/dtype ≈ {jax_kappa / 16:.1f}", zorder=2)
+    ax_rss.loglog(
+        sci_d,
+        sci_rss / 1024**2,
+        "o",
+        color=sci_colour,
+        markersize=7,
+        label="scipy (measured)",
+        zorder=3,
+    )
+    ax_rss.loglog(
+        jax_d,
+        jax_rss / 1024**2,
+        "s",
+        color=jax_colour,
+        markersize=7,
+        label="jax (measured)",
+        zorder=3,
+    )
+    ax_rss.loglog(
+        d_model,
+        sci_rss_model / 1024**2,
+        "-",
+        color=sci_colour,
+        linewidth=1.0,
+        alpha=0.8,
+        label=f"scipy: κ/dtype ≈ {sci_kappa / 16:.1f}",
+        zorder=2,
+    )
+    ax_rss.loglog(
+        d_model,
+        jax_rss_model / 1024**2,
+        "-",
+        color=jax_colour,
+        linewidth=1.0,
+        alpha=0.8,
+        label=f"jax: κ/dtype ≈ {jax_kappa / 16:.1f}",
+        zorder=2,
+    )
     for gb in (8, 16, 32, 64, 128):
         ax_rss.axhline(gb * 1024, color="grey", linewidth=0.5, linestyle=":", alpha=0.6)
-        ax_rss.text(d_model[-1] * 0.95, gb * 1024, f"  {gb} GB", ha="right", va="bottom",
-                    fontsize=8, color="grey")
+        ax_rss.text(
+            d_model[-1] * 0.95,
+            gb * 1024,
+            f"  {gb} GB",
+            ha="right",
+            va="bottom",
+            fontsize=8,
+            color="grey",
+        )
     ax_rss.set_xlabel("Hilbert dimension $d$")
     ax_rss.set_ylabel("peak process RSS [MiB]")
     ax_rss.set_title("Peak RSS")
@@ -153,16 +220,20 @@ def main() -> int:
     # underlying LAPACK call). The asymptotic story is at dim >= 500.
     ratio_mask = np.asarray([d >= 100 for d in common])
     ratio_d = np.asarray(common, dtype=np.int64)[ratio_mask]
-    ratio_wall = np.asarray([
-        sci_wall[int(np.flatnonzero(sci_d == d)[0])]
-        / jax_wall[int(np.flatnonzero(jax_d == d)[0])]
-        for d in common
-    ])[ratio_mask]
-    ratio_rss = np.asarray([
-        sci_rss[int(np.flatnonzero(sci_d == d)[0])]
-        / jax_rss[int(np.flatnonzero(jax_d == d)[0])]
-        for d in common
-    ])[ratio_mask]
+    ratio_wall = np.asarray(
+        [
+            sci_wall[int(np.flatnonzero(sci_d == d)[0])]
+            / jax_wall[int(np.flatnonzero(jax_d == d)[0])]
+            for d in common
+        ]
+    )[ratio_mask]
+    ratio_rss = np.asarray(
+        [
+            sci_rss[int(np.flatnonzero(sci_d == d)[0])]
+            / jax_rss[int(np.flatnonzero(jax_d == d)[0])]
+            for d in common
+        ]
+    )[ratio_mask]
     ax_ratio.axhline(1.0, color="black", linewidth=0.8)
     ax_ratio.semilogx(ratio_d, ratio_wall, "o-", color="#2ca02c", label="wall-clock ratio")
     ax_ratio.semilogx(ratio_d, ratio_rss, "s-", color="#9467bd", label="peak-RSS ratio")
@@ -172,12 +243,20 @@ def main() -> int:
     ax_ratio.axhline(asym_wall, color="#2ca02c", linewidth=0.6, linestyle="--", alpha=0.6)
     ax_ratio.axhline(asym_rss, color="#9467bd", linewidth=0.6, linestyle="--", alpha=0.6)
     ax_ratio.text(
-        ratio_d[-1] * 1.1, asym_wall,
-        f"  α ratio = {asym_wall:.2f}", va="center", fontsize=8, color="#2ca02c",
+        ratio_d[-1] * 1.1,
+        asym_wall,
+        f"  α ratio = {asym_wall:.2f}",
+        va="center",
+        fontsize=8,
+        color="#2ca02c",
     )
     ax_ratio.text(
-        ratio_d[-1] * 1.1, asym_rss,
-        f"  κ ratio = {asym_rss:.2f}", va="center", fontsize=8, color="#9467bd",
+        ratio_d[-1] * 1.1,
+        asym_rss,
+        f"  κ ratio = {asym_rss:.2f}",
+        va="center",
+        fontsize=8,
+        color="#9467bd",
     )
     ax_ratio.set_ylim(0.3, 1.8)
     ax_ratio.set_xlabel("Hilbert dimension $d$")

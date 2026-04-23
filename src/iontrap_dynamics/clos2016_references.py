@@ -126,9 +126,9 @@ def _infer_converged_cutoff(
             continue
         tail_ipr_average = ipr_average[index:]
         tail_ipr = ipr[index:]
-        if np.all(_relative_error(tail_ipr_average, final_ipr_average) <= relative_tolerance) and np.all(
-            _relative_error(tail_ipr, final_ipr) <= relative_tolerance
-        ):
+        if np.all(
+            _relative_error(tail_ipr_average, final_ipr_average) <= relative_tolerance
+        ) and np.all(_relative_error(tail_ipr, final_ipr) <= relative_tolerance):
             return int(cutoff)
     return None
 
@@ -199,9 +199,7 @@ def load_clos2016_theory_dimension_surface(
     legacy_dir: Path = DEFAULT_LEGACY_CLOS2016_DIR,
 ) -> Clos2016TheoryDimensionSurface:
     """Parse one archived ``theo_dim_N_*.dat`` cutoff-by-detuning surface."""
-    table_path = (
-        legacy_dir / "DP num res_fig_1_2015_07_30" / f"theo_dim_N_{n_ions}.dat"
-    )
+    table_path = legacy_dir / "DP num res_fig_1_2015_07_30" / f"theo_dim_N_{n_ions}.dat"
     data = np.loadtxt(table_path, delimiter="\t", skiprows=1, dtype=np.float64)
 
     if data.ndim != 2 or data.shape[1] != 8:

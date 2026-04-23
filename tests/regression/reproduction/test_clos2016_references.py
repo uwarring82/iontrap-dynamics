@@ -19,8 +19,12 @@ from iontrap_dynamics.clos2016_references import (
 pytestmark = pytest.mark.regression_reproduction
 
 
-def _allclose_up_to_global_sign(actual: np.ndarray, expected: np.ndarray, *, atol: float = 1e-12) -> bool:
-    return bool(np.allclose(actual, expected, atol=atol) or np.allclose(actual, -expected, atol=atol))
+def _allclose_up_to_global_sign(
+    actual: np.ndarray, expected: np.ndarray, *, atol: float = 1e-12
+) -> bool:
+    return bool(
+        np.allclose(actual, expected, atol=atol) or np.allclose(actual, -expected, atol=atol)
+    )
 
 
 def test_legacy_bundle_directory_exists() -> None:
