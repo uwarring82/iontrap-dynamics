@@ -46,7 +46,7 @@ class SpectrumResult(Result):
     payload needed by later Clos/Porras analyses.
     """
 
-    metadata: SpectrumMetadata
+    metadata: SpectrumMetadata  # type: ignore[assignment]  # spectrum metadata omits storage_mode by design; eigenvectors_loader handles laziness separately
     eigenvalues: NDArray[np.float64]
     eigenvectors: NDArray[np.complex128] | None = None
     eigenvectors_loader: Callable[[int], SpectrumVector] | None = None

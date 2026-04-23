@@ -22,7 +22,7 @@ baking the MATLAB naming quirk into the public API.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import qutip
@@ -122,7 +122,7 @@ def _spectral_populations(
     populations[np.abs(populations) < 1e-14] = 0.0
     if np.any(populations < -1e-10):
         raise ConventionError("Spectral populations must be non-negative.")
-    return np.clip(populations, 0.0, None)
+    return cast("NDArray[np.float64]", np.clip(populations, 0.0, None))
 
 
 def _eigenvector_matrix(spectrum: SpectrumResult) -> NDArray[np.complex128]:
@@ -178,7 +178,7 @@ def _as_density_matrix(
         rho = state / trace
         if not np.allclose(rho, rho.conj().T, atol=1e-12):
             raise ConventionError("initial_state density matrix must be Hermitian.")
-        return rho
+        return cast("NDArray[np.complex128]", rho)
 
     raise ConventionError(
         "initial_state must be a ket vector or a square density matrix matching "

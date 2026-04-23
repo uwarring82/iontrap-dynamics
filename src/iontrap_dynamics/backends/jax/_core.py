@@ -188,7 +188,7 @@ def solve_via_jax(
     # docs/phase-2-jax-backend-design.md §8 ("Float32/64 defaults trip
     # up convention-version test"). Module-docstring documents the
     # side effect on user-controlled JAX config.
-    jax.config.update("jax_enable_x64", True)
+    jax.config.update("jax_enable_x64", True)  # type: ignore[no-untyped-call]
 
     tolerance = fock_tolerance if fock_tolerance is not None else FOCK_CONVERGENCE_TOLERANCE
     # Defer tolerance validation to the classifier; it already raises

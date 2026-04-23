@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import qutip
@@ -266,7 +266,7 @@ def _as_density_matrix(
         rho = state / trace
         if not np.allclose(rho, rho.conj().T, atol=1e-12):
             raise ConventionError("initial_state density matrix must be Hermitian.")
-        return rho
+        return cast("NDArray[np.complex128]", rho)
 
     raise ConventionError(
         "initial_state must be a ket vector or a square density matrix matching "
