@@ -514,3 +514,69 @@ The benchmark is subprocess-isolated per grid point so peak RSS
 reflects a single-run baseline rather than cumulative allocator
 state; total runtime on the reference hardware is ~2 min for the
 measurement plus < 1 s for the extrapolation pass.
+
+### scipy vs JAX on CPU for dense `eigh`
+
+Before a hypothetical JAX-backed `solve_spectrum` path is scoped, the
+natural question is "does `jax.numpy.linalg.eigh` offer any speedup
+on CPU that would justify the extra dependency?". The answer, on
+this hardware, is **no** —
+`tools/run_benchmark_spectrum_envelope_jax.py` replays the full 23-point
+grid through JAX and reports the mirror-image numbers, and
+`tools/plot_spectrum_envelope_backend_comparison.py` overlays them
+against the scipy baseline.
+
+![scipy vs JAX CPU eigh](https://github.com/uwarring82/iontrap-dynamics/blob/main/benchmarks/data/spectrum_envelope/plot_backend_comparison.png?raw=true)
+
+Asymptotic scaling constants (same fit procedure as the scipy-only
+section above):
+
+| backend | α (s / d³)        | m₀ (MB) | κ / dtype |
+|---------|-------------------|--------:|----------:|
+| scipy   | 5.63 × 10⁻¹⁰     | 365     | 4.29×     |
+| JAX     | 6.85 × 10⁻¹⁰     | 488     | 4.28×     |
+
+**Wall-clock.** JAX's XLA-dispatched LAPACK is ~22 % slower than
+scipy's direct LAPACK binding asymptotically (`scipy α / JAX α ≈
+0.82`); at small `d` where the fixed first-dispatch cost dominates,
+scipy is up to 2–5× faster. There is no crossover in the measured
+range.
+
+**Peak RSS.** The *per-element* workspace constants are identical
+to within fit noise (`κ ≈ 4.28× dtype` for both) — both backends
+call the same LAPACK driver under the hood. JAX carries a ~130 MB
+higher baseline from XLA + jaxlib imports (m₀ = 488 MB vs 365 MB),
+which matters only at `d ≲ 1 000` where matrix storage hasn't yet
+dominated.
+
+Per-point ratio at representative sizes:
+
+| dim   | scipy wall | JAX wall | scipy wall / JAX wall | scipy RSS / JAX RSS |
+|------:|-----------:|---------:|----------------------:|--------------------:|
+|   512 |   0.09 s   |   0.08 s |                 1.18× |               0.63× |
+| 1 458 |   1.6 s    |   2.1 s  |                 0.79× |               0.89× |
+| 4 802 |  52 s      |  80 s    |                 0.65× |               0.86× |
+| 8 192 | 430 s      | 579 s    |                 0.74× |               0.93× |
+
+**Interpretation.** This mirrors the β.4.5 null result for
+time-evolution: on CPU, JAX neither accelerates nor reduces the
+memory footprint of the dense-`eigh` path. The value a JAX-backed
+`solve_spectrum` could plausibly offer is therefore entirely on
+the other two axes:
+
+1. **GPU dispatch** — `jax.numpy.linalg.eigh` runs on CUDA / Metal
+   transparently where a GPU build of jaxlib is available. This is
+   the only scenario in which a JAX spectrum path reaches scales
+   dense scipy cannot. Not measured here; requires a non-CPU JAX
+   install that is currently outside the CI footprint.
+2. **Autograd through the eigensolve** — for future fitting /
+   inverse problems where the observables depend differentiably on
+   a Hamiltonian parameter. Design-note Axis-D, Phase 3+.
+
+On CPU-only hardware there is no reason to wire JAX into
+`solve_spectrum`. The measurement is reproducible with:
+
+```bash
+python tools/run_benchmark_spectrum_envelope_jax.py --include-large
+python tools/plot_spectrum_envelope_backend_comparison.py
+```

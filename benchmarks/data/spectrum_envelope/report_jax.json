@@ -1,0 +1,279 @@
+{
+  "configuration": {
+    "axial_frequency_MHz": 0.71,
+    "detuning_MHz": 0.5,
+    "n_bar": 1.0,
+    "rabi_frequency_MHz": 0.71,
+    "species": "25Mg+",
+    "wavelength_label": "CLOS2016_LEGACY_WAVELENGTH_M (Raman two-photon)"
+  },
+  "environment": {
+    "jax": "0.10.0",
+    "jax_backend": "cpu",
+    "jaxlib": "0.10.0",
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-23T11:34:35.607157+00:00",
+  "purpose": "JAX counterpart to AAH -- measures jax.numpy.linalg.eigh wall-clock and peak RSS on the same Clos 2016 non-RWA spin-boson Hamiltonian. Warm-up call precedes the timed call so steady-state cost is reported.",
+  "results": [
+    {
+      "build_seconds": 0.0034015419660136104,
+      "cutoff": 5,
+      "dim": 12,
+      "matrix_bytes": 2304,
+      "n_ions": 1,
+      "peak_rss_bytes": 294256640,
+      "solve_seconds": 6.325001595541835e-05,
+      "transfer_seconds": 0.014838042028713971,
+      "warmup_seconds": 0.31997441698331386
+    },
+    {
+      "build_seconds": 0.0025727080064825714,
+      "cutoff": 10,
+      "dim": 22,
+      "matrix_bytes": 7744,
+      "n_ions": 1,
+      "peak_rss_bytes": 292618240,
+      "solve_seconds": 8.958298712968826e-05,
+      "transfer_seconds": 0.006840916990768164,
+      "warmup_seconds": 0.05072900000959635
+    },
+    {
+      "build_seconds": 0.002936834003776312,
+      "cutoff": 20,
+      "dim": 42,
+      "matrix_bytes": 28224,
+      "n_ions": 1,
+      "peak_rss_bytes": 294043648,
+      "solve_seconds": 0.0002122080186381936,
+      "transfer_seconds": 0.007375000044703484,
+      "warmup_seconds": 0.07037308299914002
+    },
+    {
+      "build_seconds": 0.001677249965723604,
+      "cutoff": 50,
+      "dim": 102,
+      "matrix_bytes": 166464,
+      "n_ions": 1,
+      "peak_rss_bytes": 293289984,
+      "solve_seconds": 0.0011411249870434403,
+      "transfer_seconds": 0.0072571669588796794,
+      "warmup_seconds": 0.04528595897136256
+    },
+    {
+      "build_seconds": 0.006151292007416487,
+      "cutoff": 100,
+      "dim": 202,
+      "matrix_bytes": 652864,
+      "n_ions": 1,
+      "peak_rss_bytes": 299024384,
+      "solve_seconds": 0.00631899997824803,
+      "transfer_seconds": 0.0075001250370405614,
+      "warmup_seconds": 0.050706874986644834
+    },
+    {
+      "build_seconds": 0.0009508750517852604,
+      "cutoff": 5,
+      "dim": 72,
+      "matrix_bytes": 82944,
+      "n_ions": 2,
+      "peak_rss_bytes": 292913152,
+      "solve_seconds": 0.0006072499672882259,
+      "transfer_seconds": 0.00770241703139618,
+      "warmup_seconds": 0.044717540964484215
+    },
+    {
+      "build_seconds": 0.009433833009097725,
+      "cutoff": 10,
+      "dim": 242,
+      "matrix_bytes": 937024,
+      "n_ions": 2,
+      "peak_rss_bytes": 302055424,
+      "solve_seconds": 0.010645875008776784,
+      "transfer_seconds": 0.008562124974559993,
+      "warmup_seconds": 0.060215334000531584
+    },
+    {
+      "build_seconds": 0.03735145798418671,
+      "cutoff": 15,
+      "dim": 512,
+      "matrix_bytes": 4194304,
+      "n_ions": 2,
+      "peak_rss_bytes": 340492288,
+      "solve_seconds": 0.07881208299659193,
+      "transfer_seconds": 0.010011916980147362,
+      "warmup_seconds": 0.12568066699896008
+    },
+    {
+      "build_seconds": 0.18035554204834625,
+      "cutoff": 20,
+      "dim": 882,
+      "matrix_bytes": 12446784,
+      "n_ions": 2,
+      "peak_rss_bytes": 450297856,
+      "solve_seconds": 0.41481354099232703,
+      "transfer_seconds": 0.008725417021196336,
+      "warmup_seconds": 0.40237633301876485
+    },
+    {
+      "build_seconds": 0.5558278749813326,
+      "cutoff": 25,
+      "dim": 1352,
+      "matrix_bytes": 29246464,
+      "n_ions": 2,
+      "peak_rss_bytes": 634273792,
+      "solve_seconds": 1.9318584589636885,
+      "transfer_seconds": 0.011045875027775764,
+      "warmup_seconds": 1.9614226249977946
+    },
+    {
+      "build_seconds": 0.008967917005065829,
+      "cutoff": 4,
+      "dim": 250,
+      "matrix_bytes": 1000000,
+      "n_ions": 3,
+      "peak_rss_bytes": 302727168,
+      "solve_seconds": 0.01102283300133422,
+      "transfer_seconds": 0.006981458980590105,
+      "warmup_seconds": 0.05607329198392108
+    },
+    {
+      "build_seconds": 0.08910783397732303,
+      "cutoff": 6,
+      "dim": 686,
+      "matrix_bytes": 7529536,
+      "n_ions": 3,
+      "peak_rss_bytes": 389709824,
+      "solve_seconds": 0.17666012496920303,
+      "transfer_seconds": 0.009071125008631498,
+      "warmup_seconds": 0.23318683402612805
+    },
+    {
+      "build_seconds": 0.7748188329860568,
+      "cutoff": 8,
+      "dim": 1458,
+      "matrix_bytes": 34012224,
+      "n_ions": 3,
+      "peak_rss_bytes": 680558592,
+      "solve_seconds": 2.070332750037778,
+      "transfer_seconds": 0.008462583005893975,
+      "warmup_seconds": 1.854389332991559
+    },
+    {
+      "build_seconds": 4.259704165975563,
+      "cutoff": 10,
+      "dim": 2662,
+      "matrix_bytes": 113379904,
+      "n_ions": 3,
+      "peak_rss_bytes": 1297022976,
+      "solve_seconds": 14.263752250000834,
+      "transfer_seconds": 0.031389041047077626,
+      "warmup_seconds": 13.579460499982815
+    },
+    {
+      "build_seconds": 15.55656724999426,
+      "cutoff": 12,
+      "dim": 4394,
+      "matrix_bytes": 308915776,
+      "n_ions": 3,
+      "peak_rss_bytes": 2682437632,
+      "solve_seconds": 63.763652624969836,
+      "transfer_seconds": 0.032580833008978516,
+      "warmup_seconds": 61.7290788749815
+    },
+    {
+      "build_seconds": 0.029284791031386703,
+      "cutoff": 3,
+      "dim": 512,
+      "matrix_bytes": 4194304,
+      "n_ions": 4,
+      "peak_rss_bytes": 340312064,
+      "solve_seconds": 0.07856804196489975,
+      "transfer_seconds": 0.011839874961879104,
+      "warmup_seconds": 0.12451270798919722
+    },
+    {
+      "build_seconds": 0.39586470799986273,
+      "cutoff": 4,
+      "dim": 1250,
+      "matrix_bytes": 25000000,
+      "n_ions": 4,
+      "peak_rss_bytes": 607797248,
+      "solve_seconds": 1.0524177909828722,
+      "transfer_seconds": 0.00761545798741281,
+      "warmup_seconds": 1.0696623749681748
+    },
+    {
+      "build_seconds": 2.612620625004638,
+      "cutoff": 5,
+      "dim": 2592,
+      "matrix_bytes": 107495424,
+      "n_ions": 4,
+      "peak_rss_bytes": 1434861568,
+      "solve_seconds": 11.196629209036473,
+      "transfer_seconds": 0.014575958019122481,
+      "warmup_seconds": 11.259762250003405
+    },
+    {
+      "build_seconds": 19.179191708972212,
+      "cutoff": 6,
+      "dim": 4802,
+      "matrix_bytes": 368947264,
+      "n_ions": 4,
+      "peak_rss_bytes": 3156312064,
+      "solve_seconds": 80.40718341700267,
+      "transfer_seconds": 0.030692500004079193,
+      "warmup_seconds": 78.99651966698002
+    },
+    {
+      "build_seconds": 1.3503829159890302,
+      "cutoff": 3,
+      "dim": 2048,
+      "matrix_bytes": 67108864,
+      "n_ions": 5,
+      "peak_rss_bytes": 1034010624,
+      "solve_seconds": 6.386516833037604,
+      "transfer_seconds": 0.013478500011842698,
+      "warmup_seconds": 6.457320874964353
+    },
+    {
+      "build_seconds": 42.02380395797081,
+      "cutoff": 4,
+      "dim": 6250,
+      "matrix_bytes": 625000000,
+      "n_ions": 5,
+      "peak_rss_bytes": 3638706176,
+      "solve_seconds": 171.43497670802753,
+      "transfer_seconds": 0.03244058304699138,
+      "warmup_seconds": 171.50491329102078
+    },
+    {
+      "build_seconds": 78.64843562495662,
+      "cutoff": 7,
+      "dim": 8192,
+      "matrix_bytes": 1073741824,
+      "n_ions": 4,
+      "peak_rss_bytes": 4189945856,
+      "solve_seconds": 578.8138339170255,
+      "transfer_seconds": 0.16067454096628353,
+      "warmup_seconds": 585.3102261670283
+    },
+    {
+      "build_seconds": 56.09334512503119,
+      "cutoff": 14,
+      "dim": 6750,
+      "matrix_bytes": 729000000,
+      "n_ions": 3,
+      "peak_rss_bytes": 3582935040,
+      "solve_seconds": 227.60290354199242,
+      "transfer_seconds": 0.16343545803101733,
+      "warmup_seconds": 224.3385467499611
+    }
+  ],
+  "scenario": "spectrum_envelope_jax"
+}
