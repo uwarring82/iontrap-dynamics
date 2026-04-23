@@ -8,94 +8,94 @@
     "scipy": "1.17.1"
   },
   "fit": {
-    "rss_baseline_bytes": 251947191.8819264,
-    "rss_kappa_bytes_per_d2": 106.47244638332211,
-    "rss_workspace_multiplier_vs_matrix": 6.654527898957632,
-    "wall_clock_alpha_s_per_d3": 5.708507296704346e-10,
+    "rss_baseline_bytes": 382535243.99669945,
+    "rss_kappa_bytes_per_d2": 68.61390617088576,
+    "rss_workspace_multiplier_vs_matrix": 4.28836913568036,
+    "wall_clock_alpha_s_per_d3": 5.62594126182739e-10,
     "wall_fit_cutoff_dim": 500
   },
   "ram_tiers": {
     "128 GB (lab server)": {
-      "max_dim": 35895,
+      "max_dim": 44693,
       "max_n_c_per_n_ions": {
-        "1": 17946,
-        "2": 132,
-        "3": 25,
-        "4": 10,
+        "1": 22345,
+        "2": 148,
+        "3": 27,
+        "4": 11,
         "5": 6
       },
       "ram_gb": 128,
-      "wall_at_max_dim_s": 26401.96066565092
+      "wall_at_max_dim_s": 50225.70529752308
     },
     "16 GB (standard laptop)": {
-      "max_dim": 12609,
+      "max_dim": 15646,
       "max_n_c_per_n_ions": {
-        "1": 6303,
-        "2": 78,
-        "3": 17,
-        "4": 7,
-        "5": 4
-      },
-      "ram_gb": 16,
-      "wall_at_max_dim_s": 1144.3850741713497
-    },
-    "32 GB (workstation)": {
-      "max_dim": 17898,
-      "max_n_c_per_n_ions": {
-        "1": 8948,
-        "2": 93,
-        "3": 19,
+        "1": 7822,
+        "2": 87,
+        "3": 18,
         "4": 8,
         "5": 5
       },
-      "ram_gb": 32,
-      "wall_at_max_dim_s": 3273.008282559859
+      "ram_gb": 16,
+      "wall_at_max_dim_s": 2154.951556246648
     },
-    "64 GB (high-end WS)": {
-      "max_dim": 25359,
+    "32 GB (workstation)": {
+      "max_dim": 22253,
       "max_n_c_per_n_ions": {
-        "1": 12678,
-        "2": 111,
-        "3": 22,
+        "1": 11125,
+        "2": 104,
+        "3": 21,
         "4": 9,
         "5": 5
       },
+      "ram_gb": 32,
+      "wall_at_max_dim_s": 6199.5250174053745
+    },
+    "64 GB (high-end WS)": {
+      "max_dim": 31559,
+      "max_n_c_per_n_ions": {
+        "1": 15778,
+        "2": 124,
+        "3": 24,
+        "4": 10,
+        "5": 5
+      },
       "ram_gb": 64,
-      "wall_at_max_dim_s": 9308.799968068923
+      "wall_at_max_dim_s": 17683.176565192425
     },
     "8 GB (budget laptop)": {
-      "max_dim": 8849,
+      "max_dim": 10937,
       "max_n_c_per_n_ions": {
-        "1": 4423,
-        "2": 65,
-        "3": 15,
+        "1": 5467,
+        "2": 72,
+        "3": 16,
         "4": 7,
         "5": 4
       },
       "ram_gb": 8,
-      "wall_at_max_dim_s": 395.6020769658486
+      "wall_at_max_dim_s": 736.0127289028055
     }
   },
   "wall_thresholds": {
     "1 hr": {
       "budget_s": 3600.0,
-      "max_dim": 18475
+      "max_dim": 18565
     },
     "1 min": {
       "budget_s": 60.0,
-      "max_dim": 4719
+      "max_dim": 4742
     },
     "1 s": {
       "budget_s": 1.0,
-      "max_dim": 1205
+      "max_dim": 1211
     },
     "10 min": {
       "budget_s": 600.0,
-      "max_dim": 10167
+      "max_dim": 10217
     },
     "10 s": {
       "budget_s": 10.0,
-      "max_dim": 2597
+      "max_dim": 2610
     }
   }
 }

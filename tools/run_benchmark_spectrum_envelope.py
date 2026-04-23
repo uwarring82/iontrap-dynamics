@@ -49,14 +49,23 @@ DETUNING_MHZ = 0.5
 N_BAR = 1.0
 
 # (N, n_c) grid. Dim = 2 * (n_c + 1)^N. Points ordered so the sweep climbs
-# dimension steadily; we skip anything projected over the 4 GB dense-matrix
-# bound (complex128 -> 16 B per entry -> dim <= 16384).
-GRID: list[tuple[int, int]] = [
+# dimension steadily. The "core" sweep below dim ~5 000 fits in ~2.3 GB peak
+# RSS and runs in under 2 min total on Apple-Silicon-class hardware. The
+# tail (last three points) deliberately pushes a 16 GB system into measurable
+# swap territory to exercise the extrapolation against measured data — that
+# block can take 15–25 min on the reference hardware and is gated by the
+# `--include-large` CLI flag so casual reruns do not hammer the laptop.
+GRID_CORE: list[tuple[int, int]] = [
     (1, 5), (1, 10), (1, 20), (1, 50), (1, 100),
     (2, 5), (2, 10), (2, 15), (2, 20), (2, 25),
     (3, 4), (3, 6), (3, 8), (3, 10), (3, 12),
     (4, 3), (4, 4), (4, 5), (4, 6),
     (5, 3),
+]
+GRID_LARGE: list[tuple[int, int]] = [
+    (5, 4),  # dim 6 250  -- predicted peak RSS ~3.4 GB, ~3 min
+    (4, 7),  # dim 8 192  -- predicted peak RSS ~5.5 GB, ~5 min
+    (3, 14), # dim 10 368 -- predicted peak RSS ~11 GB,  ~10 min on swap
 ]
 
 # Child-process script. Lives inline so the benchmark is self-contained;
@@ -178,7 +187,7 @@ def _fmt_bytes(b: int) -> str:
     return f"{b / 1024**3:.2f} GB"
 
 
-def _run_point(n_ions: int, cutoff: int) -> dict[str, float | int] | None:
+def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 600) -> dict[str, float | int] | None:
     print(f"  running N={n_ions} n_c={cutoff} ... ", end="", flush=True)
     t0 = time.perf_counter()
     try:
@@ -189,14 +198,14 @@ def _run_point(n_ions: int, cutoff: int) -> dict[str, float | int] | None:
                 str(AXIAL_MHZ * 1e6), str(RABI_MHZ * 1e6),
                 str(DETUNING_MHZ * 1e6), str(N_BAR),
             ],
-            capture_output=True, text=True, check=True, timeout=600,
+            capture_output=True, text=True, check=True, timeout=timeout_s,
         )
     except subprocess.CalledProcessError as exc:
         print(f"FAILED ({exc.returncode})")
         print(exc.stderr)
         return None
     except subprocess.TimeoutExpired:
-        print("TIMEOUT (>600 s)")
+        print(f"TIMEOUT (>{timeout_s} s)")
         return None
 
     wall = time.perf_counter() - t0
@@ -213,16 +222,35 @@ def _run_point(n_ions: int, cutoff: int) -> dict[str, float | int] | None:
 
 
 def main() -> int:
+    import argparse  # noqa: PLC0415
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--include-large", action="store_true",
+        help="Run the three large-dim points (dim 6 250 / 8 192 / 10 368). "
+             "These push a 16 GB system into measurable swap; total runtime "
+             "balloons to ~25 min on the reference hardware.",
+    )
+    args = parser.parse_args()
+
+    grid = GRID_CORE + (GRID_LARGE if args.include_large else [])
+
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print(">>> exact-diagonalization envelope benchmark (AAH)")
-    print(f"    grid: {len(GRID)} points; isolated subprocess per point")
+    print(f"    grid: {len(grid)} points; isolated subprocess per point")
+    if args.include_large:
+        print(f"    INCLUDING {len(GRID_LARGE)} large-dim points (16 GB push)")
     print(f"    axial = Rabi = {AXIAL_MHZ} MHz, detuning = {DETUNING_MHZ} MHz, n_bar = {N_BAR}")
     print()
 
     results: list[dict[str, float | int]] = []
-    for n_ions, cutoff in GRID:
-        point = _run_point(n_ions, cutoff)
+    for n_ions, cutoff in grid:
+        # Large-dim points get a generous timeout; swap-induced slowdown can
+        # easily 2-3x the no-swap wall-clock prediction.
+        is_large = (n_ions, cutoff) in GRID_LARGE
+        timeout_s = 1800 if is_large else 600
+        point = _run_point(n_ions, cutoff, timeout_s=timeout_s)
         if point is not None:
             results.append(point)
 

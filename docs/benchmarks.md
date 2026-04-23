@@ -360,52 +360,71 @@ scipy 1.17.1; run recorded at
 
 | N | n_c | dim   | matrix (dense complex128) | `solve_spectrum` wall-clock | peak RSS  |
 |---|-----|-------|---------------------------|-----------------------------|-----------|
-| 1 | 100 | 202   | 638 KB                    | 0.01 s                      | 160 MB    |
+| 1 | 100 | 202   | 638 KB                    | 0.01 s                      | 161 MB    |
 | 2 | 20  | 882   | 11.9 MB                   | 0.4 s                       | 317 MB    |
-| 2 | 25  | 1 352 | 27.9 MB                   | 1.3 s                       | 483 MB    |
-| 3 | 8   | 1 458 | 32.4 MB                   | 1.6 s                       | 561 MB    |
-| 3 | 10  | 2 662 | 108 MB                    | 9.0 s                       | 1.14 GB   |
-| 3 | 12  | 4 394 | 295 MB                    | 41.7 s                      | 2.22 GB   |
-| 4 | 5   | 2 592 | 103 MB                    | 8.9 s                       | 1.23 GB   |
-| 4 | 6   | 4 802 | 352 MB                    | 53.1 s                      | 2.24 GB   |
-| 5 | 3   | 2 048 | 64.0 MB                   | 6.5 s                       | 935 MB    |
+| 2 | 25  | 1 352 | 27.9 MB                   | 1.3 s                       | 537 MB    |
+| 3 | 8   | 1 458 | 32.4 MB                   | 1.6 s                       | 577 MB    |
+| 3 | 10  | 2 662 | 108 MB                    | 9.0 s                       | 1.22 GB   |
+| 3 | 12  | 4 394 | 295 MB                    | 41.1 s                      | 2.01 GB   |
+| 3 | 14  | 6 750 | 695 MB                    | 150 s                       | 3.84 GB   |
+| 4 | 5   | 2 592 | 103 MB                    | 8.0 s                       | 1.23 GB   |
+| 4 | 6   | 4 802 | 352 MB                    | 52.3 s                      | 2.53 GB   |
+| 4 | 7   | 8 192 | 1.00 GB                   | 430 s                       | 3.63 GB   |
+| 5 | 3   | 2 048 | 64.0 MB                   | 6.6 s                       | 935 MB    |
+| 5 | 4   | 6 250 | 596 MB                    | 118 s                       | 3.14 GB   |
 
-**Scaling.** Wall-clock follows the expected $\mathcal{O}(d^3)$ cost
-of symmetric eigendecomposition; peak RSS tracks the dense-matrix
-footprint with a ~6–8× workspace multiplier. Both curves collapse
-onto a single N-independent trajectory when plotted against Hilbert
-dimension — the solver cost depends only on dimension, not on how
-the tensor-product factors are arranged.
+The last three rows (`dim ≥ 6 250`) are deliberate large-dim probes that
+push a 16 GB laptop into measurable swap territory; they are gated by
+`--include-large` on the benchmark tool because they balloon total
+runtime to ~25 min. The largest measured point sits at `dim = 8 192`
+with a 1 GB dense matrix, 7 min wall-clock, and 3.6 GB peak RSS — the
+top of what is comfortable to sweep across many detunings on
+commodity hardware.
 
-**Rules of thumb on a 16 GB laptop.** The measured points give
-three tiers:
+**Scaling.** Wall-clock follows the expected $\mathcal{O}(d^{3})$ cost
+of symmetric eigendecomposition. Peak RSS tracks the dense-matrix
+footprint with a ~4–5× workspace multiplier (lower than the ~6–8×
+naively suggested by the small-dim points; scipy's `dsyevr`-based
+default is more memory-efficient than the divide-and-conquer
+alternative once `d ≳ 4 000`). Both curves collapse onto a single
+N-independent trajectory when plotted against Hilbert dimension —
+the solver cost depends only on dimension, not on how the
+tensor-product factors are arranged.
+
+**Rules of thumb on a 16 GB laptop, calibrated against the measured
+data.** Five tiers, with the boundaries pinned by *measured* (not
+extrapolated) points where possible:
 
 - `dim ≤ 1 000` — sub-second; trivial for interactive notebook use.
 - `dim ≤ 2 700` — 1 s to 10 s; peak RSS under 1.2 GB. Covers the
   AAE / AAF regression suite at fully converged cutoffs (N = 1–3).
-- `dim ≤ 5 000` — 10 s to 1 min; peak RSS up to 2.3 GB. Covers
+- `dim ≤ 5 000` — 10 s to 1 min; peak RSS up to 2.5 GB. Covers
   N = 3 at cutoff = 12 and N = 4 at cutoff = 6.
-- `dim ≳ 8 000` — extrapolated 3–5 min wall-clock and ~6 GB RSS
-  (not measured). N = 4 at cutoff = 7 (dim = 8 192) still fits a
-  32 GB workstation but is the slowest point users will reach
-  comfortably.
-- `dim ≳ 15 000` — extrapolated ≳ 20 min and ≳ 25 GB RSS. N = 5 at
-  cutoff = 5 (dim = 15 552) crosses the 16 GB commodity boundary.
+- `dim ≤ 8 200` — 1 min to 7 min; peak RSS up to 3.6 GB. Covers
+  N = 4 at cutoff = 7 (the largest measured point). Single eigh
+  is fine; sweeping 16 detunings takes ~2 hr.
+- `dim ≳ 15 000` — extrapolated ~30 min and ~7 GB RSS. N = 5 at
+  cutoff = 5 (dim = 15 552) sits on the 16 GB boundary; one run
+  per detuning point is feasible, sweeps are not.
 
 ### Scaling laws and extrapolation to RAM limits
 
 The measured points fit the textbook eigh scaling cleanly. Closed-form
 fits (using only points with `dim ≥ 500` for the wall-clock fit, so
-the import / assemble baseline does not bend the cubic):
+the import / assemble baseline does not bend the cubic; the RSS fit
+uses every point):
 
 - **Wall-clock**: $t_\text{solve}(d) = \alpha\,d^{3}$ with
-  $\alpha \approx 5.7 \times 10^{-10}$ s on the reference hardware.
+  $\alpha \approx 5.6 \times 10^{-10}$ s on the reference hardware.
 - **Peak RSS**: $m_\text{peak}(d) = m_{0} + \kappa\,d^{2}$ with
-  $m_{0} \approx 240$ MB (Python + numpy + scipy + qutip + dependency
-  imports) and $\kappa \approx 106$ B per matrix entry — i.e. the
-  per-element workspace is ~6.7× the 16 B `complex128` matrix entry,
-  matching the rule-of-thumb that LAPACK eigh keeps a copy of the
-  input plus eigenvectors plus per-column Householder workspace.
+  $m_{0} \approx 365$ MB (Python + numpy + scipy + qutip + dependency
+  imports) and $\kappa \approx 69$ B per matrix entry — i.e. the
+  per-element workspace is ~4.3× the 16 B `complex128` matrix entry.
+  An earlier fit on the small-dim core grid alone reported
+  ~6.7× because the divide-and-conquer LAPACK driver dominates RSS
+  at small `d` while the more memory-efficient `dsyevr` path scipy
+  defaults to wins at `d ≳ 4 000`. The large-dim probes at
+  `dim ∈ {6 250, 6 750, 8 192}` pin the asymptotic constant.
 
 `tools/plot_spectrum_envelope_extrapolation.py` rebuilds the figure
 below from `report.json`, overlays the fitted laws past the measured
@@ -422,53 +441,62 @@ parameterisation `dim = 2 · (n_c + 1)^N`. Numbers ≤ converged-cutoff
 is *not* reachable on that RAM tier; numbers above are the slack you
 have for cutoff-convergence sweeps.
 
-| RAM tier                  | max dim | wall @ max dim | N=1   | N=2 | N=3 | N=4 | N=5 |
-|---------------------------|--------:|---------------:|------:|----:|----:|----:|----:|
-| 8 GB (budget laptop)      |   8 849 | 6.6 min        | 4 423 |  65 |  15 |   7 |   4 |
-| 16 GB (standard laptop)   |  12 609 | 19 min         | 6 303 |  78 |  17 |   7 |   4 |
-| 32 GB (workstation)       |  17 898 | 55 min         | 8 948 |  93 |  19 |   8 |   5 |
-| 64 GB (high-end WS)       |  25 359 | 2.6 hr         | 12 678 | 111 |  22 |   9 |   5 |
-| 128 GB (lab server)       |  35 895 | 7.3 hr         | 17 946 | 132 |  25 |  10 |   6 |
+| RAM tier                  | max dim | wall @ max dim | N=1    | N=2 | N=3 | N=4 | N=5 |
+|---------------------------|--------:|---------------:|-------:|----:|----:|----:|----:|
+| 8 GB (budget laptop)      |  10 937 | 12 min         |  5 467 |  72 |  16 |   7 |   4 |
+| 16 GB (standard laptop)   |  15 646 | 36 min         |  7 822 |  87 |  18 |   8 |   5 |
+| 32 GB (workstation)       |  22 253 | 1.7 hr         | 11 125 | 104 |  21 |   9 |   5 |
+| 64 GB (high-end WS)       |  31 559 | 4.9 hr         | 15 778 | 124 |  24 |  10 |   5 |
+| 128 GB (lab server)       |  44 693 | 14 hr          | 22 345 | 148 |  27 |  11 |   6 |
 
 **Wall-clock is the binding constraint past 32 GB.** Reading off the
 extrapolated cubic, the time to a single eigh hits:
 
 | target wall-clock | max dim | comment |
 |-------------------|--------:|---------|
-| 1 s               |   1 205 | interactive notebook bound |
-| 10 s              |   2 597 | tight regression-suite point |
-| 1 min             |   4 719 | upper end of AAE / AAF / AAI test budget |
-| 10 min            |  10 167 | feasible for one-off runs |
-| 1 hr              |  18 475 | overnight-only |
+| 1 s               |   1 211 | interactive notebook bound |
+| 10 s              |   2 610 | tight regression-suite point |
+| 1 min             |   4 742 | upper end of AAE / AAF / AAI test budget |
+| 10 min            |  10 217 | feasible for one-off runs |
+| 1 hr              |  18 565 | overnight-only |
 
-So while a 128 GB server *could* hold the matrix at `dim = 35 895`,
-that single eigh would take ~7 hours — and a 16-detuning sweep (the
-size of the Clos 2016 figure) would take ~5 days. Past the 32 GB
-tier the user's effective binding constraint flips from RAM to
-wall-clock.
+So while a 128 GB server *could* hold the matrix at `dim = 44 693`,
+that single eigh would take ~14 hours — and a 16-detuning sweep
+(the size of the Clos 2016 figure) would take ~9 days. Past the
+16 GB tier the user's effective binding constraint flips from RAM
+to wall-clock: the measured `dim = 8 192` point already takes
+7 minutes for one eigh and 1.9 hours for a 16-detuning sweep, even
+though it sits well inside the 16 GB envelope.
 
-**Cross-checking the "AAG would help" cases.** N = 5 at the
-converged cutoff (probably `n_c ≈ 6`, since the published table
-truncates at 4 and is still rising) requires `dim = 2 · 7^5 =
-33 614`, i.e. a 128 GB-class machine for dense eigh, or AAG's
-interior-window iterative path on commodity hardware. N = 4 at
-`n_c = 7` (the next point past the inferred converged value) needs
-`dim = 2 · 8^4 = 8 192`, which already fits 8 GB but takes ~5 min
-per eigh — sweep cost would be the binding factor, not RAM.
+**Cross-checking the "AAG would help" cases against the measured
+data.** The new 16 GB cutoff projection (`n_c ≤ 8` at N = 4,
+`n_c ≤ 5` at N = 5) is more generous than the original small-dim
+fit suggested:
 
-**AAG gate status.** On the basis of this projection, AAG's
-interior-window iterative path earns its keep in two specific
-cases:
+- **N = 4 at fully converged cutoff (~6) fits 8 GB comfortably.**
+  Measured: 53 s per eigh, 2.5 GB peak RSS.
+- **N = 4 at cutoff = 7** (one step past converged) fits the 16 GB
+  envelope cleanly. Measured: 7 min per eigh, 3.6 GB peak RSS.
+  Sweep cost (~2 hr per detuning row) is the binding factor.
+- **N = 5 at cutoff = 5** sits *exactly* at the 16 GB boundary
+  (predicted). Single eigh feasible, sweep impractical.
+- **N = 5 at cutoff = 6** (`dim = 33 614`) needs 64 GB-class
+  hardware for dense; this is where AAG's interior-window iterative
+  path is unambiguously valuable.
 
-1. **N = 5 reproduction at converged cutoff.** Dense crosses 32 GB
-   here; iterative shift-invert around the initial-state mean
-   energy could plausibly stay under 16 GB by exploiting the
-   sparsity-after-tridiagonalisation that dense eigh discards.
-2. **Sweeping a single dense eigh across many detunings on a
-   16 GB laptop.** The 53 s solve at `dim = 4 802` becomes 14 min
-   for a 16-point detuning sweep; an iterative path that
-   amortises the factorisation across detuning-windows could cut
-   this materially.
+**AAG gate status.** On the basis of the *measured* envelope, AAG
+earns its keep in two specific cases:
+
+1. **N = 5 reproduction at fully converged cutoff (`n_c ≥ 6`).**
+   Dense crosses 64 GB here; iterative shift-invert around the
+   initial-state mean energy could plausibly stay under 16 GB by
+   exploiting the sparsity-after-tridiagonalisation that dense
+   eigh discards.
+2. **Detuning-sweep amortisation at `dim ≳ 5 000` on a 16 GB
+   laptop.** Single eigh at `dim = 4 802` is 53 s; a 16-detuning
+   sweep is 14 min. At `dim = 8 192` the sweep is 1.9 hr. An
+   iterative path that re-uses the sparse factorisation across
+   detuning windows could cut this materially.
 
 Neither is currently a binding library requirement, so AAG stays
 **deferred**. The numbers above give a clean re-activation

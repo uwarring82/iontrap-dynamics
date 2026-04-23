@@ -15,208 +15,238 @@
     "qutip": "5.2.3",
     "scipy": "1.17.1"
   },
-  "generated_at": "2026-04-23T08:56:04.388661+00:00",
+  "generated_at": "2026-04-23T09:43:01.059624+00:00",
   "purpose": "AAH -- measures dense scipy.linalg.eigh wall-clock and peak RSS for the Clos 2016 non-RWA spin-boson Hamiltonian across an (N, n_c) grid. Answers the user-facing 'how big can I exact-diagonalise on my laptop?' question and supplies the evidence the AAG dispatch gate depends on.",
   "results": [
     {
-      "build_seconds": 0.00375541701214388,
+      "build_seconds": 0.003155916987452656,
       "cutoff": 5,
       "dim": 12,
       "matrix_bytes": 2304,
       "n_ions": 1,
-      "peak_rss_bytes": 160153600,
-      "solve_seconds": 0.006753624998964369,
-      "wall_seconds_including_subprocess_launch": 1.5712401249911636
+      "peak_rss_bytes": 160382976,
+      "solve_seconds": 0.006662084022536874,
+      "wall_seconds_including_subprocess_launch": 1.5202771250042133
     },
     {
-      "build_seconds": 0.002136374998372048,
+      "build_seconds": 0.0021778750233352184,
       "cutoff": 10,
       "dim": 22,
       "matrix_bytes": 7744,
       "n_ions": 1,
-      "peak_rss_bytes": 160546816,
-      "solve_seconds": 0.00034295901423320174,
-      "wall_seconds_including_subprocess_launch": 1.0875003749970347
+      "peak_rss_bytes": 160088064,
+      "solve_seconds": 0.0003507080255076289,
+      "wall_seconds_including_subprocess_launch": 1.041016208997462
     },
     {
-      "build_seconds": 0.002349582966417074,
+      "build_seconds": 0.0029260829905979335,
       "cutoff": 20,
       "dim": 42,
       "matrix_bytes": 28224,
       "n_ions": 1,
-      "peak_rss_bytes": 160907264,
-      "solve_seconds": 0.0012067920179106295,
-      "wall_seconds_including_subprocess_launch": 1.0762927500181831
+      "peak_rss_bytes": 160219136,
+      "solve_seconds": 0.0010932500008493662,
+      "wall_seconds_including_subprocess_launch": 1.0597857920220122
     },
     {
-      "build_seconds": 0.0017288329545408487,
+      "build_seconds": 0.001868083025328815,
       "cutoff": 50,
       "dim": 102,
       "matrix_bytes": 166464,
       "n_ions": 1,
-      "peak_rss_bytes": 160432128,
-      "solve_seconds": 0.003499375015962869,
-      "wall_seconds_including_subprocess_launch": 1.0774537500110455
+      "peak_rss_bytes": 161333248,
+      "solve_seconds": 0.0032850829884409904,
+      "wall_seconds_including_subprocess_launch": 1.0350714160013013
     },
     {
-      "build_seconds": 0.006166249979287386,
+      "build_seconds": 0.006243041949346662,
       "cutoff": 100,
       "dim": 202,
       "matrix_bytes": 652864,
       "n_ions": 1,
-      "peak_rss_bytes": 167247872,
-      "solve_seconds": 0.011797874991316348,
-      "wall_seconds_including_subprocess_launch": 1.1025792920263484
+      "peak_rss_bytes": 168607744,
+      "solve_seconds": 0.010680124978534877,
+      "wall_seconds_including_subprocess_launch": 1.0570763330324553
     },
     {
-      "build_seconds": 0.0010189999593421817,
+      "build_seconds": 0.0011715409928001463,
       "cutoff": 5,
       "dim": 72,
       "matrix_bytes": 82944,
       "n_ions": 2,
-      "peak_rss_bytes": 161644544,
-      "solve_seconds": 0.0012286250130273402,
-      "wall_seconds_including_subprocess_launch": 1.0881336660240777
+      "peak_rss_bytes": 159088640,
+      "solve_seconds": 0.0011073750210925937,
+      "wall_seconds_including_subprocess_launch": 1.0501658749999478
     },
     {
-      "build_seconds": 0.008275667030829936,
+      "build_seconds": 0.008101249986793846,
       "cutoff": 10,
       "dim": 242,
       "matrix_bytes": 937024,
       "n_ions": 2,
-      "peak_rss_bytes": 173670400,
-      "solve_seconds": 0.013878250028938055,
-      "wall_seconds_including_subprocess_launch": 1.1031505839782767
+      "peak_rss_bytes": 169967616,
+      "solve_seconds": 0.013769374985713512,
+      "wall_seconds_including_subprocess_launch": 1.0655599579913542
     },
     {
-      "build_seconds": 0.03781845897901803,
+      "build_seconds": 0.03535470803035423,
       "cutoff": 15,
       "dim": 512,
       "matrix_bytes": 4194304,
       "n_ions": 2,
-      "peak_rss_bytes": 215498752,
-      "solve_seconds": 0.09446024999488145,
-      "wall_seconds_including_subprocess_launch": 1.218289625016041
+      "peak_rss_bytes": 213581824,
+      "solve_seconds": 0.09331695904256776,
+      "wall_seconds_including_subprocess_launch": 1.1734851670335047
     },
     {
-      "build_seconds": 0.15659929101821035,
+      "build_seconds": 0.15244404098484665,
       "cutoff": 20,
       "dim": 882,
       "matrix_bytes": 12446784,
       "n_ions": 2,
-      "peak_rss_bytes": 332578816,
-      "solve_seconds": 0.4103253749781288,
-      "wall_seconds_including_subprocess_launch": 1.6508442080230452
+      "peak_rss_bytes": 332054528,
+      "solve_seconds": 0.37848766695242375,
+      "wall_seconds_including_subprocess_launch": 1.597507875005249
     },
     {
-      "build_seconds": 0.46840612503001466,
+      "build_seconds": 0.44043116696411744,
       "cutoff": 25,
       "dim": 1352,
       "matrix_bytes": 29246464,
       "n_ions": 2,
-      "peak_rss_bytes": 506445824,
-      "solve_seconds": 1.2878964580013417,
-      "wall_seconds_including_subprocess_launch": 2.873119791969657
+      "peak_rss_bytes": 563134464,
+      "solve_seconds": 1.2682587910094298,
+      "wall_seconds_including_subprocess_launch": 2.7593270420329645
     },
     {
-      "build_seconds": 0.008987332985270768,
+      "build_seconds": 0.008805166988167912,
       "cutoff": 4,
       "dim": 250,
       "matrix_bytes": 1000000,
       "n_ions": 3,
-      "peak_rss_bytes": 172670976,
-      "solve_seconds": 0.013742415991146117,
-      "wall_seconds_including_subprocess_launch": 1.1569217499927618
+      "peak_rss_bytes": 170786816,
+      "solve_seconds": 0.01340229099150747,
+      "wall_seconds_including_subprocess_launch": 1.0511937499977648
     },
     {
-      "build_seconds": 0.07739237503847107,
+      "build_seconds": 0.07700520800426602,
       "cutoff": 6,
       "dim": 686,
       "matrix_bytes": 7529536,
       "n_ions": 3,
-      "peak_rss_bytes": 265551872,
-      "solve_seconds": 0.19296987500274554,
-      "wall_seconds_including_subprocess_launch": 1.369047500018496
+      "peak_rss_bytes": 265502720,
+      "solve_seconds": 0.19636612496105954,
+      "wall_seconds_including_subprocess_launch": 1.3101524580270052
     },
     {
-      "build_seconds": 0.64875612501055,
+      "build_seconds": 0.595389875001274,
       "cutoff": 8,
       "dim": 1458,
       "matrix_bytes": 34012224,
       "n_ions": 3,
-      "peak_rss_bytes": 588005376,
-      "solve_seconds": 1.5876960000023246,
-      "wall_seconds_including_subprocess_launch": 3.3620503750280477
+      "peak_rss_bytes": 604569600,
+      "solve_seconds": 1.632155709026847,
+      "wall_seconds_including_subprocess_launch": 3.271723292011302
     },
     {
-      "build_seconds": 3.4072496669832617,
+      "build_seconds": 3.486823208979331,
       "cutoff": 10,
       "dim": 2662,
       "matrix_bytes": 113379904,
       "n_ions": 3,
-      "peak_rss_bytes": 1226883072,
-      "solve_seconds": 8.983478541020304,
-      "wall_seconds_including_subprocess_launch": 13.52244025003165
+      "peak_rss_bytes": 1309229056,
+      "solve_seconds": 8.953549625002779,
+      "wall_seconds_including_subprocess_launch": 13.54874270799337
     },
     {
-      "build_seconds": 14.741949999995995,
+      "build_seconds": 15.821739457955118,
       "cutoff": 12,
       "dim": 4394,
       "matrix_bytes": 308915776,
       "n_ions": 3,
-      "peak_rss_bytes": 2389065728,
-      "solve_seconds": 41.679122417001054,
-      "wall_seconds_including_subprocess_launch": 57.605568375031
+      "peak_rss_bytes": 2155380736,
+      "solve_seconds": 41.08246845903341,
+      "wall_seconds_including_subprocess_launch": 58.75281483400613
     },
     {
-      "build_seconds": 0.028857542027253658,
+      "build_seconds": 0.028560750011820346,
       "cutoff": 3,
       "dim": 512,
       "matrix_bytes": 4194304,
       "n_ions": 4,
-      "peak_rss_bytes": 216137728,
-      "solve_seconds": 0.10071370797231793,
-      "wall_seconds_including_subprocess_launch": 1.5344969590078108
+      "peak_rss_bytes": 213434368,
+      "solve_seconds": 0.10048475000075996,
+      "wall_seconds_including_subprocess_launch": 1.3923240000149235
     },
     {
-      "build_seconds": 0.39660283300327137,
+      "build_seconds": 0.3875116659910418,
       "cutoff": 4,
       "dim": 1250,
       "matrix_bytes": 25000000,
       "n_ions": 4,
-      "peak_rss_bytes": 505987072,
-      "solve_seconds": 1.0652915419777855,
-      "wall_seconds_including_subprocess_launch": 2.68417512497399
+      "peak_rss_bytes": 502448128,
+      "solve_seconds": 1.0565404170192778,
+      "wall_seconds_including_subprocess_launch": 2.513517041981686
     },
     {
-      "build_seconds": 2.5185182499699295,
+      "build_seconds": 2.4994539999752305,
       "cutoff": 5,
       "dim": 2592,
       "matrix_bytes": 107495424,
       "n_ions": 4,
-      "peak_rss_bytes": 1317421056,
-      "solve_seconds": 8.92426716600312,
-      "wall_seconds_including_subprocess_launch": 12.660688792006113
+      "peak_rss_bytes": 1317273600,
+      "solve_seconds": 7.972909207979683,
+      "wall_seconds_including_subprocess_launch": 11.540131625020877
     },
     {
-      "build_seconds": 19.780608375032898,
+      "build_seconds": 19.337178499961738,
       "cutoff": 6,
       "dim": 4802,
       "matrix_bytes": 368947264,
       "n_ions": 4,
-      "peak_rss_bytes": 2400026624,
-      "solve_seconds": 53.07049450004706,
-      "wall_seconds_including_subprocess_launch": 74.36857233400224
+      "peak_rss_bytes": 2712092672,
+      "solve_seconds": 52.268060875008814,
+      "wall_seconds_including_subprocess_launch": 72.74181429098826
     },
     {
-      "build_seconds": 1.37825020798482,
+      "build_seconds": 1.4352736250148155,
       "cutoff": 3,
       "dim": 2048,
       "matrix_bytes": 67108864,
       "n_ions": 5,
       "peak_rss_bytes": 980549632,
-      "solve_seconds": 6.511870625021402,
-      "wall_seconds_including_subprocess_launch": 9.248562416993082
+      "solve_seconds": 6.573184083041269,
+      "wall_seconds_including_subprocess_launch": 9.273229416983668
+    },
+    {
+      "build_seconds": 41.81300608301535,
+      "cutoff": 4,
+      "dim": 6250,
+      "matrix_bytes": 625000000,
+      "n_ions": 5,
+      "peak_rss_bytes": 3366617088,
+      "solve_seconds": 117.78440166695509,
+      "wall_seconds_including_subprocess_launch": 160.78661241696682
+    },
+    {
+      "build_seconds": 78.85081924998667,
+      "cutoff": 7,
+      "dim": 8192,
+      "matrix_bytes": 1073741824,
+      "n_ions": 4,
+      "peak_rss_bytes": 3894001664,
+      "solve_seconds": 430.0239364999579,
+      "wall_seconds_including_subprocess_launch": 510.27790708304383
+    },
+    {
+      "build_seconds": 52.20219024998369,
+      "cutoff": 14,
+      "dim": 6750,
+      "matrix_bytes": 729000000,
+      "n_ions": 3,
+      "peak_rss_bytes": 4123394048,
+      "solve_seconds": 150.33132187498268,
+      "wall_seconds_including_subprocess_launch": 204.0471054170048
     }
   ],
   "scenario": "spectrum_envelope",

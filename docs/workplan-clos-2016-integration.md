@@ -452,13 +452,19 @@ track.
 
    **Status: deferred.** AAH (measurement below) shows the dense
    path covers N ≤ 3 at fully converged cutoffs and N = 4 up to
-   `n_c = 6` within ~1 min wall-clock and ~2.3 GB peak RSS on a
-   commodity laptop. AAG becomes justified when a user
-   demonstrably needs N = 5 at `n_c ≥ 5` (dim ≥ 15 000, crosses
-   the 16 GB RAM boundary) or an N = 4 at `n_c ≥ 7` use case is
-   binding on a 16 GB machine. Until then, this dispatch stays
-   in reserve rather than scheduled — see `docs/benchmarks.md`
-   "AAG gate status" for the threshold.
+   `n_c = 7` (`dim = 8 192`, measured: 7 min wall-clock, 3.6 GB
+   peak RSS) on a 16 GB commodity laptop. The 16 GB envelope also
+   reaches N = 5 at `n_c = 5` (`dim = 15 552`, projected). AAG
+   becomes justified in two specific cases now backed by
+   measurement: (1) N = 5 reproduction at fully converged cutoff
+   (`n_c ≥ 6`, `dim ≥ 33 614`, crosses 64 GB dense); (2) detuning-
+   sweep amortisation at `dim ≳ 5 000` on a 16 GB laptop, where
+   the per-eigh cost grows from 53 s (one detuning) to 14 min
+   (16-point sweep) and an iterative path that re-uses
+   factorisation across detuning windows could cut this
+   materially. Until a user hits one of these, this dispatch
+   stays in reserve rather than scheduled — see
+   `docs/benchmarks.md` "AAG gate status" for the threshold.
 8. **Dispatch AAH — exact-diag envelope benchmark.**
    `tools/run_benchmark_spectrum_envelope.py` runs the dense and
    any iterative interior-window paths over a (N, n_c) grid; reports
@@ -469,16 +475,24 @@ track.
 
    **Shipped.** Benchmark tool at
    `tools/run_benchmark_spectrum_envelope.py` (subprocess-isolated
-   per grid point for clean peak-RSS measurement); report under
+   per grid point for clean peak-RSS measurement; `--include-large`
+   flag adds a deliberate-swap probe at `dim ∈ {6 250, 6 750,
+   8 192}`); report under
    `benchmarks/data/spectrum_envelope/{report.json,plot.png}`;
    documented in `docs/benchmarks.md` as "Exact-diagonalization
-   envelope (Dispatch AAH)". Covers a 20-point `(N, n_c)` grid
-   spanning dim ∈ {12 … 4 802}. Headline: dense `eigh` follows
-   the expected $\mathcal{O}(d^3)$ scaling; peak RSS tracks the
-   dense-matrix footprint with a 6–8× workspace multiplier; the
-   commodity-laptop envelope is `dim ≲ 5 000` at ~1 min and ≲ 2.3
-   GB. Iterative interior-window path is **not** scheduled (see
-   AAG status).
+   envelope (Dispatch AAH)". The 23-point `(N, n_c)` grid spans
+   `dim ∈ {12 … 8 192}` — the largest point reaches 1 GB matrix,
+   3.6 GB peak RSS, and 7 min wall-clock on the reference 16 GB
+   laptop. Headline: dense `eigh` follows $\mathcal{O}(d^{3})$
+   wall-clock; peak RSS tracks the dense-matrix footprint with a
+   ~4–5× workspace multiplier (less than the small-dim core fit
+   suggested — scipy's `dsyevr` default is more memory-efficient
+   than divide-and-conquer at large `d`). Re-fit with the
+   large-dim probes via
+   `tools/plot_spectrum_envelope_extrapolation.py`; the resulting
+   16 GB envelope reaches `n_c = 8` for N = 4 and `n_c = 5` for
+   N = 5. Iterative interior-window path is **not** scheduled
+   (see AAG status).
 9. **Dispatch AAI — tutorial.** `docs/tutorials/13_reproducing_clos_2016.md`
    end-to-end walk-through: load `theo_dim_N_1.dat`, build H,
    call `solve_spectrum`, compute `IPR_av`, reproduce one row of
