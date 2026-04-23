@@ -46,6 +46,7 @@ from .results import (
     TrajectoryResult,
     WarningSeverity,
 )
+from .spectrum import SpectrumMetadata, SpectrumResult, solve_spectrum
 from .systematics import (
     DetuningDrift,
     DetuningJitter,
@@ -94,6 +95,8 @@ __all__ = [
     "ResultMetadata",
     "ResultWarning",
     "SidebandInference",
+    "SpectrumMetadata",
+    "SpectrumResult",
     "SpinPreparationError",
     "SpinReadout",
     "StorageMode",
@@ -117,5 +120,6 @@ __all__ = [
     "perturb_phase",
     "sample_outcome",
     "save_trajectory",
+    "solve_spectrum",
     "wilson_interval",
 ]
