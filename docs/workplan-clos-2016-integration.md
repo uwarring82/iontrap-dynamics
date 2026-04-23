@@ -1,11 +1,24 @@
-# Workplan — Clos/Porras 2016 PRL integration (draft for deliberation)
+# Workplan — Clos/Porras 2016 PRL integration (shipped; decisions recorded 2026-04-23)
 
-> **Status: draft for deliberation, not Coastline.** This document
-> scopes a cross-cutting initiative to port Diego Porras's MATLAB
-> spin–boson machinery into `iontrap-dynamics`, reproduce the
+> **Status: decisions recorded 2026-04-23. Retained for historical
+> continuity per §9.** The capability shipped: Dispatches AAA–AAF
+> and AAH–AAI landed on `main`; AAG is deferred on measurement,
+> with an explicit re-activation trigger in
+> [benchmarks.md § Exact-diagonalization envelope](benchmarks.md).
+> The §7 open questions below are resolved in-line (see each Q for
+> the decision and pointer to the shipped artefact). This document
+> is no longer a deliberation surface — it is the integration's
+> planning record. Coastline commitments (builders, result schemas,
+> backend names, tolerances) live where they were recorded at ship
+> time: `CHANGELOG.md`, `CONVENTIONS.md`, and the source / test /
+> benchmark artefacts cited throughout.
+>
+> **Original framing (draft for deliberation, not Coastline).** This
+> document scoped a cross-cutting initiative to port Diego Porras's
+> MATLAB spin–boson machinery into `iontrap-dynamics`, reproduce the
 > published observables, and measure the exact-diagonalization
-> envelope on commodity hardware. Nothing here binds implementation;
-> final Dispatch-level architecture decisions are made at the
+> envelope on commodity hardware. Nothing here bound implementation;
+> final Dispatch-level architecture decisions were made at the
 > start of each Dispatch and recorded in `CHANGELOG.md` /
 > `CONVENTIONS.md` at that time.
 
@@ -531,23 +544,53 @@ carrier (§7 Q2).
 
 ---
 
-## 7. Open questions for the maintainer
+## 7. Open questions — resolutions recorded 2026-04-23
 
 1. **Full-LD coverage.** Carrier only for the first pass, or all
    four families (carrier, RSB, BSB, MS)? Porras's `ergodic.m`
    uses only the carrier — reproducing the paper needs only
    carrier. But half-finished coverage is a maintenance burden.
+   — **Resolved: carrier-only for this integration.** Shipped as
+   `carrier_hamiltonian_full_ld` in AAB; the Porras regression
+   uses the non-RWA sibling `clos2016_spin_boson_hamiltonian`
+   shipped in AAE (see §3 architecture table). RSB / BSB / MS
+   full-LD builders are deferred — no active user demand, and
+   the existing leading-order entries remain unchanged. Revisit
+   only if a regression target explicitly needs them.
 2. **Iterative interior-window backend.** If wave 2 ships an
    iterative solver at all, is SciPy/ARPACK shift-invert enough, or is
    PRIMME worth the extra dependency? Lowest-k ARPACK is explicitly
    out of scope; the only admissible target is the `meanE` window.
+   — **Resolved: deferred (AAG gate status).** The AAH envelope
+   benchmark shows dense `eigh` covers the publication-validated
+   reproduction at N ∈ {1, 2, 3} at fully converged cutoffs and
+   N = 4 up to `n_c = 7` on the 16 GB reference laptop. No
+   iterative path shipped; re-activation trigger documented in
+   [benchmarks.md § AAG gate status](benchmarks.md). If AAG ever
+   ships, SciPy/ARPACK shift-invert is the planned first cut —
+   PRIMME remains opt-in only.
 3. **Benchmark hardware baseline.** Which PC is the "reference
    machine" for §4.3? (Consumer laptop 16 GB, workstation
    32 GB, or both?) This shapes the envelope tables.
+   — **Resolved: 16 GB consumer laptop as primary; 32 / 64 / 128 GB
+   tiers reported as extrapolation.** Measured grid lives at
+   `benchmarks/data/spectrum_envelope/report.json`; the per-(N, RAM)
+   envelope table in [benchmarks.md](benchmarks.md) projects from
+   the measured wall-clock and peak-RSS scaling constants to
+   larger RAM tiers honestly (distinguishing measurement from fit).
 4. **JAX / Dynamiqs interaction.** `solve_spectrum` at Dispatch AAC
    targets scipy CPU. Later, could a JAX-backed `eigh` path
    land as `spectrum-jax-cuda`? Defer, but flag whether the
    API design should leave that door open.
+   — **Resolved: deferred to Phase 3+; `SpectrumResult` schema
+   leaves the door open.** Post-AAH measurement (see
+   [benchmarks.md § scipy vs JAX on CPU for dense `eigh`](benchmarks.md))
+   confirms no CPU speedup from `jax.numpy.linalg.eigh` and a
+   ~130 MB higher baseline RSS. The remaining JAX value is GPU
+   dispatch and autograd through the eigensolve — both Phase 3+.
+   `SpectrumResult.backend_name` is the forward-compatibility hook
+   (`"spectrum-scipy"` today; `"spectrum-jax-cuda"` / similar if
+   ever shipped).
 
 ---
 
@@ -582,17 +625,43 @@ unchanged. The `SpectrumResult` schema decision is also taken
 
 ---
 
-## 9. What happens next
+## 9. Status at close-out (2026-04-23)
 
 This document sits at
-`docs/workplan-clos-2016-integration.md` as a deliberation artefact.
-Not linked into `mkdocs.yml` pending resolution of §7 questions.
+`docs/workplan-clos-2016-integration.md` as a **shipped-capability
+record**. It is not linked into `mkdocs.yml`, matching the repository
+convention for `phase-2-jax-backend-design.md` and
+`phase-2-jax-time-dep-design.md`: design / workplan artefacts
+stay in `docs/` for historical continuity but do not appear in
+the user-facing navigation. User-facing content lives in
+[docs/benchmarks.md](benchmarks.md) (the envelope and backend
+comparison) and
+[docs/tutorials/13_reproducing_clos_2016.md](tutorials/13_reproducing_clos_2016.md)
+(the end-to-end walk-through).
 
-When the §7 questions are answered, this document becomes either:
+**Ship status — what landed where.**
 
-- **Superseded by a Dispatch AAA kickoff note** annotated with a
-  "Decisions recorded YYYY-MM-DD" banner and retained for
-  historical continuity; or
-- **Retired** if the integration is postponed beyond the current
-  release cycle, moved to `archive/` per CD 0.8 (deprecation,
-  not deletion).
+| Dispatch | Status   | Primary artefact |
+|----------|----------|------------------|
+| AAA      | Shipped  | `clos2016_axial_mode_reference` (corrected during AAF) |
+| AAB      | Shipped  | `carrier_hamiltonian_full_ld` (carrier-RWA; see AAE note) |
+| AAC      | Shipped  | `src/iontrap_dynamics/spectrum.py`, `SpectrumResult` |
+| AAD      | Shipped  | `src/iontrap_dynamics/spectrum_observables.py` |
+| AAE      | Shipped  | `tests/regression/reproduction/test_clos_2016_N1.py`; `clos2016.py` non-RWA assembler + `IPR_av` + wavelength pin |
+| AAF      | Shipped  | `tests/regression/reproduction/test_clos_2016_N2_N3.py` |
+| AAG      | Deferred | Benchmark-gated; re-activation trigger in [benchmarks.md § AAG gate status](benchmarks.md) |
+| AAH      | Shipped  | `tools/run_benchmark_spectrum_envelope.py`, `benchmarks/data/spectrum_envelope/` |
+| AAI      | Shipped  | `docs/tutorials/13_reproducing_clos_2016.md` |
+
+**Post-close-out extensions.** After the main nine dispatches
+closed, two measurement-only extensions landed: the 16 GB swap-
+pushing probe grid (`--include-large` on the envelope benchmark)
+and the scipy-vs-JAX CPU `eigh` comparison at
+`tools/run_benchmark_spectrum_envelope_jax.py`. Both inform
+the Q2 and Q4 resolutions in §7 above.
+
+**If the integration is ever re-opened** — e.g. a user forces
+AAG's re-activation trigger, or RSB / BSB / MS full-LD builders
+become demand-driven — the new work gets its own kickoff note
+and CHANGELOG entry at that time; this document is not updated
+retroactively.
