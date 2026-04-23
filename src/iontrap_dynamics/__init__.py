@@ -47,6 +47,12 @@ from .results import (
     WarningSeverity,
 )
 from .spectrum import SpectrumMetadata, SpectrumResult, solve_spectrum
+from .spectrum_observables import (
+    effective_dimension,
+    eth_diagonal,
+    inverse_participation_ratio,
+    phonon_number_diagonals,
+)
 from .systematics import (
     DetuningDrift,
     DetuningJitter,
@@ -110,14 +116,18 @@ __all__ = [
     "clopper_pearson_interval",
     "compute_request_hash",
     "concurrence_trajectory",
+    "effective_dimension",
     "entanglement_of_formation_trajectory",
+    "eth_diagonal",
     "imperfect_motional_ground",
     "imperfect_spin_ground",
+    "inverse_participation_ratio",
     "load_trajectory",
     "log_negativity_trajectory",
     "perturb_carrier_rabi",
     "perturb_detuning",
     "perturb_phase",
+    "phonon_number_diagonals",
     "sample_outcome",
     "save_trajectory",
     "solve_spectrum",
