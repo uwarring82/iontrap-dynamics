@@ -5,10 +5,11 @@ Task-oriented walkthroughs of `iontrap-dynamics`. Each tutorial takes
 adaptive guidance with specific parameter choices, not coastline
 constraints.
 
-The track is complete at twelve tutorials, covering every
+The track now spans thirteen tutorials, covering every
 architectural layer of the library (configuration, Hamiltonians,
 solve, observables, measurement, systematics, persistence,
-entanglement diagnostics). The runnable demo tools under `tools/`
+entanglement diagnostics) plus an end-to-end reproduction of a
+publication dataset against a legacy MATLAB bundle. The runnable demo tools under `tools/`
 and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.
@@ -144,6 +145,24 @@ cover the same ground for users who prefer reading code to prose.
   `OMITTED` vs `EAGER` storage-mode split required by the
   two surfaces and points the reader at the remaining
   library-surface learning paths beyond the tutorial track.
+- [**Tutorial 13 — Reproducing Clos 2016 (PRL 117, 170401)**](13_reproducing_clos_2016.md).
+  End-to-end reproduction of a publication dataset against the
+  legacy MATLAB bundle under
+  [`legacy/clos 2016 prl/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/legacy/clos%202016%20prl).
+  First tutorial to use the exact-diagonalisation entry point
+  (`solve_spectrum`) instead of `sequences.solve`. Builds the
+  **non-RWA** full-displacement spin–boson Hamiltonian (distinct
+  from the carrier-RWA `carrier_hamiltonian_full_ld` covered in
+  Tutorial 8), computes the legacy `IPR_av` quantity via
+  `clos2016_averaged_effective_dimension` (a
+  ρ₀-eigendecomposition–weighted average of pure-state effective
+  dimensions, distinct from the textbook `effective_dimension`),
+  and matches `theo_dim_N_1.dat` row-by-row. Documents the
+  Raman-vs-single-photon wavelength provenance trap, then scales
+  the same pipeline to N=2 and N=3 with achieved tolerances of
+  ~6 % and ~4 % respectively. Closes with the dense-eigh
+  envelope table that motivates the AAG / AAH benchmark
+  dispatches.
 
 ## Scope and licensing
 

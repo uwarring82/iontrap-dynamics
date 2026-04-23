@@ -54,10 +54,21 @@ class Clos2016TheoryDimensionSurface:
     mean_occupation: float
 
 
+# Reference values are the output of the legacy `cchain(N, center=1)` from
+# `ergodic_ipr_av.m` (Coulomb chain in a quadratic axial trap with `beta=4`),
+# reproduced numerically in Python. For N ions in a harmonic axial trap with
+# Coulomb repulsion the COM mode sits at the trap frequency ω_z and the
+# breathing mode at √3·ω_z; for N=3 the third mode is √(29/5)·ω_z. These are
+# textbook results, not Porras-specific. The participation-weight rows are
+# the first column of the Hessian eigenvector matrix V (the "spin-ion at
+# index 0" projection used by `pol = Σ_n eta0·center_wf(n)·…`).
 _AXIAL_MODE_REFERENCES: dict[int, Clos2016AxialModeReference] = {
     2: Clos2016AxialModeReference(
         n_ions=2,
-        dimensionless_frequencies=np.asarray([1.0, 1.12266952429], dtype=np.float64),
+        dimensionless_frequencies=np.asarray(
+            [1.0, np.sqrt(3.0)],
+            dtype=np.float64,
+        ),
         first_ion_participation_weights=np.asarray(
             [-1.0 / np.sqrt(2.0), -1.0 / np.sqrt(2.0)],
             dtype=np.float64,
@@ -66,7 +77,7 @@ _AXIAL_MODE_REFERENCES: dict[int, Clos2016AxialModeReference] = {
     3: Clos2016AxialModeReference(
         n_ions=3,
         dimensionless_frequencies=np.asarray(
-            [1.0, 1.110697060554, 1.249301846942],
+            [1.0, np.sqrt(3.0), np.sqrt(29.0 / 5.0)],
             dtype=np.float64,
         ),
         first_ion_participation_weights=np.asarray(

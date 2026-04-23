@@ -33,12 +33,12 @@ def test_legacy_bundle_directory_exists() -> None:
     [
         (
             2,
-            np.asarray([1.0, 1.12266952429]),
+            np.asarray([1.0, np.sqrt(3.0)]),
             np.asarray([1.0 / np.sqrt(2.0), 1.0 / np.sqrt(2.0)]),
         ),
         (
             3,
-            np.asarray([1.0, 1.110697060554, 1.249301846942]),
+            np.asarray([1.0, np.sqrt(3.0), np.sqrt(29.0 / 5.0)]),
             np.asarray([1.0 / np.sqrt(3.0), -1.0 / np.sqrt(2.0), 1.0 / np.sqrt(6.0)]),
         ),
     ],
@@ -64,7 +64,7 @@ def test_axial_mode_reference_arrays_are_copied_on_return() -> None:
     ref.first_ion_participation_weights[0] = 999.0
 
     ref_again = clos2016_axial_mode_reference(2)
-    np.testing.assert_allclose(ref_again.dimensionless_frequencies, [1.0, 1.12266952429], atol=1e-12)
+    np.testing.assert_allclose(ref_again.dimensionless_frequencies, [1.0, np.sqrt(3.0)], atol=1e-12)
     assert _allclose_up_to_global_sign(
         ref_again.first_ion_participation_weights,
         np.asarray([1.0 / np.sqrt(2.0), 1.0 / np.sqrt(2.0)]),

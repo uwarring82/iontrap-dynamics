@@ -231,17 +231,28 @@ code therefore **must** use the Raman two-photon wavelength, not
 The re-derivations below match the standard physics, not the
 inline helpers verbatim:
 
-- **`cchain`** → already exists as `modes.axial_modes`.
-  **Verification step needed:** use explicit N = 2 and N = 3 axial
-  references so the reconciliation is testable, not rhetorical. In the
-  legacy `cchain(..., center=1)` convention the dimensionless mode
-  frequencies are:
-  N = 2 → $\omega/\omega_1 = [1,\;1.12266952429]$ with first-ion
+- **`cchain`** → the workplan §3 row claims this already exists as
+  `modes.axial_modes`, but no such builder is present in the
+  library yet (verified during AAF). The Coulomb-chain modes are
+  re-derived numerically from `mypotential` (a quadratic axial
+  trap with Coulomb repulsion at $\beta = 4$); for N = 2 and N = 3
+  the AAA reference dataclass `clos2016_axial_mode_reference`
+  pins them inline. **Verification step needed:** use explicit
+  N = 2 and N = 3 axial references so the reconciliation is
+  testable, not rhetorical. In the legacy `cchain(..., center=1)`
+  convention — verified by re-implementing the Hessian eigenvalue
+  problem in Python and matching the legacy MATLAB output — the
+  dimensionless mode frequencies are:
+  N = 2 → $\omega/\omega_1 = [1,\;\sqrt{3}]$ with first-ion
   participation weights $[-1/\sqrt{2},\;-1/\sqrt{2}]$;
-  N = 3 → $\omega/\omega_1 = [1,\;1.110697060554,\;1.249301846942]$
+  N = 3 → $\omega/\omega_1 = [1,\;\sqrt{3},\;\sqrt{29/5}]$
   with first-ion participation weights
   $[1/\sqrt{3},\;-1/\sqrt{2},\;1/\sqrt{6}]$ up to eigenvector-sign
-  convention.
+  convention. (The original AAA dispatch landed `[1, 1.12267]`
+  for N = 2 and `[1, 1.110697, 1.249302]` for N = 3; those values
+  do not match `cchain` for any beta or trap convention found in
+  the bundle and were corrected during AAF. Participation weights
+  were already correct.)
 - **`Operators`** → tensor products of qutip spin and phonon
   operators, already idiomatic in our codebase.
 - **`eta_calculator`** → Lamb–Dicke parameter
@@ -418,6 +429,18 @@ track.
 6. **Dispatch AAF — Porras N = 2, N = 3 regression tests.** Same
    as AAE, extended. N = 4 and N = 5 deferred pending §4.3 results
    — they may exceed dense envelope. Cost: ~1 dispatch.
+
+   **Shipped.** Test lives at
+   `tests/regression/reproduction/test_clos_2016_N2_N3.py`,
+   parametrized over `(N=2, cutoff=8)` and `(N=3, cutoff=6)`.
+   Achieved tolerances on the 3-significant-figure published
+   table: N = 2 ≈ 6.3 %, N = 3 ≈ 4.2 %. N = 3 uses cutoff = 6
+   (below the inferred-converged value of 10) because cutoff = 10
+   would put a single regression run over five minutes; the
+   row-vs-row comparison at the same cutoff stays apples-to-apples.
+   The AAA reference frequencies for N = 2 / N = 3 had to be
+   corrected from the originally pinned (incorrect) values during
+   this dispatch — see the §4.1 cchain note.
 7. **Dispatch AAG — benchmark-gated interior-window iterative path.**
    Only if the `AAA`/`AAH` evidence suggests value, extend
    `solve_spectrum` with a `method="shift_invert"` option targeting the
@@ -433,10 +456,18 @@ track.
    RSS; renders into `docs/benchmarks.md`. Cost: ~1 dispatch
    (benchmark tool + docs section; the `.json` + plots follow
    existing Dispatch-X/OO conventions).
-9. **Dispatch AAI — tutorial.** `docs/tutorials/T13-reproducing-clos-2016.md`
-   end-to-end walk-through: load `theo_dim_N_2.dat`, build H,
-   call `solve_spectrum`, compute d_eff, reproduce one row of
-   the table. Cost: ~1 dispatch.
+9. **Dispatch AAI — tutorial.** `docs/tutorials/13_reproducing_clos_2016.md`
+   end-to-end walk-through: load `theo_dim_N_1.dat`, build H,
+   call `solve_spectrum`, compute `IPR_av`, reproduce one row of
+   the table; then scale to N = 2 and N = 3 with
+   `clos2016_axial_mode_reference`. Cost: ~1 dispatch.
+
+   **Shipped.** Tutorial wired into `mkdocs.yml` and the
+   tutorials index. Surfaces the three findings from the AAE
+   wave (non-RWA vs carrier-RWA Hamiltonian, Raman vs single-
+   photon wavelength, `IPR_av` vs textbook `effective_dimension`)
+   and closes with the dense-eigh envelope table that motivates
+   the AAG / AAH benchmark dispatches.
 
 **Total:** 7–8 dispatches plus the `AAA` reconciliation gate; `AAG`
 is explicitly benchmark-gated and may be skipped if the dense full-LD

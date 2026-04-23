@@ -68,6 +68,7 @@ nav:
       - "10. Finite-shot statistics": tutorials/10_finite_shot_statistics.md
       - "11. Systematics: jitter ensembles": tutorials/11_jitter_ensembles.md
       - "12. Two-ion Bell-state entanglement": tutorials/12_bell_entanglement.md
+      - "13. Reproducing Clos 2016 (PRL 117, 170401)": tutorials/13_reproducing_clos_2016.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:
