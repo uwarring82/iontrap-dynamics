@@ -43,7 +43,7 @@ which iterative routine, which plot style) stay Sail.
 Three motivations, in increasing generality:
 
 1. **Validation against a real experiment.** The legacy bundle at
-   [legacy/clos 2016 prl/INVENTORY.md](../legacy/clos%202016%20prl/INVENTORY.md)
+   `legacy/clos 2016 prl/INVENTORY.md`
    contains pre-publication numerical results for a trapped-ion
    spin–boson simulator (PRL 117, 170401). The data tables —
    `theo_dim_N_{1..5}.dat`, `exp_ETH_N_{1..5}.dat` — are a
@@ -55,7 +55,7 @@ Three motivations, in increasing generality:
    uses the full exponential operator
    $C = \exp\!\big(\eta_0 \sum_n \phi_n (a_n - a_n^\dagger)/\sqrt{\omega_n/\omega_1}\big)$.
    This gap is already documented as an activation path in
-   [tests/regression/migration/test_migration_references.py:424](../tests/regression/migration/test_migration_references.py#L424).
+   `tests/regression/migration/test_migration_references.py:424`.
    Reproducing Porras at N = 1–3 forces us to close it.
 
 3. **Know the hardware envelope.** IPR / ETH diagnostics need
