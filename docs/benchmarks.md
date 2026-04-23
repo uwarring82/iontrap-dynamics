@@ -342,3 +342,80 @@ Future follow-ups live outside the `v0.3` milestone:
 - **GPU dispatch validation.** CPU-only CI today; users with
   CUDA / Metal JAX builds can run the JAX backend transparently
   but we don't include a GPU-smoke-test in CI.
+
+## Exact-diagonalization envelope (Dispatch AAH)
+
+The Clos 2016 reproduction track (`docs/workplan-clos-2016-integration.md`)
+routes through `solve_spectrum`'s dense `scipy.linalg.eigh` path. The
+user-facing question it raises — "how large a system can I
+exact-diagonalise on my laptop?" — is answered by
+`tools/run_benchmark_spectrum_envelope.py`, which builds the non-RWA
+Clos 2016 spin–boson Hamiltonian across an `(N, n_c)` grid, runs
+`solve_spectrum` in an isolated subprocess per point, and records
+wall-clock plus peak RSS.
+
+Measured on this reference hardware (Apple Silicon arm64, macOS 26;
+scipy 1.17.1; run recorded at
+`benchmarks/data/spectrum_envelope/report.json`):
+
+| N | n_c | dim   | matrix (dense complex128) | `solve_spectrum` wall-clock | peak RSS  |
+|---|-----|-------|---------------------------|-----------------------------|-----------|
+| 1 | 100 | 202   | 638 KB                    | 0.01 s                      | 160 MB    |
+| 2 | 20  | 882   | 11.9 MB                   | 0.4 s                       | 317 MB    |
+| 2 | 25  | 1 352 | 27.9 MB                   | 1.3 s                       | 483 MB    |
+| 3 | 8   | 1 458 | 32.4 MB                   | 1.6 s                       | 561 MB    |
+| 3 | 10  | 2 662 | 108 MB                    | 9.0 s                       | 1.14 GB   |
+| 3 | 12  | 4 394 | 295 MB                    | 41.7 s                      | 2.22 GB   |
+| 4 | 5   | 2 592 | 103 MB                    | 8.9 s                       | 1.23 GB   |
+| 4 | 6   | 4 802 | 352 MB                    | 53.1 s                      | 2.24 GB   |
+| 5 | 3   | 2 048 | 64.0 MB                   | 6.5 s                       | 935 MB    |
+
+**Scaling.** Wall-clock follows the expected $\mathcal{O}(d^3)$ cost
+of symmetric eigendecomposition; peak RSS tracks the dense-matrix
+footprint with a ~6–8× workspace multiplier. Both curves collapse
+onto a single N-independent trajectory when plotted against Hilbert
+dimension — the solver cost depends only on dimension, not on how
+the tensor-product factors are arranged.
+
+**Rules of thumb on a 16 GB laptop.** The measured points give
+three tiers:
+
+- `dim ≤ 1 000` — sub-second; trivial for interactive notebook use.
+- `dim ≤ 2 700` — 1 s to 10 s; peak RSS under 1.2 GB. Covers the
+  AAE / AAF regression suite at fully converged cutoffs (N = 1–3).
+- `dim ≤ 5 000` — 10 s to 1 min; peak RSS up to 2.3 GB. Covers
+  N = 3 at cutoff = 12 and N = 4 at cutoff = 6.
+- `dim ≳ 8 000` — extrapolated 3–5 min wall-clock and ~6 GB RSS
+  (not measured). N = 4 at cutoff = 7 (dim = 8 192) still fits a
+  32 GB workstation but is the slowest point users will reach
+  comfortably.
+- `dim ≳ 15 000` — extrapolated ≳ 20 min and ≳ 25 GB RSS. N = 5 at
+  cutoff = 5 (dim = 15 552) crosses the 16 GB commodity boundary.
+
+**Implication for Clos 2016 N = 4 / N = 5 reproduction.** The
+`theo_dim_N_4.dat` convergence table plateaus by cutoff ~6, so the
+N = 4 reproduction is feasible in dense mode (one minute per
+detuning × 16 detunings ≈ 15 min per row). The N = 5 convergence
+table is still rising at its top cutoff of 4; a dense reproduction
+at a truly converged cutoff (≥ 5) crosses into 16 GB territory and
+is where AAG's interior-window iterative path would start to earn
+its keep.
+
+**AAG gate status.** On the basis of this measurement, the dense
+path covers the AAE / AAF / AAI deliverables and N = 4 as a
+stretch target. Shipping the AAG shift-invert / PRIMME backend is
+**deferred** — it becomes justified when a user demonstrably needs
+N = 5 at cutoff ≥ 5, or when a 16 GB RAM budget is binding for an
+N = 4 at cutoff = 7+ use case. The workplan §5 AAG entry
+acknowledges this gate and keeps the dispatch in reserve rather
+than scheduled.
+
+Run with:
+
+```bash
+python tools/run_benchmark_spectrum_envelope.py
+```
+
+The benchmark is subprocess-isolated per grid point so peak RSS
+reflects a single-run baseline rather than cumulative allocator
+state; total runtime on the reference hardware is ~2 min.

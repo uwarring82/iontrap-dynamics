@@ -1,0 +1,224 @@
+{
+  "configuration": {
+    "axial_frequency_MHz": 0.71,
+    "detuning_MHz": 0.5,
+    "n_bar": 1.0,
+    "rabi_frequency_MHz": 0.71,
+    "species": "25Mg+",
+    "wavelength_label": "CLOS2016_LEGACY_WAVELENGTH_M (Raman two-photon)"
+  },
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.4.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-04-23T08:56:04.388661+00:00",
+  "purpose": "AAH -- measures dense scipy.linalg.eigh wall-clock and peak RSS for the Clos 2016 non-RWA spin-boson Hamiltonian across an (N, n_c) grid. Answers the user-facing 'how big can I exact-diagonalise on my laptop?' question and supplies the evidence the AAG dispatch gate depends on.",
+  "results": [
+    {
+      "build_seconds": 0.00375541701214388,
+      "cutoff": 5,
+      "dim": 12,
+      "matrix_bytes": 2304,
+      "n_ions": 1,
+      "peak_rss_bytes": 160153600,
+      "solve_seconds": 0.006753624998964369,
+      "wall_seconds_including_subprocess_launch": 1.5712401249911636
+    },
+    {
+      "build_seconds": 0.002136374998372048,
+      "cutoff": 10,
+      "dim": 22,
+      "matrix_bytes": 7744,
+      "n_ions": 1,
+      "peak_rss_bytes": 160546816,
+      "solve_seconds": 0.00034295901423320174,
+      "wall_seconds_including_subprocess_launch": 1.0875003749970347
+    },
+    {
+      "build_seconds": 0.002349582966417074,
+      "cutoff": 20,
+      "dim": 42,
+      "matrix_bytes": 28224,
+      "n_ions": 1,
+      "peak_rss_bytes": 160907264,
+      "solve_seconds": 0.0012067920179106295,
+      "wall_seconds_including_subprocess_launch": 1.0762927500181831
+    },
+    {
+      "build_seconds": 0.0017288329545408487,
+      "cutoff": 50,
+      "dim": 102,
+      "matrix_bytes": 166464,
+      "n_ions": 1,
+      "peak_rss_bytes": 160432128,
+      "solve_seconds": 0.003499375015962869,
+      "wall_seconds_including_subprocess_launch": 1.0774537500110455
+    },
+    {
+      "build_seconds": 0.006166249979287386,
+      "cutoff": 100,
+      "dim": 202,
+      "matrix_bytes": 652864,
+      "n_ions": 1,
+      "peak_rss_bytes": 167247872,
+      "solve_seconds": 0.011797874991316348,
+      "wall_seconds_including_subprocess_launch": 1.1025792920263484
+    },
+    {
+      "build_seconds": 0.0010189999593421817,
+      "cutoff": 5,
+      "dim": 72,
+      "matrix_bytes": 82944,
+      "n_ions": 2,
+      "peak_rss_bytes": 161644544,
+      "solve_seconds": 0.0012286250130273402,
+      "wall_seconds_including_subprocess_launch": 1.0881336660240777
+    },
+    {
+      "build_seconds": 0.008275667030829936,
+      "cutoff": 10,
+      "dim": 242,
+      "matrix_bytes": 937024,
+      "n_ions": 2,
+      "peak_rss_bytes": 173670400,
+      "solve_seconds": 0.013878250028938055,
+      "wall_seconds_including_subprocess_launch": 1.1031505839782767
+    },
+    {
+      "build_seconds": 0.03781845897901803,
+      "cutoff": 15,
+      "dim": 512,
+      "matrix_bytes": 4194304,
+      "n_ions": 2,
+      "peak_rss_bytes": 215498752,
+      "solve_seconds": 0.09446024999488145,
+      "wall_seconds_including_subprocess_launch": 1.218289625016041
+    },
+    {
+      "build_seconds": 0.15659929101821035,
+      "cutoff": 20,
+      "dim": 882,
+      "matrix_bytes": 12446784,
+      "n_ions": 2,
+      "peak_rss_bytes": 332578816,
+      "solve_seconds": 0.4103253749781288,
+      "wall_seconds_including_subprocess_launch": 1.6508442080230452
+    },
+    {
+      "build_seconds": 0.46840612503001466,
+      "cutoff": 25,
+      "dim": 1352,
+      "matrix_bytes": 29246464,
+      "n_ions": 2,
+      "peak_rss_bytes": 506445824,
+      "solve_seconds": 1.2878964580013417,
+      "wall_seconds_including_subprocess_launch": 2.873119791969657
+    },
+    {
+      "build_seconds": 0.008987332985270768,
+      "cutoff": 4,
+      "dim": 250,
+      "matrix_bytes": 1000000,
+      "n_ions": 3,
+      "peak_rss_bytes": 172670976,
+      "solve_seconds": 0.013742415991146117,
+      "wall_seconds_including_subprocess_launch": 1.1569217499927618
+    },
+    {
+      "build_seconds": 0.07739237503847107,
+      "cutoff": 6,
+      "dim": 686,
+      "matrix_bytes": 7529536,
+      "n_ions": 3,
+      "peak_rss_bytes": 265551872,
+      "solve_seconds": 0.19296987500274554,
+      "wall_seconds_including_subprocess_launch": 1.369047500018496
+    },
+    {
+      "build_seconds": 0.64875612501055,
+      "cutoff": 8,
+      "dim": 1458,
+      "matrix_bytes": 34012224,
+      "n_ions": 3,
+      "peak_rss_bytes": 588005376,
+      "solve_seconds": 1.5876960000023246,
+      "wall_seconds_including_subprocess_launch": 3.3620503750280477
+    },
+    {
+      "build_seconds": 3.4072496669832617,
+      "cutoff": 10,
+      "dim": 2662,
+      "matrix_bytes": 113379904,
+      "n_ions": 3,
+      "peak_rss_bytes": 1226883072,
+      "solve_seconds": 8.983478541020304,
+      "wall_seconds_including_subprocess_launch": 13.52244025003165
+    },
+    {
+      "build_seconds": 14.741949999995995,
+      "cutoff": 12,
+      "dim": 4394,
+      "matrix_bytes": 308915776,
+      "n_ions": 3,
+      "peak_rss_bytes": 2389065728,
+      "solve_seconds": 41.679122417001054,
+      "wall_seconds_including_subprocess_launch": 57.605568375031
+    },
+    {
+      "build_seconds": 0.028857542027253658,
+      "cutoff": 3,
+      "dim": 512,
+      "matrix_bytes": 4194304,
+      "n_ions": 4,
+      "peak_rss_bytes": 216137728,
+      "solve_seconds": 0.10071370797231793,
+      "wall_seconds_including_subprocess_launch": 1.5344969590078108
+    },
+    {
+      "build_seconds": 0.39660283300327137,
+      "cutoff": 4,
+      "dim": 1250,
+      "matrix_bytes": 25000000,
+      "n_ions": 4,
+      "peak_rss_bytes": 505987072,
+      "solve_seconds": 1.0652915419777855,
+      "wall_seconds_including_subprocess_launch": 2.68417512497399
+    },
+    {
+      "build_seconds": 2.5185182499699295,
+      "cutoff": 5,
+      "dim": 2592,
+      "matrix_bytes": 107495424,
+      "n_ions": 4,
+      "peak_rss_bytes": 1317421056,
+      "solve_seconds": 8.92426716600312,
+      "wall_seconds_including_subprocess_launch": 12.660688792006113
+    },
+    {
+      "build_seconds": 19.780608375032898,
+      "cutoff": 6,
+      "dim": 4802,
+      "matrix_bytes": 368947264,
+      "n_ions": 4,
+      "peak_rss_bytes": 2400026624,
+      "solve_seconds": 53.07049450004706,
+      "wall_seconds_including_subprocess_launch": 74.36857233400224
+    },
+    {
+      "build_seconds": 1.37825020798482,
+      "cutoff": 3,
+      "dim": 2048,
+      "matrix_bytes": 67108864,
+      "n_ions": 5,
+      "peak_rss_bytes": 980549632,
+      "solve_seconds": 6.511870625021402,
+      "wall_seconds_including_subprocess_launch": 9.248562416993082
+    }
+  ],
+  "scenario": "spectrum_envelope",
+  "workplan_reference": "docs/workplan-clos-2016-integration.md §4.3 PC exact-diag envelope; §5 AAH"
+}

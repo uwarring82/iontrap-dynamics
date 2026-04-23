@@ -449,6 +449,16 @@ track.
    same microcanonical observables as dense `eigh` from an interior
    window around `meanE`". `backend_name="spectrum-scipy-shift-invert"`.
    Cost: ~1 dispatch if it ships; zero if benchmark evidence says no.
+
+   **Status: deferred.** AAH (measurement below) shows the dense
+   path covers N ≤ 3 at fully converged cutoffs and N = 4 up to
+   `n_c = 6` within ~1 min wall-clock and ~2.3 GB peak RSS on a
+   commodity laptop. AAG becomes justified when a user
+   demonstrably needs N = 5 at `n_c ≥ 5` (dim ≥ 15 000, crosses
+   the 16 GB RAM boundary) or an N = 4 at `n_c ≥ 7` use case is
+   binding on a 16 GB machine. Until then, this dispatch stays
+   in reserve rather than scheduled — see `docs/benchmarks.md`
+   "AAG gate status" for the threshold.
 8. **Dispatch AAH — exact-diag envelope benchmark.**
    `tools/run_benchmark_spectrum_envelope.py` runs the dense and
    any iterative interior-window paths over a (N, n_c) grid; reports
@@ -456,6 +466,19 @@ track.
    RSS; renders into `docs/benchmarks.md`. Cost: ~1 dispatch
    (benchmark tool + docs section; the `.json` + plots follow
    existing Dispatch-X/OO conventions).
+
+   **Shipped.** Benchmark tool at
+   `tools/run_benchmark_spectrum_envelope.py` (subprocess-isolated
+   per grid point for clean peak-RSS measurement); report under
+   `benchmarks/data/spectrum_envelope/{report.json,plot.png}`;
+   documented in `docs/benchmarks.md` as "Exact-diagonalization
+   envelope (Dispatch AAH)". Covers a 20-point `(N, n_c)` grid
+   spanning dim ∈ {12 … 4 802}. Headline: dense `eigh` follows
+   the expected $\mathcal{O}(d^3)$ scaling; peak RSS tracks the
+   dense-matrix footprint with a 6–8× workspace multiplier; the
+   commodity-laptop envelope is `dim ≲ 5 000` at ~1 min and ≲ 2.3
+   GB. Iterative interior-window path is **not** scheduled (see
+   AAG status).
 9. **Dispatch AAI — tutorial.** `docs/tutorials/13_reproducing_clos_2016.md`
    end-to-end walk-through: load `theo_dim_N_1.dat`, build H,
    call `solve_spectrum`, compute `IPR_av`, reproduce one row of
