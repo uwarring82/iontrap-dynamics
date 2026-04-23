@@ -36,6 +36,24 @@ class Clos2016CutoffConvergence:
     relative_tolerance: float
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Clos2016TheoryDimensionSurface:
+    """Parsed ``theo_dim_N_*.dat`` surface from the legacy bundle.
+
+    The archived numeric columns use the legacy MATLAB frequency convention:
+    a numeric value of ``1`` denotes ``2pi x 1 MHz``. This loader preserves
+    those raw values rather than guessing an SI conversion.
+    """
+
+    n_ions: int
+    cutoffs: NDArray[np.int64]
+    detunings_legacy_units: NDArray[np.float64]
+    averaged_effective_dimension: NDArray[np.float64]
+    omega_axial_legacy_units: float
+    omega_rabi_legacy_units: float
+    mean_occupation: float
+
+
 _AXIAL_MODE_REFERENCES: dict[int, Clos2016AxialModeReference] = {
     2: Clos2016AxialModeReference(
         n_ions=2,
@@ -164,12 +182,64 @@ def load_all_clos2016_cutoff_convergences(
     )
 
 
+def load_clos2016_theory_dimension_surface(
+    n_ions: int,
+    *,
+    legacy_dir: Path = DEFAULT_LEGACY_CLOS2016_DIR,
+) -> Clos2016TheoryDimensionSurface:
+    """Parse one archived ``theo_dim_N_*.dat`` cutoff-by-detuning surface."""
+    table_path = (
+        legacy_dir / "DP num res_fig_1_2015_07_30" / f"theo_dim_N_{n_ions}.dat"
+    )
+    data = np.loadtxt(table_path, delimiter="\t", skiprows=1, dtype=np.float64)
+
+    if data.ndim != 2 or data.shape[1] != 8:
+        raise ValueError(f"unexpected theory-surface shape for {table_path}: {data.shape!r}")
+
+    cutoffs = np.unique(data[:, 0].astype(np.int64))
+    detunings = np.unique(data[:, 4].astype(np.float64))
+    expected_rows = cutoffs.size * detunings.size
+    if data.shape[0] != expected_rows:
+        raise ValueError(
+            f"table {table_path} cannot be reshaped to cutoff x detuning grid: "
+            f"{data.shape[0]} rows vs {cutoffs.size}x{detunings.size}."
+        )
+
+    n_ions_column = data[:, 2].astype(np.int64)
+    omega_axial = float(data[0, 3])
+    omega_rabi = float(data[0, 5])
+    mean_occupation = float(data[0, 6])
+
+    if not np.all(n_ions_column == n_ions):
+        raise ValueError(f"table {table_path} declares inconsistent ion counts: {n_ions_column!r}")
+    if not np.allclose(data[:, 3], omega_axial):
+        raise ValueError(f"table {table_path} has non-constant omega_axial column")
+    if not np.allclose(data[:, 5], omega_rabi):
+        raise ValueError(f"table {table_path} has non-constant omega_rabi column")
+    if not np.allclose(data[:, 6], mean_occupation):
+        raise ValueError(f"table {table_path} has non-constant mean-occupation column")
+
+    deff_grid = data[:, 1].reshape(detunings.size, cutoffs.size).T.astype(np.float64)
+
+    return Clos2016TheoryDimensionSurface(
+        n_ions=n_ions,
+        cutoffs=cutoffs.astype(np.int64),
+        detunings_legacy_units=detunings.astype(np.float64),
+        averaged_effective_dimension=deff_grid,
+        omega_axial_legacy_units=omega_axial,
+        omega_rabi_legacy_units=omega_rabi,
+        mean_occupation=mean_occupation,
+    )
+
+
 __all__ = [
     "DEFAULT_CUTOFF_RELATIVE_TOLERANCE",
     "DEFAULT_LEGACY_CLOS2016_DIR",
     "Clos2016AxialModeReference",
     "Clos2016CutoffConvergence",
+    "Clos2016TheoryDimensionSurface",
     "clos2016_axial_mode_reference",
     "load_all_clos2016_cutoff_convergences",
     "load_clos2016_cutoff_convergence",
+    "load_clos2016_theory_dimension_surface",
 ]

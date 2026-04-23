@@ -13,6 +13,7 @@ from iontrap_dynamics.clos2016_references import (
     clos2016_axial_mode_reference,
     load_all_clos2016_cutoff_convergences,
     load_clos2016_cutoff_convergence,
+    load_clos2016_theory_dimension_surface,
 )
 
 pytestmark = pytest.mark.regression_reproduction
@@ -103,3 +104,39 @@ def test_cutoff_tables_parse_expected_metadata_and_plateaus(
 def test_cutoff_summary_loads_all_chain_sizes() -> None:
     records = load_all_clos2016_cutoff_convergences()
     assert tuple(record.n_ions for record in records) == (1, 2, 3, 4, 5)
+
+
+def test_theory_dimension_surface_preserves_n1_cutoff_by_detuning_grid() -> None:
+    surface = load_clos2016_theory_dimension_surface(1)
+
+    assert surface.n_ions == 1
+    np.testing.assert_array_equal(surface.cutoffs, np.arange(21, dtype=np.int64))
+    np.testing.assert_allclose(surface.detunings_legacy_units, np.arange(0.0, 3.2, 0.2))
+    assert surface.omega_axial_legacy_units == pytest.approx(0.71)
+    assert surface.omega_rabi_legacy_units == pytest.approx(0.71)
+    assert surface.mean_occupation == pytest.approx(1.0)
+    assert surface.averaged_effective_dimension.shape == (21, 16)
+
+    cutoff_index = int(np.flatnonzero(surface.cutoffs == 7)[0])
+    np.testing.assert_allclose(
+        surface.averaged_effective_dimension[cutoff_index],
+        [
+            2.832,
+            2.569,
+            2.519,
+            2.377,
+            2.01,
+            1.818,
+            2.411,
+            1.66,
+            1.317,
+            1.266,
+            2.167,
+            1.188,
+            1.093,
+            1.079,
+            1.133,
+            1.04,
+        ],
+        atol=1e-12,
+    )

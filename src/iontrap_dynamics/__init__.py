@@ -7,6 +7,12 @@ from .cache import (
     load_trajectory,
     save_trajectory,
 )
+from .clos2016 import (
+    CLOS2016_LEGACY_WAVELENGTH_M,
+    clos2016_averaged_effective_dimension,
+    clos2016_initial_state,
+    clos2016_spin_boson_hamiltonian,
+)
 from .conventions import CONVENTION_VERSION, FOCK_CONVERGENCE_TOLERANCE
 from .entanglement import (
     concurrence_trajectory,
@@ -74,6 +80,7 @@ from .systematics import (
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
+    "CLOS2016_LEGACY_WAVELENGTH_M",
     "CONVENTION_VERSION",
     "FOCK_CONVERGENCE_TOLERANCE",
     "BackendError",
@@ -114,6 +121,9 @@ __all__ = [
     "apply_rabi_drift",
     "binomial_summary",
     "clopper_pearson_interval",
+    "clos2016_averaged_effective_dimension",
+    "clos2016_initial_state",
+    "clos2016_spin_boson_hamiltonian",
     "compute_request_hash",
     "concurrence_trajectory",
     "effective_dimension",

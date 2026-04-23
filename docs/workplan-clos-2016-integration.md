@@ -146,6 +146,7 @@ The following table makes the touchpoints explicit.
 | Solver entry                               | `sequences.solve` + `sequences.solve_ensemble` (time-evolution only)           | No change — exact diag is a different API (`spectrum.solve_spectrum`), not an overload. Dense `eigh` is the reference solver; any iterative path is interior-window only. |
 | *(new)* Spectrum module                    | —                                                                              | `src/iontrap_dynamics/spectrum.py` with `solve_spectrum`, `SpectrumResult`.                 |
 | *(new)* Spectrum analyses                  | —                                                                              | `src/iontrap_dynamics/spectrum_observables.py` for IPR, `d_eff`, ETH diagonals, phonon-number diagonals, and related helpers. |
+| *(new)* Clos 2016 reproduction surface     | —                                                                              | `src/iontrap_dynamics/clos2016.py` carries the pieces that don't fit the textbook builder surface: the **non-RWA** full-displacement spin–boson Hamiltonian (`clos2016_spin_boson_hamiltonian`, parallel to AAB's RWA-projected `carrier_hamiltonian_full_ld`), the matching thermal initial state (`clos2016_initial_state`), the legacy `IPR_av` mixed-state quantity (`clos2016_averaged_effective_dimension`), and the pinned Raman wavelength constant (`CLOS2016_LEGACY_WAVELENGTH_M`). Plus a theory-surface loader (`load_clos2016_theory_dimension_surface`) added to `clos2016_references.py`. |
 
 **CONVENTION_VERSION bump?** Adding a new public builder, a
 new `solve_spectrum` entry, or a sibling spectrum-analysis module
@@ -197,14 +198,38 @@ the request hash plus the recorded energy-window scalars.
 - Multiple driver scripts (`ipr_*.m`, `sb_evolution.m`, `spectrum.m`)
   that exercise `ergodic` at different sweep parameterisations.
 
-**Inputs we *don't* have:**
+**Inputs that aren't standalone files but *are* present inline.**
+The original draft of this workplan claimed `cchain.m`, `Operators.m`,
+and `eta_calculator.m` were absent based on a `find` of top-level
+filenames. That finding is incorrect: every `.m` driver in the bundle
+(both `ergodic*.m` at the top level and the `_ipr_av*` family under
+`GC collection/matlabscripts/`) carries its own private inline copies
+of all three helpers as sub-functions — see e.g. `ergodic.m:155`
+(`function eta = eta_calculator(m,lam,wx)`) and `ergodic_ipr_av.m:240`
+(same helper, identical body) plus `ergodic_ipr_av.m:252`
+(`function [Xmin,ener,center_wf,V] = cchain(n,center)`). We still
+re-derive them in Python rather than transliterating MATLAB, but the
+provenance check is cleaner: the helpers we re-derive can be cross-
+checked against the bundle text, not just inferred from physics.
 
-- `cchain.m`, `Operators.m`, `eta_calculator.m` — called by
-  `ergodic.m` but **not present in the legacy bundle**. Verified
-  via `find "legacy/clos 2016 prl/" -name "cchain*" -o -name
-  "eta_calc*" -o -name "Operators*"` (zero matches).
+**Wavelength caveat — the `_ipr_av` family uses a different value.**
+The two `ergodic*` driver families do *not* use the same Lamb–Dicke
+calibration:
 
-The missing helpers are each standard physics; we re-derive them:
+- `ergodic.m`, `ergodic_2015_03_15.m`, `sb_evolution*.m`, … →
+  `eta_calculator(25, 200, axial)` (200 nm single-photon reference).
+- `ergodic_ipr_av.m`, `ergodic_ipr_av_eta.m`, `ergodic_ipr_av_new*.m` →
+  `eta_calculator(25, 279.63/sqrt(2), axial)` (≈ 197.73 nm Raman
+  two-photon effective wavelength).
+
+The `theo_dim_N_*.dat` regression anchor is downstream of the
+`_ipr_av*` family — `IPR_av` is computed only there. Reproduction
+code therefore **must** use the Raman two-photon wavelength, not
+200 nm. `src/iontrap_dynamics/clos2016.py` pins
+`CLOS2016_LEGACY_WAVELENGTH_M = 279.63e-9 / sqrt(2)` for this reason.
+
+The re-derivations below match the standard physics, not the
+inline helpers verbatim:
 
 - **`cchain`** → already exists as `modes.axial_modes`.
   **Verification step needed:** use explicit N = 2 and N = 3 axial
@@ -221,9 +246,13 @@ The missing helpers are each standard physics; we re-derive them:
   operators, already idiomatic in our codebase.
 - **`eta_calculator`** → Lamb–Dicke parameter
   $\eta = k x_0 = (2\pi/\lambda)\sqrt{\hbar/(2 m \omega)}$,
-  already implemented in `species.mg25_plus`. The `(25, 200, axial)`
-  Porras call signature parses as (mass / u, wavelength / nm,
-  axial / MHz) — verify by numeric round-trip.
+  already implemented in `species.mg25_plus`. The Porras call
+  signature parses as (mass / u, wavelength / nm, axial / MHz);
+  the `_ipr_av*` family uses `(25, 279.63/sqrt(2), axial)` per the
+  wavelength caveat above. `species.mg25_plus.lamb_dicke` takes a
+  generic wavelength argument, so the regression path can pin the
+  Raman value via `CLOS2016_LEGACY_WAVELENGTH_M` rather than baking
+  the 200 nm single-photon reference into the helper.
 
 **Dispatch shape.** See §5.
 
@@ -326,6 +355,22 @@ track.
    Hamiltonians to stay below `5 η²`; at $\eta = 0.3$, document the
    visible divergence rather than asserting agreement. Cost: ~1
    dispatch.
+
+   **Important scope clarification (added during AAE).** The shipped
+   `carrier_hamiltonian_full_ld` is the **carrier-RWA** all-orders
+   builder: each mode contributes the diagonal Δn = 0 projection
+   $\langle n|\hat M_0|n\rangle = e^{-\eta^2/2} L_n(\eta^2)$ of the
+   displacement, i.e. the standard Debye–Waller / Laguerre dressing.
+   That is the right object for textbook carrier dynamics under RWA.
+   It is **not** the Porras spin–boson Hamiltonian: `ergodic_ipr_av.m`
+   keeps the bare displacement $\sigma_+\,\exp(\hat P)$ (no Δn = 0
+   projection), so off-diagonal Fock couplings — the very terms whose
+   non-secular character drives ergodicity — survive. Reproducing the
+   `theo_dim_N_*.dat` numbers therefore requires a separate non-RWA
+   spin–boson assembler (shipped in AAE; see §3 architecture table
+   for `src/iontrap_dynamics/clos2016.py`). AAB stays in scope as a
+   library capability, but it is not the path the Porras regression
+   takes.
 3. **Dispatch AAC — spectrum module skeleton.**
    `src/iontrap_dynamics/spectrum.py` with `solve_spectrum(H, …)`
    returning `SpectrumResult(eigenvalues, eigenvectors, metadata)`.
@@ -341,13 +386,35 @@ track.
    has IPR = 1; a uniform superposition over $d$ eigenstates has
    IPR = $1/d$); thermal-state phonon diagonals against ergodic.m
    `nphdiag_cell` for a small N = 1 case. Cost: ~1 dispatch.
+
+   **Naming note (added during AAE).** AAD ships the *textbook*
+   `effective_dimension(spectrum, ρ) = 1 / Σ_α ⟨E_α|ρ|E_α⟩²`. The
+   legacy MATLAB labels that quantity `IPR` (a misnomer) and ships a
+   *separate* `IPR_av` quantity defined in `ergodic_ipr_av.m:121-132`
+   as $\sum_j \lambda_j / \sum_\alpha |\langle E_\alpha|\psi_j\rangle|^4$
+   — the mixed-state-weighted average of pure-state effective
+   dimensions over the eigendecomposition $\rho_0 = \sum_j \lambda_j
+   |\psi_j\rangle\langle\psi_j|$. The two coincide on pure states but
+   diverge on mixed states. The Clos 2016 `theo_dim_N_*.dat` tables
+   store `IPR_av`, *not* `effective_dimension`. AAD's helpers stay
+   textbook; the legacy quantity lands in `clos2016.py` (AAE).
 5. **Dispatch AAE — Porras N = 1 regression test.** Load
    `legacy/clos 2016 prl/DP num res_fig_1_2015_07_30/theo_dim_N_1.dat`
-   as a regression reference; reproduce the d_eff values using
-   Dispatches AAA + AAB + AAC + AAD; tolerance target 1 % (actual tolerance
-   set by what the pipeline produces — see §6 Risk 3). Test lives
-   at `tests/regression/reproduction/test_clos_2016_N1.py`. Cost:
-   ~0.5 dispatch (thin integration wrapper + the test).
+   as a regression reference; reproduce the `IPR_av` values using
+   Dispatches AAA + AAC + AAD plus the new non-RWA assembler in
+   `clos2016.py` (see AAB scope clarification). Workplan tolerance
+   target was 1 %; achieved tolerance is `rtol = 0.10` against the
+   3-significant-figure published table (max relative deviation
+   ≈ 8.8 % at the sharp mid-resonance peaks at det ≈ 1.0, 2.0
+   legacy units). The §6 Risk 3 guidance — "document whatever
+   tolerance the pipeline actually achieves rather than forcing 1 %"
+   — applies. Test lives at
+   `tests/regression/reproduction/test_clos_2016_N1.py`. Cost: ~1
+   dispatch (the AAE wave is larger than the original 0.5-dispatch
+   estimate because the parallel non-RWA Hamiltonian, the `IPR_av`
+   helper, the thermal initial-state builder, and the
+   `theo_dim_N_*.dat` surface loader all land here, plus the
+   wavelength provenance work).
 6. **Dispatch AAF — Porras N = 2, N = 3 regression tests.** Same
    as AAE, extended. N = 4 and N = 5 deferred pending §4.3 results
    — they may exceed dense envelope. Cost: ~1 dispatch.
@@ -385,7 +452,7 @@ carrier (§7 Q2).
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| 1. Porras helpers (`cchain`, `Operators`, `eta_calculator`) missing from legacy bundle | Certain (verified) | Medium | Re-derive from physics; cross-check numerically against a bundled `.mat` workspace at small N. If reproducibility fails, escalate: request the source files from the original author or scope the work to what can be validated from the `.dat` tables alone. |
+| 1. Porras helpers (`cchain`, `Operators`, `eta_calculator`) not standalone in legacy bundle | Certain (verified) | Low (re-graded) | The helpers are not standalone files but **are** present inline as sub-functions inside every `.m` driver (verified during AAE; see §4.1). Re-derive from physics anyway, but cross-check against the inline definitions rather than treating the helpers as missing. The wavelength provenance trap (200 nm vs `279.63/sqrt(2)` Raman effective; see §4.1) was the real instance of this risk and is now closed. |
 | 2. Convention drift between our `axial_modes` and `cchain` | Medium | Medium | Make this a named pre-step (Dispatch `AAA`): encode explicit N = 2 / N = 3 analytic reference values before the full-LD builder lands. Mismatches surface immediately, not later. |
 | 3. N ≥ 3 d_eff reproduction fails tolerance | Medium | Medium | Infer the converged `n_c` values from the `*ions_ipr_vs_nc.txt` tables before declaring the reproduction target. Only then document whatever tolerance the pipeline actually achieves rather than forcing 1 %. |
 | 4. Dense diag at N = 4, $n_c \geq 6$ exceeds RAM on reference hardware | High | Medium | Expected; that's what §4.3 exists to measure. Do **not** assume an iterative method wins just because dense OOMs: the full-LD matrix is dense, so any interior-window path must earn its keep in benchmark data. |
