@@ -24,6 +24,7 @@ from iontrap_dynamics.exceptions import ConventionError, IonTrapError
 from iontrap_dynamics.hamiltonians import (
     blue_sideband_hamiltonian,
     carrier_hamiltonian,
+    carrier_hamiltonian_full_ld,
     detuned_blue_sideband_hamiltonian,
     detuned_carrier_hamiltonian,
     detuned_ms_gate_hamiltonian,
@@ -306,6 +307,86 @@ def _expected_eta(h: HilbertSpace) -> float:
         ion_mass=species.mass_kg,
         mode_frequency=mode.frequency_rad_s,
     )
+
+
+def _carrier_drive_for_eta(
+    h: HilbertSpace,
+    eta_target: float,
+    *,
+    phase_rad: float = 0.0,
+    rabi: float = 2 * np.pi * 0.1e6,
+) -> DriveConfig:
+    """Scale the +z drive so the single-mode fixture realises ``eta_target``."""
+    eta_ref = _expected_eta(h)
+    return DriveConfig(
+        k_vector_m_inv=[0.0, 0.0, _K_MAGNITUDE * (eta_target / eta_ref)],
+        carrier_rabi_frequency_rad_s=rabi,
+        phase_rad=phase_rad,
+    )
+
+
+# ============================================================================
+# Carrier full Lamb-Dicke (carrier RWA, all-orders Debye-Waller dressing)
+# ============================================================================
+
+
+class TestCarrierFullLambDickeStructure:
+    def test_returns_qobj_with_matching_dims(self) -> None:
+        h = _single_ion_hilbert(fock=6)
+        H = carrier_hamiltonian_full_ld(h, _carrier_drive_for_eta(h, 0.1), ion_index=0)
+        assert isinstance(H, qutip.Qobj)
+        assert H.dims == h.qutip_dims()
+
+    def test_hermitian(self) -> None:
+        h = _single_ion_hilbert(fock=6)
+        for phi in (0.0, np.pi / 3, np.pi / 2, -np.pi / 4):
+            H = carrier_hamiltonian_full_ld(
+                h,
+                _carrier_drive_for_eta(h, 0.2, phase_rad=phi),
+                ion_index=0,
+            )
+            assert (H - H.dag()).norm() < 1e-12
+
+    def test_detuned_drive_rejected(self) -> None:
+        h = _single_ion_hilbert(fock=6)
+        drive = DriveConfig(
+            k_vector_m_inv=[0.0, 0.0, _K_MAGNITUDE],
+            carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,
+            detuning_rad_s=1.0,
+        )
+        with pytest.raises(ConventionError, match="on-resonance"):
+            carrier_hamiltonian_full_ld(h, drive, ion_index=0)
+
+
+class TestCarrierFullLambDickeConsistency:
+    @staticmethod
+    def _relative_frobenius_difference(a: qutip.Qobj, b: qutip.Qobj) -> float:
+        numerator = np.linalg.norm((a - b).full(), ord="fro")
+        denominator = np.linalg.norm(b.full(), ord="fro")
+        return float(numerator / denominator)
+
+    @pytest.mark.parametrize("eta_target", [0.01, 0.05, 0.1])
+    def test_small_eta_matches_leading_order_at_workplan_bound(self, eta_target: float) -> None:
+        # The workplan bound is intended as a small-η gate on the active
+        # carrier manifold, not on arbitrarily high dormant Fock levels.
+        # A moderate cutoff keeps the Frobenius aperture focused on that
+        # regime while still exercising the all-orders dressing.
+        h = _single_ion_hilbert(fock=8)
+        drive = _carrier_drive_for_eta(h, eta_target)
+        H_leading = carrier_hamiltonian(h, drive, ion_index=0)
+        H_full = carrier_hamiltonian_full_ld(h, drive, ion_index=0)
+
+        rel_diff = self._relative_frobenius_difference(H_full, H_leading)
+        assert rel_diff < 5.0 * eta_target**2
+
+    def test_eta_point_three_visibly_diverges_from_leading_order(self) -> None:
+        h = _single_ion_hilbert(fock=12)
+        drive = _carrier_drive_for_eta(h, 0.3)
+        H_leading = carrier_hamiltonian(h, drive, ion_index=0)
+        H_full = carrier_hamiltonian_full_ld(h, drive, ion_index=0)
+
+        rel_diff = self._relative_frobenius_difference(H_full, H_leading)
+        assert rel_diff > 5.0 * 0.1**2
 
 
 # ----------------------------------------------------------------------------

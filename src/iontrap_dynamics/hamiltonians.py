@@ -185,6 +185,51 @@ def carrier_hamiltonian(
     return (omega / 2.0) * (math.cos(phi) * sigma_x - math.sin(phi) * sigma_y)
 
 
+def carrier_hamiltonian_full_ld(
+    hilbert: HilbertSpace,
+    drive: DriveConfig,
+    *,
+    ion_index: int,
+) -> qutip.Qobj:
+    r"""Return the on-resonance carrier Hamiltonian with all-orders LD dressing.
+
+    This is the carrier analogue of the sideband builders'
+    ``full_lamb_dicke=True`` path: instead of the leading-order identity
+    on the motional subspace, each mode contributes the ``Δn = 0``
+    projection of ``e^{iη(a+a†)}``, i.e. the all-orders carrier
+    Debye-Waller / Laguerre dressing under the carrier RWA.
+
+    For a single mode,
+
+    .. math::
+        H / \hbar = \frac{\Omega}{2}
+        \left[ \sigma_+ \hat{M}_0 \, e^{i\phi}
+             + \sigma_- \hat{M}_0^\dagger \, e^{-i\phi} \right],
+
+    where ``M̂_0 = P_{Δn=0}(e^{iη(a+a†)})`` with diagonal matrix elements
+
+    .. math::
+        \langle n | \hat{M}_0 | n \rangle = e^{-\eta^2/2} L_n(\eta^2).
+
+    For multiple modes, the motional dressing factorises mode-by-mode,
+    since the per-mode displacement generators commute.
+
+    As ``η -> 0``, ``M̂_0 = I + O(η^2)``, so this reduces smoothly to
+    :func:`carrier_hamiltonian`.
+
+    Parameters, returns, and raises match :func:`carrier_hamiltonian`.
+    """
+    base_h = carrier_hamiltonian(hilbert, drive, ion_index=ion_index)
+
+    subsystems: list[qutip.Qobj] = [qutip.qeye(hilbert.spin_dim) for _ in range(hilbert.n_ions)]
+    for mode in hilbert.system.modes:
+        eta = _sideband_lamb_dicke(hilbert, drive, mode.label, ion_index)
+        subsystems.append(_full_ld_carrier_single_mode(hilbert.mode_dim(mode.label), eta))
+
+    motion_dressing = qutip.tensor(*subsystems)
+    return base_h * motion_dressing
+
+
 # ----------------------------------------------------------------------------
 # Detuned carrier (time-dependent, list-format)
 # ----------------------------------------------------------------------------
@@ -370,6 +415,22 @@ def detuned_carrier_hamiltonian(
 # ----------------------------------------------------------------------------
 # Sideband builders (Lamb–Dicke leading-order, RWA)
 # ----------------------------------------------------------------------------
+
+
+def _full_ld_carrier_single_mode(n_fock: int, eta: float) -> qutip.Qobj:
+    """Return the single-mode ``Δn = 0`` projection of ``e^{iη(a+a†)}``.
+
+    This is the carrier-side counterpart of
+    :func:`_full_ld_lowering_single_mode` and
+    :func:`_full_ld_raising_single_mode`: the diagonal operator with
+    leading-order expansion ``I + O(η^2)`` that dresses the carrier
+    branch by the exact Debye-Waller / Laguerre factor at each Fock
+    level.
+    """
+    a_mode = qutip.destroy(n_fock)
+    c_mode = (1j * eta * (a_mode + a_mode.dag())).expm()
+    diagonal = np.real_if_close(np.diag(c_mode.full()), tol=1000)
+    return qutip.Qobj(np.diag(diagonal), dims=[[n_fock], [n_fock]])
 
 
 def _full_ld_lowering_single_mode(n_fock: int, eta: float) -> qutip.Qobj:
@@ -1521,6 +1582,7 @@ def modulated_carrier_hamiltonian(
 __all__ = [
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
+    "carrier_hamiltonian_full_ld",
     "detuned_blue_sideband_hamiltonian",
     "detuned_carrier_hamiltonian",
     "detuned_ms_gate_hamiltonian",
