@@ -113,8 +113,8 @@ if count != 1:
     sys.stderr.write("ERROR: could not locate checksum table in SOURCE.md\n")
     sys.exit(1)
 
-# This script only fills in hashes. The removal of the 'Status: PROVISIONAL'
-# banner is a manual governance action performed when the upstream tag is cut.
+# This script only rewrites the checksum table. Other governance fields
+# (Source tag, Source commit, Status banner) are manual edits.
 with open(path, "w") as fh:
     fh.write(new_content)
 print(f"Updated {path}")
@@ -127,5 +127,5 @@ echo "Next steps:"
 echo "  1. Review the updated $SOURCE_MD"
 echo "  2. Verify local copies in assets/ match these hashes:"
 echo "     for f in ${FILES[*]}; do $SHA_CMD \"assets/\$f\"; done"
-echo "  3. When satisfied, remove the 'Status: PROVISIONAL' banner manually"
-echo "     and commit: 'assets: finalise SOURCE.md — cd-rules provenance confirmed'"
+echo "  3. When satisfied, commit the Source commit / tag field updates"
+echo "     alongside the regenerated checksum table."

@@ -1,10 +1,10 @@
 # Asset source record
 
-**Status: PROVISIONAL — awaiting upstream tagged release (Decision D2).**
+**Status: pinned to upstream tagged release `cd-v1.7.1` (Decision D2 closed 2026-04-23).**
 
-At Phase 0 commencement (2026-04-17), `threehouse-plus-ec/cd-rules` had no tagged releases. The repository exists and contains the expected asset files on `main`, but `cd-v1.7.0` has not yet been cut. Per in-flight decision D2, this `SOURCE.md` records provisional hashes against the current `main` HEAD so that physics regression work is not blocked on upstream design freeze.
+Upstream `threehouse-plus-ec/cd-rules` cut `cd-v1.7.0` (at commit `8671c933`) and `cd-v1.7.1` (at commit `ee01c803`) on 2026-04-23, executing the "Tag repo" step of the upstream §15.4 deprecation protocol. Both tags are annotated and retroactive to the Version History entries in `blueprint-threehouse-CD.md` §16. This record now pins to `cd-v1.7.1` — the six asset files referenced below are byte-identical between 1.7.0 and 1.7.1, so the checksum table carries over unchanged from the provisional pin; only `Source commit`, `Source tag`, and the per-file raw URLs change.
 
-**Required action before any v0.1-alpha release of `iontrap-dynamics`:** re-run the hash computation against the first tagged upstream release, update the `Source tag` field below, remove this PROVISIONAL banner, and commit. At that point the CI hash-drift check activates as a permanent gate.
+The CI hash-drift check (`.github/workflows/ci.yml`, job `cd-local-integrity`) is now a permanent gate.
 
 ---
 
@@ -13,10 +13,10 @@ At Phase 0 commencement (2026-04-17), `threehouse-plus-ec/cd-rules` had no tagge
 | Field | Value |
 |---|---|
 | Source repository | https://github.com/threehouse-plus-ec/cd-rules |
-| Source tag        | `PROVISIONAL — no tag yet` |
-| Source commit     | `8671c9333f42d5c6396652f98a30b626bd308886` |
+| Source tag        | `cd-v1.7.1` |
+| Source commit     | `ee01c80352dd8446f189c3159a3d9e347463902c` |
 | Source branch     | `main` |
-| Copied on         | 2026-04-17 |
+| Copied on         | 2026-04-17 (re-anchored to `cd-v1.7.1` on 2026-04-23) |
 | Recorded by       | U. Warring (AG Schätz) |
 | Propagation model | Model B (distributed copy + SHA-256 checksum) per CD 0.10 |
 
@@ -35,18 +35,18 @@ Upstream paths (all at repository root on upstream `main`, raw-URL construction)
 
 | File | Upstream raw URL |
 |---|---|
-| `emblem-16.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/8671c9333f42d5c6396652f98a30b626bd308886/emblem-16.svg` |
-| `emblem-32.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/8671c9333f42d5c6396652f98a30b626bd308886/emblem-32.svg` |
-| `emblem-64.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/8671c9333f42d5c6396652f98a30b626bd308886/emblem-64.svg` |
-| `tokens.css` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/8671c9333f42d5c6396652f98a30b626bd308886/tokens.css` |
-| `wordmark-full.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/8671c9333f42d5c6396652f98a30b626bd308886/wordmark-full.svg` |
-| `wordmark-silent.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/8671c9333f42d5c6396652f98a30b626bd308886/wordmark-silent.svg` |
+| `emblem-16.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/ee01c80352dd8446f189c3159a3d9e347463902c/emblem-16.svg` |
+| `emblem-32.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/ee01c80352dd8446f189c3159a3d9e347463902c/emblem-32.svg` |
+| `emblem-64.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/ee01c80352dd8446f189c3159a3d9e347463902c/emblem-64.svg` |
+| `tokens.css` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/ee01c80352dd8446f189c3159a3d9e347463902c/tokens.css` |
+| `wordmark-full.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/ee01c80352dd8446f189c3159a3d9e347463902c/wordmark-full.svg` |
+| `wordmark-silent.svg` | `https://raw.githubusercontent.com/threehouse-plus-ec/cd-rules/ee01c80352dd8446f189c3159a3d9e347463902c/wordmark-silent.svg` |
 
 ## Verification
 
 Two workflows, depending on what you have locally.
 
-**From a `cd-rules` checkout at commit `8671c933`:**
+**From a `cd-rules` checkout at tag `cd-v1.7.1` (commit `ee01c803`):**
 
 ```sh
 cd /path/to/cd-rules-checkout
@@ -63,7 +63,7 @@ for f in emblem-16.svg emblem-32.svg emblem-64.svg tokens.css wordmark-full.svg 
 done
 ```
 
-**Automated re-population after upstream tag is cut:** update the `Source commit` field to the new tagged commit, then run `tools/hash_assets.sh`. The script fetches each file from the pinned commit, computes SHA-256 and byte-size, and rewrites this checksum table in place. Remove the PROVISIONAL banner manually once the run is reviewed.
+**Automated re-population when advancing the pin:** update the `Source commit` and `Source tag` fields to the new tagged commit, then run `tools/hash_assets.sh`. The script fetches each file from the pinned commit, computes SHA-256 and byte-size, and rewrites this checksum table in place.
 
 ## Licence
 
@@ -75,7 +75,7 @@ A CI job (`.github/workflows/ci.yml`, `cd-local-integrity`) recomputes SHA-256 a
 
 SHA-256 is the authoritative integrity check: any truncation or substitution changes the hash and is detected. Byte-size is a secondary, diagnostic signal — cheap to compute, human-readable in a diff, and useful for triage when a mismatch fires (same-size mismatch suggests encoding or fine-grained edit; different-size mismatch suggests bulk change or truncation). It is sanity, not security.
 
-**While PROVISIONAL:** the drift check runs against commit `8671c933`, not against a tag. When the upstream repository publishes `cd-v1.7.0` (or later), this record will be updated and the check re-anchored.
+**Drift-check anchor:** the check runs against tag `cd-v1.7.1` (commit `ee01c803`). Advancing the pin to a future upstream tag is a single-point edit to the `Source commit` and `Source tag` fields above, followed by `tools/hash_assets.sh` to re-populate the checksum table.
 
 ---
 

@@ -8,7 +8,21 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
-(empty — next entry reopens after the `v0.3.0` tag cut.)
+### Changed
+
+- **D2 (release-gate) closed 2026-04-23.** Upstream
+  `threehouse-plus-ec/cd-rules` cut annotated tags `cd-v1.7.0` (at
+  commit `8671c933`) and `cd-v1.7.1` (at commit `ee01c803`),
+  executing the "Tag repo" step of the upstream §15.4 deprecation
+  protocol retroactively against the Version History entries in
+  `blueprint-threehouse-CD.md` §16. `assets/SOURCE.md` re-pinned
+  from the provisional commit pin to `cd-v1.7.1`; PROVISIONAL
+  banner removed; the CI `cd-local-integrity` hash-drift check is
+  now a permanent gate. The six pinned asset files are
+  byte-identical between 1.7.0 and 1.7.1 — the checksum table
+  carries over unchanged; only the `Source tag`, `Source commit`,
+  and per-file raw URLs change. `WORKPLAN_v0.3.md` endorsement
+  marker updated to reflect the closed state.
 
 ## [0.3.0] — 2026-04-22
 
