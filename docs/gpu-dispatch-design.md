@@ -49,18 +49,28 @@ GPU question at the same moment.
    1.9 hr for a 16-detuning sweep) and N = 5 at `n_c = 5`
    (`dim = 15 552`, projected). Both sit well inside the
    measured scaling but past the point where the binding
-   constraint flips from RAM to wall-clock. This is exactly
-   where `jax.numpy.linalg.eigh` on a consumer-class GPU
-   (10–20 GB VRAM) plausibly wins on both axes — more RAM
-   available, faster arithmetic — assuming the BLAS/LAPACK
-   calls JAX dispatches to cuSOLVER scale predictably.
+   constraint flips from RAM to wall-clock. A consumer-class
+   GPU (16–24 GB VRAM) has roughly the same reach envelope
+   as the 16 GB CPU tier — dense complex128 matrix storage is
+   `dim² × 16` bytes before workspace, so `dim ≈ 15 000` is
+   the boundary at 16 GB on both sides — but cuSOLVER `eigh`
+   wall-clock at `dim ≈ 8 000` is well under a minute in
+   published benchmarks, vs 7 min on CPU. **The GPU win this
+   note pitches is wall-clock, not reach.**
 
-3. **AAG is gated on exactly this measurement.** The workplan
-   left AAG (interior-window shift-invert around `meanE`)
-   deferred precisely because dense on CPU still covers the
-   publication-validated reproduction. A GPU dense path is the
-   other branch of that decision tree: if `eigh` on CUDA stays
-   cheap past `dim = 8 192`, AAG never earns its keep.
+3. **AAG is one of three ways to reach past dim ≈ 15 000.**
+   The workplan left AAG (interior-window shift-invert around
+   `meanE`) deferred because dense on CPU still covers the
+   publication-validated reproduction. A GPU dense path
+   compresses CPU wall-clock at the same envelope but does
+   not expand it — a fully-converged N = 5 at `n_c = 6`
+   (`dim = 33 614`) needs ~18 GB for the dense matrix alone
+   plus workspace, past the 16 / 24 / 40 GB consumer- and
+   lab-class tiers. GPU data therefore refines AAG's gate
+   status rather than displacing it: AAG's value shifts from
+   "cover the N = 5 `n_c = 5` boundary" to "cover
+   fully-converged N = 5 past `dim ≈ 35 000` where no
+   single GPU card reaches."
 
 The question the note scopes: can the library usefully ship a GPU
 dispatch today, given that CI is CPU-only, and if so, where does it
@@ -72,12 +82,18 @@ start?
 
 ### In scope — the body of this note
 
-- A GPU-capable `solve_spectrum` path: new backend name
-  (`"spectrum-jax-cuda"` proposed), gated on a GPU-capable
-  `jaxlib` build at runtime, otherwise no behaviour change.
-- A GPU-capable time-evolution path via existing
-  `backend="jax"` plumbing, expanded to detect and use an
-  available GPU device rather than CPU.
+- A GPU-capable `solve_spectrum` path. The proposed new
+  backend identity is **device-neutral**: one
+  `backend_name = "spectrum-jax"` covering both CPU-JAX and
+  GPU-JAX dispatch, with device recorded in
+  `metadata.provenance_tags`. Gated on a JAX install at
+  runtime; otherwise no behaviour change.
+- A GPU-capable time-evolution path through the **existing**
+  `backend_name = "jax-dynamiqs"` contract. The shipped
+  identity is preserved; device selection becomes a new
+  solver kwarg (`device="cuda"|"cpu"|None`), with the
+  chosen device recorded in `provenance_tags`. No new
+  `backend_name` is minted for GPU time-evolution.
 - CI / testing model for GPU-only code paths — how we
   assert correctness without GitHub-hosted GPU runners.
 - Reference-hardware policy — what counts as a baseline
@@ -173,13 +189,14 @@ can regenerate and diff.
 ### Axis C — Spectrum vs. time-evolution priority
 
 - **C.1: Spectrum-first.** Open
-  `solve_spectrum(..., backend="jax-cuda")` per the AAC design
-  note's explicit forward hook. Scope is bounded by the existing
-  `SpectrumResult` schema — no API surface changes, just a
-  second method="dense" implementation under a new
-  `backend_name`. One new tool
-  (`tools/run_benchmark_spectrum_envelope_cuda.py`), one new
-  section in `docs/benchmarks.md`. Addresses AAH's N = 4 /
+  `solve_spectrum(..., backend_name="spectrum-jax", device="cuda")`.
+  Scope is bounded by the existing `SpectrumResult` schema —
+  no schema changes, just a second method="dense" implementation
+  under a new `backend_name` ("spectrum-jax") and one new optional
+  `device` kwarg. Extend the existing
+  `tools/run_benchmark_spectrum_envelope_jax.py` with a
+  `--device` flag rather than shipping a CUDA-only clone; add a
+  new section in `docs/benchmarks.md`. Addresses AAH's N = 4 /
   N = 5 wall-clock tier and gives concrete data against which
   AAG can be re-evaluated.
 - **C.2: Time-evolution-first.** Extend `backend="jax"` to
@@ -215,9 +232,10 @@ simulation." Concretely:
   / `sesolve` return contract.
 - Any new GPU builder must accept JAX-traced inputs
   transparently (the Phase 2 β.4 builders already do this).
-- `backend_name = "spectrum-jax-cuda"` does not promise
-  autograd, but a later `backend_name = "spectrum-jax-cuda-ad"`
-  can be added non-breakingly.
+- `backend_name = "spectrum-jax"` does not promise autograd; a
+  future autograd-aware path is recorded via a provenance tag
+  (e.g. `"autograd"`) on the same backend_name rather than by
+  minting a new identity.
 
 ---
 
@@ -225,51 +243,72 @@ simulation." Concretely:
 
 ### 4.1 `solve_spectrum` API
 
-No signature change. New `backend` kwarg accepted value:
+The shipped signature (`src/iontrap_dynamics/spectrum.py`)
+already accepts `backend_name: str | None`. GPU support adds
+one new accepted value, no new kwarg:
 
 ```python
-solve_spectrum(H, method="dense", backend="spectrum-jax-cuda")
+solve_spectrum(H, method="dense", backend_name="spectrum-jax")
 ```
 
-The backend dispatch reads `backend_name` through the existing
-`SpectrumResult.metadata.backend_name` field. New values live
-alongside `"spectrum-scipy"` and the deferred
-`"spectrum-scipy-shift-invert"` from the AAG gate.
+The new `backend_name = "spectrum-jax"` is **device-neutral**.
+Device selection happens through a new optional `device` kwarg
+(`"cuda" | "cpu" | None`, where `None` means "use JAX's default
+device"). The chosen device is recorded in
+`metadata.provenance_tags` alongside `cuda:<version>` /
+`jaxlib:<version>` strings when the device is a GPU. Allowed
+`backend_name` values become: `"spectrum-scipy"` (shipped),
+`"spectrum-jax"` (new, this note), and the AAG-gated
+`"spectrum-scipy-shift-invert"` (deferred).
 
 ### 4.2 `sequences.solve` / `solve_ensemble` API
 
-No signature change. The existing `backend="jax"` value already
-dispatches through JAX; the GPU extension is a device-routing
-question inside that dispatch, not a new user-facing string.
-`ResultMetadata.backend_name` is where the GPU device is
-recorded — proposed string: `"jax-cuda"` (suffixes `-cuda-ad`
-or `-cuda-autograd` reserved for the Phase 3+ autograd axis).
+The shipped trajectory contract fixes
+`backend_name = "jax-dynamiqs"` for the JAX path (see
+`tests/unit/test_backends_jax_dynamiqs.py:169`). **This note
+does not change that identity.** GPU for time-evolution is
+device routing, not a new backend:
 
-Callers get GPU transparently when the process's JAX default
-device is a GPU; otherwise CPU, same as today. A diagnostic
-warning fires on `backend="jax"` when no GPU is detected and
-the caller asked for one explicitly (detection mechanism TBD
-— cleanest is a `device="gpu"|"cpu"|None` kwarg with `None`
-meaning "JAX default").
+- Existing caller contract unchanged — `solve(..., backend="jax")`
+  on a GPU-enabled JAX install dispatches to GPU transparently,
+  exactly as it already does today. `backend_name` stays
+  `"jax-dynamiqs"`.
+- New optional kwarg `device="cuda" | "cpu" | None` accepted on
+  `solve`, `solve_ensemble`, and time-dependent builders. `None`
+  (default) means "JAX default device"; explicit `"cuda"` on a
+  machine without GPU raises a clear diagnostic. The selected
+  device is recorded in `ResultMetadata.provenance_tags`.
+- No new `backend_name` string is introduced. The three
+  positions in an earlier draft of this note (new identity /
+  device kwarg / provenance tag) collapse to one: **device is
+  provenance**, not identity, for both spectrum and
+  time-evolution.
 
 ### 4.3 Convention version
 
-Adding GPU backends does not change `CONVENTION_VERSION` — no
-behaviour change for existing `backend="qutip"` / `"jax"`
-callers, no result-schema extension. GPU-specific provenance
-(VRAM tier, CUDA version, cuSOLVER version) lives in
-`provenance_tags` on the metadata — same mechanism used for
-notebook / sweep / ci tagging today.
+Adding the `spectrum-jax` backend_name and the `device` kwarg
+does not change `CONVENTION_VERSION` — existing callers
+(`backend="qutip"` / `"jax"`, `backend_name="spectrum-scipy"`)
+see no behaviour change, no result-schema extension. GPU-specific
+provenance (device string, VRAM tier, CUDA version, cuSOLVER
+version, jaxlib version) lives in `provenance_tags` on the
+metadata — same mechanism used for notebook / sweep / ci tagging
+today.
 
 ### 4.4 Installation
 
-Two new `pyproject.toml` optional-dependency groups proposed:
+One extras group proposed, composing with the existing `[jax]`:
 
-- `gpu` — `jax[cuda12]>=0.4`, pinned to the version range the
-  scipy-vs-JAX benchmark already tests on CPU. Users install
-  via `pip install iontrap-dynamics[gpu]`.
-- `gpu-dev` — `gpu` plus the testing tier
-  (`pytest-benchmark`, optional `cupy` for cross-validation).
+- `gpu` — `jax[cuda12]>=0.4`, plus `dynamiqs` (so that
+  `iontrap-dynamics[gpu]` is a complete install for **both** the
+  spectrum and the time-evolution GPU paths). The `jax[cuda12]`
+  build replaces the CPU `jax` + `jaxlib` that come in via
+  `[jax]`; co-installing both groups is safe because pip
+  resolves to the CUDA `jaxlib` when present.
+- Users who only want GPU spectrum (no time-evolution) can
+  install `iontrap-dynamics[gpu]` and skip the extra Dynamiqs
+  import at runtime — `solve_spectrum` has no Dynamiqs
+  dependency.
 
 `jax[metal]` stays out of optional-dependencies — users can
 install it themselves if they want the experimental path.
@@ -280,25 +319,35 @@ install it themselves if they want the experimental path.
 
 ### Design α — "Spectrum-only GPU"
 
-Scope: Ship `solve_spectrum` on CUDA. One new `backend_name`.
-One new benchmark tool replaying the AAH grid on GPU. One
-reference-hardware artefact in `benchmarks/data/gpu/`. Tests
-are import-gated GPU-skips on CI. No change to time-evolution.
+Scope: Ship `solve_spectrum` on JAX with GPU dispatch. One new
+`backend_name = "spectrum-jax"` (device-neutral). One new
+`device` kwarg on `solve_spectrum`. **Extend** the existing
+`tools/run_benchmark_spectrum_envelope_jax.py` — which already
+replays the AAH grid through JAX on CPU — with a `--device`
+flag, rather than shipping a separate CUDA-only script. One reference-hardware artefact in
+`benchmarks/data/gpu/spectrum_envelope/`. Tests are
+import-gated GPU-skips on CI. No change to time-evolution.
 
 Cost: ~2 dispatches. Risk: low.
 
 Deliverable readable: "On a single NVIDIA RTX 40-series GPU
-with 16 GB VRAM, dense `eigh` reaches N = 5 at `n_c = 8`
-(`dim = 100 000`) in under 10 min wall-clock; the AAG interior-
-window path is not needed at these sizes."
+with 16 GB VRAM, dense `eigh` across the measured AAH grid
+(up to `dim = 8 192`) completes each point in
+single-digit-second wall-clock, against 7 min on 16 GB CPU at
+the same `dim`. Reach is the same as 16 GB CPU
+(`dim ≈ 15 500` at the workspace boundary); fully-converged
+N = 5 at `n_c ≥ 6` (`dim ≥ 33 614`) remains outside the
+dense-on-a-single-GPU envelope and stays on the AAG path."
 
 ### Design β — "α plus GPU time-evolution"
 
-Design α, plus `backend="jax"` extended to auto-detect GPU
-and dispatch Dynamiqs solvers to CUDA. New
-`ResultMetadata.backend_name = "jax-cuda"` variant. New
-section in `docs/benchmarks.md` comparing `"qutip"`,
-`"jax"` (CPU), `"jax-cuda"` across the β.4.5 grid.
+Design α, plus `device="cuda" | "cpu" | None` kwarg added to
+`solve` / `solve_ensemble` / time-dependent builders. **No
+new `backend_name`** — the shipped `"jax-dynamiqs"` identity
+is preserved; device lives in `provenance_tags`. New section
+in `docs/benchmarks.md` comparing `"qutip"`, `"jax-dynamiqs"`
+(CPU), `"jax-dynamiqs"` (GPU via `device="cuda"`) across the
+β.4.5 grid.
 
 Cost: ~4–5 dispatches. Risk: medium (Dynamiqs-on-CUDA is less
 exercised in the literature than cuSOLVER `eigh`; launch-
@@ -321,9 +370,10 @@ target?).
 
 | Criterion                        | α (spectrum only)       | β (α + time-evolution)   | γ (β + autograd seam)         |
 |----------------------------------|-------------------------|--------------------------|-------------------------------|
-| New public `backend_name`        | 1                       | 2                        | 2 (plus one reserved)         |
+| New public `backend_name`        | 1 (`spectrum-jax`)      | 1 (no new evolution name)| 1 (autograd uses provenance)  |
+| New public kwargs                | `device=` on `solve_spectrum` | +`device=` on `solve` / ensemble / builders | +autograd-scoped provenance tags |
 | Dispatch count                   | ~2                      | ~4–5                     | ~5–6                          |
-| AAH user case addressed          | Yes (direct)            | Yes                      | Yes                           |
+| AAH user case addressed          | Yes (wall-clock only)   | Yes                      | Yes                           |
 | β.4.5 user case addressed        | No                      | Yes                      | Yes                           |
 | Phase 3 autograd enabled         | Door left open          | Door left open           | Door cracked open             |
 | CI cost                          | Skips only              | Skips only               | Skips only                    |
@@ -360,21 +410,24 @@ target?).
 Five dispatch-shape units, in order. Only the first three ship
 capability; BBI and BBJ close the documentation loop.
 
-1. **Dispatch BBA — GPU spectrum backend.** Wire
-   `solve_spectrum(..., backend="spectrum-jax-cuda")`. Reuse
-   the existing `SpectrumResult` schema; add the new
-   `backend_name` string to the allowed set. Tests are
-   import-gated: skip cleanly when no GPU is detected; assert
-   numeric equivalence against `backend="spectrum-scipy"` on
-   a small problem (`N = 2, n_c = 4`) when a GPU is present.
-   Cost: ~1 dispatch.
-2. **Dispatch BBB — GPU envelope benchmark tool.**
-   `tools/run_benchmark_spectrum_envelope_cuda.py` — same
-   grid as the CPU AAH tool, runs through the new backend.
-   Subprocess-isolated peak VRAM / wall-clock capture.
-   Produces `benchmarks/data/gpu/spectrum_envelope/
-   report.json` and a plot overlaying CUDA against the
-   CPU baseline. Cost: ~1 dispatch.
+1. **Dispatch BBA — JAX spectrum backend (device-neutral).**
+   Wire `solve_spectrum(..., backend_name="spectrum-jax",
+   device=...)`. Reuse the existing `SpectrumResult` schema;
+   add `"spectrum-jax"` to the allowed `backend_name` set; add
+   the `device` kwarg with default `None`. Tests: CPU-JAX path
+   runs on CI and asserts numeric equivalence against
+   `backend_name="spectrum-scipy"` at a small problem
+   (`N = 2, n_c = 4`); GPU-device tests are import-gated and
+   skipped on CI. Cost: ~1 dispatch.
+2. **Dispatch BBB — GPU envelope benchmark (tool extension).**
+   Extend `tools/run_benchmark_spectrum_envelope_jax.py` with a
+   `--device` flag that routes the existing per-point logic
+   through JAX's device API. Subprocess-isolated wall-clock
+   and VRAM capture (VRAM via `jax.default_backend().memory()`
+   or `nvidia-smi` scrape depending on jaxlib version).
+   Produces `benchmarks/data/gpu/spectrum_envelope/report.json`
+   and a plot overlaying GPU wall-clock against the CPU
+   baseline. Cost: ~1 dispatch.
 3. **Dispatch BBC — AAG re-evaluation.** With BBB's numbers
    in hand, re-open the AAG gate-status decision in
    `docs/benchmarks.md`. If CUDA dense covers N = 5 at
@@ -408,7 +461,7 @@ the cross-backend comparison at scale).
 | **CUDA / jaxlib upstream churn** (install breaks on minor-version bumps) | High | Low | Pin `jax[cuda12]` to a tested range in `pyproject.toml [project.optional-dependencies].gpu`; bump explicitly when the benchmark re-runs cleanly. |
 | **No lab GPU available** when the dispatch is scheduled | Medium | High (blocks the work) | Staging §7 assumes a named reference machine; resolve Q1 before BBA starts. |
 | **Small-dim GPU launch latency** overwhelms spectrum wins | Low | Low | The AAH envelope already shows dense CPU dominating small-dim costs; GPU win is pitched at `dim ≥ 4 000`. Small-dim comparison will show CPU winning and is recorded honestly. |
-| **Autograd promises creep in** (users treat "JAX-backed" as "differentiable") | Medium | Medium | `backend_name = "spectrum-jax-cuda"` does not imply autograd; the note explicitly reserves `*-ad` suffixes; documentation distinguishes "runs on GPU" from "differentiable through the solver". |
+| **Autograd promises creep in** (users treat "JAX-backed" as "differentiable") | Medium | Medium | `backend_name = "spectrum-jax"` does not imply autograd; autograd status (when/if shipped) is recorded as a provenance tag, not by minting a new backend identity. Documentation distinguishes "runs on GPU" from "differentiable through the solver". |
 | **Metal path silently diverges from CUDA** | Low | Low | §3 A.3 says Metal is advisory-only; no correctness claim; user bug reports get routed to "reproduce on CUDA first". |
 | **CI blindness** grows as GPU surface expands | Medium | Medium | Dispatch-level CHANGELOG entries must explicitly note "GPU tests are import-skipped on CI; regenerate locally via X." |
 
@@ -420,10 +473,13 @@ the cross-backend comparison at scale).
   cadence is a separate decision from capability design; if
   BBA ships into `[Unreleased]` first and `v0.5.0` bundles
   later-dispatch work with it, that's fine.
-- Renaming `backend="jax"` to `backend="jax-cpu"` for symmetry
-  with a new `backend="jax-cuda"`. Phase 2's contract leaves
-  `"jax"` meaning "whatever JAX's default device is"; that
-  contract still reads correctly on a GPU machine.
+- Renaming `backend="jax"` or minting a new GPU-specific
+  identity such as `backend="jax-cuda"` /
+  `backend_name="jax-dynamiqs-cuda"`. The shipped contract
+  (`backend="jax"` → `backend_name="jax-dynamiqs"`, regardless
+  of device) is preserved; device is provenance, not identity.
+  Callers that need to know whether a result came from a GPU
+  read `provenance_tags`, not `backend_name`.
 - Deprecating the CPU JAX path. It's the autograd-forward
   scaffolding and the one CI actually exercises.
 
@@ -452,12 +508,13 @@ Consumer-tier matches the "on a typical PC" framing that
 AAH committed to; lab A10 / L4 cards can be added as a
 second tier if and when a lab user hits the envelope.
 
-**Classification at ship-time.** The new `backend_name`
-values become Coastline as soon as BBA ships. The scaling
-observations from BBB are Sail (future optimization work
-can move them). The "AAG deferred or scheduled?" decision
-from BBC is Coastline — it closes the last open item on
-the Clos 2016 workplan's architecture surface.
+**Classification at ship-time.** The new
+`backend_name = "spectrum-jax"` and the `device` kwarg on
+`solve_spectrum` become Coastline as soon as BBA ships. The
+scaling observations from BBB are Sail (future optimization
+work can move them). The "AAG deferred or scheduled?"
+decision from BBC is Coastline — it refines the gate
+status last touched on the Clos 2016 workplan.
 
 ---
 
