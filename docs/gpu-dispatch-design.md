@@ -1,0 +1,481 @@
+# GPU dispatch — design note (draft for deliberation)
+
+> **Status: draft for deliberation, not Coastline.** This document is a
+> pre-decision exploration of the GPU / CUDA extensions already flagged
+> in `docs/phase-2-jax-backend-design.md` Axis B and
+> `docs/benchmarks.md § scipy vs JAX on CPU for dense eigh`. Nothing
+> here binds an implementation. The eventual dispatch that opens this
+> work will come with its own Coastline updates (CHANGELOG entry,
+> extension to `docs/phase-1-architecture.md`, and — if behaviour is
+> user-visible — `CONVENTIONS.md` version bump per §5.1's freeze
+> protocol).
+
+**Relates to:** `docs/phase-2-jax-backend-design.md` Axis B (GPU /
+TPU as future backend target), `docs/phase-2-jax-backend-design.md`
+Axis D (autograd as capability deliverable),
+`docs/phase-2-jax-time-dep-design.md` (time-dependent Hamiltonian
+plumbing on JAX), `docs/benchmarks.md § Exact-diagonalization
+envelope (Dispatch AAH)`, `docs/benchmarks.md § AAG gate status`,
+`docs/benchmarks.md § scipy vs JAX on CPU for dense eigh`,
+`docs/workplan-clos-2016-integration.md` §7 Q4 (JAX / Dynamiqs
+interaction, resolved 2026-04-23 for CPU only).
+
+**Classification reminder.** Once a direction is chosen, the
+resulting commitments become Coastline: the `backend_name` string
+assigned to each GPU path, the `SpectrumResult` / `TrajectoryResult`
+fields that must round-trip across backends, the tolerance thresholds
+against reference runs. Implementation tactics (which JIT strategy,
+which benchmark dashboard, which CUDA version pin) stay Sail.
+
+---
+
+## 1. Why now
+
+Three findings from the Phase 2 / Clos 2016 waves converge on the
+GPU question at the same moment.
+
+1. **CPU null results, twice.** Dispatch YY (β.4.5) measured
+   QuTiP 5 as ~2.8× faster than Dynamiqs + JAX on CPU at
+   `dim ≥ 100`. The post-AAH comparison measured
+   `jax.numpy.linalg.eigh` as ~22 % slower than
+   `scipy.linalg.eigh` asymptotically on CPU with a ~130 MB higher
+   baseline. The JAX backend's value on CPU is positioning and
+   forward-compatibility, not speed — every Phase 2 benchmark
+   that could have shown a CPU win measured the opposite.
+
+2. **A concrete user-case where GPU would matter.** The AAH
+   envelope shows dense `eigh` on a 16 GB consumer laptop
+   reaching N = 4 at `n_c = 7` (`dim = 8 192`; 7 min per eigh;
+   1.9 hr for a 16-detuning sweep) and N = 5 at `n_c = 5`
+   (`dim = 15 552`, projected). Both sit well inside the
+   measured scaling but past the point where the binding
+   constraint flips from RAM to wall-clock. This is exactly
+   where `jax.numpy.linalg.eigh` on a consumer-class GPU
+   (10–20 GB VRAM) plausibly wins on both axes — more RAM
+   available, faster arithmetic — assuming the BLAS/LAPACK
+   calls JAX dispatches to cuSOLVER scale predictably.
+
+3. **AAG is gated on exactly this measurement.** The workplan
+   left AAG (interior-window shift-invert around `meanE`)
+   deferred precisely because dense on CPU still covers the
+   publication-validated reproduction. A GPU dense path is the
+   other branch of that decision tree: if `eigh` on CUDA stays
+   cheap past `dim = 8 192`, AAG never earns its keep.
+
+The question the note scopes: can the library usefully ship a GPU
+dispatch today, given that CI is CPU-only, and if so, where does it
+start?
+
+---
+
+## 2. Scope boundaries
+
+### In scope — the body of this note
+
+- A GPU-capable `solve_spectrum` path: new backend name
+  (`"spectrum-jax-cuda"` proposed), gated on a GPU-capable
+  `jaxlib` build at runtime, otherwise no behaviour change.
+- A GPU-capable time-evolution path via existing
+  `backend="jax"` plumbing, expanded to detect and use an
+  available GPU device rather than CPU.
+- CI / testing model for GPU-only code paths — how we
+  assert correctness without GitHub-hosted GPU runners.
+- Reference-hardware policy — what counts as a baseline
+  machine, how sweep-benchmarks are stored, how we catch
+  regressions.
+- Autograd-through-the-eigensolve as an *enabler*, not a
+  deliverable — the architecture should leave it open without
+  forcing it.
+
+### Out of scope (any design)
+
+- **TPU support.** JAX dispatches to XLA:TPU transparently, but
+  the library has no TPU user. Cost/value is wrong; revisit if
+  and when a TPU user emerges.
+- **AMD / ROCm.** Same reasoning — no known user. `jax[cuda12]`
+  on NVIDIA is the only platform considered here. Apple Metal
+  (`jax[metal]`) is called out separately in §3 Axis A because
+  the AG Schätz lab has Apple Silicon machines in active use.
+- **QuTiP GPU.** QuTiP 5 has no first-class GPU backend;
+  Dynamiqs is the only practical path. This note does not
+  re-open the backend-choice question from Phase 2.
+- **Distributed / multi-GPU.** `jax.pmap` / `jax.distribute`
+  are capability-accessible but have no library use case at
+  current scales. Single-device GPU only.
+- **GPU-first defaults.** `backend="qutip"` (CPU, QuTiP 5)
+  remains the library default. Every GPU path is opt-in via
+  an explicit `backend=` string. Same contract as Phase 2.
+
+### Deliberately ambiguous — to resolve below
+
+- Whether `solve_ensemble`'s parameter-sweep dispatch benefits
+  more from GPU-per-point or from CPU parallelism via joblib
+  (the current v0.3.0 behaviour). §4 Axis C opens this.
+- Whether the first GPU dispatch targets **spectrum** (narrow,
+  AAH-extending, well-bounded by the existing `SpectrumResult`
+  schema) or **time-evolution** (wider, matches Phase 2's own
+  framing, amortises across more user flows). §5 compares.
+
+---
+
+## 3. Architecture axes
+
+Four axes matter. The §5 candidate designs sit at different
+points along them.
+
+### Axis A — Hardware target
+
+- **A.1: CUDA only.** `jax[cuda12]` on NVIDIA. Smallest cost,
+  matches every prior JAX-GPU paper in the trapped-ion / AMO
+  space.
+- **A.2: CUDA + Apple Metal.** `jax[cuda12]` plus `jax[metal]`
+  (currently experimental — limited LAPACK coverage). Adds a
+  development-machine path (lab Apple Silicon) but runtime
+  support for `eigh` on Metal is not guaranteed at `jaxlib`'s
+  current release cadence.
+- **A.3: CUDA only, Metal as advisory.** Document Metal as a
+  known-working-for-time-evolution path once JAX adds it, but
+  don't test / benchmark it until LAPACK coverage lands
+  upstream.
+
+A.3 is the sensible middle ground: users on Metal can still run
+their code (transparent JAX device dispatch), but the library
+does not make any performance or correctness claim on that path.
+
+### Axis B — Correctness testing without CI GPU runners
+
+Three honest options; the first is the one Phase 2 chose for
+Dynamiqs-gated tests, extended to GPU.
+
+- **B.1: Import-gated skips.** Tests that need a GPU use
+  `pytest.importorskip("jax")` plus a `jax.devices()[0].platform
+  == "gpu"` predicate; skip cleanly on CI. Developer runs them
+  locally on GPU hardware before merging. Same pattern as
+  `tests/unit/test_backends_jax_dynamiqs.py`. Honest, zero CI
+  cost, documented blind spot.
+- **B.2: Self-hosted runner.** Someone in AG Schätz runs a
+  GitHub Actions self-hosted runner pinned to a known GPU.
+  Pros: CI actually exercises GPU paths. Cons: runner becomes
+  a bus-factor dependency; upstream JAX / CUDA bumps can silently
+  break the runner; stewardship cost is non-trivial.
+- **B.3: Artefact-based regression.** Developer commits a
+  reference JSON (per-(N, n_c) wall-clock and RSS at a named
+  hardware tier) into `benchmarks/data/gpu/`. CI re-runs the
+  benchmark *only* on matching hardware (skip otherwise), but
+  the artefact is checked into git as the ground truth that
+  any future run compares against. This is the AAH pattern
+  extended.
+
+**B.1 + B.3** is the recommendation: tests are import-gated;
+benchmarks produce artefacts that anyone on matching hardware
+can regenerate and diff.
+
+### Axis C — Spectrum vs. time-evolution priority
+
+- **C.1: Spectrum-first.** Open
+  `solve_spectrum(..., backend="jax-cuda")` per the AAC design
+  note's explicit forward hook. Scope is bounded by the existing
+  `SpectrumResult` schema — no API surface changes, just a
+  second method="dense" implementation under a new
+  `backend_name`. One new tool
+  (`tools/run_benchmark_spectrum_envelope_cuda.py`), one new
+  section in `docs/benchmarks.md`. Addresses AAH's N = 4 /
+  N = 5 wall-clock tier and gives concrete data against which
+  AAG can be re-evaluated.
+- **C.2: Time-evolution-first.** Extend `backend="jax"` to
+  auto-detect GPU and dispatch there; Dynamiqs on CUDA for
+  `sesolve` / `mesolve`. Wider impact (every tutorial using
+  JAX benefits), but the AAH null-result-on-CPU data suggests
+  the GPU win for time-evolution at library-typical
+  `dim ≤ 100` is unproven — small Hilbert spaces pay the GPU
+  launch latency without amortising.
+- **C.3: Both, in that order.** Spectrum ships first as a
+  self-contained dispatch; time-evolution follows once the
+  measurement discipline and artefact-storage pattern are
+  established.
+
+The data favours C.1 first: AAH gives a clear N = 4 /
+`n_c = 7` target where CPU costs 7 min per eigh, so a 2× GPU
+win is user-visible and measurable. The time-evolution case is
+murkier — the β.4.5 benchmark has already shown that for
+`dim ≤ 100` on CPU, QuTiP beats JAX on wall-clock; it's not
+obvious that the same library sizes flip on GPU.
+
+### Axis D — Autograd as an enabler, not a deliverable
+
+The JAX design note's Axis D (autograd through the solver) is
+explicitly Phase 3+ territory. This note does **not** ship
+autograd — but every design decision here should leave the
+door open, because the most user-visible future motivation for
+GPU is exactly "gradient-based fitting of experimental data to
+simulation." Concretely:
+
+- `SpectrumResult` and `TrajectoryResult` fields must remain
+  convertible to JAX arrays without breaking the dense `eigh`
+  / `sesolve` return contract.
+- Any new GPU builder must accept JAX-traced inputs
+  transparently (the Phase 2 β.4 builders already do this).
+- `backend_name = "spectrum-jax-cuda"` does not promise
+  autograd, but a later `backend_name = "spectrum-jax-cuda-ad"`
+  can be added non-breakingly.
+
+---
+
+## 4. Integration with the existing surface
+
+### 4.1 `solve_spectrum` API
+
+No signature change. New `backend` kwarg accepted value:
+
+```python
+solve_spectrum(H, method="dense", backend="spectrum-jax-cuda")
+```
+
+The backend dispatch reads `backend_name` through the existing
+`SpectrumResult.metadata.backend_name` field. New values live
+alongside `"spectrum-scipy"` and the deferred
+`"spectrum-scipy-shift-invert"` from the AAG gate.
+
+### 4.2 `sequences.solve` / `solve_ensemble` API
+
+No signature change. The existing `backend="jax"` value already
+dispatches through JAX; the GPU extension is a device-routing
+question inside that dispatch, not a new user-facing string.
+`ResultMetadata.backend_name` is where the GPU device is
+recorded — proposed string: `"jax-cuda"` (suffixes `-cuda-ad`
+or `-cuda-autograd` reserved for the Phase 3+ autograd axis).
+
+Callers get GPU transparently when the process's JAX default
+device is a GPU; otherwise CPU, same as today. A diagnostic
+warning fires on `backend="jax"` when no GPU is detected and
+the caller asked for one explicitly (detection mechanism TBD
+— cleanest is a `device="gpu"|"cpu"|None` kwarg with `None`
+meaning "JAX default").
+
+### 4.3 Convention version
+
+Adding GPU backends does not change `CONVENTION_VERSION` — no
+behaviour change for existing `backend="qutip"` / `"jax"`
+callers, no result-schema extension. GPU-specific provenance
+(VRAM tier, CUDA version, cuSOLVER version) lives in
+`provenance_tags` on the metadata — same mechanism used for
+notebook / sweep / ci tagging today.
+
+### 4.4 Installation
+
+Two new `pyproject.toml` optional-dependency groups proposed:
+
+- `gpu` — `jax[cuda12]>=0.4`, pinned to the version range the
+  scipy-vs-JAX benchmark already tests on CPU. Users install
+  via `pip install iontrap-dynamics[gpu]`.
+- `gpu-dev` — `gpu` plus the testing tier
+  (`pytest-benchmark`, optional `cupy` for cross-validation).
+
+`jax[metal]` stays out of optional-dependencies — users can
+install it themselves if they want the experimental path.
+
+---
+
+## 5. Candidate designs
+
+### Design α — "Spectrum-only GPU"
+
+Scope: Ship `solve_spectrum` on CUDA. One new `backend_name`.
+One new benchmark tool replaying the AAH grid on GPU. One
+reference-hardware artefact in `benchmarks/data/gpu/`. Tests
+are import-gated GPU-skips on CI. No change to time-evolution.
+
+Cost: ~2 dispatches. Risk: low.
+
+Deliverable readable: "On a single NVIDIA RTX 40-series GPU
+with 16 GB VRAM, dense `eigh` reaches N = 5 at `n_c = 8`
+(`dim = 100 000`) in under 10 min wall-clock; the AAG interior-
+window path is not needed at these sizes."
+
+### Design β — "α plus GPU time-evolution"
+
+Design α, plus `backend="jax"` extended to auto-detect GPU
+and dispatch Dynamiqs solvers to CUDA. New
+`ResultMetadata.backend_name = "jax-cuda"` variant. New
+section in `docs/benchmarks.md` comparing `"qutip"`,
+`"jax"` (CPU), `"jax-cuda"` across the β.4.5 grid.
+
+Cost: ~4–5 dispatches. Risk: medium (Dynamiqs-on-CUDA is less
+exercised in the literature than cuSOLVER `eigh`; launch-
+latency noise at `dim ≤ 100` may dominate at small sizes and
+bloat the reference artefacts).
+
+### Design γ — "β plus autograd seam"
+
+Design β, plus an explicit autograd-compatible builder wrap
+(`carrier_hamiltonian_full_ld` taking JAX-traced `η` / detuning
+inputs end-to-end with a `jax.grad` test). Not a full
+autograd release — just enough to prove the door isn't closed.
+
+Cost: ~5–6 dispatches. Risk: medium-high (autograd brings its
+own convention questions — do we expose `jax.grad` directly or
+wrap it? Does the `ResultMetadata` record the differentiation
+target?).
+
+### Comparison table
+
+| Criterion                        | α (spectrum only)       | β (α + time-evolution)   | γ (β + autograd seam)         |
+|----------------------------------|-------------------------|--------------------------|-------------------------------|
+| New public `backend_name`        | 1                       | 2                        | 2 (plus one reserved)         |
+| Dispatch count                   | ~2                      | ~4–5                     | ~5–6                          |
+| AAH user case addressed          | Yes (direct)            | Yes                      | Yes                           |
+| β.4.5 user case addressed        | No                      | Yes                      | Yes                           |
+| Phase 3 autograd enabled         | Door left open          | Door left open           | Door cracked open             |
+| CI cost                          | Skips only              | Skips only               | Skips only                    |
+| Reference-hardware burden        | One tier                | One tier                 | One tier                      |
+| Risk profile                     | Low                     | Medium                   | Medium-high                   |
+
+---
+
+## 6. Open questions for the maintainer
+
+1. **Reference GPU.** Which machine becomes the baseline — an
+   RTX 40-series consumer card? An NVIDIA L4 / A10 lab card?
+   A lab workstation the maintainer has physical access to?
+   This shapes what "AAH on GPU" looks like as an artefact.
+2. **CI posture on GPU skips.** Document as "tests
+   import-gated; see `docs/gpu-dispatch-design.md` for
+   regeneration" — or keep the skips silent and rely on
+   human discipline? Phase 2's precedent is silent skips,
+   but the GPU surface will be larger.
+3. **Metal posture.** Advisory-only (§3 A.3) is the
+   recommended framing. Does the maintainer want to
+   actually test on Apple Silicon, or is "transparent JAX
+   device dispatch, no warranty" enough?
+4. **α vs β vs γ.** The main decision. §7 assumes α; if
+   the maintainer picks β or γ the staging changes.
+5. **Dependency posture.** `gpu` optional-deps group with
+   `jax[cuda12]>=0.4`, or leave CUDA install to the user
+   entirely and just test against whatever they have?
+
+---
+
+## 7. Staging proposal (conditional on Design α)
+
+Five dispatch-shape units, in order. Only the first three ship
+capability; BBI and BBJ close the documentation loop.
+
+1. **Dispatch BBA — GPU spectrum backend.** Wire
+   `solve_spectrum(..., backend="spectrum-jax-cuda")`. Reuse
+   the existing `SpectrumResult` schema; add the new
+   `backend_name` string to the allowed set. Tests are
+   import-gated: skip cleanly when no GPU is detected; assert
+   numeric equivalence against `backend="spectrum-scipy"` on
+   a small problem (`N = 2, n_c = 4`) when a GPU is present.
+   Cost: ~1 dispatch.
+2. **Dispatch BBB — GPU envelope benchmark tool.**
+   `tools/run_benchmark_spectrum_envelope_cuda.py` — same
+   grid as the CPU AAH tool, runs through the new backend.
+   Subprocess-isolated peak VRAM / wall-clock capture.
+   Produces `benchmarks/data/gpu/spectrum_envelope/
+   report.json` and a plot overlaying CUDA against the
+   CPU baseline. Cost: ~1 dispatch.
+3. **Dispatch BBC — AAG re-evaluation.** With BBB's numbers
+   in hand, re-open the AAG gate-status decision in
+   `docs/benchmarks.md`. If CUDA dense covers N = 5 at
+   fully converged cutoff, document AAG as permanently
+   deferred. If not, AAG becomes a concrete next
+   dispatch. Cost: ~0.5 dispatch (documentation + decision
+   record).
+4. **Dispatch BBD — (optional, if AAG stays deferred)
+   consumer-facing benchmark doc refresh.** Update
+   `docs/benchmarks.md` to include the "Which envelope am
+   I in?" decision tree: CPU dense (16 / 32 / 64 / 128 GB
+   tiers) vs. GPU dense (8 / 16 / 24 GB VRAM tiers).
+   Cost: ~0.5 dispatch.
+5. **Dispatch BBE — tutorial addendum.** A supplementary
+   page under `docs/tutorials/13_reproducing_clos_2016.md`
+   (or a new Tutorial 14) showing the reproduction on GPU
+   for users who have it. Cost: ~0.5 dispatch.
+
+**Total:** ~3.5 dispatches if β / γ are deferred,
+expandable by 2–3 dispatches if β follows immediately
+(time-evolution GPU + its benchmark + its integration into
+the cross-backend comparison at scale).
+
+---
+
+## 8. Risks and their mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| **GPU drift between dev machines** (same code, different `jaxlib` CUDA compile, different numbers) | Medium | Medium | Artefact-based regression (§3 B.3); declare tolerance per backend in `docs/benchmarks.md`; do not test GPU numerics for bit-exact equality against CPU. |
+| **CUDA / jaxlib upstream churn** (install breaks on minor-version bumps) | High | Low | Pin `jax[cuda12]` to a tested range in `pyproject.toml [project.optional-dependencies].gpu`; bump explicitly when the benchmark re-runs cleanly. |
+| **No lab GPU available** when the dispatch is scheduled | Medium | High (blocks the work) | Staging §7 assumes a named reference machine; resolve Q1 before BBA starts. |
+| **Small-dim GPU launch latency** overwhelms spectrum wins | Low | Low | The AAH envelope already shows dense CPU dominating small-dim costs; GPU win is pitched at `dim ≥ 4 000`. Small-dim comparison will show CPU winning and is recorded honestly. |
+| **Autograd promises creep in** (users treat "JAX-backed" as "differentiable") | Medium | Medium | `backend_name = "spectrum-jax-cuda"` does not imply autograd; the note explicitly reserves `*-ad` suffixes; documentation distinguishes "runs on GPU" from "differentiable through the solver". |
+| **Metal path silently diverges from CUDA** | Low | Low | §3 A.3 says Metal is advisory-only; no correctness claim; user bug reports get routed to "reproduce on CUDA first". |
+| **CI blindness** grows as GPU surface expands | Medium | Medium | Dispatch-level CHANGELOG entries must explicitly note "GPU tests are import-skipped on CI; regenerate locally via X." |
+
+---
+
+## 9. Non-decisions (explicitly out of scope for this note)
+
+- Cutting a `v0.5.0` release simultaneously with BBA. Release
+  cadence is a separate decision from capability design; if
+  BBA ships into `[Unreleased]` first and `v0.5.0` bundles
+  later-dispatch work with it, that's fine.
+- Renaming `backend="jax"` to `backend="jax-cpu"` for symmetry
+  with a new `backend="jax-cuda"`. Phase 2's contract leaves
+  `"jax"` meaning "whatever JAX's default device is"; that
+  contract still reads correctly on a GPU machine.
+- Deprecating the CPU JAX path. It's the autograd-forward
+  scaffolding and the one CI actually exercises.
+
+---
+
+## 10. Recommendation (tentative)
+
+**Design α, staged per §7.** Start with the spectrum path
+because it is the narrowest honest answer to the "can the
+library usefully ship GPU today?" question. The AAH envelope
+gives a concrete target (N = 4, `n_c = 7`, 7 min → ?), and
+the AAG gate re-evaluation makes the dispatch's success
+condition machine-checkable rather than aesthetic.
+
+**Defer β and γ until α ships and BBC's AAG re-evaluation has
+real numbers in hand.** The Phase 2 CPU null results are
+warning enough against opening the time-evolution surface
+before a first GPU data point exists in repo — GPU
+time-evolution might pay off at `dim ≥ 1 000` and lose at
+`dim ≤ 100`, and we don't want to re-litigate that with
+hand-waving.
+
+**Hardware baseline (conditional recommendation, pending
+Q1):** an RTX 40-series consumer GPU with ≥ 16 GB VRAM.
+Consumer-tier matches the "on a typical PC" framing that
+AAH committed to; lab A10 / L4 cards can be added as a
+second tier if and when a lab user hits the envelope.
+
+**Classification at ship-time.** The new `backend_name`
+values become Coastline as soon as BBA ships. The scaling
+observations from BBB are Sail (future optimization work
+can move them). The "AAG deferred or scheduled?" decision
+from BBC is Coastline — it closes the last open item on
+the Clos 2016 workplan's architecture surface.
+
+---
+
+## 11. What happens next
+
+This document sits at `docs/gpu-dispatch-design.md` as a
+deliberation artefact, following the repository convention
+for `docs/phase-2-jax-backend-design.md` /
+`docs/phase-2-jax-time-dep-design.md`: not linked into
+`mkdocs.yml`, retained in `docs/` for historical continuity.
+
+When the §6 questions are answered, this document becomes
+either:
+
+- **Superseded by a Dispatch BBA kickoff note** annotated
+  with a "Decisions recorded YYYY-MM-DD" banner and retained
+  for historical continuity; or
+- **Retired** if GPU work is postponed beyond the current
+  cycle, archived per the same precedent that
+  `docs/workplan-clos-2016-integration.md` followed when it
+  transitioned to shipped-record status.
