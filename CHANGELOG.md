@@ -8,6 +8,38 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+(empty — next entry reopens after the `v0.4.0` tag cut.)
+
+## [0.4.0] — 2026-04-24
+
+**Release summary.** Ships the Clos/Porras 2016 PRL integration
+(Dispatches AAA–AAI) as a new cross-cutting capability family:
+full-exponential Lamb–Dicke carrier dynamics, a frozen
+exact-diagonalization entry point with typed `SpectrumResult`,
+four spectrum-analysis observables (effective dimension, IPR,
+ETH diagonals, phonon-number diagonals), and a measured
+envelope for dense `eigh` on commodity hardware. The N = 1 /
+N = 2 / N = 3 regressions against the bundled `theo_dim_N_*.dat`
+data from Clos et al. 2016 (PRL 117, 170401) land inside the
+declared tolerances. Closes release-gate **D2** by anchoring
+the upstream `threehouse-plus-ec/cd-rules` corporate-design pin
+to annotated tags (`cd-v1.7.0` at `8671c933`; `cd-v1.7.1` at
+`ee01c803`); the CI `cd-local-integrity` hash-drift check is
+now a permanent gate. Main-branch CI is green across all ten
+jobs at this tag. Additive release: `backend="qutip"` remains
+the default on every solver entry; existing Hamiltonian builders
+are unchanged; `CONVENTIONS.md` v0.2 frozen semantics carry
+through from v0.3.0. No schema break, no behaviour change for
+v0.3.0 callers.
+
+**Test surface at `v0.4.0`:** 883 passing locally (Python 3.13
++ `[jax]` extras, Dynamiqs module-gated skip), 3 skipped — the
+two probe-informed migration skips from v0.3.0 (`tests/
+regression/migration/test_migration_references.py` scenarios
+3 and 4) plus the Dynamiqs-gated JAX backend test module when
+`dynamiqs` is not installed. CI (Test py3.11 + py3.12, base
+extras) green.
+
 ### Added
 
 - **Clos/Porras 2016 PRL integration (Dispatches AAA–AAI, closed
