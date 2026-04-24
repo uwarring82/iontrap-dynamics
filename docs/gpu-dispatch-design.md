@@ -91,7 +91,7 @@ start?
 - A GPU-capable time-evolution path through the **existing**
   `backend_name = "jax-dynamiqs"` contract. The shipped
   identity is preserved; device selection becomes a new
-  solver kwarg (`device="cuda"|"cpu"|None`), with the
+  solver kwarg (`device="gpu"|"cpu"|None`), with the
   chosen device recorded in `provenance_tags`. No new
   `backend_name` is minted for GPU time-evolution.
 - CI / testing model for GPU-only code paths — how we
@@ -155,8 +155,12 @@ points along them.
   upstream.
 
 A.3 is the sensible middle ground: users on Metal can still run
-their code (transparent JAX device dispatch), but the library
-does not make any performance or correctness claim on that path.
+their code (the `device="gpu"` kwarg resolves to whatever JAX
+platform the installed `jaxlib` provides — `jax[metal]` on
+Apple Silicon, `jax[cuda12]` on NVIDIA), but the library does
+not make any performance or correctness claim on the Metal
+path. Metal users who hit `eigh`-unavailable errors get the
+raw JAX diagnostic; the library does not intercept.
 
 ### Axis B — Correctness testing without CI GPU runners
 
@@ -189,7 +193,7 @@ can regenerate and diff.
 ### Axis C — Spectrum vs. time-evolution priority
 
 - **C.1: Spectrum-first.** Open
-  `solve_spectrum(..., backend_name="spectrum-jax", device="cuda")`.
+  `solve_spectrum(..., backend_name="spectrum-jax", device="gpu")`.
   Scope is bounded by the existing `SpectrumResult` schema —
   no schema changes, just a second method="dense" implementation
   under a new `backend_name` ("spectrum-jax") and one new optional
@@ -253,7 +257,7 @@ solve_spectrum(H, method="dense", backend_name="spectrum-jax")
 
 The new `backend_name = "spectrum-jax"` is **device-neutral**.
 Device selection happens through a new optional `device` kwarg
-(`"cuda" | "cpu" | None`, where `None` means "use JAX's default
+(`"gpu" | "cpu" | None`, where `None` means "use JAX's default
 device"). The chosen device is recorded in
 `metadata.provenance_tags` alongside `cuda:<version>` /
 `jaxlib:<version>` strings when the device is a GPU. Allowed
@@ -273,11 +277,20 @@ device routing, not a new backend:
   on a GPU-enabled JAX install dispatches to GPU transparently,
   exactly as it already does today. `backend_name` stays
   `"jax-dynamiqs"`.
-- New optional kwarg `device="cuda" | "cpu" | None` accepted on
+- New optional kwarg `device="gpu" | "cpu" | None` accepted on
   `solve`, `solve_ensemble`, and time-dependent builders. `None`
-  (default) means "JAX default device"; explicit `"cuda"` on a
+  (default) means "JAX default device"; explicit `"gpu"` on a
   machine without GPU raises a clear diagnostic. The selected
   device is recorded in `ResultMetadata.provenance_tags`.
+- **Why `"gpu"` and not `"cuda"`.** The kwarg value matches JAX's
+  own platform strings (`"cpu"` / `"gpu"` / `"tpu"`, as returned
+  by `jax.default_backend()` and accepted by `jax.devices()`).
+  A JAX install built against `jax[cuda12]` resolves `"gpu"` to
+  CUDA; `jax[metal]` resolves the same string to Metal. The
+  library does not need to (and deliberately does not) encode
+  the vendor. Vendor-specific information (CUDA version,
+  cuSOLVER version, jaxlib build) is recorded as provenance,
+  not as part of the device kwarg contract.
 - No new `backend_name` string is introduced. The three
   positions in an earlier draft of this note (new identity /
   device kwarg / provenance tag) collapse to one: **device is
@@ -341,12 +354,12 @@ dense-on-a-single-GPU envelope and stays on the AAG path."
 
 ### Design β — "α plus GPU time-evolution"
 
-Design α, plus `device="cuda" | "cpu" | None` kwarg added to
+Design α, plus `device="gpu" | "cpu" | None` kwarg added to
 `solve` / `solve_ensemble` / time-dependent builders. **No
 new `backend_name`** — the shipped `"jax-dynamiqs"` identity
 is preserved; device lives in `provenance_tags`. New section
 in `docs/benchmarks.md` comparing `"qutip"`, `"jax-dynamiqs"`
-(CPU), `"jax-dynamiqs"` (GPU via `device="cuda"`) across the
+(CPU), `"jax-dynamiqs"` (GPU via `device="gpu"`) across the
 β.4.5 grid.
 
 Cost: ~4–5 dispatches. Risk: medium (Dynamiqs-on-CUDA is less
@@ -423,24 +436,40 @@ capability; BBI and BBJ close the documentation loop.
    Extend `tools/run_benchmark_spectrum_envelope_jax.py` with a
    `--device` flag that routes the existing per-point logic
    through JAX's device API. Subprocess-isolated wall-clock
-   and VRAM capture (VRAM via `jax.default_backend().memory()`
-   or `nvidia-smi` scrape depending on jaxlib version).
-   Produces `benchmarks/data/gpu/spectrum_envelope/report.json`
-   and a plot overlaying GPU wall-clock against the CPU
-   baseline. Cost: ~1 dispatch.
-3. **Dispatch BBC — AAG re-evaluation.** With BBB's numbers
-   in hand, re-open the AAG gate-status decision in
-   `docs/benchmarks.md`. If CUDA dense covers N = 5 at
-   fully converged cutoff, document AAG as permanently
-   deferred. If not, AAG becomes a concrete next
-   dispatch. Cost: ~0.5 dispatch (documentation + decision
-   record).
-4. **Dispatch BBD — (optional, if AAG stays deferred)
-   consumer-facing benchmark doc refresh.** Update
-   `docs/benchmarks.md` to include the "Which envelope am
-   I in?" decision tree: CPU dense (16 / 32 / 64 / 128 GB
-   tiers) vs. GPU dense (8 / 16 / 24 GB VRAM tiers).
-   Cost: ~0.5 dispatch.
+   capture is unchanged. VRAM capture is **out of scope for the
+   library proper** — the benchmark shells out to `nvidia-smi
+   --query-gpu=memory.used --format=csv,noheader,nounits` at
+   start / peak / end of each grid point and records the three
+   values. This is the only portable-across-jaxlib-versions
+   source; JAX's `Device.memory_stats()` exists but its
+   dict-shape varies with jaxlib minor versions and is not a
+   stable contract to build a benchmark tool on top of. Metal
+   machines get an honest `"device_memory_source": "unavailable"`
+   field in the report (no equivalent tool) and wall-clock
+   numbers only. Produces `benchmarks/data/gpu/spectrum_envelope/
+   report.json` and a plot overlaying GPU wall-clock against the
+   CPU baseline. Cost: ~1 dispatch.
+3. **Dispatch BBC — AAG re-scoping from GPU wall-clock data.**
+   With BBB's numbers in hand, refine the AAG gate-status
+   language in `docs/benchmarks.md`. **Not an "is AAG still
+   needed?" decision** — the revised §1 premise and the
+   benchmarks.md "AAG unambiguously valuable at N = 5 `n_c = 6`"
+   text already agree that fully-converged N ≥ 5 stays outside
+   any single-GPU dense envelope. Instead, BBC records: (a)
+   the measured GPU vs CPU wall-clock ratio across the AAH
+   grid, (b) the `(N, n_c, device)` point at which wall-clock
+   becomes the binding constraint on each tier, and (c) the
+   updated `(N, n_c)` boundary at which AAG's interior-window
+   path becomes the only option — unchanged from
+   benchmarks.md today for CPU, newly measured for
+   consumer-GPU and lab-GPU tiers. Cost: ~0.5 dispatch
+   (documentation + measurement record).
+4. **Dispatch BBD — consumer-facing benchmark doc refresh.**
+   Update `docs/benchmarks.md` to include the "Which envelope
+   am I in?" decision tree: CPU dense (16 / 32 / 64 / 128 GB
+   tiers) vs. GPU dense (16 / 24 / 40 / 80 GB VRAM tiers)
+   vs. AAG interior-window (any tier, `dim ≥ 35 000`). Cost:
+   ~0.5 dispatch.
 5. **Dispatch BBE — tutorial addendum.** A supplementary
    page under `docs/tutorials/13_reproducing_clos_2016.md`
    (or a new Tutorial 14) showing the reproduction on GPU
@@ -490,17 +519,18 @@ the cross-backend comparison at scale).
 **Design α, staged per §7.** Start with the spectrum path
 because it is the narrowest honest answer to the "can the
 library usefully ship GPU today?" question. The AAH envelope
-gives a concrete target (N = 4, `n_c = 7`, 7 min → ?), and
-the AAG gate re-evaluation makes the dispatch's success
-condition machine-checkable rather than aesthetic.
+gives a concrete wall-clock target (N = 4, `n_c = 7`, 7 min
+on CPU → measured GPU seconds on the reference hardware),
+and BBC lands the per-tier wall-clock-vs-reach record that
+the AAG gate-status text currently flags as the open
+measurement.
 
-**Defer β and γ until α ships and BBC's AAG re-evaluation has
-real numbers in hand.** The Phase 2 CPU null results are
-warning enough against opening the time-evolution surface
-before a first GPU data point exists in repo — GPU
-time-evolution might pay off at `dim ≥ 1 000` and lose at
-`dim ≤ 100`, and we don't want to re-litigate that with
-hand-waving.
+**Defer β and γ until α ships and BBC's wall-clock record
+exists in repo.** The Phase 2 CPU null results are warning
+enough against opening the time-evolution surface before a
+first GPU data point lands — GPU time-evolution might pay off
+at `dim ≥ 1 000` and lose at `dim ≤ 100`, and we don't want to
+re-litigate that with hand-waving.
 
 **Hardware baseline (conditional recommendation, pending
 Q1):** an RTX 40-series consumer GPU with ≥ 16 GB VRAM.
