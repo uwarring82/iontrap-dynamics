@@ -10,6 +10,26 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch BBB — GPU envelope benchmark (tool extension).**
+  `tools/run_benchmark_spectrum_envelope_jax.py` gains a
+  `--device={cpu,gpu}` flag. `--device=cpu` (default) preserves
+  the pre-BBB behaviour and output path
+  (`benchmarks/data/spectrum_envelope/report_jax.json`).
+  `--device=gpu` routes the timed `eigh` through whatever GPU
+  platform the installed `jaxlib` provides (CUDA via
+  `jax[cuda12]`; Metal via `jax[metal]`; etc.) and writes to
+  `benchmarks/data/gpu/spectrum_envelope/report.json`. On
+  NVIDIA hardware the parent process polls `nvidia-smi` during
+  each grid point and records start / peak / end VRAM in the
+  payload; on Metal and other non-NVIDIA paths the VRAM
+  fields are replaced by `"device_memory_source":
+  "unavailable"` and wall-clock is unaffected. Payload gains
+  `jax_platform` field (reported by the child subprocess)
+  so cross-run comparisons can't confuse CPU-JAX against
+  GPU-JAX numbers. Per
+  `docs/gpu-dispatch-design.md` §7 BBB. No measurements
+  shipped in this dispatch — this is the tooling for the
+  BBC measurement record.
 - **Dispatch BBA — `solve_spectrum` JAX backend (device-neutral).**
   New `backend_name = "spectrum-jax"` value on
   `solve_spectrum` dispatches to `jax.numpy.linalg.eigh`. The

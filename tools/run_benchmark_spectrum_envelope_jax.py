@@ -15,28 +15,44 @@ and JIT compile. Peak RSS is captured after the timed call — XLA on
 CPU keeps arrays in host memory, so ``ru_maxrss`` is directly
 comparable to the scipy run.
 
+BBB (GPU dispatch). Pass ``--device=gpu`` to route the timed call
+through whatever GPU platform the installed ``jaxlib`` provides
+(CUDA via ``jax[cuda12]``; Metal via ``jax[metal]``; etc.). On
+NVIDIA hardware the parent process polls ``nvidia-smi`` during each
+grid point and records start / peak / end VRAM in the payload. On
+Metal or other non-NVIDIA GPU paths the VRAM fields are replaced by
+``"device_memory_source": "unavailable"``; wall-clock numbers are
+unaffected.
+
 Usage::
 
+    # CPU (default — preserves pre-BBB behaviour)
     python tools/run_benchmark_spectrum_envelope_jax.py [--include-large]
+
+    # GPU
+    python tools/run_benchmark_spectrum_envelope_jax.py --device=gpu
 
 Writes::
 
-    benchmarks/data/spectrum_envelope/
-      report_jax.json  -- JAX counterpart of report.json
+    benchmarks/data/spectrum_envelope/report_jax.json    # device=cpu
+    benchmarks/data/gpu/spectrum_envelope/report.json    # device=gpu
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import subprocess
 import sys
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_DIR = REPO_ROOT / "benchmarks" / "data" / "spectrum_envelope"
+OUTPUT_DIR_CPU = REPO_ROOT / "benchmarks" / "data" / "spectrum_envelope"
+OUTPUT_DIR_GPU = REPO_ROOT / "benchmarks" / "data" / "gpu" / "spectrum_envelope"
 
 AXIAL_MHZ = 0.71
 RABI_MHZ = 0.71
@@ -74,8 +90,11 @@ GRID_LARGE: list[tuple[int, int]] = [
 CHILD_SCRIPT = r"""
 import json, math, os, resource, sys, time
 
+# Parent is expected to set JAX_PLATFORM_NAME explicitly (cpu | gpu).
+# setdefault is kept as a safety net for direct "python -c" invocations.
 os.environ.setdefault("JAX_PLATFORM_NAME", "cpu")
-os.environ.setdefault("XLA_FLAGS", "--xla_force_host_platform_device_count=1")
+if os.environ.get("JAX_PLATFORM_NAME") == "cpu":
+    os.environ.setdefault("XLA_FLAGS", "--xla_force_host_platform_device_count=1")
 
 import numpy as np
 import jax
@@ -175,6 +194,7 @@ def main():
         "build_seconds": t_build, "transfer_seconds": t_transfer,
         "warmup_seconds": t_warm, "solve_seconds": t_solve,
         "peak_rss_bytes": int(rss_bytes),
+        "jax_platform": jax.default_backend(),
     }))
 
 
@@ -211,26 +231,117 @@ def _fmt_bytes(b: int) -> str:
     return f"{b / 1024**3:.2f} GB"
 
 
-def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 1800) -> dict[str, float | int] | None:
-    print(f"  running N={n_ions} n_c={cutoff} ... ", end="", flush=True)
+def _nvidia_smi_available() -> bool:
+    """Probe ``nvidia-smi`` once; used to gate VRAM sampling."""
     try:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                CHILD_SCRIPT,
-                str(n_ions),
-                str(cutoff),
-                str(AXIAL_MHZ * 1e6),
-                str(RABI_MHZ * 1e6),
-                str(DETUNING_MHZ * 1e6),
-                str(N_BAR),
-            ],
+        subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
             capture_output=True,
-            text=True,
             check=True,
-            timeout=timeout_s,
+            timeout=5,
         )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return False
+    return True
+
+
+def _nvidia_smi_memory_used_mb() -> int | None:
+    """Return total used VRAM across all visible NVIDIA GPUs, in MB, or ``None``."""
+    try:
+        proc = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=2,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+    total = 0
+    for line in proc.stdout.strip().splitlines():
+        try:
+            total += int(line.strip())
+        except ValueError:
+            return None
+    return total
+
+
+class _VramSampler:
+    """Background VRAM poller. Starts on ``__enter__``; stops on ``__exit__``.
+
+    Records the peak of ``nvidia-smi --query-gpu=memory.used`` across the
+    whole poll window. ``start_mb`` / ``end_mb`` are sampled synchronously
+    at enter / exit. The poll thread is a daemon; if the parent process
+    exits uncleanly the thread dies with it.
+    """
+
+    def __init__(self, *, interval_s: float = 0.5) -> None:
+        self._interval_s = interval_s
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self.start_mb: int | None = None
+        self.peak_mb: int | None = None
+        self.end_mb: int | None = None
+
+    def __enter__(self) -> _VramSampler:
+        self.start_mb = _nvidia_smi_memory_used_mb()
+        self.peak_mb = self.start_mb
+        self._thread = threading.Thread(target=self._poll, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=5)
+        self.end_mb = _nvidia_smi_memory_used_mb()
+
+    def _poll(self) -> None:
+        while not self._stop.is_set():
+            value = _nvidia_smi_memory_used_mb()
+            if value is not None and (self.peak_mb is None or value > self.peak_mb):
+                self.peak_mb = value
+            self._stop.wait(self._interval_s)
+
+
+def _run_point(
+    n_ions: int,
+    cutoff: int,
+    *,
+    device: str,
+    vram_source: str,
+    timeout_s: int = 1800,
+) -> dict[str, float | int | str | None] | None:
+    print(f"  running N={n_ions} n_c={cutoff} ... ", end="", flush=True)
+
+    env = {**os.environ, "JAX_PLATFORM_NAME": device}
+
+    sampler: _VramSampler | None = _VramSampler() if vram_source == "nvidia-smi" else None
+    try:
+        if sampler is not None:
+            sampler.__enter__()
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    CHILD_SCRIPT,
+                    str(n_ions),
+                    str(cutoff),
+                    str(AXIAL_MHZ * 1e6),
+                    str(RABI_MHZ * 1e6),
+                    str(DETUNING_MHZ * 1e6),
+                    str(N_BAR),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=timeout_s,
+                env=env,
+            )
+        finally:
+            if sampler is not None:
+                sampler.__exit__(None, None, None)
     except subprocess.CalledProcessError as exc:
         print(f"FAILED ({exc.returncode})")
         print(exc.stderr)
@@ -240,13 +351,26 @@ def _run_point(n_ions: int, cutoff: int, *, timeout_s: int = 1800) -> dict[str, 
         return None
 
     last_line = result.stdout.strip().splitlines()[-1]
-    payload = json.loads(last_line)
+    payload: dict[str, float | int | str | None] = json.loads(last_line)
+
+    if sampler is not None:
+        payload["vram_start_mb"] = sampler.start_mb
+        payload["vram_peak_mb"] = sampler.peak_mb
+        payload["vram_end_mb"] = sampler.end_mb
+        payload["device_memory_source"] = "nvidia-smi"
+    else:
+        payload["device_memory_source"] = "unavailable"
+
+    extras = []
+    if payload.get("vram_peak_mb") is not None:
+        extras.append(f"vram_peak={payload['vram_peak_mb']} MB")
     print(
         f"dim={payload['dim']:>6}  "
         f"warm={payload['warmup_seconds']:6.2f} s  "
         f"solve={payload['solve_seconds']:6.2f} s  "
-        f"peak_rss={_fmt_bytes(payload['peak_rss_bytes'])}  "
-        f"matrix={_fmt_bytes(payload['matrix_bytes'])}"
+        f"peak_rss={_fmt_bytes(int(payload['peak_rss_bytes']))}  "
+        f"matrix={_fmt_bytes(int(payload['matrix_bytes']))}"
+        + (f"  {', '.join(extras)}" if extras else "")
     )
     return payload
 
@@ -258,32 +382,68 @@ def main() -> int:
         action="store_true",
         help="Run the three large-dim points (dim 6 250 / 6 750 / 8 192).",
     )
+    parser.add_argument(
+        "--device",
+        choices=["cpu", "gpu"],
+        default="cpu",
+        help=(
+            "JAX platform to dispatch dense eigh through. "
+            "'cpu' (default) preserves the pre-BBB benchmark; "
+            "'gpu' runs through whatever GPU platform the installed "
+            "jaxlib provides (CUDA on NVIDIA; Metal on Apple Silicon)."
+        ),
+    )
     args = parser.parse_args()
 
     grid = GRID_CORE + (GRID_LARGE if args.include_large else [])
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    if args.device == "gpu":
+        output_dir = OUTPUT_DIR_GPU
+        output_filename = "report.json"
+        vram_source = "nvidia-smi" if _nvidia_smi_available() else "unavailable"
+    else:
+        output_dir = OUTPUT_DIR_CPU
+        output_filename = "report_jax.json"
+        vram_source = "unavailable"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     print(">>> exact-diagonalization envelope benchmark (JAX counterpart)")
+    print(f"    device: {args.device}")
+    print(f"    vram source: {vram_source}")
     print(f"    grid: {len(grid)} points; isolated subprocess per point")
     print(f"    axial = Rabi = {AXIAL_MHZ} MHz, detuning = {DETUNING_MHZ} MHz, n_bar = {N_BAR}")
     print()
 
-    results: list[dict[str, float | int]] = []
+    results: list[dict[str, float | int | str | None]] = []
     for n_ions, cutoff in grid:
         is_large = (n_ions, cutoff) in GRID_LARGE
         timeout_s = 1800 if is_large else 600
-        point = _run_point(n_ions, cutoff, timeout_s=timeout_s)
+        point = _run_point(
+            n_ions,
+            cutoff,
+            device=args.device,
+            vram_source=vram_source,
+            timeout_s=timeout_s,
+        )
         if point is not None:
             results.append(point)
 
     report = {
-        "scenario": "spectrum_envelope_jax",
+        "scenario": f"spectrum_envelope_jax_{args.device}",
         "purpose": (
             "JAX counterpart to AAH -- measures jax.numpy.linalg.eigh "
             "wall-clock and peak RSS on the same Clos 2016 non-RWA "
             "spin-boson Hamiltonian. Warm-up call precedes the timed "
             "call so steady-state cost is reported."
+            + (
+                " GPU run: parent polls nvidia-smi during each grid "
+                "point to capture start / peak / end VRAM when "
+                "nvidia-smi is available; Metal and other non-NVIDIA "
+                'GPU paths record "device_memory_source": "unavailable".'
+                if args.device == "gpu"
+                else ""
+            )
         ),
         "configuration": {
             "axial_frequency_MHz": AXIAL_MHZ,
@@ -292,16 +452,18 @@ def main() -> int:
             "n_bar": N_BAR,
             "species": "25Mg+",
             "wavelength_label": "CLOS2016_LEGACY_WAVELENGTH_M (Raman two-photon)",
+            "device": args.device,
+            "vram_source": vram_source,
         },
         "results": results,
         "environment": _environment(),
         "generated_at": datetime.now(UTC).isoformat(),
     }
-    (OUTPUT_DIR / "report_jax.json").write_text(
+    (output_dir / output_filename).write_text(
         json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"\nwrote {(OUTPUT_DIR / 'report_jax.json').relative_to(REPO_ROOT)}")
+    print(f"\nwrote {(output_dir / output_filename).relative_to(REPO_ROOT)}")
     return 0
 
 
