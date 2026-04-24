@@ -130,3 +130,95 @@ class TestSolveSpectrum:
     def test_initial_state_dimension_mismatch_rejected(self) -> None:
         with pytest.raises(ConventionError, match="expected 4"):
             solve_spectrum(np.diag([0.0, 1.0, 2.0, 3.0]), initial_state=np.array([1.0, 0.0]))
+
+    def test_unknown_backend_name_rejected(self) -> None:
+        with pytest.raises(ConventionError, match="not recognised"):
+            solve_spectrum(np.diag([0.0, 1.0]), backend_name="spectrum-made-up")
+
+    def test_unknown_device_value_rejected(self) -> None:
+        with pytest.raises(ConventionError, match="not recognised"):
+            solve_spectrum(np.diag([0.0, 1.0]), backend_name="spectrum-jax", device="tpu")
+
+    def test_device_rejected_with_scipy_backend(self) -> None:
+        with pytest.raises(ConventionError, match="only applicable to backend_name='spectrum-jax'"):
+            solve_spectrum(np.diag([0.0, 1.0]), device="cpu")
+
+
+class TestSpectrumJaxBackend:
+    """BBA: numeric equivalence and device-dispatch contract for the JAX path."""
+
+    def test_jax_and_scipy_eigenvalues_agree_on_small_hermitian(self) -> None:
+        pytest.importorskip("jax")
+        rng = np.random.default_rng(0xBBA)
+        n = 16
+        a = rng.standard_normal((n, n)) + 1j * rng.standard_normal((n, n))
+        H = 0.5 * (a + a.conj().T)
+
+        scipy_result = solve_spectrum(H, backend_name="spectrum-scipy")
+        jax_result = solve_spectrum(H, backend_name="spectrum-jax")
+
+        np.testing.assert_allclose(
+            jax_result.eigenvalues, scipy_result.eigenvalues, rtol=1e-10, atol=1e-10
+        )
+
+    def test_jax_and_scipy_eigenvector_projectors_agree(self) -> None:
+        pytest.importorskip("jax")
+        rng = np.random.default_rng(0xBBA1)
+        n = 8
+        a = rng.standard_normal((n, n)) + 1j * rng.standard_normal((n, n))
+        H = 0.5 * (a + a.conj().T)
+
+        scipy_result = solve_spectrum(H, backend_name="spectrum-scipy")
+        jax_result = solve_spectrum(H, backend_name="spectrum-jax")
+
+        # Compare eigenvector-derived projectors per eigenvalue; phase/sign-insensitive.
+        assert scipy_result.eigenvectors is not None
+        assert jax_result.eigenvectors is not None
+        for column in range(n):
+            overlap = np.abs(
+                np.vdot(scipy_result.eigenvectors[:, column], jax_result.eigenvectors[:, column])
+            )
+            assert overlap == pytest.approx(1.0, abs=1e-9)
+
+    def test_jax_backend_records_device_in_provenance(self) -> None:
+        pytest.importorskip("jax")
+        result = solve_spectrum(
+            np.diag(np.arange(4, dtype=np.float64)),
+            backend_name="spectrum-jax",
+            provenance_tags=("sweep-label",),
+        )
+        assert result.metadata.backend_name == "spectrum-jax"
+        assert result.metadata.backend_version.startswith("jax-")
+        # Caller's own tags preserved; device tag appended as provenance.
+        assert "sweep-label" in result.metadata.provenance_tags
+        device_tags = [t for t in result.metadata.provenance_tags if t.startswith("device:")]
+        assert len(device_tags) == 1
+        assert device_tags[0].split(":", 1)[1] in {"cpu", "gpu"}
+
+    def test_jax_backend_accepts_explicit_cpu_device(self) -> None:
+        pytest.importorskip("jax")
+        result = solve_spectrum(
+            np.diag(np.arange(3, dtype=np.float64)),
+            backend_name="spectrum-jax",
+            device="cpu",
+        )
+        assert result.metadata.backend_name == "spectrum-jax"
+        assert "device:cpu" in result.metadata.provenance_tags
+
+    def test_jax_backend_rejects_unavailable_gpu_device(self) -> None:
+        """On CPU-only CI, device='gpu' must surface a clear ConventionError.
+
+        Gated: skipped cleanly on machines where JAX *does* see a GPU platform,
+        since there the request is legitimate and the diagnostic path is
+        untestable without explicitly disabling GPU visibility.
+        """
+        jax = pytest.importorskip("jax")
+        platforms = {d.platform for d in jax.devices()}
+        if "gpu" in platforms:
+            pytest.skip("GPU platform available on this machine; diagnostic path not testable.")
+        with pytest.raises(ConventionError, match=r"device='gpu'\) requested but unavailable"):
+            solve_spectrum(
+                np.diag(np.arange(3, dtype=np.float64)),
+                backend_name="spectrum-jax",
+                device="gpu",
+            )

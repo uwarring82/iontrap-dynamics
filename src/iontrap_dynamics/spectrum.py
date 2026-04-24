@@ -5,6 +5,13 @@ AAC scope: dense full-spectrum diagonalization via :func:`scipy.linalg.eigh`
 plus a frozen result object aligned with the existing result-family style.
 Iterative interior-window methods are intentionally deferred; callers may
 request them by name, but only ``method="dense"`` is implemented here.
+
+BBA scope: a second dense backend via ``jax.numpy.linalg.eigh``. The
+``backend_name="spectrum-jax"`` value is device-neutral; an optional
+``device="gpu"|"cpu"|None`` kwarg routes the eigensolve to a specific JAX
+device when provided. Device selection is provenance, not identity: the
+``backend_name`` is the same regardless of whether the JAX path ran on
+CPU, CUDA, or Metal.
 """
 
 from __future__ import annotations
@@ -24,6 +31,9 @@ from .exceptions import ConventionError
 from .results import Result, ResultWarning
 
 SpectrumVector = NDArray[np.complex128]
+
+_ALLOWED_BACKEND_NAMES = frozenset({"spectrum-scipy", "spectrum-jax"})
+_ALLOWED_DEVICE_VALUES = frozenset({"cpu", "gpu"})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -92,6 +102,7 @@ def solve_spectrum(
     method: str = "dense",
     request_hash: str = "",
     backend_name: str | None = None,
+    device: str | None = None,
     fock_truncations: Mapping[str, int] | None = None,
     provenance_tags: tuple[str, ...] = (),
     initial_state: qutip.Qobj
@@ -111,7 +122,16 @@ def solve_spectrum(
     request_hash
         Reproducibility token copied into the result metadata.
     backend_name
-        Optional metadata override. Defaults to ``"spectrum-scipy"``.
+        Optional backend selector. ``None`` or ``"spectrum-scipy"`` uses
+        :func:`scipy.linalg.eigh` (default). ``"spectrum-jax"`` uses
+        :func:`jax.numpy.linalg.eigh`; the JAX path is device-neutral, so
+        the same ``backend_name`` covers CPU-JAX, CUDA, and Metal.
+    device
+        Optional JAX device selector. Accepted values are ``"cpu"`` /
+        ``"gpu"`` / ``None`` (JAX's default device). Only applicable to
+        ``backend_name="spectrum-jax"``; passing ``device=...`` with the
+        scipy backend is a ``ConventionError``. The selected device is
+        recorded in ``metadata.provenance_tags`` as ``"device:<value>"``.
     fock_truncations
         Mode-label to cutoff mapping recorded verbatim in the metadata.
     provenance_tags
@@ -127,8 +147,32 @@ def solve_spectrum(
             "only the dense `scipy.linalg.eigh` reference path."
         )
 
+    resolved_backend = backend_name if backend_name is not None else "spectrum-scipy"
+    if resolved_backend not in _ALLOWED_BACKEND_NAMES:
+        raise ConventionError(
+            f"solve_spectrum(backend_name={resolved_backend!r}) is not recognised; "
+            f"allowed values are {sorted(_ALLOWED_BACKEND_NAMES)}."
+        )
+    if device is not None and device not in _ALLOWED_DEVICE_VALUES:
+        raise ConventionError(
+            f"solve_spectrum(device={device!r}) is not recognised; "
+            f"allowed values are {sorted(_ALLOWED_DEVICE_VALUES)} or None."
+        )
+    if device is not None and resolved_backend != "spectrum-jax":
+        raise ConventionError(
+            f"solve_spectrum(device={device!r}) is only applicable to "
+            f"backend_name='spectrum-jax'; got backend_name={resolved_backend!r}."
+        )
+
     matrix = _as_hermitian_matrix(hamiltonian)
-    eigenvalues, eigenvectors = scipy_linalg.eigh(matrix)
+
+    if resolved_backend == "spectrum-jax":
+        eigenvalues, eigenvectors, backend_version, device_tag = _solve_dense_jax(matrix, device)
+        extra_tags: tuple[str, ...] = (f"device:{device_tag}",)
+    else:
+        eigenvalues, eigenvectors = scipy_linalg.eigh(matrix)
+        backend_version = scipy.__version__
+        extra_tags = ()
 
     mean_energy: float | None = None
     energy_std: float | None = None
@@ -138,10 +182,10 @@ def solve_spectrum(
     metadata = SpectrumMetadata(
         convention_version=CONVENTION_VERSION,
         request_hash=request_hash,
-        backend_name=backend_name if backend_name is not None else "spectrum-scipy",
-        backend_version=scipy.__version__,
+        backend_name=resolved_backend,
+        backend_version=backend_version,
         fock_truncations=dict(fock_truncations or {}),
-        provenance_tags=provenance_tags,
+        provenance_tags=tuple(provenance_tags) + extra_tags,
     )
     return SpectrumResult(
         metadata=metadata,
@@ -150,6 +194,55 @@ def solve_spectrum(
         initial_state_mean_energy=mean_energy,
         initial_state_energy_std=energy_std,
         method="dense",
+    )
+
+
+def _solve_dense_jax(
+    matrix: NDArray[np.complex128],
+    device: str | None,
+) -> tuple[NDArray[np.float64], NDArray[np.complex128], str, str]:
+    """Dispatch dense ``eigh`` through JAX; return eigendata + backend metadata.
+
+    Returns a 4-tuple ``(eigenvalues, eigenvectors, backend_version, device_tag)``
+    where ``device_tag`` is the JAX platform string the solve actually ran on
+    (``"cpu"`` / ``"gpu"`` / whatever ``jax.default_backend()`` reports).
+    """
+    try:
+        import jax
+        import jax.numpy as jnp
+    except ImportError as exc:
+        raise ConventionError(
+            "solve_spectrum(backend_name='spectrum-jax') requires JAX; install "
+            "with the [jax] extra (CPU) or [gpu] extra (CUDA build)."
+        ) from exc
+
+    # Force x64 — the library's dtype contract is double precision. Same rationale
+    # as backends/jax/_core.py; documented in docs/phase-2-jax-backend-design.md §8.
+    jax.config.update("jax_enable_x64", True)  # type: ignore[no-untyped-call, unused-ignore]
+
+    available_platforms = {d.platform for d in jax.devices()}
+    if device is not None and device not in available_platforms:
+        raise ConventionError(
+            f"solve_spectrum(device={device!r}) requested but unavailable; "
+            f"JAX platforms on this install: {sorted(available_platforms)}."
+        )
+
+    if device is not None:
+        target_device = jax.devices(device)[0]
+        jax_matrix = jax.device_put(jnp.asarray(matrix, dtype=jnp.complex128), target_device)
+        device_tag = device
+    else:
+        jax_matrix = jnp.asarray(matrix, dtype=jnp.complex128)
+        device_tag = jax.default_backend()
+
+    eigenvalues_jax, eigenvectors_jax = jnp.linalg.eigh(jax_matrix)
+    eigenvalues_jax.block_until_ready()
+
+    return (
+        np.asarray(eigenvalues_jax, dtype=np.float64),
+        np.asarray(eigenvectors_jax, dtype=np.complex128),
+        f"jax-{jax.__version__}",
+        device_tag,
     )
 
 

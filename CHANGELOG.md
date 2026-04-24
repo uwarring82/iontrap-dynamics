@@ -8,7 +8,28 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
-(empty — next entry reopens after the `v0.4.0` tag cut.)
+### Added
+
+- **Dispatch BBA — `solve_spectrum` JAX backend (device-neutral).**
+  New `backend_name = "spectrum-jax"` value on
+  `solve_spectrum` dispatches to `jax.numpy.linalg.eigh`. The
+  backend is device-neutral: a new optional
+  `device: "gpu" | "cpu" | None` kwarg selects the JAX
+  platform, with `None` meaning "JAX default device". The
+  resolved device is recorded as a `"device:<value>"` provenance
+  tag on the result's metadata. The scipy path
+  (`backend_name = "spectrum-scipy"`, unchanged default) stays
+  on the existing `scipy.linalg.eigh` contract; passing
+  `device=...` with the scipy backend is a `ConventionError`.
+  Eight new unit tests in
+  `tests/unit/test_spectrum.py::TestSpectrumJaxBackend` assert
+  numeric equivalence to scipy at `dim = 16`, eigenvector
+  projector equivalence at `dim = 8`, device-provenance tagging,
+  explicit-CPU selection, and the diagnostic that `device="gpu"`
+  raises on CPU-only environments. GPU-device tests
+  auto-skip when a GPU platform is visible to JAX. Per
+  `docs/gpu-dispatch-design.md` §7 BBA. No schema change; no
+  behaviour change for `backend_name = "spectrum-scipy"` callers.
 
 ## [0.4.0] — 2026-04-24
 
