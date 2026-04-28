@@ -1,14 +1,13 @@
 # GPU dispatch — design note (draft for deliberation)
 
-> **Status: draft for deliberation, not Coastline.** This document is a
-> pre-decision exploration of the GPU / CUDA extensions already flagged
-> in `docs/phase-2-jax-backend-design.md` Axis B and
-> `docs/benchmarks.md § scipy vs JAX on CPU for dense eigh`. Nothing
-> here binds an implementation. The eventual dispatch that opens this
-> work will come with its own Coastline updates (CHANGELOG entry,
-> extension to `docs/phase-1-architecture.md`, and — if behaviour is
-> user-visible — `CONVENTIONS.md` version bump per §5.1's freeze
-> protocol).
+> **Status: draft for deliberation, with Q6 recorded.** This document is
+> a design exploration of the GPU / CUDA extensions already flagged in
+> `docs/phase-2-jax-backend-design.md` Axis B and `docs/benchmarks.md §
+> scipy vs JAX on CPU for dense eigh`. §13 records the 2026-04-28
+> post-α roadmap decision. The eventual dispatch that opens this work
+> will come with its own Coastline updates (CHANGELOG entry, extension
+> to `docs/phase-1-architecture.md`, and — if behaviour is user-visible
+> — `CONVENTIONS.md` version bump per §5.1's freeze protocol).
 
 **Relates to:** `docs/phase-2-jax-backend-design.md` Axis B (GPU /
 TPU as future backend target), `docs/phase-2-jax-backend-design.md`
@@ -352,7 +351,7 @@ the same `dim`. Reach is the same as 16 GB CPU
 N = 5 at `n_c ≥ 6` (`dim ≥ 33 614`) remains outside the
 dense-on-a-single-GPU envelope and stays on the AAG path."
 
-### Design β — "α plus GPU time-evolution"
+### Design β — "α plus measured GPU time-evolution"
 
 Design α, plus `device="gpu" | "cpu" | None` kwarg added to
 `solve` / `solve_ensemble` / time-dependent builders. **No
@@ -367,35 +366,52 @@ exercised in the literature than cuSOLVER `eigh`; launch-
 latency noise at `dim ≤ 100` may dominate at small sizes and
 bloat the reference artefacts).
 
-### Design γ — "β plus autograd seam"
+### Design β-thin — "capability-only GPU time-evolution"
 
-Design β, plus an explicit autograd-compatible builder wrap
+Design α, plus the same `device="gpu" | "cpu" | None` kwarg
+surface on `solve` / `solve_ensemble` / time-dependent builders
+as Design β. The split is that β-thin ships **capability only**:
+no β.4.5 benchmark grid, no performance claim, no reference-GPU
+artefact, no new schema, and no GPU CI gate. Requested and
+resolved device are recorded in `ResultMetadata.provenance_tags`
+under the existing `"jax-dynamiqs"` backend identity.
+
+Cost: ~1 small dispatch. Risk: low. This preserves surface
+coherence for JAX-installed users on GPU machines without
+spending dispatch effort on a measurement track that §12 now
+deprioritises.
+
+### Design γ — "β-thin plus autograd seam"
+
+Design β-thin, plus an explicit autograd-compatible builder wrap
 (`carrier_hamiltonian_full_ld` taking JAX-traced `η` / detuning
 inputs end-to-end with a `jax.grad` test). Not a full
 autograd release — just enough to prove the door isn't closed.
 
-Cost: ~5–6 dispatches. Risk: medium-high (autograd brings its
+Cost: ~4–5 dispatches. Risk: medium-high (autograd brings its
 own convention questions — do we expose `jax.grad` directly or
 wrap it? Does the `ResultMetadata` record the differentiation
 target?).
 
 ### Comparison table
 
-| Criterion                        | α (spectrum only)       | β (α + time-evolution)   | γ (β + autograd seam)         |
-|----------------------------------|-------------------------|--------------------------|-------------------------------|
-| New public `backend_name`        | 1 (`spectrum-jax`)      | 1 (no new evolution name)| 1 (autograd uses provenance)  |
-| New public kwargs                | `device=` on `solve_spectrum` | +`device=` on `solve` / ensemble / builders | +autograd-scoped provenance tags |
-| Dispatch count                   | ~2                      | ~4–5                     | ~5–6                          |
-| AAH user case addressed          | Yes (wall-clock only)   | Yes                      | Yes                           |
-| β.4.5 user case addressed        | No                      | Yes                      | Yes                           |
-| Phase 3 autograd enabled         | Door left open          | Door left open           | Door cracked open             |
-| CI cost                          | Skips only              | Skips only               | Skips only                    |
-| Reference-hardware burden        | One tier                | One tier                 | One tier                      |
-| Risk profile                     | Low                     | Medium                   | Medium-high                   |
+| Criterion                        | α (spectrum only)       | β-thin (capability only) | β (measured time-evolution) | γ (autograd seam)             |
+|----------------------------------|-------------------------|--------------------------|-----------------------------|-------------------------------|
+| New public `backend_name`        | 1 (`spectrum-jax`)      | 1 (no new evolution name) | 1 (no new evolution name)  | 1 (autograd uses provenance)  |
+| New public kwargs                | `device=` on `solve_spectrum` | +`device=` on `solve` / ensemble / builders | Same as β-thin + benchmark tooling | +autograd-scoped provenance tags |
+| Dispatch count                   | ~2                      | +~1                      | ~4–5                       | ~4–5                          |
+| AAH user case addressed          | Yes (wall-clock only)   | Yes                      | Yes                         | Yes                           |
+| β.4.5 user case addressed        | No                      | Capability only; no benchmark | Yes                    | Yes                           |
+| Phase 3 autograd enabled         | Door left open          | Door left open           | Door left open              | Door cracked open             |
+| CI cost                          | Skips only              | Skips only               | Skips only                  | Skips only                    |
+| Reference-hardware burden        | One tier                | None beyond α            | One additional tier         | One additional tier           |
+| Risk profile                     | Low                     | Low                      | Medium                     | Medium-high                   |
 
 ---
 
-## 6. Open questions for the maintainer
+## 6. Maintainer questions
+
+### 6.1 Open
 
 1. **Reference GPU.** Which machine becomes the baseline — an
    RTX 40-series consumer card? An NVIDIA L4 / A10 lab card?
@@ -410,15 +426,22 @@ target?).
    recommended framing. Does the maintainer want to
    actually test on Apple Silicon, or is "transparent JAX
    device dispatch, no warranty" enough?
-4. **α vs β vs γ.** The main decision. §7 assumes α; if
-   the maintainer picks β or γ the staging changes.
-5. **Dependency posture.** `gpu` optional-deps group with
+4. **Dependency posture.** `gpu` optional-deps group with
    `jax[cuda12]>=0.4`, or leave CUDA install to the user
    entirely and just test against whatever they have?
 
+### 6.2 Recorded
+
+- **Initial staging.** §7 assumes Design α first. The §12/§13
+  post-α decision does not change BBA → BBE.
+- **Post-α direction (Q6, 2026-04-28).** Resolved as
+  **Modify** in §13: α → C → β-thin → B → γ. The measured
+  GPU time-evolution benchmark branch and branch A are deferred
+  indefinitely at current ion-trap dimensions.
+
 ---
 
-## 7. Staging proposal (conditional on Design α)
+## 7. Staging proposal (Design α — recorded)
 
 Five dispatch-shape units, in order. Only the first three ship
 capability; BBI and BBJ close the documentation loop.
@@ -475,10 +498,9 @@ capability; BBI and BBJ close the documentation loop.
    (or a new Tutorial 14) showing the reproduction on GPU
    for users who have it. Cost: ~0.5 dispatch.
 
-**Total:** ~3.5 dispatches if β / γ are deferred,
-expandable by 2–3 dispatches if β follows immediately
-(time-evolution GPU + its benchmark + its integration into
-the cross-backend comparison at scale).
+**Total:** ~3.5 dispatches for α. §13 records the post-α
+successor order as C → β-thin → B → γ; β as a measured
+time-evolution benchmark branch no longer follows immediately.
 
 ---
 
@@ -514,7 +536,12 @@ the cross-backend comparison at scale).
 
 ---
 
-## 10. Recommendation (tentative)
+## 10. Recommendation
+
+The post-α direction is recorded in §13 (`α → C → β-thin → B
+→ γ`); §10 below is the original recommendation that opened the
+α track. BBA and BBB have shipped under it; BBC is pending §6.1
+Q1 (reference-GPU hardware decision).
 
 **Design α, staged per §7.** Start with the spectrum path
 because it is the narrowest honest answer to the "can the
@@ -525,12 +552,14 @@ and BBC lands the per-tier wall-clock-vs-reach record that
 the AAG gate-status text currently flags as the open
 measurement.
 
-**Defer β and γ until α ships and BBC's wall-clock record
-exists in repo.** The Phase 2 CPU null results are warning
-enough against opening the time-evolution surface before a
-first GPU data point lands — GPU time-evolution might pay off
-at `dim ≥ 1 000` and lose at `dim ≤ 100`, and we don't want to
-re-litigate that with hand-waving.
+**Defer β as a measured time-evolution benchmark branch.**
+§13 records a later β-thin capability-only `device=` surface,
+but the β.4.5-style GPU time-evolution comparison is not the
+next investment target. The Phase 2 CPU null results are warning
+enough against spending dispatch effort on that measurement
+track before a real user case lands — GPU time-evolution might
+pay off at `dim ≥ 1 000` and lose at `dim ≤ 100`, and we don't
+want to re-litigate that with hand-waving.
 
 **Hardware baseline (conditional recommendation, pending
 Q1):** an RTX 40-series consumer GPU with ≥ 16 GB VRAM.
@@ -548,7 +577,7 @@ status last touched on the Clos 2016 workplan.
 
 ---
 
-## 11. What happens next
+## 11. Lifecycle
 
 This document sits at `docs/gpu-dispatch-design.md` as a
 deliberation artefact, following the repository convention
@@ -556,16 +585,22 @@ for `docs/phase-2-jax-backend-design.md` /
 `docs/phase-2-jax-time-dep-design.md`: not linked into
 `mkdocs.yml`, retained in `docs/` for historical continuity.
 
-When the §6 questions are answered, this document becomes
-either:
+It is **annotated in place** rather than superseded:
 
-- **Superseded by a Dispatch BBA kickoff note** annotated
-  with a "Decisions recorded YYYY-MM-DD" banner and retained
-  for historical continuity; or
-- **Retired** if GPU work is postponed beyond the current
-  cycle, archived per the same precedent that
-  `docs/workplan-clos-2016-integration.md` followed when it
-  transitioned to shipped-record status.
+- New decisions land as numbered §-additions (§12 open-system
+  reframing, §13 Q6 resolution) — the original §1–§11 design
+  space is preserved alongside what was decided on top of it.
+- §6.1 questions migrate to §6.2 as they resolve. Q6 has
+  already done so; Q1–Q4 are still open.
+- Capability dispatches (BBA and BBB both shipped 2026-04-24)
+  are recorded in `CHANGELOG.md`, not here. §7
+  remains the original staging plan; the CHANGELOG is the
+  authoritative record of what landed.
+
+The note retires only if GPU work is postponed beyond the v0.x
+cycle entirely — the precedent for that transition is
+`docs/workplan-clos-2016-integration.md` after its
+shipped-record handover.
 
 ---
 
@@ -634,12 +669,18 @@ Three branches, ordered by effort and confidence-of-payoff:
 | B      | `mcsolve` / QTMC trajectory ensembles   | Medium | High. Embarrassingly parallel, state-vector memory per trajectory, aligns with the existing `systematics` ensemble surface. | **Pursue as Phase 3 feasibility branch.** Replaces β as the natural post-α direction. |
 | C      | Batched parameter sweeps on JAX (`vmap`) | Low    | Moderate. Already half-built — `solve_ensemble` is the structural precedent; `vmap` over jitter / detuning grids is incremental. | **Near-term, post-BBA.** Lowest-cost path to a measurable open-system GPU data point. |
 
-This re-orders the post-α roadmap from "β (GPU
-time-evolution `mesolve`) → γ (autograd seam)" to
-"C (batched sweeps via `vmap`) → B (trajectory ensembles) →
-γ (autograd seam)". A stays deferred indefinitely at
-ion-trap scales; if a future user case lands at
-`dim ≳ 10⁴` open-system, the deferral is re-litigated then.
+β-thin is not a fourth investment branch. It is the capability
+half of the old β split away from the benchmark effort:
+`device="gpu"` becomes an explicit, provenance-tagged kwarg for
+JAX time-evolution paths, with no performance claim and no
+reference-hardware artefact.
+
+§13 records the resulting post-α roadmap as "C (batched sweeps
+via `vmap`) → β-thin (capability-only device kwarg) → B
+(trajectory ensembles) → γ (autograd seam)". A and the original
+measured β benchmark branch stay deferred indefinitely at
+ion-trap scales; if a future user case lands at `dim ≳ 10⁴`
+open-system, the deferral is re-litigated then.
 
 ### 12.3 Identified benchmark gap
 
@@ -698,27 +739,66 @@ jump-operator surface is the only genuinely new public API:
 
 ### 12.5 Action
 
-The §6 open questions remain answer-pending; this addendum
-adds a sixth:
+Q6 is resolved in §13. The open-system feasibility branch no
+longer waits on a full GPU `mesolve` benchmark. The downstream
+artefacts are:
 
-6. **Post-α direction.** Does the maintainer accept the
-   re-ordering to `C → B → γ` (batched sweeps → trajectory
-   ensembles → autograd seam), with full `mesolve` on GPU
-   deferred indefinitely? The §5 comparison table predates
-   this reframing and would be regenerated in the kickoff
-   note that supersedes this design.
+1. C kickoff: `vmap` over `solve_ensemble` jitter / detuning
+   grids, hardware-flexible.
+2. β-thin kickoff: `device="gpu" | "cpu" | None` on
+   `solve` / `solve_ensemble` / time-dependent builders,
+   capability-only.
+3. Phase 3 feasibility note for branch B: jump-operator
+   definitions for the four canonical trapped-ion dissipation
+   channels, trajectory aggregator and RNG stream-composition
+   convention, and the cross-backend benchmark plan
+   (`qutip.mcsolve` CPU vs JAX-based trajectory ensembles with
+   explicit GPU/CPU device split).
 
-If accepted, the next deliberation artefact is a
-**Phase 3 feasibility note** scoping branch B:
-jump-operator definitions for the four canonical trapped-ion
-dissipation channels, trajectory aggregator and RNG
-stream-composition convention, and the cross-backend
-benchmark plan (`qutip.mcsolve` CPU vs `jax`-based
-trajectory ensembles with explicit GPU/CPU device split).
 The feasibility note is **not** part of the current GPU
-dispatch's §7 staging; it is a downstream successor that
-opens once BBA–BBE close and BBC's wall-clock record is in
-repo.
+dispatch's §7 staging; it is a downstream successor that opens
+once BBA–BBE close and BBC's wall-clock record is in repo.
 
-**Status:** addendum recorded; Phase 3 feasibility study
-scoping awaits maintainer review of §12.5 question 6.
+---
+
+## 13. Q6 decision recorded (2026-04-28)
+
+**Decision: Modify.** Accept the §12 reframing for investment
+priority, but preserve a capability-only GPU device surface.
+The post-α roadmap is:
+
+`α → C → β-thin → B → γ`
+
+Expanded:
+
+1. **α.** Spectrum GPU as scoped by BBA → BBE, with BBC
+   recording the hardware wall-clock envelope.
+2. **C.** Batched parameter sweeps over the existing
+   `solve_ensemble` / `systematics` surface using JAX `vmap`
+   where it fits. This is hardware-flexible and does not block
+   on a reference GPU.
+3. **β-thin.** Capability-only `device="gpu" | "cpu" | None`
+   on `solve`, `solve_ensemble`, and time-dependent builders.
+   Scope is limited to `backend="jax"` paths. Requested and
+   resolved device are recorded in provenance. There is no
+   benchmark, no performance promise, and no GPU CI gate.
+4. **B.** Open-system trajectory ensembles: jump-operator
+   surface, `StochasticTrajectoryResult`, RNG stream-composition
+   convention, and CPU/GPU trajectory-ensemble benchmark plan.
+5. **γ.** Autograd seam, after the capability and open-system
+   surfaces have settled.
+
+**Deferred indefinitely at current ion-trap dimensions:** branch
+A (full density-matrix `mesolve` on GPU) and β as originally
+scoped (measured GPU time-evolution against the β.4.5 grid).
+They re-open only if a real user case lands outside the current
+`dim ≤ 100` / `dim ≲ 10³` time-evolution envelope.
+
+**Reason.** §12 separated capability from investment. The
+capability half is cheap and keeps the API coherent with §4.2's
+"device is provenance, not identity" rule. The investment half
+is not justified by the current evidence: Phase 2 CPU results
+already show JAX/Dynamiqs losing to QuTiP at the shipped scales,
+and the open-system memory argument makes density-matrix GPU
+dispatch less attractive than trajectory ensembles for dissipative
+ion-trap dynamics.

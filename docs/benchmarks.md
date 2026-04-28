@@ -609,7 +609,7 @@ cases. The gap claim is held provisionally — a reader who
 knows of such a benchmark is invited to flag it via a
 GitHub issue.
 
-This gap is recorded here so the Phase 3 feasibility study
-flagged in `docs/gpu-dispatch-design.md` §12.5 has a fixed
-benchmarks.md anchor to land its first measurement against.
+This gap is recorded here so the post-α roadmap decision in
+`docs/gpu-dispatch-design.md` §13 has a fixed benchmarks.md
+anchor to land its first open-system measurement against.
 **No measurement shipped here; this is a forward marker.**
