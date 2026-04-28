@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use iontrap-dynamics, please cite the software using this metadata."
+type: software
+title: "iontrap-dynamics"
+abstract: "Open-system quantum dynamics of trapped-ion spin-motion systems."
+authors:
+  - family-names: "Warring"
+    given-names: "U."
+version: "0.4.0"
+license: "MIT"
+repository-code: "https://github.com/uwarring82/iontrap-dynamics"
+url: "https://github.com/uwarring82/iontrap-dynamics"
+keywords:
+  - trapped ions
+  - quantum dynamics
+  - quantum optics
+  - open quantum systems
+  - QuTiP
+  - spin-motion dynamics

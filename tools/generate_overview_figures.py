@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Generate the two schematic figures embedded in docs/overview.md.
 
 These are pedagogical schematics, not data plots. They are committed to
