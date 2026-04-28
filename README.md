@@ -2,6 +2,11 @@
 
 Open-system quantum dynamics of trapped-ion spin-motion systems.
 
+> **New here?** See [docs/overview.md](docs/overview.md) for an
+> accessible introduction to what we do, how we work, and what we
+> don't claim — written with three reading levels for students,
+> collaborators, and curious visitors.
+
 `iontrap-dynamics` is a domain-specific Python library for modelling trapped-ion
 spin-motion physics with explicit, typed configuration objects for species,
 drives, modes, and measurement conventions. The project is built around a hard
@@ -11,13 +16,17 @@ solver surface via `backend="jax"`.
 
 ## Status
 
-**v0.3.0 released 2026-04-22 — closes the Phase 2 performance
-milestone.** Phase 0 foundations, Phase 1 (dynamics core + measurement
-layer + systematics layer + registered entanglement observables), and
-Phase 2 (performance track + JAX / Dynamiqs backend end-to-end) are
-all shipped on `main`. `CONVENTIONS.md` stays frozen at v0.2 — no
-conventions-level changes between `v0.2.0` and `v0.3.0`; `v0.3.0`
-adds capability surface without breaking the v0.2 schema. Existing
+**v0.4.0 released 2026-04-24 — adds the Clos 2016 (PRL 117, 170401)
+reproduction track on top of the Phase 2 performance milestone.**
+Phase 0 foundations, Phase 1 (dynamics core + measurement layer +
+systematics layer + registered entanglement observables), Phase 2
+(performance track + JAX / Dynamiqs backend end-to-end), and the
+Clos 2016 integration (full-Lamb–Dicke carrier dynamics, exact-
+diagonalization spectrum tools, four spectrum-analysis observables,
+N = 1 / 2 / 3 reproduction inside declared tolerances) are all
+shipped on `main`. `CONVENTIONS.md` stays frozen at v0.2 — no
+conventions-level changes through `v0.4.0`; the release adds
+capability surface without breaking the v0.2 schema. Existing
 `v0.2.0` callers see no behaviour change: every new `backend=` kwarg
 defaults to `"qutip"`, every JAX-specific entry is behind
 `solve(backend="jax", ...)` or builder-level `backend="jax"`.
@@ -237,9 +246,9 @@ Phase 2 sparse-matrix-tuning open item),
 QuTiP-vs-JAX at dim ≥ 100 / 5000 steps across all five
 time-dependent builders; needs the `[jax]` extras).
 
-Test suite at `v0.3.0`:
+Test suite at `v0.4.0`:
 
-- **Base CI (no extras): 820 passed, 3 skipped.** Two skipped
+- **Base CI (no extras): 883 passed, 3 skipped.** Two skipped
   tests are migration-tier builder-comparison slots (scenarios 3
   and 4) with probe-informed blockers (see `CHANGELOG.md`); one
   skipped module is the Dynamiqs-gated integration test file
@@ -346,7 +355,7 @@ python -m pip install -e ".[dev,docs]"
   follow-up)
 - `CONVENTIONS.md` — binding conventions document (v0.2 frozen:
   §17 measurement and §18 systematics closed at the v0.2.0 release;
-  unchanged at v0.3.0 — no conventions-level schema change)
+  unchanged through v0.4.0 — no conventions-level schema change)
 - `CHANGELOG.md` — Keep-a-Changelog log of dispatches on `main`
 
 ## Licence

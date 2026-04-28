@@ -1,16 +1,27 @@
 site_name: iontrap-dynamics
 site_description: Open-system quantum dynamics of trapped-ion spin-motion systems
-# URLs reflect the current repo. On migration to `open-iontrap` (workplan §4),
-# swap `uwarring82` → `open-iontrap` in the next three lines.
-site_url: https://github.com/uwarring82/iontrap-dynamics
+# site_url is the GitHub Pages serving URL — used by mkdocs-material for
+# canonical link tags, sitemap.xml, and the "Edit on GitHub" / share-link
+# helpers. Deployed by .github/workflows/docs-deploy.yml; requires
+# Settings → Pages → Source: "GitHub Actions" to be set on the repo.
+# On migration to `open-iontrap` (workplan §4), swap `uwarring82` →
+# `open-iontrap` in all three URL lines below.
+site_url: https://uwarring82.github.io/iontrap-dynamics/
 repo_url: https://github.com/uwarring82/iontrap-dynamics
 repo_name: uwarring82/iontrap-dynamics
 
 theme:
   name: material
   language: en
-  logo: material/atom-variant
-  favicon: material/atom-variant
+  # `material/atom-variant` is an icon shortcode rendered as inline SVG —
+  # set under `theme.icon.logo`, not `theme.logo` (which expects a file
+  # path under docs_dir). favicon is intentionally unset: a deliberate
+  # favicon file would have to live under docs/, and the project's
+  # existing SVG emblems under assets/ are hash-verified upstream
+  # imports — copying one into docs/ would create a hash-drift surface.
+  # Material's default favicon ships until a favicon decision is taken.
+  icon:
+    logo: material/atom-variant
   features:
     - navigation.instant
     - navigation.sections
@@ -49,6 +60,7 @@ markdown_extensions:
 
 nav:
   - Welcome: index.md
+  - Overview: overview.md
   - Getting Started: getting-started.md
   - Project Framework: framework.md
   - Conventions: conventions.md

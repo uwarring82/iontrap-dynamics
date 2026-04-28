@@ -580,3 +580,36 @@ On CPU-only hardware there is no reason to wire JAX into
 python tools/run_benchmark_spectrum_envelope_jax.py --include-large
 python tools/plot_spectrum_envelope_backend_comparison.py
 ```
+
+## Open-system benchmark gap (forward, 2026-04-28)
+
+Every measured baseline above is **closed-system** —
+unitary `sesolve` / `mesolve` on a pure ket, dense `eigh`,
+time-dependent builders without Lindblad channels. The
+post-Phase 2 GPU-acceleration assessment (see
+`docs/gpu-dispatch-design.md` §12) identified that the
+density-matrix vs trajectory-ensemble distinction inverts
+the GPU value proposition for dissipative dynamics:
+`mesolve` GPU dispatch saturates VRAM earlier than CPU
+saturates RAM, while `mcsolve` / QTMC trajectory ensembles
+revert to per-trajectory state-vector memory and parallelise
+across CUDA cores.
+
+The benchmarks we have surveyed (Dynamiqs paper,
+QuantumToolbox.jl release notes, QuTiP 5 + A100
+measurements, CUDA-Q examples) cover generic spin chains
+and harmonic oscillators. **We have not found a published
+cross-backend benchmark for trapped-ion open-system
+dynamics** comparing `mesolve` against trajectory ensembles
+on the spin ⊗ motion tensor structure with realistic
+heating + dephasing jump operators. The sparse,
+mode-selective jump-operator structure of trapped-ion
+systems is materially different from Ising-chain test
+cases. The gap claim is held provisionally — a reader who
+knows of such a benchmark is invited to flag it via a
+GitHub issue.
+
+This gap is recorded here so the Phase 3 feasibility study
+flagged in `docs/gpu-dispatch-design.md` §12.5 has a fixed
+benchmarks.md anchor to land its first measurement against.
+**No measurement shipped here; this is a forward marker.**

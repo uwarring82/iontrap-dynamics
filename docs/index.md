@@ -1,7 +1,7 @@
 # Welcome
 
 <section class="hero-panel">
-  <p class="hero-kicker">iontrap-dynamics · v0.3.0 — Phase 2 complete</p>
+  <p class="hero-kicker">iontrap-dynamics · v0.4.0 — Clos 2016 reproduction landed</p>
   <h1>Open-system quantum dynamics for trapped-ion spin-motion systems</h1>
   <p class="hero-lede">
     A Python library for deterministic, typed, convention-explicit modelling of
@@ -66,7 +66,8 @@ Strict package metadata, CI (lint + mypy strict + tests + pa11y WCAG 2 A)
 
 </div>
 
-At `v0.3.0` the library covers Phase 0, Phase 1, and Phase 2 in full:
+At `v0.4.0` the library covers Phase 0, Phase 1, and Phase 2 in full,
+plus the Clos 2016 reproduction track:
 
 Foundation (Phase 0):
 

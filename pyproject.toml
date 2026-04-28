@@ -119,11 +119,14 @@ legacy = [
 # org is created and this repo initialised there, URLs point to reality.
 # When migrating: swap `uwarring82` → `open-iontrap` in all five entries and
 # activate GitHub Pages at the new location.
+# Documentation points at the GitHub Pages site published by
+# .github/workflows/docs-deploy.yml. The first deploy requires
+# Settings → Pages → Source: "GitHub Actions" to be set on the repo.
 Homepage      = "https://github.com/uwarring82/iontrap-dynamics"
 Repository    = "https://github.com/uwarring82/iontrap-dynamics"
 Issues        = "https://github.com/uwarring82/iontrap-dynamics/issues"
 Changelog     = "https://github.com/uwarring82/iontrap-dynamics/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/uwarring82/iontrap-dynamics"   # no Pages deploy yet
+Documentation = "https://uwarring82.github.io/iontrap-dynamics/"
 "Corporate Design Source" = "https://github.com/threehouse-plus-ec/cd-rules"
 
 # -----------------------------------------------------------------------------

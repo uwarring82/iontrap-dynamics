@@ -566,3 +566,159 @@ either:
   cycle, archived per the same precedent that
   `docs/workplan-clos-2016-integration.md` followed when it
   transitioned to shipped-record status.
+
+---
+
+## 12. Open-system reframing (2026-04-28 addendum)
+
+This addendum extends §1's framing — which is implicitly
+**closed-system** (dense `eigh`, unitary `sesolve` /
+time-dependent builders) — to the dissipative case. It does
+**not** change the §10 recommendation. Design α (spectrum
+first, BBA → BBE per §7) remains the right narrow first move.
+What changes is the *post-α* roadmap: where §5 staged β
+("α plus GPU time-evolution") as the natural follow-up under
+the implicit assumption that time-evolution means
+density-matrix `mesolve`, the open-system landscape inverts
+that priority.
+
+### 12.1 Why the framing matters
+
+§1's null-result evidence (Dispatch YY / β.4.5; the
+post-AAH `eigh` comparison) is for **closed-system**
+workloads. Dissipative dynamics changes the constraint
+structure — and consequently the GPU value proposition —
+along two axes that the closed-system measurements do not
+exercise:
+
+1. **Memory.** Density-matrix evolution stores `dim²` complex
+   amplitudes; state-vector evolution stores `dim`. For the
+   trapped-ion regime the library ships into
+   (single-ion `dim ≤ 100`, two-ion full-Lamb–Dicke
+   `dim ≲ 10³`), the closed/open memory ratio is benign on
+   CPU but bites earlier on GPU because VRAM tiers are
+   smaller than the corresponding RAM tiers. Published
+   QuTiP 5 + A100 measurements illustrate the same regime
+   shift in a different setting: a closed-system spin-chain
+   that fits 22 spins on the GPU collapses to 11 spins
+   open-system before saturation.
+2. **Parallelism.** `mcsolve` / quantum-trajectories Monte
+   Carlo (QTMC) reverts to state-vector memory scaling per
+   trajectory and is **embarrassingly parallel** across
+   trajectories — the canonical workload shape for which GPUs
+   were designed. The library's existing `systematics` layer
+   (jitter / drift / SPAM scans, `perturb_carrier_rabi`,
+   `solve_ensemble`) already produces parameter ensembles;
+   trajectory ensembles fit the same architectural slot.
+
+| Method                    | Memory / instance | Parallel structure       | GPU suitability at ion-trap scales       |
+|---------------------------|-------------------|--------------------------|------------------------------------------|
+| `mesolve` (density matrix)| `dim²`            | Single dense ODE         | Decreased vs. closed-system. Memory wall hits earlier. |
+| `mcsolve` / QTMC          | `dim` per trajectory | Independent trajectories | High — the only path with consistent literature wins at our scales. |
+
+The implication for §5 is concrete: **β as currently scoped
+(GPU `mesolve` / `sesolve`) is the wrong place to stage the
+post-α work.** Density-matrix GPU dispatch saturates the
+VRAM envelope before it amortises launch latency at our
+typical `dim`. Trajectory-ensemble GPU dispatch — not in §5
+at all — is the path the literature consistently shows
+winning at the scales we ship to.
+
+### 12.2 Strategic options under the open-system frame
+
+Three branches, ordered by effort and confidence-of-payoff:
+
+| Branch | Path                                  | Effort | GPU payoff at our scales | Recommendation |
+|--------|---------------------------------------|--------|--------------------------|----------------|
+| A      | Full `mesolve` on GPU (density matrix) | High   | Low. VRAM saturates before speedup; closed-system A100 data already shows the shrunk envelope. | **Defer.** Negative-return at current ion-trap dimensions. |
+| B      | `mcsolve` / QTMC trajectory ensembles   | Medium | High. Embarrassingly parallel, state-vector memory per trajectory, aligns with the existing `systematics` ensemble surface. | **Pursue as Phase 3 feasibility branch.** Replaces β as the natural post-α direction. |
+| C      | Batched parameter sweeps on JAX (`vmap`) | Low    | Moderate. Already half-built — `solve_ensemble` is the structural precedent; `vmap` over jitter / detuning grids is incremental. | **Near-term, post-BBA.** Lowest-cost path to a measurable open-system GPU data point. |
+
+This re-orders the post-α roadmap from "β (GPU
+time-evolution `mesolve`) → γ (autograd seam)" to
+"C (batched sweeps via `vmap`) → B (trajectory ensembles) →
+γ (autograd seam)". A stays deferred indefinitely at
+ion-trap scales; if a future user case lands at
+`dim ≳ 10⁴` open-system, the deferral is re-litigated then.
+
+### 12.3 Identified benchmark gap
+
+**We have not found a published cross-backend benchmark**
+for trapped-ion open-system dynamics that compares full
+`mesolve` against QTMC trajectory ensembles on a common
+hardware tier. The GPU benchmarks we have surveyed
+(Dynamiqs paper, QuantumToolbox.jl release notes, QuTiP 5
+A100 measurements, CUDA-Q examples) use generic spin
+chains or harmonic-oscillator test cases. The
+spin ⊗ motion tensor structure of trapped-ion systems —
+with its sparse, mode-selective jump operators and
+strongly anisotropic dim contributions from spin (small)
+versus motional (large) factors — is not represented in
+the literature surveyed. A reader who knows of one should
+flag it; the gap claim is held provisionally.
+
+**Implication.** If branch B or C is pursued, the resulting
+artefact closes a gap in the broader benchmark literature,
+not just an internal performance question. A targeted
+trapped-ion-specific cross-backend record (CPU `mcsolve`
+vs GPU trajectory ensembles, on representative
+sideband / MS-gate / stroboscopic builders with realistic
+heating + dephasing jump operators) is the
+publication-shaped output of that branch.
+
+### 12.4 Architectural alignment with the shipped surface
+
+Branch B does not require new top-level abstractions. The
+jump-operator surface is the only genuinely new public API:
+
+- **Jump operators.** Spin dephasing (`σ_z`-coupled),
+  motional heating (`a + a†` on the heating mode), motional
+  decoherence (`a†a`) and SPAM-style Lindblad channels are
+  the four families a trapped-ion `mcsolve` interface must
+  expose. The `Lindbladian` slot already contemplated in
+  `phase-1-architecture.md` §"Stochastic unravellings" is
+  the natural anchor.
+- **Trajectory aggregator.** `StochasticTrajectoryResult`
+  alongside the shipped `TrajectoryResult`, also
+  pre-flagged in `phase-1-architecture.md` §"Non-goals for
+  Phase 1." The aggregator owns trajectory-count provenance,
+  RNG seed-stream metadata, and observables-with-error-bars
+  semantics.
+- **Backend dispatch.** Re-uses the §4.2 device-as-provenance
+  contract from `backend_name = "jax-dynamiqs"`. No new
+  `backend_name` is minted for the trajectory path beyond
+  whatever the underlying integrator (QuTiP `mcsolve`,
+  Dynamiqs `mcsolve`-equivalent) requires.
+- **RNG stream management.** The one genuinely new
+  cross-backend convention question: how seeds compose
+  across (a) trajectory index within an ensemble and
+  (b) parameter index within a `systematics` sweep over
+  trajectory ensembles. Resolving this is the
+  Phase 3 feasibility study's primary Coastline output.
+
+### 12.5 Action
+
+The §6 open questions remain answer-pending; this addendum
+adds a sixth:
+
+6. **Post-α direction.** Does the maintainer accept the
+   re-ordering to `C → B → γ` (batched sweeps → trajectory
+   ensembles → autograd seam), with full `mesolve` on GPU
+   deferred indefinitely? The §5 comparison table predates
+   this reframing and would be regenerated in the kickoff
+   note that supersedes this design.
+
+If accepted, the next deliberation artefact is a
+**Phase 3 feasibility note** scoping branch B:
+jump-operator definitions for the four canonical trapped-ion
+dissipation channels, trajectory aggregator and RNG
+stream-composition convention, and the cross-backend
+benchmark plan (`qutip.mcsolve` CPU vs `jax`-based
+trajectory ensembles with explicit GPU/CPU device split).
+The feasibility note is **not** part of the current GPU
+dispatch's §7 staging; it is a downstream successor that
+opens once BBA–BBE close and BBC's wall-clock record is in
+repo.
+
+**Status:** addendum recorded; Phase 3 feasibility study
+scoping awaits maintainer review of §12.5 question 6.
