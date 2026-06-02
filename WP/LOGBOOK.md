@@ -162,6 +162,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-02 — EDE Round-7 cleanup; EDF (review note + CONVENTIONS/nav proposal) drafted
+
+- **Refs:** WP-01 · EDE/EDF · §5 · §6 · §7 · §13
+- **Stance:** Guardian (close two integrity/labelling gaps before they ossify) then Architect (stage the conventions without touching the locks).
+- **What:** (1) **EDE Round-7 cleanup** — `run_benchmark_common_mode` dropped the `c = 1` overwrite that hard-set the measured difference variance to 0.0 before writing the artefact (it now reports the *measured* `c1_difference_variance_measured` and the error metric spans all `c`, so the artefact itself proves the rejection); `run_benchmark_recoverability` relabelled the Werner mixture from "dephasing" to the depolarizing-noise (Werner) family and recorded `max_error_scope` (endpoint-exact, monotone interior). WP-01 §7 rows 2–6 / §8 / §13 refreshed from planning placeholders (`test_analytic.py`, "to follow", EDA-only stub) to the as-built anchors and the landed EDA–EDE range. (2) **EDF option (a)** — drafted the additive literature-review note `docs/estimation-darwinism-review.md` (Coastline / CC BY-SA 4.0, Endorsement Marker, 17 primary sources with DOIs, source matrix, every definition cited; renders under the real theme, 44 KB HTML) and the maintainer-ready proposal `WP/EDF-conventions-nav-proposal.md` (the four staged CONVENTIONS §19–22 sections, the `mkdocs.yml` nav line, the seal-time header/marker/footer edits).
+- **Why (the one decision worth recording):** EDF was executed as **option (a)** on the user's steer — draft the additive artefacts, **propose** the two governed edits (`CONVENTIONS.md`, `mkdocs.yml`), but **do not apply** them. The seal, the single `CONVENTION_VERSION` 0.2 → 0.3 bump, and the `WORKPLAN_v0.3.md` §5.4 paste stay maintainer-governed acts, owned by `WP/FREEZE-v0.3.md` and gated on the §4 combined-vs-WP-01-first timeline decision (taken at WP-02 ratification). The review note is the cited authority for §19–22, closing the WP-01 §5 binding rule (every convention section cites the note; every definition cites a primary source).
+- **Outcome:** Additive artefacts landed; the two governed edits staged, not applied. EDF status moves *minted → review note + proposal landed; seal pending maintainer*. **Next:** maintainer seals the v0.3 freeze (bump + §19–22 + nav line + WORKPLAN §5.4), coordinated with WP-02; then the release tag.
+- **Links:** `docs/estimation-darwinism-review.md` · `WP/EDF-conventions-nav-proposal.md` · `WP/FREEZE-v0.3.md` §2 / §6 · `WP/WP-01-estimation-darwinism.md` §5 / §6 / §13.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -173,7 +184,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` | **landed 2026-06-02** |
-| **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | minted |
+| **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
 
 **This registry is forward-only; it does not catalogue history — that is the CHANGELOG's job.** Many families are already taken by pre-framework dispatches and reservations, and a new code must avoid all of them. **Minting rule:** before minting, grep `CHANGELOG.md`, `WORKPLAN_v0.3.md`, and `docs/gpu-dispatch-design.md` for the candidate family. Known-taken / reserved as of 2026-06-02 (**non-exhaustive** — the grep is authoritative): single letters `A`–`Z`; doubles `AA`–`WW` (incl. tutorial `AA`–`LL`, Phase-2 `OO`, `QQ`–`ZZ`); triples `BBA` / `BBB` landed and `BBC`–`BBE` reserved for the GPU track (`docs/gpu-dispatch-design.md`); sub-coded `RR.1`, `P.*`; Greek `β.1`–`β.4`. A new WP mints from a clearly-fresh family chosen *after* that grep — not merely "anything but `BBA` / `BBB`".
 

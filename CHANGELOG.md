@@ -10,6 +10,20 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch EDF (additive part) — estimation/Darwinism literature-review note.**
+  New `docs/estimation-darwinism-review.md` (Coastline / CC BY-SA 4.0): fixes the
+  canonical definitions behind the service surface — SLD-QFI, classical Fisher /
+  Cramér–Rao, the `R_δ = N/f_δ` redundancy convention, the Schumacher–Nielsen
+  clamped-coherent-information recoverability measure, the GHZ/cat parity
+  conventions, and the common-mode `2σ²(1 − c)` channel — each anchored to a
+  primary source (17 references with DOIs) and each identifying the §7 analytic
+  oracle it backs. The maintainer-ready proposal `WP/EDF-conventions-nav-proposal.md`
+  carries the four **staged** `CONVENTIONS.md` §19–22 sections, the `mkdocs.yml`
+  nav line, and the seal-time header/marker/footer edits. The governed acts — the
+  single `CONVENTION_VERSION` 0.2 → 0.3 bump, the seal, and the
+  `WORKPLAN_v0.3.md` §5.4 paste — are **not** applied here; they remain
+  maintainer-governed, owned by `WP/FREEZE-v0.3.md`. Per
+  `WP/WP-01-estimation-darwinism.md` (§5, §6).
 - **Dispatch EDE — the five remaining generic benchmarks.** Compute-only,
   deterministic benchmark tools, each writing a canonical
   `benchmarks/data/<name>/` (`report.json` schema-v2 + `arrays.npz` +

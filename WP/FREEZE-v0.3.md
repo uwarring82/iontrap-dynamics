@@ -90,6 +90,7 @@ dependency, not a freeze item (the QFI *convention* is §19, owned by WP-01).
 ## 6. Cross-links *(Coastline gate)*
 
 - **WP-01 §6** feeds §19–22 here; it no longer owns the bump.
+- **[`WP/EDF-conventions-nav-proposal.md`](EDF-conventions-nav-proposal.md)** — the ready-to-paste §19–22 staged text, the `mkdocs.yml` nav line for the review note, and the seal-time `CONVENTIONS.md` header/marker/footer edits (Dispatch EDF, drafted 2026-06-02; maintainer applies at the seal). The bump and `test_convention_version.py` stay owned by §3 here.
 - **WP-02 §6 (TBD)** will feed §23–24 here.
 - **`CONVENTIONS.md`** is the destination; this side-car is the staging/coordination plan.
 - **`WORKPLAN_v0.3.md`** records the v0.3 freeze at roadmap level when sealed (the WP
