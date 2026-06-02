@@ -236,6 +236,7 @@ ignore = [
 "tools/run_benchmark_sesolve_speedup.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sideband.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_sparse_vs_dense.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/run_benchmark_qfi_scaling.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_jax_timedep.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_spectrum_envelope.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_spectrum_envelope_jax.py" = ["RUF001", "RUF002", "RUF003"]

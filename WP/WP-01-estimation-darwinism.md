@@ -189,7 +189,7 @@ Each feature gets a generic benchmark following the repository harness: a `tools
 
 | # | Tool | Generic setup | Analytic oracle | Tolerance | Regression-test location |
 |---|---|---|---|---|---|
-| **1 — keystone** | `tools/run_benchmark_qfi_scaling.py` | Phase estimation, GHZ vs product/coherent-spin state, vs qubit number N | QFI_GHZ = N² (Heisenberg); QFI_product = N (SQL) | scaling exponent + closed-form values within named `atol` | `tests/regression/analytic/test_analytic.py` (closed-form anchor, marker `regression_analytic`) |
+| **1 — keystone** ✓ **landed** | `tools/run_benchmark_qfi_scaling.py` → `benchmarks/data/qfi_scaling/` | GHZ vs product probe, vs qubit number N, under `J_z = ½ Σ σ_z` | QFI_GHZ = N² (Heisenberg); QFI_product = N (SQL) | exact (max error 1.4e-14) | `tests/regression/analytic/test_qfi_scaling.py` (`ATOL_QFI_SCALING`, marker `regression_analytic`) |
 | **2** | `tools/run_benchmark_cfi_linear_gaussian.py` | Linear-Gaussian model, known A, Σ; single-qubit phase readout | `F = AᵀΣ⁻¹A`; CRB = F⁻¹; CFI ≤ QFI (Braunstein–Caves) | exact to numerical precision | `tests/regression/analytic/test_analytic.py` |
 | **3** | `tools/run_benchmark_darwinism_redundancy.py` | System-qubit + N environment-qubit decoherence model | mutual-information **plateau** ≈ H_S; classical-plateau R_δ shape | plateau height & onset within named `atol` | `tests/regression/analytic/test_analytic.py` |
 | **4** | `tools/run_benchmark_recoverability.py` | Erasure / dephasing channel of known strength | perfect recovery → residual = full; full decoherence → residual = 0; monotone between | endpoints exact; monotonicity holds | `tests/regression/analytic/test_analytic.py` |
@@ -212,7 +212,7 @@ Each feature gets a generic benchmark following the repository harness: a `tools
 |---|---|---|---|
 | **unit** | `tests/unit/test_*.py` | none | per-module: `test_fisher.py` (CFI/QFI/CRB/linear-Gaussian numerics, CFI ≤ QFI), `test_redundancy.py`, `test_recoverability.py` (endpoints + monotonicity), `test_states_ghz_cat.py` (norm, parity, ConventionError on `fock_dim <= 0`), `test_common_mode.py` (corr=0 reduces to independent draw; `dataclasses.replace` not mutation; `ValueError` on `shots < 1`) |
 | **conventions** | `tests/conventions/test_*.py` | `convention` | `test_convention_version.py` asserting `CONVENTION_VERSION == "0.3"`; new `src/` modules auto-scanned by `test_static_conventions.py` for the qutip-import / `sigmaz` bans (no action beyond compliance) |
-| **regression — analytic** | `tests/regression/analytic/test_analytic.py` | `regression_analytic` | the six benchmark oracles as closed-form anchors (QFI_GHZ = N², QFI_product = N, `F = AᵀΣ⁻¹A`, Darwinism plateau, recoverability endpoints/monotonicity, GHZ parity / EoF), each with a named symbolic `atol` |
+| **regression — analytic** | `tests/regression/analytic/test_analytic.py`; QFI oracle in the sibling `test_qfi_scaling.py` (kept separate to preserve `test_analytic.py`'s QuTiP-free invariant) | `regression_analytic` | the benchmark oracles as closed-form anchors: **QFI_GHZ = N², QFI_product = N landed** (`test_qfi_scaling.py`, `ATOL_QFI_SCALING`); `F = AᵀΣ⁻¹A`, Darwinism plateau, recoverability endpoints/monotonicity, GHZ parity / EoF to follow, each with a named symbolic `atol` |
 
 Out of scope for this tier set: migration tier (Phase-0 only, retiring); invariant tier may optionally gain trace/positivity checks on produced GHZ/cat states but is not required by the card. No `--cov-fail-under` gate exists; coverage is reported only.
 
@@ -295,9 +295,9 @@ Reproducing the task-card 6-point DoD, plus the decoupling proof:
 
 ---
 
-## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — paste only when EDA fully lands: module **and** keystone benchmark)*
+## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — EDA complete 2026-06-02; stub ready to paste, awaiting maintainer)*
 
-WP-01 is Ratified and dispatch **EDA** is minted; the stub below carries the real code. **EDA is not yet fully landed:** its estimation module (`information/fisher.py`) shipped 2026-06-02, but the keystone QFI-scaling benchmark — the very figure this stub headlines — is still **pending WI-3's `ghz_state`** (§15). **Do not paste this stub until EDA is complete** (module *and* benchmark on `main`). At that point, paste it as the next free amendment subsection under §5 (after §5.3, current free slot §5.4 per the v0.3.x patch sequence) and update the header version line, the footer `**Workplan version:**` line, and the Endorsement Marker in lock-step in the same commit.
+WP-01 is Ratified, dispatch **EDA** is minted, and **EDA is now fully landed** (estimation module + keystone benchmark on `main`, 2026-06-02). The stub below is therefore **ready to paste** — but pasting edits `WORKPLAN_v0.3.md`, a governed Coastline file, so it **awaits maintainer action** (not done unilaterally). To paste: insert it as the next free amendment subsection under §5 (after §5.3, current free slot §5.4 per the v0.3.x patch sequence) and update the header version line, the footer `**Workplan version:**` line, and the Endorsement Marker in lock-step in the same commit.
 
 ```markdown
 ### 5.4 — Estimation & Darwinism service surface as v0.3.x follow-up (2026-06-02) *(Coastline, new in v0.3.6)*
@@ -362,7 +362,7 @@ Dispatch codes for WP-01 were **minted at Ratification (2026-06-02)** as the fre
 
 | Dispatch | Maps to | CHANGELOG bullet (at landing) | Status |
 |---|---|---|---|
-| **EDA** | WI-1 estimation `information/fisher.py` (+ keystone QFI-scaling benchmark, bundled as the decoupling proof) | `- **Dispatch EDA — information: CFI/QFI/Cramér–Rao + QFI-scaling benchmark.**` | module landed (2026-06-02, tests green); keystone benchmark **unblocked** (`ghz_state` landed via EDC) — pending |
+| **EDA** | WI-1 estimation `information/fisher.py` (+ keystone QFI-scaling benchmark, bundled as the decoupling proof) | `- **Dispatch EDA — information: CFI/QFI/Cramér–Rao + QFI-scaling benchmark.**` | **landed 2026-06-02 — Dispatch EDA complete** (module + keystone benchmark `benchmarks/data/qfi_scaling/`, max error 1.4e-14) |
 | **EDB** | WI-2 Darwinism `information/redundancy.py` + `recoverability.py` | `- **Dispatch EDB — information: redundancy + recoverability.**` | minted |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | `- **Dispatch EDC — states: ghz_state + cat_mode.**` | landed 2026-06-02 (tests green; `states` now public) |
 | **EDD** | WI-4 `systematics/common_mode.py` | `- **Dispatch EDD — systematics: common-mode channel.**` | minted |

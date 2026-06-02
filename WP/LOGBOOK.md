@@ -115,6 +115,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 - **Outcome:** Landed (ratification + minting). WP-01 lifecycle → Ratified; registry populated. **Next:** implement `information/fisher.py` + tests to the strict gates (ruff / mypy --strict / pytest), commit the `WP/` scaffolding on a branch, then the keystone benchmark (which needs `ghz_state` from WI-3, pulled forward).
 - **Links:** `WP/WP-01-estimation-darwinism.md` §15 (register) · registry below · `WP/REVIEW_LOG.md` (Round 2 approval).
 
+### 2026-06-02 — Dispatch EDA complete: keystone QFI-scaling benchmark landed
+
+- **Refs:** WP-01 · EDA · WI-1 / WI-3 · DoD-5
+- **Stance:** Integrator (closing the dispatch) with a Guardian check (the decoupling proof is the No-TMC gate's evidence).
+- **What:** Landed the keystone QFI-scaling benchmark — `tools/run_benchmark_qfi_scaling.py` writing `benchmarks/data/qfi_scaling/` (`report.json` + `arrays.npz` + the log–log figure), and the binding oracle `tests/regression/analytic/test_qfi_scaling.py`. The GHZ probe reaches the Heisenberg limit N² and the product probe the standard quantum limit N, reproduced to **max error 1.4e-14**. **This completes Dispatch EDA** (module + benchmark) and establishes the decoupling proof for DoD-5 (application-agnostic; textbook oracle only, zero application framing).
+- **Why (the one decision worth recording):** the binding oracle was placed in a **new sibling file** `tests/regression/analytic/test_qfi_scaling.py` rather than in `test_analytic.py` as WP-01 §7 originally specified, because `test_analytic.py` is deliberately **QuTiP-free** ("they ARE the solver truth") and the QFI oracle must construct quantum states. Both sit in the `regression_analytic` tier; WP-01 §7 / §8 were updated to point at the new file. The compute-only artifact shape (`report.json` + `arrays.npz` + `plot.png`, **no** solve-based `manifest.json`) follows the `sparse_vs_dense` precedent — no cache-framework redesign, per the maintainer's scope constraint.
+- **Outcome:** Landed; gates green (ruff / ruff-format / mypy --strict / 38 regression-analytic + full suite). **Consequence:** the §13 WORKPLAN dispatch-track stub is now **ready to paste**, but that edits the governed `WORKPLAN_v0.3.md`, so it awaits maintainer action. **Next:** WI-2 (EDB) Darwinism, WI-4 (EDD) common-mode, then EDF (review note + §19–22 staged into the shared v0.3 freeze).
+- **Links:** `benchmarks/data/qfi_scaling/` · `tools/run_benchmark_qfi_scaling.py` · `tests/regression/analytic/test_qfi_scaling.py` · `WP/WP-01-estimation-darwinism.md` §7 / §13 / §15 · CHANGELOG `[Unreleased]` (EDA bullet).
+
 ---
 
 ## Dispatch-code registry *(Sail)*
@@ -123,7 +132,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 
 | Code | Title | WP | CHANGELOG / WORKPLAN carrier | Status |
 |---|---|---|---|---|
-| **EDA** | WI-1 estimation `information/fisher.py` + keystone QFI-scaling benchmark | WP-01 | CHANGELOG `[Unreleased]` · WORKPLAN §5.4 | module landed 2026-06-02; benchmark unblocked (EDC), pending |
+| **EDA** | WI-1 estimation `information/fisher.py` + keystone QFI-scaling benchmark | WP-01 | CHANGELOG `[Unreleased]` · WORKPLAN §5.4 | **landed 2026-06-02 — EDA complete** (module + benchmark) |
 | **EDB** | WI-2 Darwinism redundancy + recoverability | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |

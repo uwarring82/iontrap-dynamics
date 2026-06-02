@@ -36,9 +36,12 @@ placeholder-only and did not follow semver.
   (`WP/FREEZE-v0.3.md`). Verified against the textbook oracle in
   `tests/unit/test_fisher.py`: QFI(GHZ) = N² (Heisenberg) vs QFI(product) = N
   (standard quantum limit), and CFI ≤ QFI (Braunstein–Caves). The keystone
-  QFI-scaling **benchmark** (the figure of GHZ N² vs product N) is the
-  remaining part of Dispatch EDA and lands with WI-3's `ghz_state`. Per
-  `WP/WP-01-estimation-darwinism.md` (WI-1).
+  QFI-scaling **benchmark** (`tools/run_benchmark_qfi_scaling.py` →
+  `benchmarks/data/qfi_scaling/` with `report.json` + `arrays.npz` + the
+  GHZ-N²-vs-product-N figure) reproduces the oracle to max error 1.4e-14 and
+  **completes Dispatch EDA** — the decoupling proof for DoD-5; binding oracle
+  in `tests/regression/analytic/test_qfi_scaling.py`. Per
+  `WP/WP-01-estimation-darwinism.md` (WI-1 / WI-3).
 - **Dispatch BBB — GPU envelope benchmark (tool extension).**
   `tools/run_benchmark_spectrum_envelope_jax.py` gains a
   `--device={cpu,gpu}` flag. `--device=cpu` (default) preserves

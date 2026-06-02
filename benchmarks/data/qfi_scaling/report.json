@@ -1,0 +1,77 @@
+{
+  "analytic_formulas": {
+    "qfi_ghz": "N**2 (Heisenberg limit)",
+    "qfi_product": "N (standard quantum limit)"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "convention_version": "0.2",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-06-02T10:30:16.979033+00:00",
+  "generator": "J_z = 0.5 * sum_i sigma_z_ion(i)",
+  "max_numerical_vs_analytic_error": 1.4210854715202004e-14,
+  "n_values": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "plot_alt_text": "Log-log plot of quantum Fisher information versus qubit number N for two probe states under the collective generator J_z = one half sum of sigma_z. The GHZ curve follows Heisenberg scaling N squared (slope 2); the product-state curve follows the standard quantum limit N (slope 1). The numerical points lie exactly on the analytic reference lines.",
+  "purpose": "Keystone decoupling proof of WP-01: QFI scaling of a GHZ probe (Heisenberg limit N^2) versus a product probe (standard quantum limit N) under the collective generator J_z = 0.5 * sum_i sigma_z. Exercises the SLD-QFI primitive and the GHZ factory together. Application-agnostic: textbook oracle only, no application framing.",
+  "results": [
+    {
+      "analytic_ghz": 1.0,
+      "analytic_product": 1.0,
+      "n_ions": 1,
+      "qfi_ghz": 0.9999999999999993,
+      "qfi_product": 0.9999999999999993
+    },
+    {
+      "analytic_ghz": 4.0,
+      "analytic_product": 2.0,
+      "n_ions": 2,
+      "qfi_ghz": 3.9999999999999973,
+      "qfi_product": 1.9999999999999987
+    },
+    {
+      "analytic_ghz": 9.0,
+      "analytic_product": 3.0,
+      "n_ions": 3,
+      "qfi_ghz": 8.999999999999996,
+      "qfi_product": 2.9999999999999973
+    },
+    {
+      "analytic_ghz": 16.0,
+      "analytic_product": 4.0,
+      "n_ions": 4,
+      "qfi_ghz": 15.99999999999999,
+      "qfi_product": 3.9999999999999982
+    },
+    {
+      "analytic_ghz": 25.0,
+      "analytic_product": 5.0,
+      "n_ions": 5,
+      "qfi_ghz": 24.999999999999986,
+      "qfi_product": 5.000000000000002
+    },
+    {
+      "analytic_ghz": 36.0,
+      "analytic_product": 6.0,
+      "n_ions": 6,
+      "qfi_ghz": 35.999999999999986,
+      "qfi_product": 5.999999999999988
+    }
+  ],
+  "scenario": "qfi_scaling",
+  "tolerance": 1e-09,
+  "workplan_reference": "WP/WP-01-estimation-darwinism.md (WI-1/WI-3, dispatch EDA)"
+}
