@@ -10,6 +10,19 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **WP-02 conventions-before-seal — two-mode / motional literature-review note.**
+  New `docs/two-mode-motional-review.md` (Coastline / CC BY-SA 4.0): fixes the
+  §23 conventions (two-mode squeezing / SU(1,1) — the explicit
+  `S₂(z) = exp(z*âb̂ − zâ†b̂†)` with per-mode `sinh²|z|`, the `z = −gτ·e^{iφ}` map,
+  the su(1,1) Casimir, the SU(2) beamsplitter) and the §24 conventions (motional
+  Lindblad channels — amplitude damping / heating / dephasing, time-windowing,
+  temporal-schedule R8), each anchored to a cited source (13 references, DOIs
+  web-verified). The maintainer-ready `WP/MC-conventions-nav-proposal.md` carries
+  the staged §23/§24 CONVENTIONS text + the `mkdocs.yml` nav line + the seal-time
+  edits — applied **together with** the EDF §19–22 package in the single combined
+  v0.3 seal (FREEZE-v0.3 §4 = Combined, now that the P0 subset has landed). The
+  governed acts (the `CONVENTION_VERSION` bump, the seal, the WORKPLAN paste)
+  remain maintainer-owned. Per `WP/WP-02-two-mode-motional.md` (§6, §7).
 - **Dispatch MCA + MCB (WI-1, WI-2) — two-mode SU(1,1) squeezing surface.**
   `hamiltonians.two_mode_squeezing_hamiltonian(hilbert, *, g, phase, mode_labels)`
   builds `H/ℏ = ig(e^{iφ}â†b̂† − e^{−iφ}âb̂)` on a labelled motional-mode pair

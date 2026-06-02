@@ -248,6 +248,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — WP-02 conventions-before-seal package drafted (§23/§24 review note + proposal)
+
+- **Refs:** WP-02 · §23/§24 · review note · combined seal (FREEZE-v0.3 §4)
+- **Stance:** Architect (the EDF-equivalent for WP-02, now that the P0 subset has landed) with a Guardian check (citation audit + boundary grep before staging governed text).
+- **What:** Drafted `docs/two-mode-motional-review.md` (Coastline / CC BY-SA, 13 references) anchoring §23 (explicit two-mode squeeze `S₂(z) = exp(z*âb̂ − zâ†b̂†)`, per-mode `sinh²|z|`, `z = −gτe^{iφ}`, su(1,1) Casimir, SU(2) beamsplitter) and §24 (Lindblad dissipators, windowing, temporal-schedule R8), and `WP/MC-conventions-nav-proposal.md` (staged §23/§24 text + nav line + seal edits, framed to apply **with** the EDF package in one combined seal). FREEZE-v0.3 §2/§6 and WP-02 §7 cross-links updated (TBD → real files).
+- **Why (verification worth recording):** a background **citation-audit workflow** web-verified all 13 references (venue/volume/DOI/attribution) — all confirmed correct; one Low refinement applied (the explicit two-mode squeeze *operator* is Part II's contribution, Schumaker & Caves 1985 PRA 31 3093, while Part I introduces the squeezed states). The boundary-decoupling grep is clean on both the note and the proposal (no `undetected`/`analogy`/`native-subtraction`/… application framing in the to-be-sealed text). Conventions-fidelity: every note/proposal claim traces to the landed implementation.
+- **Outcome:** the WP-02 conventions package is **ready for the combined maintainer seal** — §19–24 + the single `CONVENTION_VERSION` 0.2→0.3 bump + both nav lines + WORKPLAN §5.4/§5.5, in one commit. Everything governed is staged-not-applied. **Remaining WP-02 scope:** F4–F7 (P1/P2), additive and non-gating.
+- **Links:** `docs/two-mode-motional-review.md` · `WP/MC-conventions-nav-proposal.md` · `WP/FREEZE-v0.3.md` §2/§4/§6 · `WP/EDF-conventions-nav-proposal.md` (the WP-01 half of the combined seal).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).

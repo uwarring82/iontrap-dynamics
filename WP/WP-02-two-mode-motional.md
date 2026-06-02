@@ -120,7 +120,7 @@ These are exactly the §23–24 the FREEZE-v0.3 §2 allocation reserves for WP-0
 
 ## 7. Literature-review note plan *(Coastline plan; note is Coastline / CC BY-SA 4.0)*
 
-Mirroring WP-01 §5: the two freeze-gated sections must be **anchored to primary sources before the code** (conventions-before-code). Deliverable: **`docs/two-mode-motional-review.md`** (the "WP-02 review note (TBD)" the FREEZE-v0.3 §2 table reserves), bounded — it fixes the §23/§24 conventions and names the analytic oracles, it is not a survey. Same house style as the WP-01 note (H1 first line, no front matter, Unicode maths, pipe-table source matrix, `## Endorsement Marker`, CC BY-SA 4.0, nav entry).
+Mirroring WP-01 §5. **Drafted 2026-06-03: [`docs/two-mode-motional-review.md`](../docs/two-mode-motional-review.md)** (Coastline / CC BY-SA 4.0; bounded — fixes the §23/§24 conventions and names the analytic oracles, not a survey; same house style as the WP-01 note). The ready-to-paste §23/§24 staged CONVENTIONS text + nav line + seal edits are in **[`WP/MC-conventions-nav-proposal.md`](MC-conventions-nav-proposal.md)** — the WP-02 equivalent of WP-01's EDF package, applied **with** it in the single combined seal. The note is the cited authority for §23–24 (the binding rule below).
 
 | Topic | Seed references (confirm exact citations at execution) | Feeds |
 |---|---|---|

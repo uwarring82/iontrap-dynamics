@@ -40,8 +40,8 @@ New CONVENTIONS sections continue the integer sequence (current max §18). Each 
 | §20 | Quantum Darwinism — redundancy and recoverability | WP-01 | WI-2 | `docs/estimation-darwinism-review.md` |
 | §21 | GHZ and cat state conventions | WP-01 | WI-3 | `docs/estimation-darwinism-review.md` |
 | §22 | Common-mode (shared-latent) phase channel | WP-01 | WI-4 | `docs/estimation-darwinism-review.md` |
-| §23 | Two-mode squeezing / SU(1,1) (phase, sign, ordering on the mode pair) | WP-02 | F1, F2 | WP-02 review note (TBD) |
-| §24 | Motional CPTP channels (rates, bath occupation, Kraus vs Lindblad; sequence-aware application) | WP-02 | F3 | WP-02 review note (TBD) |
+| §23 | Two-mode squeezing / SU(1,1) (phase, sign, ordering on the mode pair) | WP-02 | F1, F2 | `docs/two-mode-motional-review.md` §2 |
+| §24 | Motional CPTP channels (rates, bath occupation, Kraus vs Lindblad; sequence-aware application) | WP-02 | F3 | `docs/two-mode-motional-review.md` §3 |
 
 §23–24 are **provisional** until WP-02 is drafted and ratified; the titles and exact count
 may move, but they occupy the next integers after WP-01's §19–22.
@@ -98,7 +98,7 @@ dependency, not a freeze item (the QFI *convention* is §19, owned by WP-01).
 
 - **WP-01 §6** feeds §19–22 here; it no longer owns the bump.
 - **[`WP/EDF-conventions-nav-proposal.md`](EDF-conventions-nav-proposal.md)** — the ready-to-paste §19–22 staged text, the `mkdocs.yml` nav line for the review note, and the seal-time `CONVENTIONS.md` header/marker/footer edits (Dispatch EDF, drafted 2026-06-02; maintainer applies at the seal). The bump and `test_convention_version.py` stay owned by §3 here.
-- **[`WP/WP-02-two-mode-motional.md`](WP-02-two-mode-motional.md) §6** feeds §23–24 here (Drafted 2026-06-02; §23 two-mode squeezing / SU(1,1) ← F1/F2, §24 motional CPTP channels ← F3). Its §6/§17 take the §4 timeline-coupling decision at WP-02 ratification.
+- **[`WP/WP-02-two-mode-motional.md`](WP-02-two-mode-motional.md) §6** feeds §23–24 here (§23 two-mode squeezing / SU(1,1) ← F1/F2, §24 motional CPTP channels ← F3). The ready-to-paste §23/§24 staged text + nav line + seal edits live in **[`WP/MC-conventions-nav-proposal.md`](MC-conventions-nav-proposal.md)** (anchored by `docs/two-mode-motional-review.md`), applied **with** the EDF package in the single combined seal. §4 timeline decision = **Combined, resolved at ratification**.
 - **`CONVENTIONS.md`** is the destination; this side-car is the staging/coordination plan.
 - **`WORKPLAN_v0.3.md`** records the v0.3 freeze at roadmap level when sealed (the WP
   dispatch-track stubs reference it).
