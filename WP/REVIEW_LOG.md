@@ -273,3 +273,106 @@ with `_SLD_EIGENVALUE_CUTOFF = 1e-12`. The `np.where` guard on `lam_sum > cutoff
 ### Recommendation
 
 **Continue.** Pull WI-3 forward (`states.ghz_state` + `cat_mode`), then implement the keystone QFI-scaling benchmark. The branch is clean, the foundation is solid, and momentum is good. No pause needed.
+
+---
+
+## Round 4 — 2026-06-02 (hardening + WI-3 review)
+
+Scope reviewed: branch `wp01-estimation-darwinism` (commits `e0d24f4`, `5ef4f28` on top of Round 3), `src/iontrap_dynamics/information/fisher.py` (hardened), `src/iontrap_dynamics/states.py` (WI-3), `tests/unit/test_fisher.py` (hardening tests), `tests/unit/test_states_ghz_cat.py`, `CHANGELOG.md`, `WP/LOGBOOK.md`, `WP/WP-01-estimation-darwinism.md`.
+
+### Overall assessment
+
+**Approved. Continue — build the keystone benchmark now.**
+
+Every Round 3 gap is patched. The WI-3 factories are clean, well-tested, and correctly unblock EDA. The branch has earned its next chunk.
+
+### What was checked
+
+- `git diff eef899f e0d24f4` — Round-3 hardening (39 insertions / 11 deletions across `fisher.py` + `test_fisher.py`).
+- `git diff eef899f 5ef4f28` — WI-3 EDC (94 insertions in `states.py`, 16 in package `__init__.py`, 125 in `test_states_ghz_cat.py`).
+- Static reads of hardened `fisher.py` (297 lines), `test_fisher.py` (202 lines), `states.py` (382 lines), `test_states_ghz_cat.py` (125 lines).
+- `CHANGELOG.md` header — verifies both EDA and EDC bullets.
+- `WP/LOGBOOK.md` registry — verifies EDA/EDC status updates.
+
+### Resolution of Round 3 findings
+
+| Round 3 finding | Status in Round 4 | Evidence |
+|---|---|---|
+| `linear_gaussian_fisher` missing PD check | **Resolved** | Cholesky gate added: `np.linalg.cholesky(sigma_mat)` raises `ValueError` on symmetric-indefinite input. Test covers `[[1,2],[2,1]]` (eigenvalues 3, −1). |
+| `_PROBABILITY_SUM_TOLERANCE` misnamed | **Resolved** | Renamed to `_PROBABILITY_TOLERANCE` throughout `fisher.py`; docstring updated. |
+| Zero-prob + non-zero derivative silently masked | **Resolved** | Explicit guard: `p <= 0.0 & abs(dp) > tolerance` → `ValueError` with clear message. Test covers `[1.0, 0.0]` with `[0.0, 0.5]`. |
+| `test_fisher.py` local `_ghz` helper | **Not yet** | Will refactor when keystone benchmark lands; acceptable. |
+| `per-file-ignores` glob collapse | **Not yet** | Deferred to WI-2; acceptable. |
+
+### Detailed observations
+
+#### 1. Round-3 hardening (commit `e0d24f4`)
+
+**Zero-probability + non-zero derivative guard:** Mathematically correct. In the classical Fisher information `Σ (∂p)²/p`, a zero-probability outcome with non-zero derivative makes the term diverge. Silently masking it (the old behaviour) hides an ill-posed model. Raising `ValueError` is the right call — the caller must fix their model. The code comment explains this clearly.
+
+**Cholesky gate for positive-definiteness:** Elegant. Cholesky is cheaper than a full eigendecomposition (roughly `n³/3` vs `4n³/3`), succeeds iff the matrix is symmetric positive-definite, and fails with `LinAlgError` on indefinite or singular matrices. The `from exc` chain preserves the cause. The test uses `[[1,2],[2,1]]` (eigenvalues 3 and −1) — a classic symmetric-indefinite example.
+
+**Hermitian generator check:** Uses `np.allclose(generator_matrix, generator_matrix.conj().T)`. This is a practical check rather than an exact one, which is correct for numerical matrices. The test uses `|up⟩⟨down|` (the raising operator σ₊) as the non-Hermitian counterexample — canonical and clear.
+
+**WP-01 §13 sharpening:** "paste only when EDA fully lands: module **and** keystone benchmark" — correct. The stub must not be pasted until the decoupling-proof figure exists.
+
+#### 2. WI-3 / EDC (commit `5ef4f28`)
+
+**`ghz_state(hilbert)` — implementation:**
+- Uses `hilbert.n_ions` and `hilbert.system.modes` correctly.
+- Mode vacua factor out of the superposition: `(all_up + all_down) ⊗ mode_vacua`. This is computationally efficient and physically transparent.
+- `ConventionError` on `n_ions < 1` — consistent with existing `states.py` error style.
+- `.unit()` normalises; the state is a ket by construction.
+- Docstring references the §0.A Φ⁺ Bell convention and the N² QFI scaling — ties the factory to its physical purpose without application framing.
+
+**`cat_mode(fock_dim, alpha, parity)` — implementation:**
+- Reuses `coherent_mode(fock_dim, alpha)` — good reuse, no duplication of the coherent-state convention.
+- `ConventionError` guards: `fock_dim <= 0`, parity not in `{"even", "odd"}`, degenerate odd cat at `α = 0`.
+- The degeneracy check (`norm < 1e-12`) is necessary because `coherent_mode(fock_dim, 0.0)` returns the vacuum `|0⟩`, so `|α⟩ − |−α⟩ = |0⟩ − |0⟩ = 0`. The cutoff `1e-12` is consistent with the `_SLD_EIGENVALUE_CUTOFF` in `fisher.py`.
+- Returns a normalised single-mode ket, composable via `compose_density` or `qutip.tensor`. Matches the `coherent_mode` contract.
+
+**Package `__init__.py` re-export:**
+- The `.states` import block is alphabetically placed between `.spectrum_observables` and `.systematics`. Correct.
+- Seven names added to `__all__`: `cat_mode`, `coherent_mode`, `compose_density`, `ghz_state`, `ground_state`, `squeezed_coherent_mode`, `squeezed_vacuum_mode`. ALL-CAPS-first-then-alphabetical ordering preserved.
+- This is the largest API-surface expansion noted in Round 2 and explicitly called out in the CHANGELOG.
+
+**`states.py` `__all__`:** Updated to include `cat_mode` and `ghz_state`. Alphabetical.
+
+#### 3. Test coverage
+
+**`test_fisher.py` — 16 cases (was 15):**
+- New: `test_qfi_rejects_non_hermitian_generator` — σ₊ rejected.
+- New: zero-prob derivative divergence guard — `[1.0, 0.0]` with `[0.0, 0.5]` rejected.
+- New: symmetric-indefinite sigma rejected via Cholesky.
+
+**`test_states_ghz_cat.py` — 125 lines, 9 test functions:**
+- `test_ghz_state_is_normalised_ket` — `N = 1,2,3`; `isket` and `norm ≈ 1`.
+- `test_ghz_population_split_equally_between_all_up_and_all_down` — `N = 2,3`; overlap probabilities ≈ 0.5 each.
+- `test_ghz_two_ion_is_maximally_entangled` — concurrence = 1.0 for 2-ion GHZ. Uses `entanglement.concurrence_trajectory`, validating cross-module reuse.
+- `test_ghz_qfi_reaches_heisenberg_limit` — **the cross-check**. `ghz_state` feeds `quantum_fisher_information_trajectory` → `N²` within `1e-9`. This is the miniature keystone result, now proven module-to-module.
+- `test_cat_mode_is_normalised_ket` — both parities; `isket` and `norm ≈ 1`.
+- `test_cat_mode_parity_eigenvalue` — even cat `⟨Π⟩ ≈ +1`, odd cat `⟨Π⟩ ≈ −1`.
+- `test_cat_mode_fock_support_is_single_parity` — even cat has zero amplitude on odd Fock states, odd cat has zero on even. Loop over all Fock states.
+- `test_cat_mode_validation` — `fock_dim = 0`, bad parity, degenerate odd cat at `α = 0`.
+
+The test suite is comprehensive without being redundant. The QFI cross-check is particularly valuable — it proves the WI-1 and WI-3 modules compose correctly before the benchmark tool is even written.
+
+#### 4. CHANGELOG and registry discipline
+
+**CHANGELOG:** Two bullets, dispatch-keyed, in reverse chronological order (EDC above EDA). The EDC bullet explicitly calls out the `states.py` public-surface expansion. Good.
+
+**LOGBOOK registry:** EDC status updated to `landed 2026-06-02`. EDA status updated to `module landed 2026-06-02; benchmark unblocked (EDC), pending`. This is precise — EDA is not fully closed until the benchmark lands.
+
+**No spurious logbook entry for EDC landing:** Correct. A clean factory landing with no decisions belongs in the CHANGELOG only.
+
+### Non-blocking observations
+
+1. **Test helper duplication.** `test_fisher.py` and `test_states_ghz_cat.py` each define local `_spin_hilbert` and `_collective_jz` helpers. As the test suite grows, consider extracting these to a shared `tests/conftest.py` or `tests/fixtures.py` (e.g., `spin_system_hilbert(n_ions)`, `collective_jz(hilbert)`). Not a blocker — the duplication is small and the tests are self-contained.
+
+2. **`cat_mode` Fock truncation warning.** The docstring says "choose it large enough that `|α|²` fits well inside the Fock envelope", but there's no runtime warning if `fock_dim` is too small for `|alpha|`. A caller passing `cat_mode(fock_dim=8, alpha=3.0)` will get a normalised state, but it will be truncated and not represent the true cat. This is the same behaviour as `coherent_mode` (which delegates to `qutip.coherent`), so it's consistent with existing precedent. If you want to be defensive, a warning when `abs(alpha)**2 > fock_dim / 2` (rough heuristic) could be added later. Not a blocker.
+
+3. **Benchmark artifact shape tension.** WP-01 §7 prescribes `demo_report.json` (schema_version=2) with fields like `scenario`, `workplan_reference`, `threshold_seconds`, `elapsed_seconds`, `parameters`, `canonical_request_hash`, `analytic_formulas`, `max_numerical_vs_analytic_error`. The existing compute-only benchmarks (`sparse_vs_dense`, `spectrum_envelope`) use a simpler `report.json`. Since the keystone benchmark is compute-only (no `solve()`), following the `sparse_vs_dense` pattern (`report.json` + `arrays.npz` + `plot.png`) is consistent with repo precedent. However, if you want the benchmark to be fully comparable to the WP-01 §7 canonical set, consider using the `demo_report.json` schema and leaving `canonical_request_hash` empty or noting "compute-only, no solve()" — the other fields (parameters, analytic_formulas, max_error) all apply. Either way is fine; just be intentional.
+
+### Recommendation
+
+**Build the keystone benchmark now.** The branch is in excellent shape — four clean commits, all gates green, 823 passed. WI-3 unblocked EDA and the cross-check already proves `ghz_state` → QFI = N². The next chunk (benchmark tool + report + plot + regression anchor) is well-defined and closes Dispatch EDA. No pause needed.
