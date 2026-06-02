@@ -17,36 +17,14 @@ regression_analytic tier.
 from __future__ import annotations
 
 import pytest
-import qutip
 
-from iontrap_dynamics.hilbert import HilbertSpace
+from _helpers import _collective_jz, _product_plus, _spin_hilbert
 from iontrap_dynamics.information import quantum_fisher_information_trajectory
-from iontrap_dynamics.operators import sigma_z_ion, spin_down, spin_up
-from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.states import ghz_state
-from iontrap_dynamics.system import IonSystem
 
 pytestmark = pytest.mark.regression_analytic
 
 ATOL_QFI_SCALING = 1e-9
-
-
-def _spin_hilbert(n_ions: int) -> HilbertSpace:
-    system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
-    return HilbertSpace(system=system, fock_truncations={})
-
-
-def _collective_jz(hilbert: HilbertSpace) -> qutip.Qobj:
-    ops = [hilbert.spin_op_for_ion(sigma_z_ion(), i) for i in range(hilbert.n_ions)]
-    total = ops[0]
-    for op in ops[1:]:
-        total = total + op
-    return 0.5 * total
-
-
-def _product_plus(n_ions: int) -> qutip.Qobj:
-    plus = (spin_up() + spin_down()).unit()
-    return qutip.tensor([plus] * n_ions)
 
 
 @pytest.mark.parametrize("n_ions", [1, 2, 3, 4, 5])

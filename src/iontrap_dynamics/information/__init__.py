@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""Information-theoretic primitives: estimation and (later) quantum Darwinism.
+"""Information-theoretic primitives: estimation and quantum Darwinism.
 
-Application-agnostic umbrella sub-package (WP-01, ratified naming root). WI-1
-lands the estimation module ``fisher``; WI-2 will add ``redundancy`` and
-``recoverability`` under the same umbrella, sharing the nonlinear-in-rho helper
-layer.
+Application-agnostic umbrella sub-package (WP-01, ratified naming root):
+``fisher`` (WI-1 — estimation: CFI / QFI / Cramér–Rao), and ``redundancy`` +
+``recoverability`` (WI-2 — quantum Darwinism), sharing the nonlinear-in-ρ helper
+layer in ``_common`` (``_ensure_density``, ``_von_neumann_entropy_bits``,
+``_validate_indices`` / ``_validate_state_dim``).
 """
 
 from .fisher import (

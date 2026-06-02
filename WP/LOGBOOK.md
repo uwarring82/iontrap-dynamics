@@ -142,6 +142,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 - **Outcome:** Landed; gates green (ruff / ruff-format / mypy --strict / 873 passed). EDB complete. The measure is staged for §20 and seals with the shared v0.3 freeze; it may be re-confirmed against the EDF review note's citation. **Next:** WI-4 (EDD) common-mode channel (convention-light); then EDF (review note + §19–22 / §20 staged into the freeze).
 - **Links:** `src/iontrap_dynamics/information/recoverability.py` · `src/iontrap_dynamics/information/_common.py` · `tests/unit/test_recoverability.py` · CHANGELOG `[Unreleased]` (EDB) · `WP/WP-01-estimation-darwinism.md` §15.
 
+### 2026-06-02 — Capability-surface review applied (pre-EDE stabilisation)
+
+- **Refs:** WP-01 · WI-1…WI-4 · `WP/REVIEW_LOG.md`
+- **Stance:** Guardian (stabilise the public surface before EDE multiplies it across five benchmarks) into Architect follow-through.
+- **What:** Ran an adversarial review of the whole `information` / `states` / common-mode surface (four reviewers — API, naming/conventions, validation/numerics, test-hygiene; 27 findings) and applied the API / validation / hygiene fixes. **Validation:** a state-dimension check (vs `hilbert.total_dim`) in `fragment_mutual_information` / `partial_information_plot` / `redundancy` / `recoverability` (they previously mis-traced a wrong-dimension state silently — finding [2], high); non-finite rejection in `cramer_rao_bound`, `classical_fisher_information` (also empty), `linear_gaussian_fisher`, `CommonModePhase`, `cat_mode`, and `_von_neumann_entropy_bits` (NaN slipped past the `< 0` / `<= 0` guards). **Hygiene:** removed the `redundancy` double ket→ρ conversion via a private `_partial_information_from_density`; de-duplicated the `_spin_hilbert` / `_collective_jz` / `_product_plus` test helpers into `tests/_helpers.py` (added `tests` to the pytest `pythonpath`) across five files; collapsed the four `information/*.py` ruff `per-file-ignores` to one glob. **Docs:** `information/__init__` to present tense; WP-01 §3/§4.2 `_binary_entropy` → `_von_neumann_entropy_bits`; ghz/cat docstrings note the qc.py legacy convention is not adopted. Added guard tests (dim-mismatch, non-finite).
+- **Why:** EDE replicates the public API and conventions across five benchmark scripts + data dirs + regression anchors, so hardening the surface first is cheaper than fixing it five-fold afterwards. Most of the 27 findings were no-ops (reviewers were told to be adversarial); the actionable ones were validation gaps where a malformed input returned a silent wrong answer instead of a clear error. **Judged no-change (correct per spec):** the QFI trajectory-evaluator signature (plural `states`) vs the single-`state` Darwinism measures, and the recoverability §5 cross-reference.
+- **Outcome:** Landed; gates green (ruff / ruff-format / mypy --strict / **955 passed**). Capability surface stabilised; ready for EDE from a clean base.
+- **Links:** `WP/REVIEW_LOG.md` · `tests/_helpers.py` · `src/iontrap_dynamics/information/_common.py` (`_validate_state_dim`).
+
 ---
 
 ## Dispatch-code registry *(Sail)*

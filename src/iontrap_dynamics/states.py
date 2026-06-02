@@ -56,6 +56,7 @@ thermal motion at ``n_bar = 0.5``)::
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 
 import qutip
@@ -296,8 +297,9 @@ def ghz_state(hilbert: HilbertSpace) -> qutip.Qobj:
     motional mode in the vacuum |0⟩ — the maximally spin-correlated state used
     as the Heisenberg-limit probe in phase estimation (its QFI under
     ``J_z = ½ Σ_i σ_z^{(i)}`` is ``N²``). Generalises the §0.A Φ⁺ Bell
-    convention ``(|↑↑⟩ + |↓↓⟩) / √2`` to N ions. Mirrors :func:`ground_state`:
-    a full-space ket, normalised by construction, on the §2 tensor ordering.
+    convention ``(|↑↑⟩ + |↓↓⟩) / √2`` to N ions; the legacy non-standard
+    convention from ``qc.py`` is not adopted. Mirrors :func:`ground_state`: a
+    full-space ket, normalised by construction, on the §2 tensor ordering.
 
     For ``N = 1`` this degenerates to ``|+⟩ = (|↑⟩ + |↓⟩) / √2``.
 
@@ -326,9 +328,11 @@ def cat_mode(fock_dim: int, alpha: complex, *, parity: str = "even") -> qutip.Qo
         even:  N₊ (|α⟩ + |−α⟩)
         odd:   N₋ (|α⟩ − |−α⟩)
 
-    with ``|α⟩ = D(α)|0⟩`` the coherent state of :func:`coherent_mode`. Mirrors
-    :func:`coherent_mode`'s shape: a bare ``fock_dim`` single-mode ket,
-    normalised, composable via :func:`compose_density` or ``qutip.tensor``.
+    with ``|α⟩ = D(α)|0⟩`` the coherent state of :func:`coherent_mode`. The
+    standard even/odd phase convention is used; the legacy non-standard cat
+    phase from ``qc.py`` is not adopted. Mirrors :func:`coherent_mode`'s shape:
+    a bare ``fock_dim`` single-mode ket, normalised, composable via
+    :func:`compose_density` or ``qutip.tensor``.
 
     Parameters
     ----------
@@ -358,6 +362,8 @@ def cat_mode(fock_dim: int, alpha: complex, *, parity: str = "even") -> qutip.Qo
         raise ConventionError(f"fock_dim must be positive; got {fock_dim}.")
     if parity not in {"even", "odd"}:
         raise ConventionError(f"parity must be 'even' or 'odd'; got {parity!r}.")
+    if not math.isfinite(abs(alpha)):
+        raise ConventionError(f"cat_mode: alpha must be finite; got {alpha}.")
     coherent_plus = coherent_mode(fock_dim, alpha)
     coherent_minus = coherent_mode(fock_dim, -alpha)
     combined = (

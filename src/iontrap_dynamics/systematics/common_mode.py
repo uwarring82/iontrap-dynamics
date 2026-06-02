@@ -64,11 +64,14 @@ class CommonModePhase:
     label: str = "common_mode_phase"
 
     def __post_init__(self) -> None:
-        if self.sigma_rad < 0.0:
-            raise ValueError(f"CommonModePhase: sigma_rad must be >= 0; got {self.sigma_rad}")
-        if not 0.0 <= self.correlation <= 1.0:
+        if not np.isfinite(self.sigma_rad) or self.sigma_rad < 0.0:
             raise ValueError(
-                f"CommonModePhase: correlation must be in [0, 1]; got {self.correlation}"
+                f"CommonModePhase: sigma_rad must be a finite value >= 0; got {self.sigma_rad}"
+            )
+        if not np.isfinite(self.correlation) or not 0.0 <= self.correlation <= 1.0:
+            raise ValueError(
+                f"CommonModePhase: correlation must be a finite value in [0, 1]; "
+                f"got {self.correlation}"
             )
 
     def sample_offsets(

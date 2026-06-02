@@ -57,6 +57,7 @@ from ._common import (
     _ENTROPY_EIGENVALUE_CUTOFF,
     _ensure_density,
     _validate_indices,
+    _validate_state_dim,
     _von_neumann_entropy_bits,
 )
 
@@ -93,6 +94,7 @@ def fragment_mutual_information(
         overlap.
     """
     rho = _ensure_density(state)
+    _validate_state_dim(rho, hilbert, "fragment_mutual_information")
     sys_idx = _validate_indices(system_indices, hilbert, "system_indices")
     frag_idx = _validate_indices(fragment_indices, hilbert, "fragment_indices")
     if set(sys_idx) & set(frag_idx):
@@ -133,6 +135,7 @@ def partial_information_plot(
         overlap.
     """
     rho = _ensure_density(state)
+    _validate_state_dim(rho, hilbert, "partial_information_plot")
     sys_idx = _validate_indices(system_indices, hilbert, "system_indices")
     env_idx = _validate_indices(environment_indices, hilbert, "environment_indices")
     if set(sys_idx) & set(env_idx):
@@ -140,10 +143,24 @@ def partial_information_plot(
             "partial_information_plot: system_indices and environment_indices "
             f"must be disjoint; got {system_indices} and {environment_indices}"
         )
+    return _partial_information_from_density(rho, sys_idx=sys_idx, env_idx=env_idx)
+
+
+def _partial_information_from_density(
+    rho: qutip.Qobj,
+    *,
+    sys_idx: Sequence[int],
+    env_idx: Sequence[int],
+) -> NDArray[np.float64]:
+    """PIP loop on an already-converted, already-validated density matrix.
+
+    Shared by :func:`partial_information_plot` and :func:`redundancy` so the
+    latter converts the input ket to a density matrix exactly once.
+    """
     n_env = len(env_idx)
     pip = np.empty(n_env + 1, dtype=np.float64)
     pip[0] = 0.0
-    s_system = _von_neumann_entropy_bits(rho.ptrace(sys_idx))
+    s_system = _von_neumann_entropy_bits(rho.ptrace(list(sys_idx)))
     for f in range(1, n_env + 1):
         fragment = list(env_idx[:f])
         s_fragment = _von_neumann_entropy_bits(rho.ptrace(fragment))
@@ -187,17 +204,18 @@ def redundancy(
     if not 0.0 < delta < 1.0:
         raise ValueError(f"redundancy: delta must be in (0, 1); got {delta}")
     rho = _ensure_density(state)
+    _validate_state_dim(rho, hilbert, "redundancy")
     sys_idx = _validate_indices(system_indices, hilbert, "system_indices")
     env_idx = _validate_indices(environment_indices, hilbert, "environment_indices")
+    if set(sys_idx) & set(env_idx):
+        raise ValueError(
+            "redundancy: system_indices and environment_indices must be disjoint; "
+            f"got {system_indices} and {environment_indices}"
+        )
     h_system = _von_neumann_entropy_bits(rho.ptrace(sys_idx))
     if h_system < _ENTROPY_EIGENVALUE_CUTOFF:
         return 0.0
-    pip = partial_information_plot(
-        state,
-        hilbert=hilbert,
-        system_indices=system_indices,
-        environment_indices=environment_indices,
-    )
+    pip = _partial_information_from_density(rho, sys_idx=sys_idx, env_idx=env_idx)
     n_env = len(env_idx)
     threshold = (1.0 - delta) * h_system
     for k in range(1, n_env + 1):

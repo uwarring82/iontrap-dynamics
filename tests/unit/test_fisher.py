@@ -17,25 +17,19 @@ import numpy as np
 import pytest
 import qutip
 
+from _helpers import _collective_jz, _product_plus, _spin_hilbert
 from iontrap_dynamics import (
     classical_fisher_information,
     cramer_rao_bound,
     linear_gaussian_fisher,
     quantum_fisher_information_trajectory,
 )
-from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.operators import sigma_z_ion, spin_down, spin_up
-from iontrap_dynamics.species import mg25_plus
-from iontrap_dynamics.system import IonSystem
 
 # ----------------------------------------------------------------------------
-# Fixtures / builders (spin-only Hilbert spaces; no motional modes)
+# Builders (the shared spin-only Hilbert space, J_z, and product probe live in
+# tests/_helpers.py; only the GHZ-over-all-spins probe is local here).
 # ----------------------------------------------------------------------------
-
-
-def _spin_hilbert(n_ions: int) -> HilbertSpace:
-    system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
-    return HilbertSpace(system=system, fock_truncations={})
 
 
 def _ghz(n_ions: int) -> qutip.Qobj:
@@ -43,21 +37,6 @@ def _ghz(n_ions: int) -> qutip.Qobj:
     up = qutip.tensor([spin_up()] * n_ions)
     down = qutip.tensor([spin_down()] * n_ions)
     return (up + down).unit()
-
-
-def _product_plus(n_ions: int) -> qutip.Qobj:
-    """|+>^{tensor n}, with |+> = (|up> + |down>) / sqrt(2)."""
-    plus = (spin_up() + spin_down()).unit()
-    return qutip.tensor([plus] * n_ions)
-
-
-def _collective_jz(h: HilbertSpace) -> qutip.Qobj:
-    """J_z = 0.5 * sum_i sigma_z on ion i, embedded in the full space."""
-    ops = [h.spin_op_for_ion(sigma_z_ion(), i) for i in range(h.n_ions)]
-    total = ops[0]
-    for op in ops[1:]:
-        total = total + op
-    return 0.5 * total
 
 
 # ----------------------------------------------------------------------------
@@ -150,6 +129,10 @@ def test_classical_fisher_information_validation() -> None:
     # A zero-probability outcome carrying a non-zero derivative is ill-posed.
     with pytest.raises(ValueError):
         classical_fisher_information([1.0, 0.0], parameter_derivative=[0.0, 0.5])
+    with pytest.raises(ValueError):  # empty
+        classical_fisher_information([], parameter_derivative=[])
+    with pytest.raises(ValueError):  # non-finite
+        classical_fisher_information([0.5, 0.5], parameter_derivative=[float("nan"), 0.0])
 
 
 def test_cfi_never_exceeds_qfi_braunstein_caves() -> None:
@@ -173,6 +156,10 @@ def test_cramer_rao_bound() -> None:
         cramer_rao_bound(0.0)
     with pytest.raises(ValueError):
         cramer_rao_bound(-1.0)
+    with pytest.raises(ValueError):
+        cramer_rao_bound(float("nan"))
+    with pytest.raises(ValueError):
+        cramer_rao_bound(float("inf"))
 
 
 # ----------------------------------------------------------------------------

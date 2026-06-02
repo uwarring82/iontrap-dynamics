@@ -30,11 +30,32 @@ def _ensure_density(state: qutip.Qobj) -> qutip.Qobj:
 
 def _von_neumann_entropy_bits(rho: qutip.Qobj) -> float:
     """von Neumann entropy ``S(ρ) = −Σ λ log₂ λ`` in bits."""
-    eigenvalues = np.clip(np.asarray(rho.eigenenergies(), dtype=np.float64), 0.0, None)
+    eigenvalues = np.asarray(rho.eigenenergies(), dtype=np.float64)
+    if not np.all(np.isfinite(eigenvalues)):
+        raise ValueError(
+            "_von_neumann_entropy_bits: density matrix has non-finite eigenvalues "
+            "(malformed state); refusing to return a silently-masked entropy"
+        )
+    eigenvalues = np.clip(eigenvalues, 0.0, None)
     nonzero = eigenvalues[eigenvalues > _ENTROPY_EIGENVALUE_CUTOFF]
     if nonzero.size == 0:
         return 0.0
     return float(-np.sum(nonzero * np.log2(nonzero)))
+
+
+def _validate_state_dim(rho: qutip.Qobj, hilbert: HilbertSpace, name: str) -> None:
+    """Validate that a density matrix matches ``hilbert``'s total dimension.
+
+    The index-based measures ``ptrace`` against the subsystem ordering of
+    ``hilbert``; a state of the wrong dimension would silently produce a
+    measure of the wrong state (or an opaque QuTiP error), so reject it early —
+    mirroring the guard in :func:`~iontrap_dynamics.information.fisher`.
+    """
+    dim = hilbert.total_dim
+    if rho.shape != (dim, dim):
+        raise ValueError(
+            f"{name}: state has shape {rho.shape}; expected ({dim}, {dim}) for this Hilbert space"
+        )
 
 
 def _validate_indices(

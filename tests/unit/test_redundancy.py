@@ -14,6 +14,7 @@ from __future__ import annotations
 import pytest
 import qutip
 
+from _helpers import _spin_hilbert
 from iontrap_dynamics import (
     fragment_mutual_information,
     ghz_state,
@@ -22,13 +23,6 @@ from iontrap_dynamics import (
 )
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.operators import spin_down
-from iontrap_dynamics.species import mg25_plus
-from iontrap_dynamics.system import IonSystem
-
-
-def _spin_hilbert(n_ions: int) -> HilbertSpace:
-    system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
-    return HilbertSpace(system=system, fock_truncations={})
 
 
 def _ghz_cascade(n_env: int) -> tuple[HilbertSpace, qutip.Qobj, list[int], list[int]]:
@@ -72,6 +66,15 @@ def test_redundancy_zero_when_system_has_no_information() -> None:
     product = qutip.tensor([spin_down()] * 3)
     r = redundancy(product, hilbert=h, system_indices=[0], environment_indices=[1, 2], delta=0.1)
     assert r == pytest.approx(0.0, abs=1e-12)
+
+
+def test_dimension_mismatch_is_rejected() -> None:
+    h2 = _spin_hilbert(2)
+    state3 = ghz_state(_spin_hilbert(3))  # 3-qubit state against a 2-qubit Hilbert space
+    with pytest.raises(ValueError):
+        fragment_mutual_information(state3, hilbert=h2, system_indices=[0], fragment_indices=[1])
+    with pytest.raises(ValueError):
+        redundancy(state3, hilbert=h2, system_indices=[0], environment_indices=[1])
 
 
 def test_mutual_information_validation() -> None:

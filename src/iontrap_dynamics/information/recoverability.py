@@ -37,7 +37,12 @@ from collections.abc import Sequence
 import qutip
 
 from ..hilbert import HilbertSpace
-from ._common import _ensure_density, _validate_indices, _von_neumann_entropy_bits
+from ._common import (
+    _ensure_density,
+    _validate_indices,
+    _validate_state_dim,
+    _von_neumann_entropy_bits,
+)
 
 
 def recoverability(
@@ -73,6 +78,7 @@ def recoverability(
         overlap.
     """
     rho = _ensure_density(state)
+    _validate_state_dim(rho, hilbert, "recoverability")
     sys_idx = _validate_indices(system_indices, hilbert, "system_indices")
     acc_idx = _validate_indices(accessible_indices, hilbert, "accessible_indices")
     if set(sys_idx) & set(acc_idx):

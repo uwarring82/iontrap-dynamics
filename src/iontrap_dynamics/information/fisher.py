@@ -161,6 +161,12 @@ def classical_fisher_information(
             f"classical_fisher_information: probabilities {p.shape} and "
             f"parameter_derivative {dp.shape} must have the same shape"
         )
+    if p.size == 0:
+        raise ValueError("classical_fisher_information: probabilities must be non-empty")
+    if not (np.all(np.isfinite(p)) and np.all(np.isfinite(dp))):
+        raise ValueError(
+            "classical_fisher_information: probabilities and parameter_derivative must be finite"
+        )
     if np.any(p < -_PROBABILITY_TOLERANCE):
         raise ValueError("classical_fisher_information: probabilities must be non-negative")
     total = float(np.sum(p))
@@ -196,11 +202,11 @@ def cramer_rao_bound(fisher: float) -> float:
     Raises
     ------
     ValueError
-        If ``fisher`` is not strictly positive (the bound diverges).
+        If ``fisher`` is not a finite, strictly-positive number.
     """
-    if fisher <= 0.0:
+    if not np.isfinite(fisher) or fisher <= 0.0:
         raise ValueError(
-            f"cramer_rao_bound: Fisher information must be strictly positive; got {fisher}"
+            f"cramer_rao_bound: Fisher information must be a finite positive number; got {fisher}"
         )
     return 1.0 / fisher
 
@@ -231,11 +237,14 @@ def linear_gaussian_fisher(
     Raises
     ------
     ValueError
-        If ``A`` is not 2-D, ``sigma`` does not match ``A``'s observation
-        count, or ``sigma`` is not symmetric positive-definite.
+        If ``A`` or ``sigma`` has non-finite entries, ``A`` is not 2-D,
+        ``sigma`` does not match ``A``'s observation count, or ``sigma`` is not
+        symmetric positive-definite.
     """
     a_mat = np.asarray(A, dtype=np.float64)
     sigma_mat = np.asarray(sigma, dtype=np.float64)
+    if not (np.all(np.isfinite(a_mat)) and np.all(np.isfinite(sigma_mat))):
+        raise ValueError("linear_gaussian_fisher: A and sigma must have finite entries")
     if a_mat.ndim != 2:
         raise ValueError(
             f"linear_gaussian_fisher: A must be 2-D (n_obs, n_params); got ndim {a_mat.ndim}"

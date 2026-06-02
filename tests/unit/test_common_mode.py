@@ -111,6 +111,10 @@ def test_validation() -> None:
         CommonModePhase(sigma_rad=0.1, correlation=1.5)
     with pytest.raises(ValueError):
         CommonModePhase(sigma_rad=0.1, correlation=-0.1)
+    with pytest.raises(ValueError):
+        CommonModePhase(sigma_rad=float("nan"))
+    with pytest.raises(ValueError):
+        CommonModePhase(sigma_rad=0.1, correlation=float("inf"))
     spec = CommonModePhase(sigma_rad=0.1)
     with pytest.raises(ValueError):
         perturb_common_mode([], spec, shots=5)

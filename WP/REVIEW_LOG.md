@@ -268,7 +268,7 @@ with `_SLD_EIGENVALUE_CUTOFF = 1e-12`. The `np.where` guard on `lam_sum > cutoff
 1. **Add positive-definiteness check to `linear_gaussian_fisher`** (one line: `if not np.all(np.linalg.eigvals(sigma_mat) > 0): raise ValueError(...)`). This closes the gap between docstring claim and runtime validation.
 2. **When refactoring `test_fisher.py` to use `states.ghz_state`**, keep the local `_ghz` helper as a fallback or remove it entirely — the real factory should produce the same state.
 3. **Collapse `per-file-ignores`** to `"src/iontrap_dynamics/information/*.py"` when WI-2 lands `redundancy.py`.
-4. **The keystone benchmark tool** (`tools/run_benchmark_qfi_scaling.py`) should reproduce the exact same oracle values as the unit tests (`N=1,2,3` or a wider sweep) and record `max_numerical_vs_analytic_error` in `demo_report.json`. The unit tests already prove correctness; the benchmark proves it at scale and produces the figure.
+4. **The keystone benchmark tool** (`tools/run_benchmark_qfi_scaling.py`) should reproduce the exact same oracle values as the unit tests (`N=1,2,3` or a wider sweep`) and record `max_numerical_vs_analytic_error` in `demo_report.json`. The unit tests already prove correctness; the benchmark proves it at scale and produces the figure.
 
 ### Recommendation
 
@@ -579,3 +579,98 @@ This is **Design Principle 1 (conventions before code) in action**, and the logb
 **Continue with WI-4 (EDD).** The information-theoretic surface (estimation + Darwinism) is complete, proven, and well-factored. Three of four WIs done. WI-4 (common-mode channel) is convention-light, well-scoped in WP-01 §4.4, and unblocked. No pause needed.
 
 After WI-4: EDE (benchmarks) and EDF (review note + CONVENTIONS staging) are the remaining work. The branch is on track for a clean release.
+
+---
+
+## Round 7 — 2026-06-02 (WI-4 common-mode channel + glob collapse review)
+
+Scope reviewed: branch `wp01-estimation-darwinism` (commits `c672804`, `c728997` on top of Round 6), `src/iontrap_dynamics/systematics/common_mode.py`, `tests/unit/test_common_mode.py`, `pyproject.toml`, `CHANGELOG.md`, `WP/LOGBOOK.md`, `WP/WP-01-estimation-darwinism.md`, `src/iontrap_dynamics/systematics/__init__.py`, `src/iontrap_dynamics/__init__.py`.
+
+### Overall assessment
+
+**Approved. All four WP-01 work items are implemented and proven. Continue with EDE (the five benchmarks).**
+
+WI-4 is clean, convention-light, and correctly mirrors the existing systematics pattern. The glob collapse is applied. The branch has earned its validation layer. EDE is the natural next chunk — mechanical now that every primitive and its oracle exists.
+
+### What was checked
+
+- `git show --stat c672804` — WI-4 common-mode channel (9 files, +412 / −6).
+- `git show --stat c728997` — Round-6 review log committed (1 file, +121).
+- Static reads of `common_mode.py` (148 lines), `test_common_mode.py` (118 lines), `systematics/__init__.py` (81 lines).
+- `git diff HEAD~2 HEAD -- pyproject.toml` — confirms information/*.py glob + systematics/common_mode.py entry.
+
+### Detailed observations
+
+#### 1. `common_mode.py` — implementation
+
+**Mirrors the existing systematics pattern exactly.** Frozen dataclass (`CommonModePhase`, `slots=True`, `kw_only=True`) + `perturb_*` free function (`perturb_common_mode`). This is the same shape as `PhaseJitter` / `perturb_phase` and `PhaseDrift` / `apply_phase_drift`.
+
+**`CommonModePhase` fields:**
+- `sigma_rad: float` — marginal per-subsystem std. Validated `>= 0` in `__post_init__`.
+- `correlation: float = 1.0` — shared fraction `c ∈ [0, 1]`. Validated in `[0, 1]` in `__post_init__`.
+- `label: str = "common_mode_phase"` — identifier for downstream aggregation.
+
+**`sample_offsets`:** Draws `shared ~ N(0, σ²)` (shape `(shots,)`) and `independent ~ N(0, σ²)` (shape `(shots, n_subsystems)`), then mixes: `offsets = √c·shared[:, None] + √(1−c)·independent`. Vectorised, no Python loops over shots or subsystems. Validated `n_subsystems >= 1` and `shots >= 1`.
+
+**`perturb_common_mode`:** Takes a `Sequence[DriveConfig]`, returns `tuple[tuple[DriveConfig, ...], ...]` — outer tuple length `shots`, inner tuple length `len(drives)`. Uses `dataclasses.replace` to perturb `phase_rad` while leaving all other fields untouched. Bit-reproducible via `seed`. Validated non-empty drives and `shots >= 1`.
+
+**Docstring quality:** Excellent. Explains the interpolation formula, the c=0 and c=1 limits, the marginal-std invariance, and the departure from existing systematics (perturbs a *sequence* of drives with one correlated draw per shot).
+
+#### 2. `test_common_mode.py` — test coverage
+
+**118 lines, 8 test functions:**
+- `test_full_correlation_shares_one_offset` — `c = 1`, 3 subsystems, 2000 shots; verifies all offsets in a shot are identical (`np.allclose`).
+- `test_full_correlation_cancels_in_difference` — `c = 1`, 2 drives with initial phases 0.0 and 0.5; verifies the phase difference remains exactly −0.5 after perturbation (common-mode rejection). This is the key physical oracle.
+- `test_zero_correlation_is_independent` — `c = 0`, 2 subsystems, 50000 shots; cross-correlation `< 0.05`, std matches `sigma_rad` within 5%. Statistical test with sufficient shots.
+- `test_marginal_std_independent_of_correlation` — parametric `c = [0.0, 0.5, 1.0]`; std matches `sigma_rad` within 5% for all. Verifies the marginal invariance.
+- `test_difference_variance_monotone_in_correlation` — `c = [0.0, 0.25, 0.5, 0.75, 1.0]`; verifies `var(diff)` is non-increasing, equals `2σ²` at `c=0`, and exactly `0` at `c=1`. This is the strongest test — it validates the full interpolation curve.
+- `test_perturb_structure_and_immutability` — verifies original drives not mutated, non-phase fields pass through, correct tuple nesting.
+- `test_reproducible_with_seed` — same seed → identical results.
+- `test_validation` — negative `sigma_rad`, `correlation` outside `[0, 1]`, empty drives, `shots = 0`.
+
+All oracles from WP-01 §4.4 are covered: independent at `c=0`, common-mode rejection at `c=1`, marginal std invariant, difference-variance monotone.
+
+#### 3. Package integration
+
+**`systematics/__init__.py`:** Imports `CommonModePhase` and `perturb_common_mode` from `.common_mode`. `__all__` updated — alphabetically ordered within the class/function groups. Correct.
+
+**Package `__init__.py`:** Re-exports `CommonModePhase` and `perturb_common_mode` from `.systematics`. Alphabetically merged into top-level `__all__`. Correct.
+
+#### 4. Framework updates
+
+| File | What changed | Quality |
+|---|---|---|
+| `CHANGELOG.md` | EDD bullet; explicitly notes "With EDD, all four WP-01 work items are implemented" | Clear milestone call-out |
+| `WP/LOGBOOK.md` registry | EDD → "landed 2026-06-02" | Precise |
+| `WP/WP-01-estimation-darwinism.md` §15 | EDD → "landed 2026-06-02 (correlation interpolation; common-mode-rejection oracle)" | Precise |
+| `pyproject.toml` | Four `information/*.py` lines collapsed to `"src/iontrap_dynamics/information/*.py"`; added `"src/iontrap_dynamics/systematics/common_mode.py"` | Clean |
+
+#### 5. Resolution of prior findings
+
+| Prior finding | Status |
+|---|---|
+| Round-6 #1: Collapse `per-file-ignores` to glob | **Resolved** — `information/*.py` glob applied in commit `c672804`. |
+| Round-6 #2: `redundancy.py` double `_ensure_density` | **Still open** — non-blocking; deferred to pre-release hygiene. |
+| Round-6 #3: Test helper duplication (four-fold) | **Still open** — non-blocking; deferred to pre-release hygiene. |
+
+### Non-blocking observations
+
+1. **`systematics/__init__.py` `__all__` ordering.** The list is alphabetically ordered within class and function groups, but `perturb_common_mode` appears between `perturb_carrier_rabi` and `perturb_detuning` — which is correct alphabetical. No issue.
+
+2. **The `test_common_mode.py` `_drive` helper uses hard-coded `280e-9` wavelength.** This is the same laser wavelength used in other tests (carrier Rabi, etc.), so it's consistent. If the library ever changes its default wavelength, this helper would need updating — but it's a test helper, not a production default.
+
+3. **Benchmark tool naming consistency reminder.** Benchmark 5 in WP-01 §7 is still `run_demo_ghz_cat.py` while all others use `run_benchmark_*.py`. This was noted in Round 2 and remains unfixed. Not a blocker, but a one-line rename would clean it up before EDE starts.
+
+### Recommendation
+
+**Continue with EDE (the five benchmarks).** All four WIs are done, all oracles are proven, and the benchmark pattern is established. EDE is mechanical work now:
+
+1. CFI/linear-Gaussian benchmark (uses `linear_gaussian_fisher`)
+2. Darwinism-redundancy benchmark (uses `partial_information_plot` on the GHZ cascade)
+3. Recoverability benchmark (uses `recoverability` on the Werner family)
+4. GHZ-cat benchmark (uses `ghz_state` / `cat_mode` — though the keystone already exercises `ghz_state`, this could be a dedicated state-factory benchmark)
+5. Common-mode benchmark (uses `CommonModePhase.sample_offsets` to show the correlation sweep)
+
+Each follows the same pattern: `tools/run_benchmark_<name>.py` → `benchmarks/data/<name>/` (`report.json` + `arrays.npz` + `plot.png`) + `tests/regression/analytic/test_<name>.py` with a named `ATOL`.
+
+After EDE: EDF (review note + CONVENTIONS staging) is the last substantive chunk before release hygiene. The branch is on track.
