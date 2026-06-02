@@ -81,6 +81,33 @@ def test_label_order_swaps_the_pair_symmetrically():
     assert (h_ab - h_ba).norm() < 1e-9
 
 
+@pytest.mark.parametrize("builder", [two_mode_squeezing_hamiltonian, beamsplitter_hamiltonian])
+def test_identical_mode_labels_raise(builder):
+    # A two-mode interaction needs two distinct modes — ("a","a") is wrong physics.
+    hilbert = _two_mode_hilbert(FOCK_DIM)
+    scalar = {"g": 1.0} if builder is two_mode_squeezing_hamiltonian else {"coupling": 1.0}
+    with pytest.raises(ConventionError, match="distinct"):
+        builder(hilbert, mode_labels=("a", "a"), **scalar)
+
+
+@pytest.mark.parametrize("bad", [float("inf"), float("nan"), float("-inf")])
+def test_non_finite_scalar_raises(bad):
+    hilbert = _two_mode_hilbert(FOCK_DIM)
+    with pytest.raises(ValueError, match="finite"):
+        two_mode_squeezing_hamiltonian(hilbert, g=bad)
+    with pytest.raises(ValueError, match="finite"):
+        two_mode_squeezing_hamiltonian(hilbert, g=1.0, phase=bad)
+    with pytest.raises(ValueError, match="finite"):
+        beamsplitter_hamiltonian(hilbert, coupling=bad)
+
+
+def test_negative_coupling_is_allowed_and_hermitian():
+    # A negative g is a legitimate sign/phase convention (≡ π phase shift), not an error.
+    hilbert = _two_mode_hilbert(FOCK_DIM)
+    assert two_mode_squeezing_hamiltonian(hilbert, g=-2000.0).isherm
+    assert beamsplitter_hamiltonian(hilbert, coupling=-2000.0).isherm
+
+
 # --------------------------------------------------------------------------
 # Two-mode squeezed-vacuum factory
 # --------------------------------------------------------------------------

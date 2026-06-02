@@ -297,8 +297,9 @@ def two_mode_squeezed_vacuum(fock_dims: int | tuple[int, int], z: complex) -> qu
 
     so only equal-occupation components ``|n, n⟩`` are populated (hence
     ``⟨n̂_a − n̂_b⟩ = 0``). Evolving the two-mode vacuum under
-    :func:`iontrap_dynamics.hamiltonians.two_mode_squeezing_hamiltonian` for a
-    time ``τ`` produces this state with ``|z| = gτ``.
+    :func:`iontrap_dynamics.hamiltonians.two_mode_squeezing_hamiltonian`
+    (phase ``φ``) for a time ``τ`` produces this state with the signed complex
+    parameter ``z = −gτ·e^{iφ}`` (so ``|z| = gτ``).
 
     Parameters
     ----------
@@ -312,7 +313,8 @@ def two_mode_squeezed_vacuum(fock_dims: int | tuple[int, int], z: complex) -> qu
     Returns
     -------
     qutip.Qobj
-        Normalised two-mode ket on dims ``[[N_a, N_b], [1, 1]]``.
+        Normalised two-mode ket; qutip 5 reports its dims as
+        ``[[N_a, N_b], [1]]`` (the trivial column is flattened).
 
     Raises
     ------

@@ -1579,6 +1579,25 @@ def modulated_carrier_hamiltonian(
     return [[base_H, coeff]]
 
 
+def _validate_two_mode_inputs(
+    mode_labels: tuple[str, str], coupling: float, coupling_name: str, phase: float
+) -> None:
+    """Shared guards for the two-mode builders: distinct modes, finite scalars.
+
+    A negative ``coupling`` is permitted (equivalent to a ``π`` phase shift); a
+    non-finite ``coupling``/``phase`` is rejected here rather than producing a
+    Qobj with non-finite entries that fails deep in the solver.
+    """
+    if mode_labels[0] == mode_labels[1]:
+        raise ConventionError(
+            f"a two-mode interaction requires two distinct mode labels; got {mode_labels!r}."
+        )
+    if not math.isfinite(coupling):
+        raise ValueError(f"{coupling_name} must be finite; got {coupling}.")
+    if not math.isfinite(phase):
+        raise ValueError(f"phase must be finite; got {phase}.")
+
+
 def two_mode_squeezing_hamiltonian(
     hilbert: HilbertSpace,
     *,
@@ -1598,8 +1617,9 @@ def two_mode_squeezing_hamiltonian(
 
     Evolving the two-mode vacuum under this Hamiltonian for a time
     :math:`\tau` produces the two-mode squeezed vacuum
-    (:func:`iontrap_dynamics.states.two_mode_squeezed_vacuum`) with squeezing
-    parameter :math:`r = g\tau` and per-mode mean occupation
+    (:func:`iontrap_dynamics.states.two_mode_squeezed_vacuum`) with the signed
+    complex squeeze parameter :math:`z = -g\tau\, e^{i\varphi}` (magnitude
+    :math:`r = |z| = g\tau`) and per-mode mean occupation
     :math:`\bar n = \sinh^2(g\tau)`. The generators
     :math:`\hat K_+ = \hat a^\dagger \hat b^\dagger`,
     :math:`\hat K_- = \hat a \hat b`,
@@ -1634,6 +1654,7 @@ def two_mode_squeezing_hamiltonian(
         Time-independent Hermitian ``H/ℏ`` on the full Hilbert space
         (:meth:`HilbertSpace.qutip_dims`). Units: rad·s⁻¹.
     """
+    _validate_two_mode_inputs(mode_labels, g, "g", phase)
     label_a, label_b = mode_labels
     a = hilbert.annihilation_for_mode(label_a)
     b = hilbert.annihilation_for_mode(label_b)
@@ -1671,6 +1692,7 @@ def beamsplitter_hamiltonian(
         Time-independent Hermitian ``H/ℏ`` on the full Hilbert space. Units:
         rad·s⁻¹.
     """
+    _validate_two_mode_inputs(mode_labels, coupling, "coupling", phase)
     label_a, label_b = mode_labels
     a = hilbert.annihilation_for_mode(label_a)
     b = hilbert.annihilation_for_mode(label_b)

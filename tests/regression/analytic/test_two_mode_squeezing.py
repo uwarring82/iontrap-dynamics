@@ -102,6 +102,27 @@ def test_hamiltonian_evolution_matches_the_factory_state() -> None:
     assert qutip.fidelity(motional, expected) > MIN_CONSISTENCY_FIDELITY
 
 
+def test_hamiltonian_matches_factory_with_nonzero_phase() -> None:
+    # §23 is explicitly phase/sign/ordering: check the signed complex map
+    # z = −gτ·e^{iφ} at a non-trivial phase, not just |z| = gτ.
+    hilbert = _two_mode_hilbert(FOCK_DIM)
+    g = 3000.0
+    tau = 1.5e-4
+    phi = 0.7
+    hamiltonian = two_mode_squeezing_hamiltonian(hilbert, g=g, phase=phi)
+    res = solve(
+        hilbert=hilbert,
+        hamiltonian=hamiltonian,
+        initial_state=_motional_vacuum(hilbert),
+        times=np.linspace(0.0, tau, 2),
+        storage_mode=StorageMode.EAGER,
+    )
+    assert res.states is not None
+    motional = res.states[-1].ptrace([1, 2])
+    expected = two_mode_squeezed_vacuum(FOCK_DIM, -g * tau * np.exp(1j * phi))
+    assert qutip.fidelity(motional, expected) > MIN_CONSISTENCY_FIDELITY
+
+
 def test_beamsplitter_conserves_total_occupation() -> None:
     hilbert = _two_mode_hilbert(FOCK_DIM)
     hamiltonian = beamsplitter_hamiltonian(hilbert, coupling=4000.0, phase=0.0)

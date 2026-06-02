@@ -239,6 +239,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — WI-1/WI-2 review-round fix: distinct-label + finite guards; phase map spelled out
+
+- **Refs:** WP-02 · WI-1/WI-2 · MCA/MCB · maintainer review (2 Medium, 2 Low)
+- **What:** (Medium) The two-mode builders accepted `mode_labels=("a","a")` (silent single-mode/number-operator physics for a *two-mode* API) and non-finite `g`/`coupling`/`phase` (Qobjs with non-finite entries that fail deep in the solver). Added a shared `_validate_two_mode_inputs` guard: identical labels → `ConventionError`, non-finite scalar → `ValueError`. Negative `g`/`coupling` is **allowed** (a legitimate π-phase-shift sign convention; documented + tested Hermitian). (Low) Spelled out the signed phase map `z = −gτ·e^{iφ}` (not just `|z| = gτ`) in the §23 docstrings + CHANGELOG, and added a **nonzero-phase** consistency regression (evolve at φ=0.7, fidelity-match the factory at `z = −gτe^{iφ}`). (Low) Corrected the factory return-dims docstring to qutip 5's `[[N_a, N_b], [1]]`.
+- **Outcome:** fixed; 1058 tests. P0 subset holds at complete. **Next:** the conventions-before-seal package (§23/§24 review note + staged-conventions proposal).
+- **Links:** `src/iontrap_dynamics/hamiltonians.py` (`_validate_two_mode_inputs`) · `tests/unit/test_two_mode.py` · `tests/regression/analytic/test_two_mode_squeezing.py`.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).

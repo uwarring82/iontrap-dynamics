@@ -22,7 +22,10 @@ placeholder-only and did not follow semver.
   (`tests/regression/analytic/test_two_mode_squeezing.py`): factory per-mode
   `sinh²|z|`; the Hamiltonian evolves the vacuum to `⟨n̂⟩ = sinh²(gτ)` with the
   su(1,1) difference number `n̂_a − n̂_b` conserved (Casimir) and matching the
-  factory state with `|z| = gτ`; the beamsplitter conserves `n̂_a + n̂_b` (SU(2)).
+  factory state with the signed map `z = −gτ·e^{iφ}` (`|z| = gτ`); the
+  beamsplitter conserves `n̂_a + n̂_b` (SU(2)). The builders reject identical mode
+  labels (a two-mode interaction needs two distinct modes) and non-finite
+  `g`/`coupling`/`phase`.
   `two_mode_squeezed_vacuum` is re-exported from the package root. Conventions
   staged for CONVENTIONS §23 (the shared v0.3 freeze, `WP/FREEZE-v0.3.md`). Per
   `WP/WP-02-two-mode-motional.md` (WI-1, WI-2). **With WI-1+WI-2+WI-3, the P0
