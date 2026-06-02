@@ -221,3 +221,60 @@ def test_cptp_trace_preserved():
     assert res.states is not None
     for state in res.states:
         assert state.tr() == pytest.approx(1.0, abs=1e-9)
+
+
+# --------------------------------------------------------------------------
+# WI-3b: time-windowed (sequence-aware) channels
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad_window",
+    [(0.5, 0.5), (0.6, 0.5), (-0.1, 0.5), (0.0, float("inf")), (float("nan"), 1.0)],
+)
+def test_invalid_window_raises(bad_window):
+    with pytest.raises(ValueError):
+        AmplitudeDamping(mode="b", rate=1.0, window=bad_window)
+
+
+def test_windowed_channel_returns_time_dependent_format():
+    hilbert = _single_mode_hilbert(FOCK_DIM)
+    ops = AmplitudeDamping(mode="b", rate=4.0, window=(0.0, 1e-3)).collapse_operators(hilbert)
+    assert len(ops) == 1
+    entry = ops[0]
+    # QuTiP time-dependent format: [operator, coeff_callable]
+    assert isinstance(entry, list)
+    op, coeff = entry
+    assert op == 2.0 * hilbert.annihilation_for_mode("b")
+    assert callable(coeff)
+
+
+def test_window_coefficient_signature_and_half_open_values():
+    hilbert = _single_mode_hilbert(FOCK_DIM)
+    ops = AmplitudeDamping(mode="b", rate=1.0, window=(1.0, 2.0)).collapse_operators(hilbert)
+    _, coeff = ops[0]
+    # QuTiP QobjEvo contract: f(t, args) — two positional arguments.
+    assert coeff(0.5, {}) == 0.0  # before the window
+    assert coeff(1.0, {}) == 1.0  # half-open: inclusive at t0
+    assert coeff(1.5, {}) == 1.0  # inside
+    assert coeff(2.0, {}) == 0.0  # half-open: exclusive at t1
+    assert coeff(3.0, {}) == 0.0  # after
+
+
+def test_none_window_keeps_constant_qobj_format():
+    hilbert = _single_mode_hilbert(FOCK_DIM)
+    ops = Heating(mode="b", rate=1.0, n_bar_bath=2.0).collapse_operators(hilbert)
+    # Bare Qobj entries, not [op, coeff] pairs.
+    assert all(not isinstance(op, list) for op in ops)
+
+
+def test_windowed_channel_forces_mesolve():
+    hilbert = _single_mode_hilbert(FOCK_DIM)
+    res = solve(
+        hilbert=hilbert,
+        hamiltonian=0.0 * hilbert.identity(),
+        initial_state=_fock_ket(hilbert, 3),
+        times=np.linspace(0.0, 1e-3, 11),
+        channels=[AmplitudeDamping(mode="b", rate=1000.0, window=(0.0, 5e-4))],
+    )
+    assert res.metadata.backend_name == "qutip-mesolve"

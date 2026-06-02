@@ -206,6 +206,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-02 — WI-3b landed (Dispatch MCC complete): time-windowed channels + the R8 test
+
+- **Refs:** WP-02 · WI-3b · MCC · card F3 (R8) · **two QuTiP integrator footguns**
+- **Stance:** Guardian (the R8 boundary is the card's hard requirement; get the window mechanism numerically honest, not just green).
+- **What:** Each channel gained an optional `window=(t0, t1)` (half-open `[t0, t1)`), realised via QuTiP's `[op, coeff]` time-dependent format — no custom solver path. The R8 regression test (`heating@[0,T/2]` then `damping@[T/2,T]` vs swapped) proves order-dependence: the two orderings reach `⟨n̂⟩ ≈ 0.14` vs `≈ 1.73`, each matching its own closed form, separation ≈ 1.6. WI-3 (MCC) is complete; **1025 tests**.
+- **Why (the two footguns worth recording — both Scout-flagged):** (1) **QuTiP keys the coefficient calling convention on the parameter NAME `args`.** A coeff written `f(t, _args)` is called with one argument and raises; it must be `f(t, args)` (matching the `cos_coeff`/`sin_coeff` house pattern in `hamiltonians.py`). (2) **The adaptive integrator skips a window that turns on after a quiescent interval.** Heating windowed to `[T/2, T]` from the ground state gave `⟨n̂⟩ ≡ 0` — across the dead first half the stepper takes one giant step and never samples the turn-on. Fix: when any channel is windowed, `solve` caps `mesolve`'s `max_step` at the output-grid resolution `min(diff(times))` (verified to catch even off-grid boundaries); the constant-channel and no-channel paths are untouched. This was a genuine silent-wrong-results footgun, not a test artefact — fixed in the library, not papered over in the test.
+- **Outcome:** WI-3 complete on `wp02-two-mode-motional`. **Next (maintainer review point per the steer):** WI-3a + WI-3b together are the pivotal F3 surface — pause for review before WI-1/WI-2 (the §23 two-mode squeezing pillar).
+- **Links:** `src/iontrap_dynamics/channels.py` (`_window_coefficient`, `_apply_window`) · `src/iontrap_dynamics/sequences.py` (`solve` `max_step` branch) · `tests/regression/analytic/test_motional_channels.py` (`test_r8_non_commuting_channels_are_order_dependent`).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -220,7 +231,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
 | **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | minted 2026-06-02; **P0**, open |
 | **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0**, open |
-| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3a landed 2026-06-02** (3 dissipators + solver wiring; oracles green); WI-3b (windowed + R8) open |
+| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `max_step` fix; 1025 tests) |
 | **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCF** | WI-6 probe-QFI benchmark (**consumes** WP-01 `fisher.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |

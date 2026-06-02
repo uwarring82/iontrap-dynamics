@@ -10,8 +10,9 @@ placeholder-only and did not follow semver.
 
 ### Added
 
-- **Dispatch MCC (WI-3a) — channels: typed motional CPTP channels exposed in
-  `solve()`.** New `channels.py` (WP-02): `AmplitudeDamping` (`L = √κ·â`),
+- **Dispatch MCC (WI-3) — channels: typed motional CPTP channels exposed in
+  `solve()`, with optional time windows.** New `channels.py` (WP-02):
+  `AmplitudeDamping` (`L = √κ·â`),
   `Heating` (`L₋ = √(κ(n̄+1))·â`, `L₊ = √(κn̄)·â†`), and `Dephasing`
   (`L = √γ·n̂`) — typed Lindblad dissipators on a labelled motional mode,
   embedded via the `HilbertSpace` mode-operator API. `solve()` gains a
@@ -24,10 +25,16 @@ placeholder-only and did not follow semver.
   (damping), `⟨n̂⟩ = n̄(1 − e^{−κt}) → n̄` (heating), and the dephasing coherence
   `⟨X̂⟩ = X₀ e^{−γt/2}` with `⟨n̂⟩` constant. The three classes are re-exported
   from the package root. Parameterisation staged for CONVENTIONS §24 (the
-  shared v0.3 freeze, `WP/FREEZE-v0.3.md`). Per
-  `WP/WP-02-two-mode-motional.md` (WI-3a). Time-windowed (sequence-aware)
-  channels and the R8 non-commuting-order test are WI-3b; `Depolarising` is
-  deferred (no canonical single-mode bosonic form).
+  shared v0.3 freeze, `WP/FREEZE-v0.3.md`). **WI-3b** adds an optional per-channel
+  `window=(t0, t1)`: the dissipation acts only on the half-open `[t0, t1)`, via
+  QuTiP's `[op, coeff]` time-dependent format (the `coeff` obeys the `QobjEvo`
+  `f(t, args)` contract). When a window is present `solve()` caps the integrator's
+  `max_step` at the output-grid resolution so the adaptive stepper cannot skip a
+  window's turn-on; otherwise the path is unchanged. Ordered/overlapping windows
+  make channel composition order-dependent — the **R8** regression test
+  (heating-then-damping ≠ damping-then-heating) proves the library does not assume
+  the dissipators commute. Per `WP/WP-02-two-mode-motional.md` (WI-3). `Depolarising`
+  is deferred (no canonical single-mode bosonic form).
 - **Dispatch EDF (additive part) — estimation/Darwinism literature-review note.**
   New `docs/estimation-darwinism-review.md` (Coastline / CC BY-SA 4.0): fixes the
   canonical definitions behind the service surface — SLD-QFI, classical Fisher /

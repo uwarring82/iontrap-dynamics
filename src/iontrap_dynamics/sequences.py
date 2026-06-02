@@ -482,6 +482,24 @@ def solve(
             time_array,
             e_ops=[],
         )
+    elif channels and any(channel.window is not None for channel in channels) and time_array.size > 1:
+        # A time-windowed channel turns its dissipation on partway through the
+        # trajectory. Across a quiescent interval the adaptive integrator would
+        # take one giant step and skip the window's turn-on entirely, so cap
+        # max_step at the output-grid resolution — fine enough to resolve any
+        # window boundary. Only the windowed path pays this; the constant-channel
+        # and no-channel paths are unchanged.
+        diffs = np.diff(time_array)
+        positive = diffs[diffs > 0.0]
+        max_step = float(positive.min()) if positive.size else float(time_array[-1] - time_array[0])
+        solver_result = qutip.mesolve(
+            hamiltonian,
+            initial_state,
+            time_array,
+            c_ops=collapse_operators,
+            e_ops=[],
+            options={"max_step": max_step},
+        )
     else:
         solver_result = qutip.mesolve(
             hamiltonian,

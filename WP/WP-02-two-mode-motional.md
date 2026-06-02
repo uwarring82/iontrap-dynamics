@@ -206,7 +206,7 @@ Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the op
 |---|---|---|---|
 | `MCA` | WI-1 two-mode SU(1,1) Hamiltonian | `- **Dispatch MCA — hamiltonians: two-mode squeezing (SU(1,1)) generator.**` | minted |
 | `MCB` | WI-2 `two_mode_squeezed_vacuum` | `- **Dispatch MCB — states: two-mode squeezed-vacuum factory.**` | minted |
-| `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | **WI-3a landed 2026-06-02** (3 dissipators + `solve(channels=…)`; oracles green, 1014 tests); WI-3b (windowed + R8) open |
+| `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | **WI-3 complete 2026-06-02** (WI-3a: 3 dissipators + `solve(channels=…)`; WI-3b: time windows + R8 non-commuting test + integrator `max_step` fix; oracles green, 1025 tests) |
 | `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | minted |
 | `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | minted |
 | `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | minted |

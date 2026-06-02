@@ -21,6 +21,8 @@ dissipative trajectories. Both live in the ``regression_analytic`` tier.
 
 from __future__ import annotations
 
+import dataclasses
+
 import numpy as np
 import pytest
 import qutip
@@ -35,6 +37,10 @@ pytestmark = pytest.mark.regression_analytic
 ATOL_DAMPING_DECAY = 1e-4
 ATOL_HEATING_RELAXATION = 1e-3
 ATOL_DEPHASING_COHERENCE = 1e-4
+ATOL_WINDOWED = 3e-3
+# The two channel orderings must differ by at least this much in ⟨n̂⟩ to count as
+# a genuine R8 (non-commuting) demonstration — the actual gap here is ≈ 1.6.
+R8_MIN_OCCUPATION_SEPARATION = 1.0
 
 
 def _zero_hamiltonian(hilbert: qutip.Qobj) -> qutip.Qobj:
@@ -109,3 +115,89 @@ def test_dephasing_preserves_occupation_decoheres_coherence() -> None:
     assert np.max(np.abs(n_t - 0.5)) < ATOL_DEPHASING_COHERENCE
     analytic_x = (1.0 / np.sqrt(2.0)) * np.exp(-0.5 * gamma * times)
     assert np.max(np.abs(x_t - analytic_x)) < ATOL_DEPHASING_COHERENCE
+
+
+# --------------------------------------------------------------------------
+# WI-3b: time-windowed (sequence-aware) channels + the R8 non-commuting test
+# --------------------------------------------------------------------------
+
+
+def test_windowed_damping_acts_only_inside_its_window() -> None:
+    """Damping windowed to ``[0, T/2)``: ``⟨n̂⟩`` decays inside, then stays flat."""
+    hilbert = _single_mode_hilbert(16)
+    n0 = 4
+    kappa = 4000.0
+    total = 1.0e-3
+    psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(16, n0))
+    times = np.linspace(0.0, total, 101)  # T/2 = 5e-4 lands on the grid (index 50)
+    res = solve(
+        hilbert=hilbert,
+        hamiltonian=_zero_hamiltonian(hilbert),
+        initial_state=psi0,
+        times=times,
+        observables=(Observable(label="n", operator=hilbert.number_for_mode("b")),),
+        channels=[AmplitudeDamping(mode="b", rate=kappa, window=(0.0, 0.5 * total))],
+    )
+    n_t = np.asarray(res.expectations["n"], dtype=np.float64)
+    n_at_window_close = n0 * np.exp(-kappa * 0.5 * total)
+    # Inside the window the decay follows e^{-κt}; afterwards the value is held.
+    assert n_t[25] == pytest.approx(n0 * np.exp(-kappa * times[25]), abs=ATOL_WINDOWED)
+    assert n_t[-1] == pytest.approx(n_at_window_close, abs=ATOL_WINDOWED)
+    assert np.max(np.abs(n_t[55:] - n_t[-1])) < ATOL_WINDOWED  # flat after the window
+
+
+def test_r8_non_commuting_channels_are_order_dependent() -> None:
+    """R8: heating-then-damping ≠ damping-then-heating (card F3 hard requirement).
+
+    Two disjoint ordered windows over ``[0, T]``. Heating drives ``⟨n̂⟩`` up to
+    ``n̄(1 − e^{−κ_h T/2})``; amplitude damping then scales it by ``e^{−κ_d T/2}``.
+    Damping the ground state first is a no-op, so swapping the order leaves the
+    heated value un-damped — a materially different final state. The library must
+    **not** assume the two dissipators commute.
+    """
+    hilbert = _single_mode_hilbert(40)  # headroom for the heated occupation
+    kappa_h = 4000.0
+    n_bar = 2.0
+    kappa_d = 5000.0
+    total = 1.0e-3
+    half = 0.5 * total
+    psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(40, 0))
+    times = np.linspace(0.0, total, 101)
+    obs = (Observable(label="n", operator=hilbert.number_for_mode("b")),)
+
+    heating = Heating(mode="b", rate=kappa_h, n_bar_bath=n_bar)
+    damping = AmplitudeDamping(mode="b", rate=kappa_d)
+
+    res_heat_then_damp = solve(
+        hilbert=hilbert,
+        hamiltonian=_zero_hamiltonian(hilbert),
+        initial_state=psi0,
+        times=times,
+        observables=obs,
+        channels=[
+            dataclasses.replace(heating, window=(0.0, half)),
+            dataclasses.replace(damping, window=(half, total)),
+        ],
+    )
+    res_damp_then_heat = solve(
+        hilbert=hilbert,
+        hamiltonian=_zero_hamiltonian(hilbert),
+        initial_state=psi0,
+        times=times,
+        observables=obs,
+        channels=[
+            dataclasses.replace(heating, window=(half, total)),
+            dataclasses.replace(damping, window=(0.0, half)),
+        ],
+    )
+    n_heat_then_damp = float(res_heat_then_damp.expectations["n"][-1])
+    n_damp_then_heat = float(res_damp_then_heat.expectations["n"][-1])
+
+    n_after_heating = n_bar * (1.0 - np.exp(-kappa_h * half))
+    analytic_heat_then_damp = n_after_heating * np.exp(-kappa_d * half)
+    analytic_damp_then_heat = n_after_heating  # damping the ground state is a no-op
+
+    assert n_heat_then_damp == pytest.approx(analytic_heat_then_damp, abs=ATOL_WINDOWED)
+    assert n_damp_then_heat == pytest.approx(analytic_damp_then_heat, abs=ATOL_WINDOWED)
+    # The two orderings give a materially different final occupation.
+    assert abs(n_heat_then_damp - n_damp_then_heat) > R8_MIN_OCCUPATION_SEPARATION
