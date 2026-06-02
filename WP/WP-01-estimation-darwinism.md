@@ -362,7 +362,7 @@ Dispatch codes for WP-01 were **minted at Ratification (2026-06-02)** as the fre
 
 | Dispatch | Maps to | CHANGELOG bullet (at landing) | Status |
 |---|---|---|---|
-| **EDA** | WI-1 estimation `information/fisher.py` (+ keystone QFI-scaling benchmark, bundled as the decoupling proof) | `- **Dispatch EDA — information: CFI/QFI/Cramér–Rao + QFI-scaling benchmark.**` | minted · WI-1 open |
+| **EDA** | WI-1 estimation `information/fisher.py` (+ keystone QFI-scaling benchmark, bundled as the decoupling proof) | `- **Dispatch EDA — information: CFI/QFI/Cramér–Rao + QFI-scaling benchmark.**` | module landed (2026-06-02, tests green); keystone benchmark pending WI-3 `ghz_state` |
 | **EDB** | WI-2 Darwinism `information/redundancy.py` + `recoverability.py` | `- **Dispatch EDB — information: redundancy + recoverability.**` | minted |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | `- **Dispatch EDC — states: ghz_state + cat_mode.**` | minted |
 | **EDD** | WI-4 `systematics/common_mode.py` | `- **Dispatch EDD — systematics: common-mode channel.**` | minted |

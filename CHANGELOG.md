@@ -10,6 +10,21 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch EDA — `information` sub-package: classical & quantum Fisher
+  information.** New application-agnostic `iontrap_dynamics.information`
+  umbrella with `information/fisher.py`:
+  `quantum_fisher_information_trajectory` (SLD quantum Fisher information,
+  exposed as a trajectory evaluator mirroring the `entanglement` shape —
+  nonlinear in ρ, run under `StorageMode.EAGER`), `classical_fisher_information`,
+  `cramer_rao_bound`, and `linear_gaussian_fisher` (`F = AᵀΣ⁻¹A`). All four are
+  re-exported from the package root. No application framing; the SLD-QFI
+  convention is staged for CONVENTIONS §19 under the shared v0.3 freeze
+  (`WP/FREEZE-v0.3.md`). Verified against the textbook oracle in
+  `tests/unit/test_fisher.py`: QFI(GHZ) = N² (Heisenberg) vs QFI(product) = N
+  (standard quantum limit), and CFI ≤ QFI (Braunstein–Caves). The keystone
+  QFI-scaling **benchmark** (the figure of GHZ N² vs product N) is the
+  remaining part of Dispatch EDA and lands with WI-3's `ghz_state`. Per
+  `WP/WP-01-estimation-darwinism.md` (WI-1).
 - **Dispatch BBB — GPU envelope benchmark (tool extension).**
   `tools/run_benchmark_spectrum_envelope_jax.py` gains a
   `--device={cpu,gpu}` flag. `--device=cpu` (default) preserves
