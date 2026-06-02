@@ -458,3 +458,124 @@ WP-01 §7 prescribes `demo_report.json` (with `schema_version: 2`, `threshold_se
 **Continue with WI-2 (EDB).** Dispatch EDA is complete and the decoupling proof is established. The information/ umbrella is proven, the evaluator shape is exercised, and the helper layer (`_ensure_density`) is ready for WI-2's redundancy/recoverability modules. WI-2 (Darwinism) is the natural next chunk.
 
 The WORKPLAN §5.4 paste can happen asynchronously — it doesn't block coding. If you want to batch it, paste the stub right before or right after WI-2 lands, but don't let it hold up execution.
+
+---
+
+## Round 6 — 2026-06-02 (WI-2 Darwinism + shared helper layer review)
+
+Scope reviewed: branch `wp01-estimation-darwinism` (commits `97873fd`, `3b307d7`, `6caa17a` on top of Round 5), `src/iontrap_dynamics/information/redundancy.py`, `recoverability.py`, `_common.py`, `tests/unit/test_redundancy.py`, `test_recoverability.py`, `CHANGELOG.md`, `WP/LOGBOOK.md`, `WP/WP-01-estimation-darwinism.md`, `pyproject.toml`.
+
+### Overall assessment
+
+**Approved. The information-theoretic surface is landed and proven. Continue with WI-4 (EDD).**
+
+Three WIs complete, 873 tests green. The shared-helper layer (`_common.py`) is clean and validates the `information/` umbrella architecture. The recoverability deferral-then-ratify pattern in the logbook is exactly what the framework is designed for. The Round-5 schema fix is applied correctly. No pause needed.
+
+### What was checked
+
+- `git show --stat 97873fd` — redundancy module (9 files, +332).
+- `git show --stat 3b307d7` — recoverability + `_common.py` refactor (8 files, +295).
+- `git show --stat 6caa17a` — keystone report schema fix (3 files, +11 / −1).
+- Static reads of `redundancy.py` (213 lines), `recoverability.py` (89 lines), `_common.py` (55 lines), `test_redundancy.py` (91 lines), `test_recoverability.py` (74 lines).
+- `git diff HEAD~3 HEAD -- pyproject.toml` — confirms four `information/` per-file-ignores entries.
+
+### Detailed observations
+
+#### 1. Shared helper layer (`information/_common.py`)
+
+**Realises the umbrella architecture.** The docstring explicitly notes: "the shared helper layer that motivated the single `information/` umbrella (WP-01 §3)". This is architecturally satisfying — the refactor validates the naming decision.
+
+**Contents:**
+- `_ensure_density(state)` — ket → density matrix promotion. Moved from `fisher.py`.
+- `_von_neumann_entropy_bits(rho)` — von Neumann entropy `S(ρ) = −Σ λ log₂ λ` in bits. Uses `rho.eigenenergies()` (QuTiP), clips tiny negatives, applies `_ENTROPY_EIGENVALUE_CUTOFF = 1e-12`.
+- `_validate_indices(indices, hilbert, name)` — checks non-empty, in-range `[0, n_subsystems)`, distinct. Returns a `list[int]`.
+
+**Cutoff consistency:** `_ENTROPY_EIGENVALUE_CUTOFF = 1e-12` matches the `_SLD_EIGENVALUE_CUTOFF` in `fisher.py`. Good — one numerical floor across the sub-package.
+
+**Privacy:** No `__all__`; nothing re-exported from `information/__init__.py`. Correct for a private helper module.
+
+#### 2. `redundancy.py` — implementation
+
+**Three public symbols:** `fragment_mutual_information`, `partial_information_plot`, `redundancy`.
+
+**`fragment_mutual_information`:** Computes `I(S:F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F})` in bits. Validates disjoint index sets. Uses `rho.ptrace(...)` on the density matrix. Correct.
+
+**`partial_information_plot`:** Builds nested fragments `F_f = environment_indices[:f]` and returns `[I(S:F_0), I(S:F_1), …, I(S:F_N)]`. Entry 0 is 0.0 by convention. For the GHZ cascade, the curve plateaus at `H_S = 1` bit for non-empty proper fragments and jumps to `2·H_S` at the full environment (because `I(S:E) = 2·S(ρ_S)` when the total state is pure). This matches the textbook behaviour and is verified in tests.
+
+**`redundancy`:** Computes `R_δ = N / f_δ`. The implementation:
+- Validates `delta ∈ (0, 1)`.
+- Short-circuits to `0.0` if `H_S ≈ 0` (nothing to encode).
+- Computes the partial-information plot, then finds the smallest `k` where `pip[k] >= (1−δ)·H_S`.
+- Returns `N / k` or `0.0` if threshold never reached.
+
+This is the standard Zurek deficit convention. Correct.
+
+**One minor inefficiency:** `redundancy` calls `partial_information_plot`, which re-validates indices and re-computes `s_system`. The double validation is harmless (fast), but the re-computation of `s_system` is also harmless because the PIP is short. Not a blocker.
+
+#### 3. `recoverability.py` — implementation
+
+**Single public symbol:** `recoverability`.
+
+**Measure:** `max(0, S(ρ_A) − S(ρ_{S∪A}))` — the clamped coherent information `I_c(S⟩A)`. This was the recommended measure from the logbook deferral entry, ratified before coding.
+
+**Endpoints:**
+- Perfect recovery (Bell pair / GHZ over 2 qubits) → `H_S = 1` bit.
+- Full decoherence (accessible part uncorrelated) → `0` (coherent information ≤ 0, clamped).
+- Monotone between on a Werner family — verified in tests.
+
+**Docstring:** Cites Schumacher–Nielsen, notes the clamping, references CONVENTIONS §20 (staged). Good.
+
+#### 4. Test coverage
+
+**`test_redundancy.py` — 91 lines, 6 test functions:**
+- `test_partial_information_plot_shows_darwinism_plateau` — parametric `n_env = [3, 5]`; verifies plateau at 1.0 for fragments 1..N-1, jump to 2.0 at full environment.
+- `test_fragment_mutual_information_single_qubit_carries_full_bit` — a single environment qubit in the GHZ cascade carries the full 1 bit.
+- `test_redundancy_is_maximal_for_ghz_cascade` — parametric `n_env = [3, 5]`; `R_δ = N` (each single qubit suffices).
+- `test_redundancy_zero_when_system_has_no_information` — product state, `H_S = 0`, so `R_δ = 0`.
+- `test_mutual_information_validation` — overlapping indices, out-of-range, empty set.
+- `test_redundancy_delta_validation` — `delta` outside `(0, 1)`.
+
+**`test_recoverability.py` — 74 lines, 4 test functions:**
+- `test_perfect_recovery_equals_system_entropy` — Bell pair → 1.0 bit.
+- `test_full_decoherence_is_zero` — product state with system entangled to an *inaccessible* reference; accessible qubit uncorrelated → 0.
+- `test_recoverability_monotone_in_werner_fidelity` — Werner family `p·|Φ⁺⟩⟨Φ⁺| + (1−p)·I/4`. Checks endpoints (0 and 1), non-decreasing, and genuine intermediate rise (`0 < vals[1] < vals[2] < 1`). This is the standard test for entanglement monotonicity.
+- `test_recoverability_validation` — overlapping, out-of-range, empty.
+
+Both test files import from the package root (`iontrap_dynamics`), validating the re-export chain.
+
+#### 5. Framework discipline — the deferral-then-ratify pattern
+
+**This is model-quality framework usage.** The LOGBOOK contains two entries for EDB:
+
+1. **Deferral entry:** "WI-2 redundancy landed; recoverability deferred pending its measure-convention". Records that redundancy (standard conventions) shipped first, while recoverability (five candidate measures) was blocked on a convention decision. Explicitly lists the five candidates and recommends Schumacher–Nielsen coherent information.
+
+2. **Ratification entry:** "Recoverability measure ratified (coherent information); EDB complete". Records the maintainer's ratification of the recommendation, the implementation, and the `_common.py` refactor.
+
+This is **Design Principle 1 (conventions before code) in action**, and the logbook captures the full lifecycle: deferral → rationale → recommendation → ratification → implementation. The CHANGELOG only sees "Dispatch EDB — redundancy + recoverability" because it records *what shipped*, not *why it was deferred*.
+
+#### 6. Package integration
+
+**`information/__init__.py`:** Updated to import from `redundancy` and `recoverability`. `__all__` now lists 8 symbols, alphabetically ordered:
+`classical_fisher_information`, `cramer_rao_bound`, `fragment_mutual_information`, `linear_gaussian_fisher`, `partial_information_plot`, `quantum_fisher_information_trajectory`, `recoverability`, `redundancy`.
+
+**Package `__init__.py`:** The `.information` import block now carries all 8 names, alphabetically merged into the top-level `__all__`. Correct.
+
+#### 7. pyproject.toml and schema fix
+
+**per-file-ignores:** Four new entries for `information/` (`_common.py`, `fisher.py`, `recoverability.py`, `redundancy.py`). As noted in Round 3/4, this should be collapsed to a glob `"src/iontrap_dynamics/information/*.py"`. The `_common.py` entry is the tipping point — four separate lines for one sub-package is untidy. One-line fix.
+
+**Keystone schema fix (commit `6caa17a`):** `report.json` now carries `schema_version: 2` and `canonical_request_hash: null`. WP-01 §7 reconciled with a new `!!! note` block explaining the compute-only `report.json` precedent. This resolves the Round-5 schema tension cleanly.
+
+### Non-blocking observations
+
+1. **Collapse `per-file-ignores` to a glob.** Replace the four `information/*.py` entries with one `"src/iontrap_dynamics/information/*.py" = ["RUF001", "RUF002", "RUF003"]`. This is overdue now that the sub-package has four modules.
+
+2. **`redundancy.py` double `_ensure_density` call.** `redundancy` calls `_ensure_density(state)`, then calls `partial_information_plot(state, ...)` which calls `_ensure_density(state)` again. This is harmless (cheap for small states), but a micro-optimisation would pass `rho` to a private `_partial_information_plot_from_rho` helper. Not worth it unless profiling shows it's hot.
+
+3. **Test helper duplication is now four-fold.** `test_fisher.py`, `test_states_ghz_cat.py`, `test_redundancy.py`, and `test_recoverability.py` all define local `_spin_hilbert` and `_collective_jz`. The shared `tests/conftest.py` refactor is becoming more valuable as the suite grows. Consider doing this when WI-4 lands, or as a separate hygiene commit before release.
+
+### Recommendation
+
+**Continue with WI-4 (EDD).** The information-theoretic surface (estimation + Darwinism) is complete, proven, and well-factored. Three of four WIs done. WI-4 (common-mode channel) is convention-light, well-scoped in WP-01 §4.4, and unblocked. No pause needed.
+
+After WI-4: EDE (benchmarks) and EDF (review note + CONVENTIONS staging) are the remaining work. The branch is on track for a clean release.
