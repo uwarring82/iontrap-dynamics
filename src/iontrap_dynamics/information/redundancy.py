@@ -13,7 +13,7 @@ The module provides:
 - :func:`partial_information_plot` — the ``I(S:F)`` curve versus fragment size
   (the partial-information plot of quantum Darwinism), built over nested
   fragments in the given environment-index order.
-- :func:`redundancy` — the redundancy ``R_δ = N / f_δ`` of the system
+- :func:`redundancy` — the redundancy ``R_δ = N / N_δ`` of the system
   information across the environment.
 
 These measures are **nonlinear in ρ** (von Neumann entropies of reduced
@@ -31,12 +31,13 @@ Conventions
 
     I(S:F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F}).
 
-The redundancy is ``R_δ = N / f_δ`` where ``N`` is the number of environment
-subsystems, ``H_S = S(ρ_S)`` the system entropy, and ``f_δ`` the smallest
-environment fraction whose fragment carries at least ``(1 − δ)·H_S`` of the
-system information (the classical-information-deficit convention of Zurek,
-*Nat. Phys.* 2009; Ollivier, Poulin & Zurek). Equivalently ``R_δ`` counts how
-many disjoint fragments each suffice to learn the system to within deficit δ.
+The redundancy is ``R_δ = N / N_δ`` (equivalently ``R_δ = 1 / f_δ``) where ``N``
+is the number of environment subsystems, ``H_S = S(ρ_S)`` the system entropy,
+``N_δ`` the smallest fragment **size** whose nested fragment carries at least
+``(1 − δ)·H_S`` of the system information, and ``f_δ = N_δ / N`` the
+corresponding fragment fraction (the classical-information-deficit convention of
+Zurek, *Nat. Phys.* 2009; Ollivier, Poulin & Zurek). Equivalently ``R_δ`` counts
+how many disjoint fragments each suffice to learn the system to within deficit δ.
 
 For the canonical decoherence model — one system qubit perfectly copied onto N
 environment qubits (a GHZ cascade) — ``I(S:F)`` reaches the **plateau**
@@ -177,12 +178,13 @@ def redundancy(
     environment_indices: Sequence[int],
     delta: float = 0.1,
 ) -> float:
-    """The redundancy ``R_δ = N / f_δ`` of the system information.
+    """The redundancy ``R_δ = N / N_δ`` of the system information.
 
-    ``f_δ`` is the smallest environment fraction ``k / N`` whose nested
-    fragment carries at least ``(1 − δ)·H_S`` of the system information
-    ``H_S = S(ρ_S)``; ``R_δ = N / k`` then counts how many such fragments fit in
-    the environment.
+    ``N_δ`` is the smallest fragment **size** — the number of environment
+    subsystems, the loop variable ``k`` below — whose nested fragment carries at
+    least ``(1 − δ)·H_S`` of the system information ``H_S = S(ρ_S)``; equivalently
+    ``R_δ = 1 / f_δ`` with the fragment fraction ``f_δ = N_δ / N``. ``R_δ = N / N_δ``
+    counts how many such fragments fit in the environment.
 
     Parameters
     ----------

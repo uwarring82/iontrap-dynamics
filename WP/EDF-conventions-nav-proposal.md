@@ -50,22 +50,29 @@ trajectory under a supplied Hermitian generator.
 #### 19.2 Classical Fisher information
 
 For an outcome distribution p(x; θ), the classical Fisher information is
-F_cl(θ) = Σ_x (∂_θ p(x; θ))² / p(x; θ), with zero-probability outcomes
-contributing zero (the term is masked, not evaluated). `classical_fisher_information`
-takes probabilities and their parameter derivative.
+F_cl(θ) = Σ_x (∂_θ p(x; θ))² / p(x; θ). An outcome with p = 0 and ∂_θ p = 0
+contributes zero (the 0/0 term is masked); a non-zero derivative at a
+zero-probability outcome is **rejected as ill-posed** (the CFI diverges), not
+silently dropped. `classical_fisher_information` takes probabilities and their
+parameter derivative.
 
 #### 19.3 Cramér–Rao bound
 
-`cramer_rao_bound` returns the single-shot bound 1/F for scalar F (and the matrix
-inverse F⁻¹ for the Fisher matrix). The ν-repetition scaling Var(θ̂) ≥ 1/(ν F) is
-the caller's responsibility — the library does not assume a repetition count.
+`cramer_rao_bound(fisher)` is **scalar-only**: it returns the single-shot bound
+1/F for a positive scalar F (raising on non-finite or non-positive input). This
+release ships no matrix-CRB API; for a multi-parameter bound, invert the Fisher
+matrix from `linear_gaussian_fisher` directly. The ν-repetition scaling
+Var(θ̂) ≥ 1/(ν F) is the caller's responsibility — the library does not assume a
+repetition count.
 
 #### 19.4 Linear-Gaussian closed form
 
 For a linear model with known design matrix A and known covariance Σ ≻ 0,
 `linear_gaussian_fisher` returns F = AᵀΣ⁻¹A (Σ checked positive-definite). The
-saturation inequality F_cl ≤ F_Q (Braunstein–Caves) holds for every measurement
-and is a built-in numerical guard.
+saturation inequality F_cl ≤ F_Q (Braunstein–Caves) holds for every measurement;
+the library computes CFI and QFI independently and does **not** enforce it
+internally — it is checked in the §19 regression benchmark
+(`test_cfi_linear_gaussian.py`).
 
 **Convention.** SLD-QFI; Fisher information carries the parameter's
 inverse-square unit (1/[θ]²) and is reparameterisation-covariant; CFI ≤ QFI for
@@ -85,14 +92,19 @@ freeze. Definitions are fixed by `docs/estimation-darwinism-review.md` §3.
 
 I(S : F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F}), with the von Neumann entropy S(·) in
 **bits** (base-2 logarithm; the library's `_von_neumann_entropy_bits`).
-`fragment_mutual_information` and `partial_information_plot` operate on a state
-and an explicit system/environment partition.
+`fragment_mutual_information` operates on a system/fragment pair (`system_indices`,
+`fragment_indices`); `partial_information_plot` sweeps nested fragments
+`environment_indices[:f]` over a system/environment partition (`system_indices`,
+`environment_indices`). Both are keyword-only on a `hilbert` and require disjoint,
+in-range index sets.
 
 #### 20.2 Redundancy — information-deficit convention
 
-The library adopts R_δ = N / f_δ, where N is the environment size and f_δ is the
-smallest fragment fraction at which I(S : F) reaches (1 − δ)·H_S; δ is the
-caller-supplied information deficit. `redundancy` returns R_δ for a given δ.
+The library adopts R_δ = N / N_δ (equivalently R_δ = 1 / f_δ), where N_δ is the
+smallest fragment **size** at which I(S : F) reaches (1 − δ)·H_S, N is the
+environment size, and f_δ = N_δ / N is the corresponding fragment fraction; δ is
+the caller-supplied information deficit. `redundancy` returns R_δ for a given δ
+(its implementation computes `N / k` with `k = N_δ`).
 
 #### 20.3 Recoverability — clamped coherent information
 
@@ -104,7 +116,7 @@ endpoints. `recoverability` takes a state, the system indices, and the accessibl
 indices.
 
 **Convention.** Entropies in bits; recoverability clamped at zero; redundancy is
-the deficit form R_δ = N/f_δ.
+the deficit form R_δ = N/N_δ = 1/f_δ (N_δ the smallest qualifying fragment size).
 **Cross-refs.** §19 (shared entropy/partition machinery); review note §3.
 **Test.** `tests/unit/test_redundancy.py`, `tests/unit/test_recoverability.py`
 (endpoints + monotonicity);
@@ -126,9 +138,11 @@ rate: ⟨X^⊗N⟩ = cos(N φ).
 
 #### 21.2 Cat state parity
 
-`cat_mode(fock_dim, alpha, *, parity)` builds the even/odd cat |α⟩ ± |−α⟩ in a
-truncated Fock space; the even (odd) state is the +1 (−1) eigenstate of photon
-parity. `fock_dim ≤ 0` and non-finite α raise `ConventionError`.
+`cat_mode(fock_dim, alpha, *, parity="even")` builds the even/odd cat |α⟩ ± |−α⟩
+in a truncated Fock space; the even (odd) state is the +1 (−1) eigenstate of
+photon parity. `ConventionError` is raised on `fock_dim ≤ 0`, a `parity` outside
+{`even`, `odd`}, a non-finite α, or a degenerate odd cat at α = 0 (vanishing
+norm).
 
 **Convention.** GHZ in the computational/§3 spin basis; cat parity sign maps
 even → +1, odd → −1; Fock truncation per §13 convergence.
@@ -145,7 +159,8 @@ Staged; seals with the v0.3 freeze. Definitions are fixed by
 
 #### 22.1 Channel definition
 
-`CommonModePhase(sigma_rad, correlation, label)` draws, per subsystem,
+`CommonModePhase(*, sigma_rad, correlation=1.0, label="common_mode_phase")` (a
+frozen, keyword-only dataclass) draws, per subsystem,
 offset_i = √c · ξ_shared + √(1 − c) · ξ_i with ξ_shared, ξ_i ~ 𝒩(0, σ²) and
 c = correlation ∈ [0, 1]. The marginal per-subsystem variance is σ² at every c.
 `perturb_common_mode` applies the shared draw across a list of drives.
@@ -160,8 +175,9 @@ is monotone decreasing in c.
 **Convention.** Shared draw is `√c · ξ_shared + √(1−c) · ξ_i` (marginal variance
 σ² preserved across c); difference variance 2σ²(1−c); c = 1 is exact rejection,
 **measured, not enforced** (a broken draw would surface in the benchmark).
-**Cross-refs.** §18 (systematics layer — `PhaseDrift` is the c = 0 reduction);
-review note §5.
+**Cross-refs.** §18 (systematics layer — `PhaseJitter`, the stochastic per-drive
+Gaussian draw, is the c = 0 reduction; `PhaseDrift` is a *deterministic* offset
+and is not the limit here); review note §5.
 **Test.** `tests/unit/test_common_mode.py` (c = 0 reduces to independent draw;
 `dataclasses.replace` not mutation; `ValueError` on `shots < 1`);
 `tests/regression/analytic/test_common_mode_rejection.py` (2σ²(1−c); exact

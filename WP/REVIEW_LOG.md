@@ -502,7 +502,7 @@ Three WIs complete, 873 tests green. The shared-helper layer (`_common.py`) is c
 
 **`partial_information_plot`:** Builds nested fragments `F_f = environment_indices[:f]` and returns `[I(S:F_0), I(S:F_1), …, I(S:F_N)]`. Entry 0 is 0.0 by convention. For the GHZ cascade, the curve plateaus at `H_S = 1` bit for non-empty proper fragments and jumps to `2·H_S` at the full environment (because `I(S:E) = 2·S(ρ_S)` when the total state is pure). This matches the textbook behaviour and is verified in tests.
 
-**`redundancy`:** Computes `R_δ = N / f_δ`. The implementation:
+**`redundancy`:** Computes `R_δ = N / N_δ` (= `N / k`, with `k = N_δ` the smallest qualifying fragment **size**; equivalently `1 / f_δ` with `f_δ = N_δ / N`). The implementation:
 - Validates `delta ∈ (0, 1)`.
 - Short-circuits to `0.0` if `H_S ≈ 0` (nothing to encode).
 - Computes the partial-information plot, then finds the smallest `k` where `pip[k] >= (1−δ)·H_S`.

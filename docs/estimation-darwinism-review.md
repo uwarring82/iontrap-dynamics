@@ -5,15 +5,17 @@ quantum-Darwinism service surface (`iontrap_dynamics.information`,
 `iontrap_dynamics.states`, `iontrap_dynamics.systematics.common_mode`) and
 identifies the analytic oracles each generic benchmark reproduces. It is
 deliberately **bounded**: it exists only to (a) pin the conventions adopted by
-the library to primary sources, and (b) name the closed-form anchor each
-benchmark is checked against. It is not a survey of the fields.
+the library to their sources in the literature, and (b) name the closed-form
+anchor each benchmark is checked against. It is not a survey of the fields.
 
 !!! note "Convention-anchor contract (binding)"
-    Each definition below cites a primary source, and each numbered
-    `CONVENTIONS.md` section in the estimation/Darwinism range (§19–22) cites
-    this note as authoritative for its definition. The pairing is the audit
-    trail: a reader can trace any library symbol → its CONVENTIONS section →
-    the convention chosen here → the primary literature.
+    Each definition below is anchored to the literature — a primary source
+    where one exists, or the standard textbook identity for elementary results
+    (the common-mode variance) — and each numbered `CONVENTIONS.md` section in
+    the estimation/Darwinism range (§19–22) cites this note as authoritative for
+    its definition. The pairing is the audit trail: a reader can trace any
+    library symbol → its CONVENTIONS section → the convention chosen here → the
+    cited literature.
 
 !!! note "Application-agnostic by construction"
     Every quantity here is defined on generic inputs — a state, a channel, a
@@ -45,9 +47,11 @@ depending on a scalar parameter θ, the classical Fisher information is
 
   F_cl(θ) = Σ_x p(x; θ) · (∂_θ ln p(x; θ))² = Σ_x (∂_θ p(x; θ))² / p(x; θ),
 
-with the convention that outcomes of zero probability contribute zero (the
-0/0 term is masked, not evaluated). This is the textbook score-variance
-definition [Helstrom 1976; Paris 2009].
+with the convention that an outcome with p = 0 **and** ∂_θ p = 0 contributes
+zero (the 0/0 term is masked, not evaluated); a **non-zero** derivative at a
+zero-probability outcome is **rejected as ill-posed** — the Fisher information
+diverges there, so the library raises rather than silently truncating. This is
+the textbook score-variance definition [Helstrom 1976; Paris 2009].
 
 **Quantum Fisher information (QFI), SLD convention.** The library adopts the
 **symmetric logarithmic derivative (SLD)** quantum Fisher information. The SLD
@@ -69,8 +73,10 @@ caller's [Helstrom 1976; Paris 2009].
 
 **CFI ≤ QFI (saturation).** For any measurement, F_cl ≤ F_Q, with equality
 attainable by the projective measurement in the SLD eigenbasis
-[Braunstein & Caves 1994]. This inequality is a built-in numerical guard in the
-library and the headline check of benchmark 2.
+[Braunstein & Caves 1994]. The library does **not** enforce this internally —
+the CFI and QFI are computed by independent functions; the inequality is the
+headline check of benchmark 2, where the two are computed separately and
+compared.
 
 **Linear-Gaussian closed form.** For a linear model x = A·θ + noise with known
 design matrix A and known covariance Σ ≻ 0, the Fisher information matrix is
@@ -105,15 +111,18 @@ fragment-size dependence carries the Darwinism signature
 [Ollivier, Poulin & Zurek 2004; Zurek 2009].
 
 **Partial-information plot and the redundancy convention.** Plotting
-I(S : F) against fragment size f (averaged over fragments of that size) yields
-the partial-information curve. The **classical plateau** sits at the Holevo
+I(S : F_f) against fragment size f over **nested** fragments
+F_f = environment_indices[:f] (which equals the fragment-averaged curve for a
+symmetric environment) yields the partial-information curve. The **classical plateau** sits at the Holevo
 bound for the system's pointer information, ≈ H_S. The library adopts the
 **information-deficit redundancy** convention
 
-  R_δ = N / f_δ,
+  R_δ = N / N_δ   (equivalently R_δ = 1 / f_δ),
 
-where f_δ is the smallest fragment fraction for which I(S : F) reaches
-(1 − δ)·H_S, and N is the environment size; δ is the supplied information deficit
+where N_δ is the smallest fragment **size** (number of environment subsystems)
+for which I(S : F) reaches (1 − δ)·H_S, N is the environment size, and
+f_δ = N_δ / N is the corresponding fragment **fraction**; δ is the supplied
+information deficit
 [Blume-Kohout & Zurek 2006; Zurek 2009; Riedel, Zurek & Zwolak 2012]. For the
 GHZ-cascade model (one system qubit redundantly copied onto N environment qubits) the
 mutual information is a step: it jumps to the full H_S as soon as a single
@@ -165,7 +174,8 @@ This fringe is the oracle of benchmark 5.
 
 **Cat state.** The even/odd Schrödinger-cat superpositions
 |cat_±⟩ ∝ |α⟩ ± |−α⟩ of a single bosonic mode are eigenstates of the photon
-parity operator with eigenvalue +1 (even) and −1 (odd) respectively. The library
+parity operator with eigenvalue +1 (even) and −1 (odd) respectively — the even
+and odd coherent states of [Dodonov, Malkin & Man'ko 1974]. The library
 factory builds the requested parity in a truncated Fock space; the exact ±1
 parity is the companion check of benchmark 5.
 
@@ -214,10 +224,10 @@ between the endpoints. This closed form is the oracle of benchmark 6.
 | Linear-Gaussian F = AᵀΣ⁻¹A | CONVENTIONS §19; benchmark 2 | Paris 2009 (Gaussian estimation) |
 | QFI_GHZ = N² / QFI_product = N | CONVENTIONS §19/§21; benchmark 1 | Giovannetti, Lloyd & Maccone 2004; Bollinger et al. 1996 |
 | Mutual information I(S:F) | CONVENTIONS §20; `information.redundancy` | Ollivier, Poulin & Zurek 2004; Zurek 2009 |
-| Redundancy R_δ = N/f_δ (deficit δ) | CONVENTIONS §20; benchmark 3 | Blume-Kohout & Zurek 2006; Riedel, Zurek & Zwolak 2012 |
+| Redundancy R_δ = N/N_δ = 1/f_δ (deficit δ) | CONVENTIONS §20; benchmark 3 | Blume-Kohout & Zurek 2006; Riedel, Zurek & Zwolak 2012 |
 | Recoverability = max(0, S(ρ_A) − S(ρ_{S∪A})) | CONVENTIONS §20; `information.recoverability` | Schumacher & Nielsen 1996; Petz 1986; Fawzi & Renner 2015 |
 | GHZ parity fringe ⟨X^⊗N⟩ = cos(Nφ) | CONVENTIONS §21; benchmark 5 | Bollinger et al. 1996 |
-| Cat parity eigenvalue ±1 | CONVENTIONS §21; `states.cat_mode` | standard bosonic-parity convention (see Wilde 2017) |
+| Cat parity eigenvalue ±1 | CONVENTIONS §21; `states.cat_mode` | Dodonov, Malkin & Man'ko 1974 (even/odd coherent states); Wilde 2017 (textbook) |
 | Common-mode Var = 2σ²(1−c) | CONVENTIONS §22; benchmark 6 | textbook covariance identity |
 | QuTiP backend | all WIs | Johansson, Nation & Nori 2012 |
 
@@ -271,7 +281,10 @@ between the endpoints. This closed form is the oracle of benchmark 6.
     <https://doi.org/10.1007/s00220-015-2466-x>
 16. **Wilde, M. M.** (2017). *Quantum Information Theory* (2nd ed.). Cambridge
     University Press. <https://doi.org/10.1017/9781316809976>
-17. **Johansson, J. R., Nation, P. D. & Nori, F.** (2012). QuTiP: an open-source
+17. **Dodonov, V. V., Malkin, I. A. & Man'ko, V. I.** (1974). Even and odd
+    coherent states and excitations of a singular oscillator. *Physica* **72**,
+    597. <https://doi.org/10.1016/0031-8914(74)90215-8>
+18. **Johansson, J. R., Nation, P. D. & Nori, F.** (2012). QuTiP: an open-source
     Python framework for the dynamics of open quantum systems.
     *Comput. Phys. Commun.* **183**, 1760.
     <https://doi.org/10.1016/j.cpc.2012.02.021>

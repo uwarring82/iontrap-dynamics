@@ -13,11 +13,12 @@ placeholder-only and did not follow semver.
 - **Dispatch EDF (additive part) — estimation/Darwinism literature-review note.**
   New `docs/estimation-darwinism-review.md` (Coastline / CC BY-SA 4.0): fixes the
   canonical definitions behind the service surface — SLD-QFI, classical Fisher /
-  Cramér–Rao, the `R_δ = N/f_δ` redundancy convention, the Schumacher–Nielsen
+  Cramér–Rao, the `R_δ = N/N_δ` redundancy convention, the Schumacher–Nielsen
   clamped-coherent-information recoverability measure, the GHZ/cat parity
   conventions, and the common-mode `2σ²(1 − c)` channel — each anchored to a
-  primary source (17 references with DOIs) and each identifying the §7 analytic
-  oracle it backs. The maintainer-ready proposal `WP/EDF-conventions-nav-proposal.md`
+  cited source (18 references, DOIs where one exists — Helstrom 1976 is a
+  monograph; the common-mode channel rests on the elementary covariance
+  identity) and each identifying the §7 analytic oracle it backs. The maintainer-ready proposal `WP/EDF-conventions-nav-proposal.md`
   carries the four **staged** `CONVENTIONS.md` §19–22 sections, the `mkdocs.yml`
   nav line, and the seal-time header/marker/footer edits. The governed acts — the
   single `CONVENTION_VERSION` 0.2 → 0.3 bump, the seal, and the
@@ -57,7 +58,7 @@ placeholder-only and did not follow semver.
   New `information/redundancy.py`: `fragment_mutual_information`
   (`I(S:F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F})`, in bits), `partial_information_plot`
   (the `I(S:F)`-vs-fragment-size curve over nested fragments), and `redundancy`
-  (`R_δ = N / f_δ`); and `information/recoverability.py`: `recoverability`, the
+  (`R_δ = N / N_δ`); and `information/recoverability.py`: `recoverability`, the
   clamped coherent information `max(0, S(ρ_A) − S(ρ_{S∪A}))` (Schumacher–Nielsen
   measure, ratified 2026-06-02 as the §20 convention). All re-exported from the
   package root; a shared `information/_common.py` now holds the nonlinear-in-ρ
