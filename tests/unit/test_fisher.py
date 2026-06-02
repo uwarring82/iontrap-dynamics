@@ -115,6 +115,13 @@ def test_qfi_trajectory_length_and_dimension_check() -> None:
         quantum_fisher_information_trajectory([_ghz(1)], hilbert=h_one, generator=jz)
 
 
+def test_qfi_rejects_non_hermitian_generator() -> None:
+    h = _spin_hilbert(1)
+    non_hermitian = spin_up() * spin_down().dag()  # |up><down| is not Hermitian
+    with pytest.raises(ValueError):
+        quantum_fisher_information_trajectory([spin_up()], hilbert=h, generator=non_hermitian)
+
+
 # ----------------------------------------------------------------------------
 # Classical Fisher information and the Cramer-Rao bound
 # ----------------------------------------------------------------------------
@@ -140,6 +147,9 @@ def test_classical_fisher_information_validation() -> None:
         classical_fisher_information([0.6, 0.6], parameter_derivative=[0.0, 0.0])
     with pytest.raises(ValueError):
         classical_fisher_information([-0.1, 1.1], parameter_derivative=[0.0, 0.0])
+    # A zero-probability outcome carrying a non-zero derivative is ill-posed.
+    with pytest.raises(ValueError):
+        classical_fisher_information([1.0, 0.0], parameter_derivative=[0.0, 0.5])
 
 
 def test_cfi_never_exceeds_qfi_braunstein_caves() -> None:
@@ -187,3 +197,6 @@ def test_linear_gaussian_fisher_validation() -> None:
         linear_gaussian_fisher(A=np.array([[1.0], [1.0]]), sigma=np.eye(3))
     with pytest.raises(ValueError):
         linear_gaussian_fisher(A=np.array([[1.0], [1.0]]), sigma=np.array([[1.0, 0.5], [0.6, 1.0]]))
+    # Symmetric but indefinite (eigenvalues 3 and -1) -> not positive-definite.
+    with pytest.raises(ValueError):
+        linear_gaussian_fisher(A=np.array([[1.0], [1.0]]), sigma=np.array([[1.0, 2.0], [2.0, 1.0]]))

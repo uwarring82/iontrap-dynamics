@@ -54,7 +54,7 @@ from ..hilbert import HilbertSpace
 _SLD_EIGENVALUE_CUTOFF: float = 1e-12
 """Floor on ``λ_j + λ_k`` below which an SLD eigenpair is dropped (mixed-state QFI)."""
 
-_PROBABILITY_SUM_TOLERANCE: float = 1e-9
+_PROBABILITY_TOLERANCE: float = 1e-9
 """Tolerance on ``Σ_x p_x = 1`` and on the non-negativity of probabilities."""
 
 
@@ -91,7 +91,8 @@ def quantum_fisher_information_trajectory(
     Raises
     ------
     ValueError
-        If ``generator`` or any state does not match ``hilbert.total_dim``.
+        If ``generator`` is not Hermitian, or if ``generator`` or any state
+        does not match ``hilbert.total_dim``.
 
     Notes
     -----
@@ -107,6 +108,8 @@ def quantum_fisher_information_trajectory(
             f"{generator.shape}; expected ({dim}, {dim}) for this Hilbert space"
         )
     generator_matrix = np.asarray(generator.full(), dtype=np.complex128)
+    if not np.allclose(generator_matrix, generator_matrix.conj().T):
+        raise ValueError("quantum_fisher_information_trajectory: generator must be Hermitian")
     values = np.empty(len(states), dtype=np.float64)
     for idx, state in enumerate(states):
         rho = _ensure_density(state)
@@ -131,7 +134,7 @@ def classical_fisher_information(
     ----------
     probabilities
         Outcome probabilities ``p_x(θ)`` at the working point. Must be
-        non-negative and sum to 1 (within :data:`_PROBABILITY_SUM_TOLERANCE`).
+        non-negative and sum to 1 (within :data:`_PROBABILITY_TOLERANCE`).
     parameter_derivative
         The derivatives ``∂_θ p_x`` at the same point, in the same order /
         shape as ``probabilities``.
@@ -140,13 +143,15 @@ def classical_fisher_information(
     -------
     float
         The classical Fisher information ``≥ 0``. Outcomes with ``p_x = 0``
-        contribute nothing (a valid model has ``∂_θ p_x = 0`` there).
+        contribute nothing; a non-zero derivative at a zero-probability outcome
+        is rejected as ill-posed (see Raises) rather than silently dropped.
 
     Raises
     ------
     ValueError
-        If the shapes differ, a probability is negative, or the probabilities
-        do not sum to 1.
+        If the shapes differ, a probability is negative, the probabilities do
+        not sum to 1, or a zero-probability outcome carries a non-zero
+        derivative (the Fisher information would diverge).
     """
     p = np.asarray(probabilities, dtype=np.float64)
     dp = np.asarray(parameter_derivative, dtype=np.float64)
@@ -155,11 +160,20 @@ def classical_fisher_information(
             f"classical_fisher_information: probabilities {p.shape} and "
             f"parameter_derivative {dp.shape} must have the same shape"
         )
-    if np.any(p < -_PROBABILITY_SUM_TOLERANCE):
+    if np.any(p < -_PROBABILITY_TOLERANCE):
         raise ValueError("classical_fisher_information: probabilities must be non-negative")
     total = float(np.sum(p))
-    if abs(total - 1.0) > _PROBABILITY_SUM_TOLERANCE:
+    if abs(total - 1.0) > _PROBABILITY_TOLERANCE:
         raise ValueError(f"classical_fisher_information: probabilities must sum to 1; got {total}")
+    # A zero-probability outcome carrying a non-zero derivative makes the Fisher
+    # information diverge — that is an ill-posed model, not a finite value to
+    # truncate silently. Reject it rather than masking it away.
+    zero_probability = p <= 0.0
+    if np.any(zero_probability & (np.abs(dp) > _PROBABILITY_TOLERANCE)):
+        raise ValueError(
+            "classical_fisher_information: a zero-probability outcome has a non-zero "
+            "derivative — the Fisher information diverges and the model is ill-posed"
+        )
     support = p > 0.0
     contributions = (dp[support] ** 2) / p[support]
     return float(np.sum(contributions))
@@ -217,7 +231,7 @@ def linear_gaussian_fisher(
     ------
     ValueError
         If ``A`` is not 2-D, ``sigma`` does not match ``A``'s observation
-        count, or ``sigma`` is not symmetric.
+        count, or ``sigma`` is not symmetric positive-definite.
     """
     a_mat = np.asarray(A, dtype=np.float64)
     sigma_mat = np.asarray(sigma, dtype=np.float64)
@@ -233,6 +247,13 @@ def linear_gaussian_fisher(
         )
     if not np.allclose(sigma_mat, sigma_mat.T):
         raise ValueError("linear_gaussian_fisher: sigma must be symmetric")
+    # Symmetry alone is not enough: an indefinite Σ would invert to a
+    # nonsensical (non-PSD) Fisher matrix. Cholesky succeeds iff Σ is
+    # positive-definite, so it is the cheap correctness gate here.
+    try:
+        np.linalg.cholesky(sigma_mat)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("linear_gaussian_fisher: sigma must be positive-definite") from exc
     sigma_inv = np.linalg.inv(sigma_mat)
     fisher_matrix = a_mat.T @ sigma_inv @ a_mat
     return np.asarray(fisher_matrix, dtype=np.float64)

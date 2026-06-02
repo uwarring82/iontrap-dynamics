@@ -295,9 +295,9 @@ Reproducing the task-card 6-point DoD, plus the decoupling proof:
 
 ---
 
-## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — paste-ready when dispatch EDA lands)*
+## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — paste only when EDA fully lands: module **and** keystone benchmark)*
 
-WP-01 is Ratified and dispatch **EDA** is minted; the stub below carries the real code. Paste it **when WI-1 (EDA) lands** on `main` — as the next free amendment subsection under §5 (after §5.3, current free slot §5.4 per the v0.3.x patch sequence) — and update the header version line, the footer `**Workplan version:**` line, and the Endorsement Marker in lock-step in the same commit.
+WP-01 is Ratified and dispatch **EDA** is minted; the stub below carries the real code. **EDA is not yet fully landed:** its estimation module (`information/fisher.py`) shipped 2026-06-02, but the keystone QFI-scaling benchmark — the very figure this stub headlines — is still **pending WI-3's `ghz_state`** (§15). **Do not paste this stub until EDA is complete** (module *and* benchmark on `main`). At that point, paste it as the next free amendment subsection under §5 (after §5.3, current free slot §5.4 per the v0.3.x patch sequence) and update the header version line, the footer `**Workplan version:**` line, and the Endorsement Marker in lock-step in the same commit.
 
 ```markdown
 ### 5.4 — Estimation & Darwinism service surface as v0.3.x follow-up (2026-06-02) *(Coastline, new in v0.3.6)*

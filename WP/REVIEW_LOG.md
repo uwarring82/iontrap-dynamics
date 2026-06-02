@@ -174,3 +174,102 @@ The framework is coherent. WP-01 is ratifiable. My recommended next actions, in 
 5. **Open WI-1** (`information/fisher.py` + keystone QFI-scaling benchmark) once the branch is clean and the registry is populated.
 
 No further framework refinement is needed before execution begins.
+
+---
+
+## Round 3 — 2026-06-02 (WI-1 implementation review)
+
+Scope reviewed: branch `wp01-estimation-darwinism` (commits `66d313c`, `eef899f`), `src/iontrap_dynamics/information/fisher.py`, `src/iontrap_dynamics/information/__init__.py`, `src/iontrap_dynamics/__init__.py`, `tests/unit/test_fisher.py`, `CHANGELOG.md`, `pyproject.toml`, `WP/WP-01-estimation-darwinism.md` (Ratified state), `WP/LOGBOOK.md` (registry).
+
+### Overall assessment
+
+**Approved. Continue with WI-3 + keystone benchmark.**
+
+The implementation is clean, the tests reproduce the textbook oracle exactly, the framework discipline is flawless (no spurious logbook entry for a clean landing, CHANGELOG bullet is precise, all six dispatch codes minted and registered), and the branch is ready for WI-3 to be pulled forward.
+
+### What was checked
+
+- `git show --stat 66d313c` — framework + WP-01 (Ratified) + FREEZE-v0.3 + FAIR + task cards (10 files, +1621 lines).
+- `git show --stat eef899f` — WI-1 estimation module (8 files, +515 insertions / −2 deletions).
+- Static read of `fisher.py` (276 lines), `test_fisher.py` (189 lines), `information/__init__.py` (22 lines), package `__init__.py` (155 lines).
+- `git diff main eef899f -- pyproject.toml` — confirms single-line `per-file-ignores` addition for `information/fisher.py`.
+- `pytest` was not re-run (user reports 809 passed; I trust the gate).
+
+### Detailed observations
+
+#### 1. `fisher.py` — implementation quality
+
+**SLD-QFI formula:** Correct. Uses the eigenvalue-sum form
+
+```
+F_Q = 2 Σ_{j,k : λ_j + λ_k > cutoff} (λ_j − λ_k)² / (λ_j + λ_k) · |⟨j|G|k⟩|²
+```
+
+with `_SLD_EIGENVALUE_CUTOFF = 1e-12`. The `np.where` guard on `lam_sum > cutoff` handles the kernel correctly; diagonal terms (j=k) contribute zero because `lam_diff = 0`. The Hermitisation step (`0.5 * (rho + rho†)`) absorbs numerical noise before `eigh`. This is the standard stable implementation.
+
+**`_ensure_density`:** Minimal (ket → `ket * ket.dag()`). Sufficient for WI-1. When WI-2 adds redundancy/recoverability, this helper may need to grow (e.g., ptrace-awareness, subspace validation), but keeping it small now is correct.
+
+**Trajectory-evaluator shape:** Mirrors `entanglement.py` — `(states, *, hilbert, generator) -> NDArray[np.float64]`. The docstring explicitly notes the `StorageMode.EAGER` requirement and the post-processing pattern. Good.
+
+**`linear_gaussian_fisher` — validation gap (very minor):** The function checks that `sigma` is symmetric and matches `A`'s observation count, but does not verify positive-definiteness. `np.linalg.inv` will raise `LinAlgError` for singular matrices, but for an indefinite `sigma` (negative eigenvalues) it will silently return a wrong Fisher matrix. The docstring claims "positive-definite"; the code should probably assert `np.all(np.linalg.eigvals(sigma_mat) > 0)` or catch the indefinite case. This is a one-line defensive check. Not a blocker for WI-1.
+
+**`_PROBABILITY_SUM_TOLERANCE` naming:** The constant is used for both the probability-sum check (`abs(total - 1.0) > tolerance`) and the non-negativity check (`p < -tolerance`). The name says "SUM_TOLERANCE" but serves double duty. Very minor — rename to `_PROBABILITY_TOLERANCE` if you care, otherwise leave it.
+
+#### 2. `test_fisher.py` — test coverage
+
+**15 cases, all oracles verified:**
+- `test_qfi_ghz_reaches_heisenberg_limit` — `N = 1,2,3`; asserts `QFI == N²` within `1e-9`. This is the keystone oracle.
+- `test_qfi_product_reaches_standard_quantum_limit` — `N = 1,2,3`; asserts `QFI == N` within `1e-9`.
+- `test_qfi_pure_state_equals_four_times_variance` — eigenstate (`QFI = 0`) and `|+>` (`QFI = 4·Var = 4`) on a single qubit.
+- `test_qfi_maximally_mixed_state_is_zero` — `QFI = 0` for maximally mixed state.
+- `test_qfi_trajectory_length_and_dimension_check` — shape `(2,)` for two states; `ValueError` on dimension mismatch.
+- `test_classical_fisher_information_values` — three standard cases (symmetric binomial, zero derivative, zero-probability support).
+- `test_classical_fisher_information_validation` — shape mismatch, sum ≠ 1, negative probability.
+- `test_cfi_never_exceeds_qfi_braunstein_caves` — saturating measurement (`CFI == QFI`) and sub-optimal measurement (`CFI < QFI`).
+- `test_cramer_rao_bound` — `1/4` and `ValueError` on non-positive input.
+- `test_linear_gaussian_fisher_matrix` — two independent observations, `F = 1/σ₁² + 1/σ₂²`.
+- `test_linear_gaussian_fisher_validation` — non-2-D `A`, shape mismatch, non-symmetric `sigma`.
+
+**Test helper quality:** `_ghz`, `_product_plus`, `_collective_jz` are local builders using `spin_up()`, `spin_down()`, `sigma_z_ion()`, `hilbert.spin_op_for_ion()`. They correctly use the library's canonical operators rather than `qutip.sigmaz`. When WI-3 lands `states.ghz_state`, these helpers should be refactored to use the real factory.
+
+**Import path:** Tests import from the package root (`iontrap_dynamics`), not from `iontrap_dynamics.information.fisher`. This validates the re-export chain — valuable.
+
+#### 3. Package integration
+
+**`information/__init__.py`:** Clean umbrella module. SPDX-headed, docstring explains the sub-package purpose, exports are explicit and alphabetised.
+
+**Package `__init__.py`:** The new `.information` import block sits between `.exceptions` and `.measurement` — alphabetically correct. The four new names are merged into `__all__` in alphabetical order (`classical_fisher_information`, `cramer_rao_bound`, `linear_gaussian_fisher`, `quantum_fisher_information_trajectory`) within the ALL-CAPS-first-then-alphabetical scheme. Correct.
+
+**`pyproject.toml`:** Single-line `per-file-ignores` addition for `information/fisher.py`. As noted in Round 2, consider collapsing to `"src/iontrap_dynamics/information/*.py"` once WI-2 lands the second module.
+
+#### 4. Framework discipline
+
+**No logbook entry for clean landing:** Correct. The module landed with no decisions, dead-ends, or deferrals — purely CHANGELOG territory. The framework's own separation-of-concerns rule is exercised faithfully.
+
+**CHANGELOG bullet:** Precise, dispatch-keyed, notes the keystone benchmark is pending WI-3. Length is fine for `[Unreleased]`.
+
+**Dispatch registry:** All six ED codes (EDA–EDF) are minted and recorded in both WP-01 §15 and `WP/LOGBOOK.md`. EDA's status correctly notes "module landed; benchmark pending WI-3". No collision risk — the `ED` root was grepped and free.
+
+**WP-01 header:** Correctly updated to `Ratified 2026-06-02`, `Lifecycle: Ratified`, `WI-1 is open`, `dispatch codes EDA–EDF minted`. The literature-review note licence is ratified Coastline / CC BY-SA 4.0 (Round 2 steer accepted). §14 now explicitly explains why WI-3 precedes WI-2. §10 headlines the `states.py` re-export.
+
+**Commit structure:** Two commits, clean separation — framework docs first, code second. Good.
+
+#### 5. Round 2 review fixes — verification
+
+| Round 2 observation | Status |
+|---|---|
+| §7 benchmark 5 renamed `run_demo_ghz_cat.py` → `run_benchmark_ghz_cat.py` | **Verified** in WP-01 §7 table. |
+| §10 headlines `states.py` top-level re-export | **Verified** in WP-01 §10 release plan. |
+| §14 explains WI-3 → WI-2 ordering | **Verified** in WP-01 §14: "Why WI-3 precedes WI-2 (deliberate, not a typo)". |
+| Lit-review note licence ratified Coastline | **Verified** in WP-01 header and §5. |
+
+### Non-blocking suggestions for WI-3 / forward
+
+1. **Add positive-definiteness check to `linear_gaussian_fisher`** (one line: `if not np.all(np.linalg.eigvals(sigma_mat) > 0): raise ValueError(...)`). This closes the gap between docstring claim and runtime validation.
+2. **When refactoring `test_fisher.py` to use `states.ghz_state`**, keep the local `_ghz` helper as a fallback or remove it entirely — the real factory should produce the same state.
+3. **Collapse `per-file-ignores`** to `"src/iontrap_dynamics/information/*.py"` when WI-2 lands `redundancy.py`.
+4. **The keystone benchmark tool** (`tools/run_benchmark_qfi_scaling.py`) should reproduce the exact same oracle values as the unit tests (`N=1,2,3` or a wider sweep) and record `max_numerical_vs_analytic_error` in `demo_report.json`. The unit tests already prove correctness; the benchmark proves it at scale and produces the figure.
+
+### Recommendation
+
+**Continue.** Pull WI-3 forward (`states.ghz_state` + `cat_mode`), then implement the keystone QFI-scaling benchmark. The branch is clean, the foundation is solid, and momentum is good. No pause needed.
