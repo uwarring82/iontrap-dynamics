@@ -123,9 +123,9 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 
 | Code | Title | WP | CHANGELOG / WORKPLAN carrier | Status |
 |---|---|---|---|---|
-| **EDA** | WI-1 estimation `information/fisher.py` + keystone QFI-scaling benchmark | WP-01 | CHANGELOG `[Unreleased]` · WORKPLAN §5.4 | module landed 2026-06-02; benchmark pending WI-3 |
+| **EDA** | WI-1 estimation `information/fisher.py` + keystone QFI-scaling benchmark | WP-01 | CHANGELOG `[Unreleased]` · WORKPLAN §5.4 | module landed 2026-06-02; benchmark unblocked (EDC), pending |
 | **EDB** | WI-2 Darwinism redundancy + recoverability | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
-| **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
+| **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
 | **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | minted |

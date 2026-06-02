@@ -10,6 +10,20 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch EDC — `states`: GHZ and cat-state factories, and the `states`
+  public surface.** `states.ghz_state(hilbert)` returns the N-ion GHZ ket
+  `(|↑⟩^⊗N + |↓⟩^⊗N)/√2 ⊗ |0⟩^⊗M` (the Heisenberg-limit probe);
+  `states.cat_mode(fock_dim, alpha, *, parity="even"|"odd")` returns the
+  normalised even/odd Schrödinger-cat ket. **The `states` module is now
+  re-exported from the package root for the first time** — `ghz_state`,
+  `cat_mode`, **and the pre-existing `coherent_mode`, `squeezed_vacuum_mode`,
+  `squeezed_coherent_mode`, `ground_state`, and `compose_density` factories** —
+  all become importable directly from `iontrap_dynamics` (additive; no existing
+  import breaks). GHZ/cat conventions are staged for CONVENTIONS §21 under the
+  shared v0.3 freeze (`WP/FREEZE-v0.3.md`). Verified in
+  `tests/unit/test_states_ghz_cat.py`, including a cross-check that `ghz_state`
+  feeds the WI-1 QFI to N² (Heisenberg). Per
+  `WP/WP-01-estimation-darwinism.md` (WI-3).
 - **Dispatch EDA — `information` sub-package: classical & quantum Fisher
   information.** New application-agnostic `iontrap_dynamics.information`
   umbrella with `information/fisher.py`:

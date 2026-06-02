@@ -62,7 +62,7 @@ import qutip
 
 from .exceptions import ConventionError
 from .hilbert import HilbertSpace
-from .operators import spin_down
+from .operators import spin_down, spin_up
 
 # ----------------------------------------------------------------------------
 # Ground state — canonical cold start
@@ -281,9 +281,101 @@ def squeezed_coherent_mode(
     return d_op * s_op * qutip.basis(fock_dim, 0)
 
 
+# ----------------------------------------------------------------------------
+# GHZ and cat-state factories (WI-3 of WP-01; dispatch EDC)
+# ----------------------------------------------------------------------------
+#
+# Conventions: CONVENTIONS.md §21 (staged for the shared v0.3 Convention
+# Freeze — see WP/FREEZE-v0.3.md). Both factories are application-agnostic.
+
+
+def ghz_state(hilbert: HilbertSpace) -> qutip.Qobj:
+    """Return the GHZ ket ``(|↑⟩^⊗N + |↓⟩^⊗N) / √2 ⊗ |0⟩^⊗M`` on ``hilbert``.
+
+    The N-ion Greenberger–Horne–Zeilinger state across all spins, with every
+    motional mode in the vacuum |0⟩ — the maximally spin-correlated state used
+    as the Heisenberg-limit probe in phase estimation (its QFI under
+    ``J_z = ½ Σ_i σ_z^{(i)}`` is ``N²``). Generalises the §0.A Φ⁺ Bell
+    convention ``(|↑↑⟩ + |↓↓⟩) / √2`` to N ions. Mirrors :func:`ground_state`:
+    a full-space ket, normalised by construction, on the §2 tensor ordering.
+
+    For ``N = 1`` this degenerates to ``|+⟩ = (|↑⟩ + |↓⟩) / √2``.
+
+    Raises
+    ------
+    ConventionError
+        If ``hilbert`` has no ions.
+    """
+    n_ions = hilbert.n_ions
+    if n_ions < 1:
+        raise ConventionError("ghz_state requires at least one ion.")
+    # The mode vacua are identical in both terms, so they factor out of the
+    # spin superposition: (|↑..↑⟩ + |↓..↓⟩) ⊗ |0..0⟩.
+    mode_vacua = [qutip.basis(hilbert.mode_dim(m.label), 0) for m in hilbert.system.modes]
+    all_up = qutip.tensor([spin_up() for _ in range(n_ions)] + mode_vacua)
+    all_down = qutip.tensor([spin_down() for _ in range(n_ions)] + mode_vacua)
+    return (all_up + all_down).unit()
+
+
+def cat_mode(fock_dim: int, alpha: complex, *, parity: str = "even") -> qutip.Qobj:
+    """Return a Schrödinger-cat ket on a Fock-truncated mode.
+
+    The even / odd cat is the normalised superposition of two coherent states
+    of opposite displacement (CONVENTIONS.md §21):
+
+        even:  N₊ (|α⟩ + |−α⟩)
+        odd:   N₋ (|α⟩ − |−α⟩)
+
+    with ``|α⟩ = D(α)|0⟩`` the coherent state of :func:`coherent_mode`. Mirrors
+    :func:`coherent_mode`'s shape: a bare ``fock_dim`` single-mode ket,
+    normalised, composable via :func:`compose_density` or ``qutip.tensor``.
+
+    Parameters
+    ----------
+    fock_dim
+        Truncated mode dimension. Must be positive — choose it large enough
+        that ``|α|²`` fits well inside the Fock envelope.
+    alpha
+        Coherent amplitude ``α`` (CONVENTIONS.md §7).
+    parity
+        ``"even"`` (default) or ``"odd"`` — the relative sign between |α⟩ and
+        |−α⟩. The even cat contains only even Fock states, the odd cat only
+        odd ones.
+
+    Returns
+    -------
+    qutip.Qobj
+        Normalised ket of dimension ``fock_dim``.
+
+    Raises
+    ------
+    ConventionError
+        If ``fock_dim`` is not positive, ``parity`` is not ``"even"`` /
+        ``"odd"``, or the superposition is degenerate (an odd cat at
+        ``α = 0`` is the zero vector).
+    """
+    if fock_dim <= 0:
+        raise ConventionError(f"fock_dim must be positive; got {fock_dim}.")
+    if parity not in {"even", "odd"}:
+        raise ConventionError(f"parity must be 'even' or 'odd'; got {parity!r}.")
+    coherent_plus = coherent_mode(fock_dim, alpha)
+    coherent_minus = coherent_mode(fock_dim, -alpha)
+    combined = (
+        coherent_plus + coherent_minus if parity == "even" else coherent_plus - coherent_minus
+    )
+    norm = combined.norm()
+    if norm < 1e-12:
+        raise ConventionError(
+            f"cat_mode: degenerate superposition (an odd cat requires α ≠ 0); got α = {alpha}."
+        )
+    return combined / norm
+
+
 __all__ = [
+    "cat_mode",
     "coherent_mode",
     "compose_density",
+    "ghz_state",
     "ground_state",
     "squeezed_coherent_mode",
     "squeezed_vacuum_mode",
