@@ -18,10 +18,12 @@ placeholder-only and did not follow semver.
   `phase_rad` / `visibility`). Application-agnostic post-processing of a
   phase / parameter scan — the SU(1,1) interferometer assembly and any
   resource-constrained benchmark stay programme-side (the WP-02 §1 boundary).
-  Additive under CONVENTIONS v0.2 (standard interferometric definitions, no new
-  convention). Oracles (`tests/regression/analytic/test_interferometric_visibility.py`):
-  a real phase-scanned spin fringe `P(θ) = (1 + cos θ)/2` → unit visibility at
-  phase 0; a contrast loss → visibility `e^{−Γ}`. Per
+  Additive under CONVENTIONS v0.3 (standard interferometric definitions, no new
+  convention). Oracles (`tests/regression/analytic/test_interferometric_visibility.py`)
+  are built from the §3 ion spin operators: a phase-scanned spin fringe
+  `P(θ) = (1 + cos θ)/2` → unit visibility at phase 0; a contrast loss →
+  visibility `e^{−Γ}`; and a `⟨σ_y⟩(θ) = +sin θ` quadrature fringe pinning the
+  §3 sign at phase `+π/2` (a `qutip.sigmaz` slip would give `−π/2`). Per
   `WP/WP-02-two-mode-motional.md` (WI-4); first of the additive P1/P2 surface
   after the v0.5.0 release.
 

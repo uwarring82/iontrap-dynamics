@@ -217,7 +217,7 @@ def expectations_over_time(
 # the fitted phase shift φ of the cosine fringe. These are general primitives —
 # the assembly of a full SU(1,1) interferometer sequence and any
 # resource-constrained benchmark belong to the consuming programme, not here
-# (WP/WP-02-two-mode-motional.md §1 boundary). Additive under CONVENTIONS v0.2:
+# (WP/WP-02-two-mode-motional.md §1 boundary). Additive under CONVENTIONS v0.3:
 # standard interferometric definitions, no new convention section.
 
 
@@ -296,10 +296,15 @@ def fit_fringe(
     Raises
     ------
     ValueError
-        On mismatched shapes, fewer than 3 scan points, or non-finite inputs.
+        On non-1-D, mismatched-shape, fewer-than-3-point, non-finite, or
+        **rank-deficient** input (a scan whose ``[1, cos θ, sin θ]`` design is
+        rank < 3 — e.g. repeated or collinear phases — cannot determine the
+        three parameters and is rejected rather than silently mis-fit).
     """
     theta = np.asarray(scan_rad, dtype=np.float64)
     sig = np.asarray(signal, dtype=np.float64)
+    if theta.ndim != 1:
+        raise ValueError(f"fit_fringe: scan_rad must be 1-D; got ndim {theta.ndim}")
     if theta.shape != sig.shape:
         raise ValueError(
             f"fit_fringe: scan_rad {theta.shape} and signal {sig.shape} must have the same shape"
@@ -309,6 +314,11 @@ def fit_fringe(
     if not (np.all(np.isfinite(theta)) and np.all(np.isfinite(sig))):
         raise ValueError("fit_fringe: scan_rad and signal must be finite")
     design = np.column_stack([np.ones_like(theta), np.cos(theta), np.sin(theta)])
+    if np.linalg.matrix_rank(design) < 3:
+        raise ValueError(
+            "fit_fringe: the scan is rank-deficient (repeated or collinear phases); "
+            "A + B·cos(θ − φ) is underdetermined — use ≥3 distinct phases spanning the fringe"
+        )
     coeffs = np.linalg.lstsq(design, sig, rcond=None)[0]
     c0, c1, c2 = float(coeffs[0]), float(coeffs[1]), float(coeffs[2])
     amplitude = float(np.hypot(c1, c2))

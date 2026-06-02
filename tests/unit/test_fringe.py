@@ -61,6 +61,20 @@ def test_fit_fringe_validation():
         fit_fringe([0.0, 1.0], [0.5, 0.6])
     with pytest.raises(ValueError, match="finite"):
         fit_fringe([0.0, 1.0, float("inf")], [0.5, 0.6, 0.7])
+    with pytest.raises(ValueError, match="1-D"):
+        fit_fringe(np.zeros((3, 2)), np.zeros((3, 2)))
+
+
+@pytest.mark.parametrize(
+    "scan",
+    [
+        [0.0, 0.0, 0.0],  # repeated phase -> rank 1
+        [0.0, np.pi, 2.0 * np.pi],  # sin θ ≡ 0 on this grid -> phase undetermined
+    ],
+)
+def test_fit_fringe_rejects_rank_deficient_scan(scan):
+    with pytest.raises(ValueError, match="rank-deficient"):
+        fit_fringe(scan, [0.1, 0.2, 0.3])
 
 
 def test_fringe_fit_is_frozen():
