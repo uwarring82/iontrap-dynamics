@@ -281,6 +281,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — WI-4 landed (Dispatch MCD): interferometric fringe analysis — first post-v0.5.0 additive dispatch
+
+- **Refs:** WP-02 · WI-4 · MCD · card F4 · branch `wp02-f4-observables`
+- **Stance:** Integrator (open the additive P1/P2 surface, off `main`, post-release).
+- **What:** `observables.fringe_visibility(signal)` (model-free contrast `(S_max − S_min)/(S_max + S_min)`) and `fit_fringe(scan_rad, signal)` (least-squares `A + B·cos(θ − φ)` fit → frozen `FringeFit`). Application-agnostic fringe post-processing; the SU(1,1) interferometer assembly + resource-constrained benchmark stay programme-side (§1 boundary). Additive under CONVENTIONS v0.2 — no new convention. Oracles: a real phase-scanned spin fringe `P(θ)=(1+cos θ)/2` → unit visibility at phase 0; a contrast loss → `e^{−Γ}`. Gates green: ruff, mypy --strict, **1070 passed** (+11).
+- **Why:** first dispatch after the v0.5.0 release; opened on a fresh branch off `main` (the closure commit `e11ccf5` is its base, still unpushed pending the maintainer's OK). F4 is P1, additive, non-gating — no freeze pressure now that v0.3 is sealed.
+- **Outcome:** MCD landed on `wp02-f4-observables`. **Next:** MCE (Lamb–Dicke regime helpers, `analytic.py`), then MCF (probe-QFI consuming WP-01 `fisher.py`), MCG (`ModeFrequencyDrift`).
+- **Links:** `src/iontrap_dynamics/observables.py` (`FringeFit`, `fringe_visibility`, `fit_fringe`) · `tests/unit/test_fringe.py` · `tests/regression/analytic/test_interferometric_visibility.py`.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -296,7 +307,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | **landed 2026-06-03** (n̄ = sinh²(gτ); Casimir; + beamsplitter) |
 | **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (per-mode n̄ = sinh²\|z\|; Schmidt) |
 | **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `windowed_max_step` union-gap fix; review-round short-window-skip fix; 1028 tests) |
-| **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
+| **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (`fringe_visibility` + `fit_fringe`; first post-v0.5.0 additive dispatch) |
 | **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCF** | WI-6 probe-QFI benchmark (**consumes** WP-01 `fisher.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCG** | WI-7 `ModeFrequencyDrift` (`systematics/drift.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P2, open |

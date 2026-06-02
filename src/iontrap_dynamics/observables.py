@@ -208,9 +208,121 @@ def expectations_over_time(
     }
 
 
+# ----------------------------------------------------------------------------
+# Interferometric fringe analysis (WP-02 WI-4 / F4, dispatch MCD)
+# ----------------------------------------------------------------------------
+#
+# Application-agnostic post-processing of a readout signal over a phase /
+# parameter scan: the fringe visibility V = (S_max − S_min)/(S_max + S_min) and
+# the fitted phase shift φ of the cosine fringe. These are general primitives —
+# the assembly of a full SU(1,1) interferometer sequence and any
+# resource-constrained benchmark belong to the consuming programme, not here
+# (WP/WP-02-two-mode-motional.md §1 boundary). Additive under CONVENTIONS v0.2:
+# standard interferometric definitions, no new convention section.
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class FringeFit:
+    """Least-squares fit of an interferometric fringe ``A + B·cos(θ − φ)``.
+
+    Parameters
+    ----------
+    offset
+        The fringe mean ``A``.
+    amplitude
+        The fringe amplitude ``B ≥ 0``.
+    phase_rad
+        The fitted phase shift ``φ`` in rad, in ``(−π, π]`` (the scan value at
+        which the fringe is maximal).
+    visibility
+        The fitted interferometric contrast ``B / A`` (for ``A > 0``); ``inf``
+        when the fitted offset is exactly zero.
+    """
+
+    offset: float
+    amplitude: float
+    phase_rad: float
+    visibility: float
+
+
+def fringe_visibility(signal: NDArray[np.floating] | Sequence[float]) -> float:
+    """Model-free fringe visibility ``(S_max − S_min) / (S_max + S_min)``.
+
+    For a **non-negative** readout signal (a bright-state probability or an
+    intensity) sampled over a parameter scan. Model-free: it reads the extrema
+    directly, with no fringe-shape assumption.
+
+    Raises
+    ------
+    ValueError
+        If ``signal`` is empty or non-finite, has a negative entry, or has
+        ``S_max + S_min ≤ 0`` (the visibility is then undefined).
+    """
+    arr = np.asarray(signal, dtype=np.float64)
+    if arr.size == 0:
+        raise ValueError("fringe_visibility: signal must be non-empty")
+    if not np.all(np.isfinite(arr)):
+        raise ValueError("fringe_visibility: signal must be finite")
+    if np.any(arr < 0.0):
+        raise ValueError(
+            "fringe_visibility: signal must be non-negative (a probability / intensity)"
+        )
+    s_max = float(arr.max())
+    s_min = float(arr.min())
+    total = s_max + s_min
+    if total <= 0.0:
+        raise ValueError("fringe_visibility: S_max + S_min ≤ 0; visibility is undefined")
+    return (s_max - s_min) / total
+
+
+def fit_fringe(
+    scan_rad: NDArray[np.floating] | Sequence[float],
+    signal: NDArray[np.floating] | Sequence[float],
+) -> FringeFit:
+    """Least-squares fit of ``signal(θ) = A + B·cos(θ − φ)`` over a phase scan.
+
+    Fits the linear-in-coefficients model ``c₀ + c₁ cos θ + c₂ sin θ`` (so
+    ``A = c₀``, ``B = √(c₁² + c₂²)``, ``φ = atan2(c₂, c₁)``) and returns the
+    fringe parameters as a :class:`FringeFit`. The visibility is the fitted
+    contrast ``B / A``.
+
+    Parameters
+    ----------
+    scan_rad
+        Scan parameter θ in rad (the interferometer phase); at least 3 points.
+    signal
+        The readout signal at each θ; same shape as ``scan_rad``.
+
+    Raises
+    ------
+    ValueError
+        On mismatched shapes, fewer than 3 scan points, or non-finite inputs.
+    """
+    theta = np.asarray(scan_rad, dtype=np.float64)
+    sig = np.asarray(signal, dtype=np.float64)
+    if theta.shape != sig.shape:
+        raise ValueError(
+            f"fit_fringe: scan_rad {theta.shape} and signal {sig.shape} must have the same shape"
+        )
+    if theta.size < 3:
+        raise ValueError("fit_fringe: need at least 3 scan points to fit A + B·cos(θ − φ)")
+    if not (np.all(np.isfinite(theta)) and np.all(np.isfinite(sig))):
+        raise ValueError("fit_fringe: scan_rad and signal must be finite")
+    design = np.column_stack([np.ones_like(theta), np.cos(theta), np.sin(theta)])
+    coeffs = np.linalg.lstsq(design, sig, rcond=None)[0]
+    c0, c1, c2 = float(coeffs[0]), float(coeffs[1]), float(coeffs[2])
+    amplitude = float(np.hypot(c1, c2))
+    phase = float(np.arctan2(c2, c1))
+    visibility = amplitude / c0 if c0 != 0.0 else float("inf")
+    return FringeFit(offset=c0, amplitude=amplitude, phase_rad=phase, visibility=visibility)
+
+
 __all__ = [
+    "FringeFit",
     "Observable",
     "expectations_over_time",
+    "fit_fringe",
+    "fringe_visibility",
     "number",
     "parity",
     "spin_x",
