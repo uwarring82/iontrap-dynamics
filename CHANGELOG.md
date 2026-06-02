@@ -10,6 +10,20 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch EDD — `systematics`: common-mode (shared-latent) phase channel.**
+  New `systematics/common_mode.py`: `CommonModePhase` (frozen dataclass —
+  `sigma_rad` + `correlation ∈ [0, 1]`) and
+  `perturb_common_mode(drives, spec, *, shots, seed)`. Per shot, subsystem *i*
+  gets `offset_i = √c·ξ_shared + √(1 − c)·ξ_i` — at `correlation = 0` independent
+  per drive (reduces to `PhaseJitter`), at `correlation = 1` one shared offset
+  that cancels in any difference observable (common-mode rejection); `σ_rad` is
+  the marginal std at every `c`. Both re-exported from the package root.
+  Conventions staged for CONVENTIONS §22 under the shared v0.3 freeze. Verified
+  in `tests/unit/test_common_mode.py` (shared at `c = 1`, independent at
+  `c = 0`, marginal-std invariant, difference variance `2σ²(1 − c)` monotone to
+  0). Also collapses the four `information/*.py` ruff `per-file-ignores` to one
+  glob. Per `WP/WP-01-estimation-darwinism.md` (WI-4). **With EDD, all four
+  WP-01 work items (WI-1…WI-4) are implemented.**
 - **Dispatch EDB — `information`: quantum Darwinism (redundancy + recoverability).**
   New `information/redundancy.py`: `fragment_mutual_information`
   (`I(S:F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F})`, in bits), `partial_information_plot`

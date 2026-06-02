@@ -368,7 +368,7 @@ Dispatch codes for WP-01 were **minted at Ratification (2026-06-02)** as the fre
 | **EDA** | WI-1 estimation `information/fisher.py` (+ keystone QFI-scaling benchmark, bundled as the decoupling proof) | `- **Dispatch EDA — information: CFI/QFI/Cramér–Rao + QFI-scaling benchmark.**` | **landed 2026-06-02 — Dispatch EDA complete** (module + keystone benchmark `benchmarks/data/qfi_scaling/`, max error 1.4e-14) |
 | **EDB** | WI-2 Darwinism `information/redundancy.py` + `recoverability.py` | `- **Dispatch EDB — information: redundancy + recoverability.**` | **landed 2026-06-02 — EDB complete** (redundancy plateau oracle; recoverability = coherent information, §20 convention ratified) |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | `- **Dispatch EDC — states: ghz_state + cat_mode.**` | landed 2026-06-02 (tests green; `states` now public) |
-| **EDD** | WI-4 `systematics/common_mode.py` | `- **Dispatch EDD — systematics: common-mode channel.**` | minted |
+| **EDD** | WI-4 `systematics/common_mode.py` | `- **Dispatch EDD — systematics: common-mode channel.**` | **landed 2026-06-02** (correlation interpolation; common-mode-rejection oracle) |
 | **EDE** | the remaining five generic benchmarks under `benchmarks/data/` | `- **Dispatch EDE — five generic benchmarks (CFI / Darwinism / recoverability / GHZ–cat / common-mode).**` | minted |
 | **EDF** | literature-review note + CONVENTIONS §19–22 **staged** into the shared v0.3 freeze (bump/seal owned by `WP/FREEZE-v0.3.md`) | `- **Dispatch EDF — CONVENTIONS §19–22 staged for the shared v0.3 freeze; review note.**` | minted |
 

@@ -79,6 +79,7 @@ from .states import (
     squeezed_vacuum_mode,
 )
 from .systematics import (
+    CommonModePhase,
     DetuningDrift,
     DetuningJitter,
     PhaseDrift,
@@ -93,6 +94,7 @@ from .systematics import (
     imperfect_motional_ground,
     imperfect_spin_ground,
     perturb_carrier_rabi,
+    perturb_common_mode,
     perturb_detuning,
     perturb_phase,
 )
@@ -106,6 +108,7 @@ __all__ = [
     "BernoulliChannel",
     "BinomialChannel",
     "BinomialSummary",
+    "CommonModePhase",
     "ConventionError",
     "ConvergenceError",
     "DetectorConfig",
@@ -164,6 +167,7 @@ __all__ = [
     "log_negativity_trajectory",
     "partial_information_plot",
     "perturb_carrier_rabi",
+    "perturb_common_mode",
     "perturb_detuning",
     "perturb_phase",
     "phonon_number_diagonals",

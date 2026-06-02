@@ -35,6 +35,7 @@ complete read-through and freezes at the v0.2 release.
 
 from __future__ import annotations
 
+from .common_mode import CommonModePhase, perturb_common_mode
 from .drift import (
     DetuningDrift,
     PhaseDrift,
@@ -59,6 +60,7 @@ from .spam import (
 )
 
 __all__ = [
+    "CommonModePhase",
     "DetuningDrift",
     "DetuningJitter",
     "PhaseDrift",
@@ -73,6 +75,7 @@ __all__ = [
     "imperfect_motional_ground",
     "imperfect_spin_ground",
     "perturb_carrier_rabi",
+    "perturb_common_mode",
     "perturb_detuning",
     "perturb_phase",
 ]
