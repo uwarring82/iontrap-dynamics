@@ -36,6 +36,7 @@ from .information import (
     linear_gaussian_fisher,
     partial_information_plot,
     quantum_fisher_information_trajectory,
+    recoverability,
     redundancy,
 )
 from .measurement import (
@@ -167,6 +168,7 @@ __all__ = [
     "perturb_phase",
     "phonon_number_diagonals",
     "quantum_fisher_information_trajectory",
+    "recoverability",
     "redundancy",
     "sample_outcome",
     "save_trajectory",

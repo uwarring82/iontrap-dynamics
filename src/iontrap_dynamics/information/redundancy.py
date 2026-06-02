@@ -53,9 +53,12 @@ import qutip
 from numpy.typing import NDArray
 
 from ..hilbert import HilbertSpace
-
-_ENTROPY_EIGENVALUE_CUTOFF: float = 1e-12
-"""Eigenvalue floor below which a density-matrix eigenvalue is treated as 0."""
+from ._common import (
+    _ENTROPY_EIGENVALUE_CUTOFF,
+    _ensure_density,
+    _validate_indices,
+    _von_neumann_entropy_bits,
+)
 
 
 def fragment_mutual_information(
@@ -201,39 +204,6 @@ def redundancy(
         if pip[k] >= threshold:
             return float(n_env / k)
     return 0.0
-
-
-def _ensure_density(state: qutip.Qobj) -> qutip.Qobj:
-    """Promote a ket to a density matrix if needed."""
-    if state.isket:
-        return state * state.dag()
-    return state
-
-
-def _von_neumann_entropy_bits(rho: qutip.Qobj) -> float:
-    """von Neumann entropy ``S(ρ) = −Σ λ log₂ λ`` in bits."""
-    eigenvalues = np.clip(np.asarray(rho.eigenenergies(), dtype=np.float64), 0.0, None)
-    nonzero = eigenvalues[eigenvalues > _ENTROPY_EIGENVALUE_CUTOFF]
-    if nonzero.size == 0:
-        return 0.0
-    return float(-np.sum(nonzero * np.log2(nonzero)))
-
-
-def _validate_indices(
-    indices: Sequence[int],
-    hilbert: HilbertSpace,
-    name: str,
-) -> list[int]:
-    idx = list(indices)
-    if not idx:
-        raise ValueError(f"{name}: must name at least one subsystem")
-    n_subsystems = hilbert.n_ions + hilbert.n_modes
-    for i in idx:
-        if not 0 <= i < n_subsystems:
-            raise ValueError(f"{name}: index {i} out of range [0, {n_subsystems})")
-    if len(set(idx)) != len(idx):
-        raise ValueError(f"{name}: indices must be distinct; got {list(indices)}")
-    return idx
 
 
 __all__ = [

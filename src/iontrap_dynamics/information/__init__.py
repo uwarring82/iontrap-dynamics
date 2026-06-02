@@ -13,6 +13,7 @@ from .fisher import (
     linear_gaussian_fisher,
     quantum_fisher_information_trajectory,
 )
+from .recoverability import recoverability
 from .redundancy import (
     fragment_mutual_information,
     partial_information_plot,
@@ -26,5 +27,6 @@ __all__ = [
     "linear_gaussian_fisher",
     "partial_information_plot",
     "quantum_fisher_information_trajectory",
+    "recoverability",
     "redundancy",
 ]

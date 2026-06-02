@@ -50,6 +50,7 @@ import qutip
 from numpy.typing import NDArray
 
 from ..hilbert import HilbertSpace
+from ._common import _ensure_density
 
 _SLD_EIGENVALUE_CUTOFF: float = 1e-12
 """Floor on ``λ_j + λ_k`` below which an SLD eigenpair is dropped (mixed-state QFI)."""
@@ -280,13 +281,6 @@ def _sld_quantum_fisher_information(
             0.0,
         )
     return 2.0 * float(np.sum(coeff * np.abs(g_eigenbasis) ** 2))
-
-
-def _ensure_density(state: qutip.Qobj) -> qutip.Qobj:
-    """Promote a ket to a density matrix if needed."""
-    if state.isket:
-        return state * state.dag()
-    return state
 
 
 __all__ = [
