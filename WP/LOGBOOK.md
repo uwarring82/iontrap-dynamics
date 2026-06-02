@@ -151,6 +151,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 - **Outcome:** Landed; gates green (ruff / ruff-format / mypy --strict / **955 passed**). Capability surface stabilised; ready for EDE from a clean base.
 - **Links:** `WP/REVIEW_LOG.md` · `tests/_helpers.py` · `src/iontrap_dynamics/information/_common.py` (`_validate_state_dim`).
 
+### 2026-06-02 — EDE: the five remaining benchmarks landed (orchestrated)
+
+- **Refs:** WP-01 · EDE · §7 · DoD-3
+- **Stance:** Integrator (close the validation layer) with a Guardian check (decoupling grep + oracle reproduction).
+- **What:** Built dispatch EDE — the five remaining §7 benchmarks — via a parallel workflow (five agents, one per benchmark, each writing its tool + `benchmarks/data/<name>/` + a `regression_analytic` anchor and self-verifying its oracle): `cfi_linear_gaussian`, `darwinism_redundancy`, `recoverability`, `ghz_cat`, `common_mode`. All five reproduce their textbook oracles (max error ≤ 1.4e-4 for the sampled common-mode variance; ≤ 1e-15 for the rest). With the keystone (EDA), all six §7 benchmarks are now landed. The shared integration was done in the main loop: ruff `per-file-ignores` for the new tools + anchors, the CHANGELOG EDE bullet, §7 / §15 status, and the gates (ruff / mypy --strict / **990 passed**).
+- **Why (the one decision worth recording):** the **No-TMC decoupling grep** (§11, DoD-5) was sharpened — `arm` → `arms` (the arm-A/C/F concept), because `arm64` legitimately appears in every `report.json` platform-provenance string and would otherwise be a false positive; and two benchmark docstrings (keystone + CFI) were reworded to state the *absence* of application framing without using the literal word "TMC", so the concept-word grep returns genuinely zero hits. The compute-only artifact shape (`report.json` + `arrays.npz` + `plot.png`, no solve-based manifest) follows the `sparse_vs_dense` precedent set by the keystone.
+- **Outcome:** Landed; gates green (990 passed; decoupling grep clean). WP-01 now has the full surface (WI-1…WI-4) **and** the validation evidence (six benchmarks). **Next:** EDF — the literature-review note + staging CONVENTIONS §19–22 / §20 / §22 into the shared v0.3 freeze — then the governed seal + the WORKPLAN §5.4 stub paste.
+- **Links:** `tools/run_benchmark_{cfi_linear_gaussian,darwinism_redundancy,recoverability,ghz_cat,common_mode}.py` · `benchmarks/data/` · `tests/regression/analytic/` · `WP/WP-01-estimation-darwinism.md` §7 / §11 / §15.
+
 ---
 
 ## Dispatch-code registry *(Sail)*
@@ -163,7 +172,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDB** | WI-2 Darwinism redundancy + recoverability | WP-01 | CHANGELOG `[Unreleased]` | **landed 2026-06-02 — EDB complete** |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
-| **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
+| **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` | **landed 2026-06-02** |
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | minted |
 
 **This registry is forward-only; it does not catalogue history — that is the CHANGELOG's job.** Many families are already taken by pre-framework dispatches and reservations, and a new code must avoid all of them. **Minting rule:** before minting, grep `CHANGELOG.md`, `WORKPLAN_v0.3.md`, and `docs/gpu-dispatch-design.md` for the candidate family. Known-taken / reserved as of 2026-06-02 (**non-exhaustive** — the grep is authoritative): single letters `A`–`Z`; doubles `AA`–`WW` (incl. tutorial `AA`–`LL`, Phase-2 `OO`, `QQ`–`ZZ`); triples `BBA` / `BBB` landed and `BBC`–`BBE` reserved for the GPU track (`docs/gpu-dispatch-design.md`); sub-coded `RR.1`, `P.*`; Greek `β.1`–`β.4`. A new WP mints from a clearly-fresh family chosen *after* that grep — not merely "anything but `BBA` / `BBB`".

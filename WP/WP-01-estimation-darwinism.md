@@ -205,6 +205,8 @@ Each feature gets a generic benchmark following the repository harness: a `tools
 
 **Oracle/tolerance discipline (binding).** No mechanism re-runs a tool and diffs `demo_report.json` against a stored oracle. The tool *records* `max_numerical_vs_analytic_error` + `analytic_formulas`; the **binding assertion** is authored separately in `tests/`, with the **tolerance as a named symbolic constant in the test** (e.g. `ATOL_QFI_SCALING = 1e-3`), never a global value and never read from the artefact — following the migration-tier precedent of per-scenario symbolic tolerances.
 
+**EDE landed (2026-06-02).** All six §7 benchmarks now exist. Benchmarks 2–6 each ship as `tools/run_benchmark_<name>.py` → `benchmarks/data/<name>/`, with a dedicated binding anchor in `tests/regression/analytic/`: `test_cfi_linear_gaussian`, `test_darwinism_redundancy`, `test_recoverability_channel`, `test_ghz_cat_properties`, `test_common_mode_rejection` (the `_channel` / `_properties` / `_rejection` suffixes keep basenames globally unique — `tests/` has no `__init__.py`). Each carries a named `ATOL_*` and reproduces its oracle (≤ 1.4e-4 for the sampled common-mode variance, ≤ 1e-15 for the rest). The "regression-test location" column above named the planning placeholder `test_analytic.py`; these per-benchmark anchors are the as-built reality.
+
 ---
 
 ## 8. Test plan across the three tiers *(Coastline)*
@@ -275,7 +277,7 @@ Reproducing the task-card 6-point DoD, plus the decoupling proof:
 
 **Decoupling proof (DoD-5, made checkable):**
 
-- [ ] grep across `src/iontrap_dynamics/information/`, `states.py`, `systematics/common_mode.py`, `tools/run_*`, `benchmarks/data/`, `docs/estimation-darwinism-review.md`, and CONVENTIONS §19–22 returns **zero** hits for: `TMC`, `temporal`, `record`, `arm`, `discriminant`, `falsifier`, `Ledger`, `broadcast`.
+- [ ] whole-word grep across `src/iontrap_dynamics/information/`, `states.py`, `systematics/common_mode.py`, `tools/run_*`, `benchmarks/data/`, `docs/estimation-darwinism-review.md`, and CONVENTIONS §19–22 returns **zero** hits for the application concepts: `TMC`, `temporal`, `record`, **`arms`** (the arm-A/C/F concept — *not* `arm`, which collides with the benign `arm64` architecture string in `report.json` provenance), `discriminant`, `falsifier`, `Ledger`, `broadcast`. Verified clean for EDA + EDE on 2026-06-02 (benchmark docstrings state absence of application framing without using the literal concept words).
 - [ ] every new public symbol is specified purely on generic inputs (a state, a channel, a partition, a generator) — verified by the unit tests, none of which import or name an application concept.
 - [ ] the keystone QFI-scaling benchmark (benchmark 1) reproduces QFI_GHZ = N² vs QFI_product = N from textbook closed forms with no application framing — the single headline figure of the decoupling.
 
@@ -369,7 +371,7 @@ Dispatch codes for WP-01 were **minted at Ratification (2026-06-02)** as the fre
 | **EDB** | WI-2 Darwinism `information/redundancy.py` + `recoverability.py` | `- **Dispatch EDB — information: redundancy + recoverability.**` | **landed 2026-06-02 — EDB complete** (redundancy plateau oracle; recoverability = coherent information, §20 convention ratified) |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | `- **Dispatch EDC — states: ghz_state + cat_mode.**` | landed 2026-06-02 (tests green; `states` now public) |
 | **EDD** | WI-4 `systematics/common_mode.py` | `- **Dispatch EDD — systematics: common-mode channel.**` | **landed 2026-06-02** (correlation interpolation; common-mode-rejection oracle) |
-| **EDE** | the remaining five generic benchmarks under `benchmarks/data/` | `- **Dispatch EDE — five generic benchmarks (CFI / Darwinism / recoverability / GHZ–cat / common-mode).**` | minted |
+| **EDE** | the remaining five generic benchmarks under `benchmarks/data/` | `- **Dispatch EDE — five generic benchmarks (CFI / Darwinism / recoverability / GHZ–cat / common-mode).**` | **landed 2026-06-02** — all five reproduce their oracles (≤ 1.4e-4 sampled / ≤ 1e-15); anchors in `tests/regression/analytic/` |
 | **EDF** | literature-review note + CONVENTIONS §19–22 **staged** into the shared v0.3 freeze (bump/seal owned by `WP/FREEZE-v0.3.md`) | `- **Dispatch EDF — CONVENTIONS §19–22 staged for the shared v0.3 freeze; review note.**` | minted |
 
 The §13 stub carries `EDA`. (This mirrors the §10 CHANGELOG plan; the keystone QFI benchmark ships with `EDA` as the decoupling proof, the other five benchmarks as `EDE`.)

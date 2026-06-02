@@ -1,0 +1,183 @@
+{
+  "analytic_formulas": {
+    "fisher_matrix": "A^T Sigma^-1 A",
+    "saturation": "CFI = QFI at the optimal measurement"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "braunstein_caves": {
+    "cfi_optimal": 1.0,
+    "cfi_optimal_analytic": 1.0,
+    "cfi_phase_insensitive": 0.0,
+    "cfi_phase_insensitive_analytic": 0.0,
+    "generator": "J_z = 0.5 * sigma_z",
+    "probe": "|+> = (|up> + |down>)/sqrt(2)",
+    "qfi": 0.9999999999999993,
+    "qfi_analytic": 1.0,
+    "saturates_qfi": true
+  },
+  "canonical_request_hash": null,
+  "convention_version": "0.2",
+  "cramer_rao": {
+    "analytic_inverse_fisher": 0.8,
+    "cramer_rao_bound": 0.8,
+    "fisher_00": 1.25,
+    "max_abs_error": 0.0,
+    "variance": 1.0
+  },
+  "design_matrix": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      0.5,
+      2.0
+    ]
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-06-02T14:25:59.197859+00:00",
+  "max_numerical_vs_analytic_error": 6.661338147750939e-16,
+  "plot_alt_text": "Log-log plot of the leading Fisher-matrix entry F[0,0] versus the noise variance sigma squared for the linear-Gaussian model y = A theta + epsilon. The library values from linear_gaussian_fisher lie exactly on the analytic reference curve A-transpose Sigma-inverse A, which falls as one over the variance (slope minus one).",
+  "purpose": "Classical Fisher information benchmark of WP-01 §7 row 2: (a) the linear-Gaussian Fisher matrix F = A^T Sigma^-1 A from linear_gaussian_fisher matches the hand-computed value and the single-parameter Cramer–Rao bound equals 1/F; (b) the Braunstein–Caves inequality CFI <= QFI for a single-qubit phase model — saturated (CFI = QFI = 1) by the optimal sigma_x-basis measurement and strict (CFI = 0 < QFI) for a phase-insensitive one. Application-agnostic: textbook oracle only, no application framing.",
+  "results": [
+    {
+      "analytic_fisher_matrix": [
+        [
+          5.0,
+          4.0
+        ],
+        [
+          4.0,
+          16.0
+        ]
+      ],
+      "library_fisher_matrix": [
+        [
+          5.0,
+          4.0
+        ],
+        [
+          4.0,
+          16.0
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "variance": 0.25
+    },
+    {
+      "analytic_fisher_matrix": [
+        [
+          2.5,
+          2.0
+        ],
+        [
+          2.0,
+          8.0
+        ]
+      ],
+      "library_fisher_matrix": [
+        [
+          2.5,
+          2.0
+        ],
+        [
+          2.0,
+          8.0
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "variance": 0.5
+    },
+    {
+      "analytic_fisher_matrix": [
+        [
+          1.25,
+          1.0
+        ],
+        [
+          1.0,
+          4.0
+        ]
+      ],
+      "library_fisher_matrix": [
+        [
+          1.25,
+          1.0
+        ],
+        [
+          1.0,
+          4.0
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "variance": 1.0
+    },
+    {
+      "analytic_fisher_matrix": [
+        [
+          0.625,
+          0.5
+        ],
+        [
+          0.5,
+          2.0
+        ]
+      ],
+      "library_fisher_matrix": [
+        [
+          0.625,
+          0.5
+        ],
+        [
+          0.5,
+          2.0
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "variance": 2.0
+    },
+    {
+      "analytic_fisher_matrix": [
+        [
+          0.3125,
+          0.25
+        ],
+        [
+          0.25,
+          1.0
+        ]
+      ],
+      "library_fisher_matrix": [
+        [
+          0.3125,
+          0.25
+        ],
+        [
+          0.25,
+          1.0
+        ]
+      ],
+      "max_abs_error": 0.0,
+      "variance": 4.0
+    }
+  ],
+  "scenario": "cfi_linear_gaussian",
+  "schema_version": 2,
+  "tolerance": 1e-09,
+  "variance_values": [
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+  ],
+  "workplan_reference": "WP/WP-01-estimation-darwinism.md (§7 row 2, dispatch EDE)"
+}

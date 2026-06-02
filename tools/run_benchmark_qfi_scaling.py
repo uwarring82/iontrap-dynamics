@@ -5,8 +5,8 @@ WI-1 / WI-3 of WP-01 (dispatch EDA). The single decoupling proof of the
 estimation surface: it exercises the SLD-QFI primitive
 (:func:`iontrap_dynamics.information.quantum_fisher_information_trajectory`),
 the GHZ factory (:func:`iontrap_dynamics.states.ghz_state`), and the
-SQL/Heisenberg distinction in one figure — with **zero application framing**
-(no TMC content; the oracle is textbook only).
+SQL/Heisenberg distinction in one figure — with **zero application framing**:
+the oracle is textbook closed forms only.
 
 For each qubit number N it builds the GHZ probe and the product probe
 ``|+⟩^⊗N`` and computes their SLD quantum Fisher information under the

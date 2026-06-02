@@ -1,0 +1,76 @@
+{
+  "analytic_formulas": {
+    "plateau": "I(S:F) = H_S = 1 bit",
+    "redundancy": "R_delta = N"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "canonical_request_hash": null,
+  "convention_version": "0.2",
+  "delta": 0.1,
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-06-02T14:26:52.595102+00:00",
+  "max_numerical_vs_analytic_error": 0.0,
+  "model": "GHZ cascade: 1 system qubit (subsystem 0) + N environment qubits (subsystems 1..N) in one GHZ state; system_indices=[0], environment_indices=[1..N]",
+  "n_values": [
+    3,
+    4,
+    5,
+    6
+  ],
+  "pip_largest_n": {
+    "n_env": 6,
+    "values": [
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.9999999999999998
+    ]
+  },
+  "plot_alt_text": "Two-panel figure for the GHZ-cascade quantum-Darwinism benchmark. Left panel: the partial-information plot, mutual information I(S:F) in bits versus environment-fragment size, for a representative environment of N qubits. The curve rises from zero to a flat plateau at one bit for every non-empty proper fragment, then jumps to two bits only when the entire environment is included. Right panel: the redundancy R_delta versus N, a straight line R_delta = N, showing the system bit is imprinted N times over. Numerical points lie exactly on the analytic references.",
+  "purpose": "Quantum-Darwinism proof of WP-01 §7 row 3: the GHZ cascade (one system qubit perfectly copied onto N environment qubits in a single GHZ state) exhibits the partial-information plateau I(S:F) = H_S = 1 bit for every non-empty proper fragment, jumping to 2 bits only at the full environment, and redundancy R_delta = N at deficit delta = 0.1. Exercises the partial_information_plot and redundancy primitives with the GHZ factory. Application-agnostic: textbook oracle only, no application framing.",
+  "results": [
+    {
+      "analytic_plateau": 1.0,
+      "analytic_redundancy": 3.0,
+      "n_env": 3,
+      "plateau_height": 1.0,
+      "redundancy": 3.0
+    },
+    {
+      "analytic_plateau": 1.0,
+      "analytic_redundancy": 4.0,
+      "n_env": 4,
+      "plateau_height": 1.0,
+      "redundancy": 4.0
+    },
+    {
+      "analytic_plateau": 1.0,
+      "analytic_redundancy": 5.0,
+      "n_env": 5,
+      "plateau_height": 1.0,
+      "redundancy": 5.0
+    },
+    {
+      "analytic_plateau": 1.0,
+      "analytic_redundancy": 6.0,
+      "n_env": 6,
+      "plateau_height": 1.0,
+      "redundancy": 6.0
+    }
+  ],
+  "scenario": "darwinism_redundancy",
+  "schema_version": 2,
+  "tolerance": 1e-09,
+  "workplan_reference": "WP/WP-01-estimation-darwinism.md (§7 row 3, dispatch EDE)"
+}

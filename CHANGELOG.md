@@ -10,6 +10,21 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch EDE — the five remaining generic benchmarks.** Compute-only,
+  deterministic benchmark tools, each writing a canonical
+  `benchmarks/data/<name>/` (`report.json` schema-v2 + `arrays.npz` +
+  `plot.png` with alt text) and backed by a binding `regression_analytic`
+  anchor, all reproducing their textbook oracles:
+  `run_benchmark_cfi_linear_gaussian` (`F = AᵀΣ⁻¹A` exact; CFI ≤ QFI
+  saturation), `run_benchmark_darwinism_redundancy` (GHZ-cascade plateau
+  `I(S:F) = H_S`, `R_δ = N`), `run_benchmark_recoverability` (Werner
+  dephasing — perfect → `H_S`, decohered → 0, monotone),
+  `run_benchmark_ghz_cat` (GHZ parity fringe `⟨X^⊗N⟩ = cos(Nφ)`; cat parity
+  ±1), `run_benchmark_common_mode` (difference variance `2σ²(1 − c)`, exact
+  common-mode rejection at `c = 1`). Max numerical-vs-analytic error ≤ 1.4e-4
+  (sampled common-mode) / ≤ 1e-15 (the rest). Application-agnostic — the §11
+  decoupling grep is clean. **With EDE plus the keystone (EDA), all six §7
+  benchmarks are landed.** Per `WP/WP-01-estimation-darwinism.md` (§7).
 - **Dispatch EDD — `systematics`: common-mode (shared-latent) phase channel.**
   New `systematics/common_mode.py`: `CommonModePhase` (frozen dataclass —
   `sigma_rad` + `correlation ∈ [0, 1]`) and

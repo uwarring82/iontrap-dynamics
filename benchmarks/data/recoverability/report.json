@@ -1,0 +1,121 @@
+{
+  "accessible_indices": [
+    1
+  ],
+  "analytic_formulas": {
+    "decohered": "recoverability = 0",
+    "perfect": "recoverability = H_S"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "canonical_request_hash": null,
+  "channel": "Werner family rho(p) = p |Phi+><Phi+| + (1 - p) I/4 on 2 qubits",
+  "convention_version": "0.2",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-06-02T14:25:48.052684+00:00",
+  "max_numerical_vs_analytic_error": 3.3306690738754696e-16,
+  "monotone_nondecreasing": true,
+  "n_points": 21,
+  "plot_alt_text": "Plot of recoverability in bits versus the Werner mixing parameter p for a two-qubit dephasing channel rho(p) = p times the Bell state plus one minus p times the maximally mixed state I over four, with qubit zero the system and qubit one the accessible part. The curve is monotone non-decreasing: it is exactly zero at p = 0 (full decoherence), stays clamped at zero for small p, then rises smoothly to exactly one bit at p = 1 (perfect recovery), the full system entropy H_S.",
+  "purpose": "Compute-only proof of WP-01 §7 row 4: the recoverability primitive (clamped coherent information max(0, S(rho_A) - S(rho_{S union A})) in bits) reproduces the textbook endpoints of a known-strength dephasing channel, realised as the two-qubit Werner family rho(p) = p |Phi+><Phi+| + (1 - p) I/4 with system_indices=[0] and accessible_indices=[1]. Perfect recovery at p=1 gives H_S = 1 bit; full decoherence at p=0 gives 0; monotone non-decreasing between. Application-agnostic: textbook oracle only, no application framing.",
+  "results": [
+    {
+      "p": 0.0,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.05,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.1,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.15000000000000002,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.2,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.25,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.30000000000000004,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.35000000000000003,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.4,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.45,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.5,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.55,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.6000000000000001,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.65,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.7000000000000001,
+      "recoverability": 0.0
+    },
+    {
+      "p": 0.75,
+      "recoverability": 0.006607270989637204
+    },
+    {
+      "p": 0.8,
+      "recoverability": 0.15241532017542614
+    },
+    {
+      "p": 0.8500000000000001,
+      "recoverability": 0.3142807550041731
+    },
+    {
+      "p": 0.9,
+      "recoverability": 0.49681626831941617
+    },
+    {
+      "p": 0.9500000000000001,
+      "recoverability": 0.7098539505314803
+    },
+    {
+      "p": 1.0,
+      "recoverability": 0.9999999999999997
+    }
+  ],
+  "scenario": "recoverability",
+  "schema_version": 2,
+  "system_indices": [
+    0
+  ],
+  "tolerance": 1e-09,
+  "workplan_reference": "WP/WP-01-estimation-darwinism.md (§7 row 4, dispatch EDE)"
+}

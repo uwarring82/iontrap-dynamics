@@ -1,0 +1,90 @@
+{
+  "analytic_formulas": {
+    "difference_variance": "2 sigma^2 (1 - c)"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "canonical_request_hash": null,
+  "convention_version": "0.2",
+  "correlation_grid": [
+    0.0,
+    0.1,
+    0.25,
+    0.4,
+    0.5,
+    0.6,
+    0.75,
+    0.9,
+    1.0
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-06-02T14:26:12.687542+00:00",
+  "max_numerical_vs_analytic_error": 0.0001395931134756112,
+  "phase_difference_invariance_at_c1": {
+    "max_perturbed_phase_difference_deviation_rad": 2.220446049250313e-16,
+    "unperturbed_phase_difference_rad": 0.7
+  },
+  "plot_alt_text": "Plot of the difference-observable variance Var(offset_0 - offset_1) versus the correlation parameter c for a two-subsystem common-mode phase channel. The analytic reference is the line 2 sigma squared times (1 - c): it starts at 2 sigma squared at c = 0 (independent per-drive jitter) and falls monotonically to exactly 0 at c = 1 (common-mode rejection). The sampled points lie on the line.",
+  "purpose": "Common-mode (shared-latent) phase channel: the difference-observable variance Var(offset_0 - offset_1) of a two-subsystem correlated dephasing channel as a function of the correlation c in [0, 1]. At c=0 the offsets are independent (variance 2 sigma^2); at c=1 the shared latent cancels exactly (variance 0, common-mode rejection); monotone decreasing in between. Also demonstrates via perturb_common_mode that at c=1 the phase difference between two perturbed drives is invariant. Compute-only and deterministic (fixed rng seed, no solver trajectory). Application-agnostic: textbook variance-of-a-difference oracle only, no application framing.",
+  "results": [
+    {
+      "analytic_difference_variance": 0.18,
+      "correlation": 0.0,
+      "difference_variance": 0.18001038456199478
+    },
+    {
+      "analytic_difference_variance": 0.162,
+      "correlation": 0.1,
+      "difference_variance": 0.16213959311347562
+    },
+    {
+      "analytic_difference_variance": 0.135,
+      "correlation": 0.25,
+      "difference_variance": 0.13493180347759973
+    },
+    {
+      "analytic_difference_variance": 0.108,
+      "correlation": 0.4,
+      "difference_variance": 0.10792837214058698
+    },
+    {
+      "analytic_difference_variance": 0.09,
+      "correlation": 0.5,
+      "difference_variance": 0.0899626985279668
+    },
+    {
+      "analytic_difference_variance": 0.072,
+      "correlation": 0.6,
+      "difference_variance": 0.07192091901237295
+    },
+    {
+      "analytic_difference_variance": 0.045,
+      "correlation": 0.75,
+      "difference_variance": 0.04498721768783593
+    },
+    {
+      "analytic_difference_variance": 0.017999999999999995,
+      "correlation": 0.9,
+      "difference_variance": 0.017999747695608123
+    },
+    {
+      "analytic_difference_variance": 0.0,
+      "correlation": 1.0,
+      "difference_variance": 0.0
+    }
+  ],
+  "scenario": "common_mode",
+  "schema_version": 2,
+  "seed": 20260602,
+  "shots": 4000000,
+  "sigma_rad": 0.3,
+  "tolerance": 0.005,
+  "workplan_reference": "WP/WP-01-estimation-darwinism.md (section 7 row 6, dispatch EDE)"
+}
