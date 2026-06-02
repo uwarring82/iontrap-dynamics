@@ -10,9 +10,11 @@ re-deriving them in every test file.
 
 from __future__ import annotations
 
+import numpy as np
 import qutip
 
 from iontrap_dynamics.hilbert import HilbertSpace
+from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.operators import sigma_z_ion, spin_down, spin_up
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
@@ -22,6 +24,21 @@ def _spin_hilbert(n_ions: int) -> HilbertSpace:
     """A spin-only Hilbert space of ``n_ions`` qubits (no motional modes)."""
     system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
     return HilbertSpace(system=system, fock_truncations={})
+
+
+def _single_mode_hilbert(fock_dim: int, *, label: str = "b") -> HilbertSpace:
+    """A one-ion, one-motional-mode Hilbert space (spin ⊗ Fock(``fock_dim``)).
+
+    The mode is axial (unit eigenvector along z, satisfying the §11 per-mode
+    normalisation) at 1 MHz. Shared by the WP-02 motional-channel tests.
+    """
+    mode = ModeConfig(
+        label=label,
+        frequency_rad_s=2.0 * np.pi * 1.0e6,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+    )
+    system = IonSystem(species_per_ion=(mg25_plus(),), modes=(mode,))
+    return HilbertSpace(system=system, fock_truncations={label: fock_dim})
 
 
 def _collective_jz(hilbert: HilbertSpace) -> qutip.Qobj:

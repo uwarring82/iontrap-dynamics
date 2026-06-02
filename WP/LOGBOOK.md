@@ -195,6 +195,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-02 — WI-3a landed (Dispatch MCC, part): typed motional channels + `solve(channels=…)`
+
+- **Refs:** WP-02 · WI-3a · MCC · card F3 · **deferral: `Depolarising`**
+- **Stance:** Integrator (land the pivotal solver hinge cleanly) with a Guardian check (the empty-default path must stay byte-for-byte unchanged).
+- **What:** After the maintainer-requested `solve()`-surface mapping pass (clean: the `HilbertSpace` mode-operator API + QuTiP's `[op, coeff]` time-dependent precedent cover everything), landed WI-3a — `src/iontrap_dynamics/channels.py` with `AmplitudeDamping`, `Heating`, `Dephasing` typed Lindblad dissipators, and a keyword-only `channels=` argument on `sequences.solve` that builds their collapse operators and forces the `mesolve` path. Three analytic oracles reproduce (`tests/regression/analytic/test_motional_channels.py`): `⟨n̂⟩ = n₀e^{−κt}`, `⟨n̂⟩ → n̄`, dephasing coherence `⟨X̂⟩ = X₀e^{−γt/2}`. Gates green: ruff, mypy --strict (42 files), **1014 passed** (+24).
+- **Why (decisions worth recording):** (1) **`channels=` empty default leaves the solver byte-for-byte unchanged** (kets still take the sesolve fast path); dissipation forces mesolve; `backend='jax'` and `solver='sesolve'` with channels raise `ConventionError` (jax does not route collapse operators; sesolve cannot carry them). (2) **Deferral — `Depolarising`:** the card F3 lists it, but a depolarising channel is canonical for finite-dimensional systems, not a single bosonic mode; rather than invent an arbitrary truncated-Fock definition, it is deferred (re-open if the programme needs a qubit-subspace depolariser). The three Lindblad dissipators cover the native-heating + dephasing models the surface needs. (3) The CPTP test surfaced the §13 Fock-convergence guard correctly tripping on heating-to-n̄ in a too-small truncation — sized the oracle Fock dims to physics.
+- **Outcome:** WI-3a landed on `wp02-two-mode-motional`; §24 parameterisation referenced in docstrings (formal staging held for the combined seal). **Next:** WI-3b — optional per-channel time window via the `[op, coeff]` format + the R8 non-commuting-order test (the card F3 acceptance not yet covered by WI-3a, since constant whole-solve channels have no ordering).
+- **Links:** `src/iontrap_dynamics/channels.py` · `src/iontrap_dynamics/sequences.py` (`solve`) · `tests/unit/test_channels.py` · `tests/regression/analytic/test_motional_channels.py` · `WP/WP-02-two-mode-motional.md` §5 / §15.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -209,7 +220,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
 | **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | minted 2026-06-02; **P0**, open |
 | **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0**, open |
-| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0 pivotal — first**, open |
+| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3a landed 2026-06-02** (3 dissipators + solver wiring; oracles green); WI-3b (windowed + R8) open |
 | **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCF** | WI-6 probe-QFI benchmark (**consumes** WP-01 `fisher.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |

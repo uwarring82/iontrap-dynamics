@@ -105,6 +105,7 @@ if TYPE_CHECKING:
     # below can still reference the class for mypy.
     from dynamiqs import TimeQArray
 
+from .channels import MotionalChannel, build_collapse_operators
 from .conventions import FOCK_CONVERGENCE_TOLERANCE
 from .exceptions import (
     ConventionError,
@@ -293,6 +294,7 @@ def solve(
     initial_state: qutip.Qobj,
     times: np.ndarray,
     observables: Sequence[Observable] = (),
+    channels: Sequence[MotionalChannel] = (),
     request_hash: str = "",
     backend_name: str | None = None,
     storage_mode: StorageMode = StorageMode.OMITTED,
@@ -323,6 +325,19 @@ def solve(
     observables
         Sequence of :class:`Observable` records. Defaults to ``()``
         (expectation dict will be empty).
+    channels
+        Sequence of typed motional CPTP channels
+        (:mod:`iontrap_dynamics.channels` — ``AmplitudeDamping``, ``Heating``,
+        ``Dephasing``). Each contributes Lindblad collapse operators on its
+        named mode (CONVENTIONS.md §24, staged for the v0.3 freeze). When any
+        channel carries dissipation the solver is forced onto the
+        master-equation (``mesolve``) path. Defaults to ``()`` — **no channels
+        leaves the solver behaviour byte-for-byte unchanged** (the prior
+        ``c_ops=[]`` path). ``backend="jax"`` does not yet route collapse
+        operators; passing channels with it raises :class:`ConventionError`.
+        Forcing ``solver="sesolve"`` together with dissipative channels also
+        raises (sesolve cannot carry collapse operators). Time-windowed
+        (sequence-aware) channels are a later dispatch.
     request_hash
         Caller-supplied SHA-256 hex of the canonical parameter set —
         typically produced via
@@ -402,6 +417,12 @@ def solve(
     """
     _validate_backend(backend, solver)
 
+    if channels and backend != "qutip":
+        raise ConventionError(
+            "sequences.solve: channels=… (motional CPTP dissipators) require "
+            "backend='qutip'; the JAX backend does not yet route collapse operators."
+        )
+
     if backend == "jax":
         from .backends.jax import solve_via_jax
 
@@ -434,6 +455,20 @@ def solve(
     # inputs (SPAM-prep trajectories, thermally-mixed initial states).
     selected_solver = _choose_solver(solver, initial_state)
 
+    # Dissipative channels (CONVENTIONS.md §24) force the master-equation path:
+    # their Lindblad collapse operators cannot ride sesolve. An empty/all-zero
+    # channel set yields no collapse operators and leaves the solver choice (and
+    # hence the result) exactly as before.
+    collapse_operators = build_collapse_operators(channels, hilbert) if channels else []
+    if collapse_operators and selected_solver == "sesolve":
+        if solver == "sesolve":
+            raise ConventionError(
+                "sequences.solve: channels=… require the master-equation path, but "
+                "solver='sesolve' cannot carry collapse operators. Use solver='auto' "
+                "(default) or solver='mesolve'."
+            )
+        selected_solver = "mesolve"
+
     time_array = np.asarray(times, dtype=np.float64)
 
     # e_ops kwarg is explicit to avoid QuTiP 5.3's upcoming keyword-only
@@ -452,7 +487,7 @@ def solve(
             hamiltonian,
             initial_state,
             time_array,
-            c_ops=[],
+            c_ops=collapse_operators,
             e_ops=[],
         )
 

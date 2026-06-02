@@ -10,6 +10,24 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch MCC (WI-3a) — channels: typed motional CPTP channels exposed in
+  `solve()`.** New `channels.py` (WP-02): `AmplitudeDamping` (`L = √κ·â`),
+  `Heating` (`L₋ = √(κ(n̄+1))·â`, `L₊ = √(κn̄)·â†`), and `Dephasing`
+  (`L = √γ·n̂`) — typed Lindblad dissipators on a labelled motional mode,
+  embedded via the `HilbertSpace` mode-operator API. `solve()` gains a
+  keyword-only `channels=` argument routing their collapse operators to the
+  master-equation path: dissipative channels force `mesolve`, while the empty
+  default leaves the solver byte-for-byte unchanged (the prior `c_ops=[]`
+  path). `backend="jax"` or `solver="sesolve"` together with dissipative
+  channels raise `ConventionError`. Oracles reproduced
+  (`tests/regression/analytic/test_motional_channels.py`): `⟨n̂⟩ = n₀ e^{−κt}`
+  (damping), `⟨n̂⟩ = n̄(1 − e^{−κt}) → n̄` (heating), and the dephasing coherence
+  `⟨X̂⟩ = X₀ e^{−γt/2}` with `⟨n̂⟩` constant. The three classes are re-exported
+  from the package root. Parameterisation staged for CONVENTIONS §24 (the
+  shared v0.3 freeze, `WP/FREEZE-v0.3.md`). Per
+  `WP/WP-02-two-mode-motional.md` (WI-3a). Time-windowed (sequence-aware)
+  channels and the R8 non-commuting-order test are WI-3b; `Depolarising` is
+  deferred (no canonical single-mode bosonic form).
 - **Dispatch EDF (additive part) — estimation/Darwinism literature-review note.**
   New `docs/estimation-darwinism-review.md` (Coastline / CC BY-SA 4.0): fixes the
   canonical definitions behind the service surface — SLD-QFI, classical Fisher /
