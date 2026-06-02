@@ -173,6 +173,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-02 — WP-02 Drafted against card `TC-iontrap-dynamics` (two-mode / motional open-system)
+
+- **Refs:** WP-02 · serial 02 minted · card `TC-iontrap-dynamics`
+- **Stance:** Architect (decompose the second card into reuse-first work items under the standing boundary discipline).
+- **What:** Drafted `WP/WP-02-two-mode-motional.md` (Status: Drafted) decomposing the undetected-modes service card into seven work items WI-1…WI-7 (card F1–F7): two-mode SU(1,1) Hamiltonian (`hamiltonians.py`), two-mode squeezed-vacuum factory (`states.py`), **the pivotal** typed motional CPTP channels + `solve(channels=…)` (one new module `channels.py` + `sequences.solve` wiring), interferometric observables (`observables.py`), Lamb–Dicke regime helpers (`analytic.py`), a **consumed** probe-QFI (WP-01 `information/fisher.py`, not re-implemented), and a `ModeFrequencyDrift` systematic (`systematics/drift.py` on `modes.ModeConfig`). Only `channels.py` is new; everything else extends an existing module. Conventions §23 (two-mode squeezing / SU(1,1)) and §24 (motional CPTP channels) staged toward the shared `WP/FREEZE-v0.3.md` freeze; F2/F4/F5/F6/F7 additive under v0.2.
+- **Why (the decisions worth recording):** the card §2 **service-module boundary** is lifted as WP-02's governing invariant (the No-TMC analogue) — the library owns the forward model + general primitives; the analogy map, the engineered-channel choice, native-subtraction, the resource-constrained benchmark, and claim discipline stay programme-side, enforced by a decoupling grep. The **FREEZE-v0.3 §4 timeline decision** (combined §19–24 vs WP-01-first) is surfaced as a ratification decision with a **Combined (bounded to F1+F2+F3)** recommendation per card §7 Q2. QFI is **one primitive, consumed** (FREEZE-v0.3 §5; card Q1). The `MC` dispatch family is the *proposed* leading candidate — **not minted** (codes mint at ratification, after the authoritative grep). Capability-framed slug `two-mode-motional` chosen over the application name `undetected-modes`, parallel to WP-01.
+- **Outcome:** Drafted, awaiting ratification. **Decisions for ratification (§17):** F6 QFI boundary (Q1), freeze cadence / §4 timeline (Q2), upstream-vs-fork (Q3), and the slug. No dispatch codes minted, no WORKPLAN paste, no convention sealed — all ratification/maintainer acts. **Next:** maintainer ratifies → mint `MC` family, take the §4 decision, paste the WORKPLAN §5.5 stub.
+- **Links:** `WP/WP-02-two-mode-motional.md` · `task cards/TC-iontrap-dynamics.md` · `WP/FREEZE-v0.3.md` §2 / §4 / §5 / §6 · `WP/WP-01-estimation-darwinism.md` (exemplar).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
