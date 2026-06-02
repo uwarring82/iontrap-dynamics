@@ -184,6 +184,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-02 — WP-02 Ratified; `MC` family minted; FREEZE-v0.3 §4 resolved (Combined, bounded to P0)
+
+- **Refs:** WP-02 · `MC` family minted · FREEZE-v0.3 §4 · card `TC-iontrap-dynamics` §7 Q1–Q3
+- **Stance:** Scout (the maintainer ratified all five §17 decisions and took the cross-WP timeline call).
+- **What:** WP-02 moves Drafted → **Ratified** (then **In-flight**, opening with WI-3). All five §17 decisions ratified: (1) F6 QFI **consumed** from WP-01 `information/fisher.py`, no second implementation; (2) freeze cadence = **Combined v0.3, bounded to WP-02 P0** (F1+F2+F3 / WI-1–WI-3); (3) **branch-first** (`wp02-two-mode-motional` off the WP-01 branch), upstream issues after the freeze shape is stable; (4) slug `two-mode-motional`; (5) dispatch family **`MC`** (Motional Channels) minted `MCA`–`MCG` after a clear collision grep (`mcsolve` is unused in `src/`, not a code collision). Execution opens on `wp02-two-mode-motional` with **WI-3** (the `channels.py` + `solve(channels=…)` hinge), preceded by a short `solve()`-surface mapping pass per the maintainer's churn-risk caveat.
+- **Why (the decision worth recording):** the **FREEZE-v0.3 §4** timeline-coupling call — the one genuine risk the shared-freeze structure carried — is resolved **Combined, bounded to P0**: §19–24 seal in one v0.3 freeze when WP-02's P0 subset lands, but P1/P2 (F4–F7) are additive and do **not** gate the seal, so they cannot hold WP-01 hostage. Rejected: WP-01-first (would decouple timing at the cost of a second v0.4 freeze) — the maintainer judged WP-01 materially complete and the seal a formality, so the cleaner one-bump/one-example/one-release path wins. WP-01's §19–22 + bump + WORKPLAN §5.4, and WP-02's §23–24 + §5.5, are all **held in escrow** for a single maintainer seal commit when P0 lands.
+- **Outcome:** WP-02 In-flight; `MC` minted and registered; FREEZE-v0.3 §4 box checked. **Next:** map the `solve()` integration surface, then land WI-3 (Dispatch MCC), after which WI-1/WI-2 (MCA/MCB) populate the new module in parallel.
+- **Links:** `WP/WP-02-two-mode-motional.md` §6 / §15 / §17 · `WP/FREEZE-v0.3.md` §4 · `WP/WP-01-estimation-darwinism.md` (seal-pending on the Combined track).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -196,8 +207,15 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` | **landed 2026-06-02** |
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
+| **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | minted 2026-06-02; **P0**, open |
+| **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0**, open |
+| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0 pivotal — first**, open |
+| **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
+| **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
+| **MCF** | WI-6 probe-QFI benchmark (**consumes** WP-01 `fisher.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
+| **MCG** | WI-7 `ModeFrequencyDrift` (`systematics/drift.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P2, open |
 
-**This registry is forward-only; it does not catalogue history — that is the CHANGELOG's job.** Many families are already taken by pre-framework dispatches and reservations, and a new code must avoid all of them. **Minting rule:** before minting, grep `CHANGELOG.md`, `WORKPLAN_v0.3.md`, and `docs/gpu-dispatch-design.md` for the candidate family. Known-taken / reserved as of 2026-06-02 (**non-exhaustive** — the grep is authoritative): single letters `A`–`Z`; doubles `AA`–`WW` (incl. tutorial `AA`–`LL`, Phase-2 `OO`, `QQ`–`ZZ`); triples `BBA` / `BBB` landed and `BBC`–`BBE` reserved for the GPU track (`docs/gpu-dispatch-design.md`); sub-coded `RR.1`, `P.*`; Greek `β.1`–`β.4`. A new WP mints from a clearly-fresh family chosen *after* that grep — not merely "anything but `BBA` / `BBB`".
+**This registry is forward-only; it does not catalogue history — that is the CHANGELOG's job.** Many families are already taken by pre-framework dispatches and reservations, and a new code must avoid all of them. **Minting rule:** before minting, grep `CHANGELOG.md`, `WORKPLAN_v0.3.md`, and `docs/gpu-dispatch-design.md` for the candidate family. Known-taken / reserved as of 2026-06-02 (**non-exhaustive** — the grep is authoritative): single letters `A`–`Z`; doubles `AA`–`WW` (incl. tutorial `AA`–`LL`, Phase-2 `OO`, `QQ`–`ZZ`); triples `BBA` / `BBB` landed and `BBC`–`BBE` reserved for the GPU track (`docs/gpu-dispatch-design.md`); sub-coded `RR.1`, `P.*`; Greek `β.1`–`β.4`; **WP families `ED` (WP-01, `EDA`–`EDF`) and `MC` (WP-02, `MCA`–`MCG`, minted 2026-06-02)**. A new WP mints from a clearly-fresh family chosen *after* that grep — not merely "anything but `BBA` / `BBB`".
 
 ---
 

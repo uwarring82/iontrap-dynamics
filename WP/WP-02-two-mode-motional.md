@@ -2,7 +2,7 @@
 
 **Executes the undetected-modes service card: two-mode SU(1,1) physics, typed motional CPTP channels exposed through `solve()`, interferometric observables, Lamb–Dicke regime helpers, a consumed QFI primitive, and a motional mode-frequency drift — all application-agnostic library primitives.**
 
-Version 0.1 · Drafted 2026-06-02 · Status: Drafted
+Version 0.2 · Drafted 2026-06-02 · Ratified 2026-06-02 · Status: In-flight (WI-3 first; FREEZE-v0.3 §4 resolved — **Combined v0.3, bounded to WP-02 P0**)
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code is MIT (`src/`, `tests/`, `.github/workflows/`); the literature-review note (§5) is Coastline / CC BY-SA 4.0; CONVENTIONS edits are Coastline / CC BY-SA 4.0. See root `LICENCE`.
@@ -114,7 +114,9 @@ These are exactly the §23–24 the FREEZE-v0.3 §2 allocation reserves for WP-0
 - **Combined (card §7 Q2 preference; recommended).** Seal §19–24 together in one v0.3 freeze, bounded to WP-02's freeze-gated subset **F1 + F2 + F3** (the card §5 minimum first milestone — "F3 + F1 + F2 on one branch, with the v0.3 conventions freeze covering both"). One bump, one worked example, one release. F4/F5/F6/F7 (additive) follow under v0.3.x without touching the freeze. **Cost:** WP-01's already-ready §19–22 wait for WP-02's F1+F2+F3 to land.
 - **WP-01-first (fallback).** Seal §19–22 as the v0.3 freeze now; WP-02's §23–24 move to a later **v0.4** convention freeze (its own bump). Decouples timing; costs a second freeze gate. WP-01 is seal-ready today, so this unblocks its release immediately.
 
-**Recommendation:** Combined, bounded to F1+F2+F3 — it matches the card Q2 preference and yields one worked example for the whole v0.3 convention surface, at the cost of holding WP-01's release until the WP-02 P0 subset lands. If WP-01's release is time-critical, WP-01-first is the honest decoupling. **Ratify in §17.**
+**Recommendation:** Combined, bounded to F1+F2+F3 — it matches the card Q2 preference and yields one worked example for the whole v0.3 convention surface, at the cost of holding WP-01's release until the WP-02 P0 subset lands. If WP-01's release is time-critical, WP-01-first is the honest decoupling.
+
+**Decision (ratified 2026-06-02): Combined v0.3, bounded to WP-02 P0 (F1+F2+F3 / WI-1–WI-3).** §19–24 seal together in one v0.3 freeze once WP-02's P0 subset lands; F4/F5/F6/F7 (P1/P2) do **not** gate the seal. WP-01 stays Ratified, seal-pending: its staged artefacts (`WP/EDF-conventions-nav-proposal.md`, the single `CONVENTION_VERSION` 0.2 → 0.3 bump, the `WORKPLAN_v0.3.md` §5.4 stub) are **held in escrow** and applied together with WP-02's §23–24 in one maintainer seal commit when WP-02 P0 lands. `FREEZE-v0.3.md` §4 is updated to match.
 
 ## 7. Literature-review note plan *(Coastline plan; note is Coastline / CC BY-SA 4.0)*
 
@@ -178,9 +180,9 @@ Each landed dispatch gets a dispatch-keyed `[Unreleased]` bullet. **Target relea
 | Combined freeze blocks WP-01's ready release indefinitely | Medium | Medium | §6 bounds the wait to F1+F2+F3; §17 offers WP-01-first as the honest decoupling |
 | `solve()` signature change breaks existing callers | Low | High | `channels` is keyword-only with an empty default; regression-test the unchanged path |
 
-## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — drafted; finalised + pasted at ratification)*
+## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — drafted; held in escrow for the combined seal)*
 
-WP-02 feeds the next free amendment after WP-01's §5.4 → **§5.5** (`*(Coastline, new in v0.3.7)*`). Drafted here per the §5.3 template; pasted by the maintainer at ratification (governed Coastline file). Sketch:
+WP-02 feeds the next free amendment after WP-01's §5.4 → **§5.5** (`*(Coastline, new in v0.3.7)*`). Drafted here per the §5.3 template. Under the ratified **Combined** decision (§6), this stub is **held in escrow** alongside WP-01's §5.4 stub and pasted by the maintainer in the **single seal commit** when WP-02 P0 lands — not at ratification, so the governed `WORKPLAN_v0.3.md` is touched exactly once for the whole v0.3 surface. Sketch:
 
 > **### 5.5 — Two-mode & motional open-system service surface as v0.3.x follow-up *(Coastline, new in v0.3.7)*** — Added when Dispatch `MCx` lands on `main`. Records that the undetected-modes service surface (card `TC-iontrap-dynamics`) is a v0.3.x follow-up: additive two-mode SU(1,1) + motional CPTP channels + observables/regime/QFI/mode-drift, orthogonal to Phase 2 (§5.3). **Conventions §23–24** join the shared v0.3 freeze (`WP/FREEZE-v0.3.md`); F2/F4/F5/F6/F7 additive. **Remaining sub-dispatches:** the WI-1…WI-7 set. **Consequence for §5:** no re-scoping of Phase 2; lands additively toward `v0.5.0`.
 
@@ -192,41 +194,44 @@ WI-3 (F3 channels + `solve` wiring) → WI-1 (F1 SU(1,1) Hamiltonian) → WI-2 (
 
 *Rationale:* F3 is the pivotal enabling change (exposes `c_ops`); F1 generator and F2 factory share the §23 convention (F2 needs F1's squeezing convention); F4's full acceptance needs an F3 channel to degrade visibility; F6 only needs WP-01's already-landed `fisher.py`; F7 is independent and lowest priority.
 
-**Blockers:** (1) the **FREEZE-v0.3 §4 combined-vs-WP-01-first** decision — taken at this WP's ratification (§6, §17); WP-02 may stage §23–24 but **must not seal or bump**. (2) Cross-WP QFI dependency on WP-01 `information/fisher.py` — **resolved** (landed, Dispatch EDA).
+**Blockers:** (1) the **FREEZE-v0.3 §4 combined-vs-WP-01-first** decision — **resolved at ratification 2026-06-02: Combined v0.3, bounded to WP-02 P0** (§6); WP-02 stages §23–24, the seal/bump remain a single maintainer commit when the P0 subset lands. (2) Cross-WP QFI dependency on WP-01 `information/fisher.py` — **resolved** (landed, Dispatch EDA). No open blockers.
 
 **Coastline gates every WI clears** (as WP-01 §14): CONVENTIONS freeze respected (no convention outside §23–24); SPDX header; unit + analytic-regression green with named `ATOL_*`; dispatch-keyed `[Unreleased]` bullet; CI green incl. `mkdocs build --strict` + WCAG-A.
 
-## 15. Dispatch register *(Sail — codes minted at ratification, not now)*
+## 15. Dispatch register *(Sail — `MC` family minted at ratification 2026-06-02)*
 
-Per the framework, dispatch codes are minted at **Ratified**, not at Drafted. Proposed fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the open-system theme), `MCA`–`MCG`, **to be confirmed at ratification after the authoritative grep** of `CHANGELOG.md`, `WORKPLAN_v0.3.md`, and `docs/gpu-dispatch-design.md` (WP-01's `ED` family and the known-taken ranges in `WP/LOGBOOK.md` must be avoided; `MC` is the leading candidate, not yet minted).
+Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the open-system theme), `MCA`–`MCG`, **minted 2026-06-02** at ratification after the authoritative grep of `CHANGELOG.md`, `WORKPLAN_v0.3.md`, `docs/gpu-dispatch-design.md`, and the `WP/LOGBOOK.md` registry — **clear**, no collision (WP-01's `ED` family and the known-taken ranges are avoided; QuTiP's `mcsolve` is unused in `src/` and is not a code collision). Recorded here and in the `WP/LOGBOOK.md` dispatch-code registry.
 
 | Proposed | Maps to | CHANGELOG bullet (at landing) | Status |
 |---|---|---|---|
-| `MCA` | WI-1 two-mode SU(1,1) Hamiltonian | `- **Dispatch MCA — hamiltonians: two-mode squeezing (SU(1,1)) generator.**` | proposed |
-| `MCB` | WI-2 `two_mode_squeezed_vacuum` | `- **Dispatch MCB — states: two-mode squeezed-vacuum factory.**` | proposed |
-| `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | proposed |
-| `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | proposed |
-| `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | proposed |
-| `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | proposed |
-| `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | proposed |
+| `MCA` | WI-1 two-mode SU(1,1) Hamiltonian | `- **Dispatch MCA — hamiltonians: two-mode squeezing (SU(1,1)) generator.**` | minted |
+| `MCB` | WI-2 `two_mode_squeezed_vacuum` | `- **Dispatch MCB — states: two-mode squeezed-vacuum factory.**` | minted |
+| `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | minted |
+| `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | minted |
+| `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | minted |
+| `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | minted |
+| `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | minted |
 
 ## 16. Logbook hooks *(Sail)*
 
 Entries this WP will generate in `WP/LOGBOOK.md` (dated):
 
-- 2026-06-02 — WP-02 **Drafted** against card `TC-iontrap-dynamics` (this draft).
-- *(at ratification)* — WP-02 **Ratified**; `MC` family minted; the FREEZE-v0.3 §4 timeline decision taken; the §3 slug + §17 decisions resolved.
+- 2026-06-02 — WP-02 **Drafted** against card `TC-iontrap-dynamics`.
+- 2026-06-02 — WP-02 **Ratified**; `MC` family minted (`MCA`–`MCG`); FREEZE-v0.3 §4 = **Combined, bounded to WP-02 P0**; all five §17 decisions resolved; execution opens on `wp02-two-mode-motional` with WI-3.
 - *(per WI)* — one entry per decision-with-rejected-options / dead-end / deferral during execution.
-- *(at release)* — the 5-step release cut, SemVer justification.
+- *(at release)* — the 5-step release cut, SemVer justification (the combined v0.3 / `v0.5.0` seal).
 
-## 17. Decisions required at ratification *(Coastline gate)*
+## 17. Decisions taken at ratification *(Coastline gate — all five ratified 2026-06-02)*
 
-The card §7 leaves three open questions (Q4 resolved); WP-02 adds the slug and the freeze-timeline calls. Each carries a recommendation:
+The card §7 left three open questions (Q4 resolved); WP-02 added the slug and the freeze-timeline call. **All five ratified 2026-06-02:**
 
-1. **F6 QFI boundary (card Q1).** *Recommend:* host the **bare** QFI in the library — already delivered by WP-01 §19/`fisher.py`; WI-6 **consumes** it; the resource-constraint + identifiability stay programme-side (§8).
-2. **Conventions cadence / FREEZE-v0.3 §4 (card Q2).** *Recommend:* **Combined** v0.3 freeze (§19–24), bounded to WP-02's F1+F2+F3 — fewer gates, one worked example; accept holding WP-01's release until that P0 subset lands. WP-01-first is the documented fallback if WP-01's release is time-critical (§6).
-3. **Upstream vs fork (card Q3).** *Recommend:* **stage on a branch first** (consistent with the interim-primary posture, `WORKPLAN §4.0`); mirror as upstream issues on `uwarring82/iontrap-dynamics` once the freeze is agreed — this keeps the v0.3 freeze governance on one surface.
-4. **WP slug (§3).** *Recommend:* keep the capability-framed **`two-mode-motional`** (parallel to WP-01); rename to `undetected-modes` only if the maintainer prefers the application-named identifier.
+1. **F6 QFI boundary (card Q1) — RATIFIED: consume.** Host the **bare** QFI in the library (WP-01 §19/`fisher.py`); WI-6 **consumes** it, no second implementation or wrapper; the resource-constraint + identifiability stay programme-side (§8).
+2. **Conventions cadence / FREEZE-v0.3 §4 (card Q2) — RATIFIED: Combined, bounded to WP-02 P0.** Seal §19–24 together under the single v0.3 freeze once WP-02's **F1+F2+F3 (WI-1–WI-3)** land; P1/P2 (F4–F7) do not gate the seal. WP-01 stays Ratified, seal-pending; its staged artefacts are held in escrow and sealed in one maintainer commit when P0 lands (§6).
+3. **Upstream vs fork (card Q3) — RATIFIED: branch-first.** Execute on `wp02-two-mode-motional` (branched off the WP-01 branch); mirror as upstream issues on `uwarring82/iontrap-dynamics` only after the freeze shape is stable.
+4. **WP slug (§3) — RATIFIED: `two-mode-motional`.** Capability-framed, parallel to WP-01.
+5. **Dispatch family (§15) — RATIFIED: `MC`** (Motional Channels), `MCA`–`MCG`, minted 2026-06-02 after a clear collision grep.
+
+**Execution steer (ratified):** move to **In-flight starting with WI-3** (F3 — the `channels.py` + `solve(channels=…)` hinge that WI-1/WI-2 populate and the R8 test exercises); WI-1 and WI-2 follow. Per the maintainer's sequencing caveat, **map the `solve()` integration surface first** if it is not already well understood, since `solve(channels=…)` is the pivotal API and the easiest place to create churn.
 
 ---
 
@@ -234,7 +239,7 @@ The card §7 leaves three open questions (Q4 resolved); WP-02 adds the slug and 
 
 **Local candidate framework under active stewardship.** No parity implied with externally validated laws. This Work-Plan is a Sail execution document within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg), under the Coastline gates of `WORKPLAN_v0.3.md` and `CONVENTIONS.md`. Lock–Key rule applies: this WP is a key built on the stable locks those documents specify. The repository adopts the T(h)reehouse +EC Corporate Design blueprint (`cd-rules`, consumed via Model B).
 
-**Council status:** Guardian *pending ratification* — WP-02 introduces no convention outside the staged §23–24, relaxes no Coastline gate, relicenses nothing; it stages but does not seal the freeze. Architect *pending* — every WI reuses an existing module (one new module, `channels.py`); the three-layer architecture and the §1 boundary are respected; QFI is consumed, not duplicated. Scout — horizon signals: the FREEZE-v0.3 §4 timeline decision (§6/§17), the cross-WP QFI dependency (resolved), and the F7 programme-side remainder are surfaced, not implicit. Integrator — sequenced F3-first (§14), target `v0.5.0`.
+**Council status (ratified 2026-06-02):** Guardian cleared — WP-02 introduces no convention outside the staged §23–24, relaxes no Coastline gate, relicenses nothing; it stages but does not seal the freeze (the seal is the held-in-escrow maintainer commit). Architect approved — every WI reuses an existing module (one new module, `channels.py`); the three-layer architecture and the §1 boundary are respected; QFI is consumed, not duplicated. Scout — horizon signals addressed: the FREEZE-v0.3 §4 timeline decision is taken (Combined, bounded to P0, §6/§17), the cross-WP QFI dependency resolved, and the F7 programme-side remainder surfaced. Integrator — sequenced F3-first (§14), target `v0.5.0` under the combined v0.3 freeze.
 
 **Convention version:** references `CONVENTIONS.md` v0.2 (frozen 2026-04-21); WP-02 stages §23–24 toward the shared v0.3 freeze (`WP/FREEZE-v0.3.md`), introducing no convention on its own.
 **Corporate design version:** `cd-v1.7.1` (consumed via Model B).

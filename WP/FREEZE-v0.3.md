@@ -2,7 +2,7 @@
 
 **The single owner of the `CONVENTIONS.md` v0.2 → v0.3 bump, which more than one WP feeds**
 
-Version 0.1 · Drafted 2026-06-02 · Status: open; sections staged, none sealed; `CONVENTION_VERSION` still `"0.2"`
+Version 0.2 · Drafted 2026-06-02 · Status: open; **§4 timeline decision RESOLVED 2026-06-02 — Combined, bounded to WP-02 P0**; sections staged, none sealed; `CONVENTION_VERSION` still `"0.2"` (the single bump + seal fire when WP-02 P0 / WI-1–WI-3 lands)
 
 **Classification:** Coastline gate (per T(h)reehouse +EC CD 0.9) — a binding coordination surface, not revisable guidance. The version bump, section-number allocation, and seal-at-release procedure below are hard gates.
 **Licence:** CC BY-SA 4.0 (`WP/` governance material, `WP/LICENCE`). Permitted **side-car** document (`WP/README.md` §4), not a WP.
@@ -67,16 +67,23 @@ WP-01 §6 and applies to every contributing section).
 
 **Live coordination decision — when do the two WPs' timelines meet?**
 
-- [ ] **Combined (card-2 §7 Q2 preference).** Hold the v0.3 release until **both** WP-01
-      (§19–22) and WP-02 (§23–24) sections are complete; seal §19–24 together; one bump,
-      one worked example, one release. Couples the two WPs' release timing.
-- [ ] **WP-01-first fallback.** If WP-02 is not ready when WP-01 is, seal **§19–22 as
-      v0.3** and move WP-02's §23–24 to a later **v0.4** freeze (its own bump). Decouples
-      timing at the cost of two freezes — the Option-3 structure for WP-02 only.
+- [x] **Combined (card-2 §7 Q2 preference) — RATIFIED 2026-06-02, bounded to WP-02 P0.**
+      Seal §19–24 together in one v0.3 freeze once WP-02's **P0 subset (F1+F2+F3 / WI-1–WI-3)**
+      lands; one bump, one worked example, one release. **Bounding clause:** WP-02's P1/P2
+      work (F4–F7) is additive under v0.2 and does **not** gate the seal — so P1/P2 cannot
+      hold WP-01 hostage. The card §5 minimum milestone (F3+F1+F2 on one branch) is exactly
+      this P0 subset.
+- [ ] **WP-01-first fallback.** *(Not chosen.)* Seal §19–22 as v0.3 now and move §23–24 to a
+      later v0.4 freeze (its own bump). Was the decoupling option had WP-01's release been
+      time-critical; the maintainer judged WP-01 materially complete and the seal a formality,
+      so Combined wins.
 
-This box is the one genuine timeline risk in the "two WPs + shared freeze" structure. It is
-**decided at WP-02 ratification**, not before, and logged in `WP/LOGBOOK.md`. Until then,
-WP-01 may execute its WIs and stage §19–22, but **must not seal or bump** without this call.
+This box was the one genuine timeline risk in the "two WPs + shared freeze" structure. It is
+**decided: Combined, bounded to WP-02 P0** (taken at WP-02 ratification 2026-06-02, logged in
+`WP/LOGBOOK.md`). WP-01's §19–22 are **held in escrow** — staged, not sealed — until WP-02's
+P0 subset lands; then §19–24, the single `CONVENTION_VERSION` 0.2 → 0.3 bump, and both WPs'
+WORKPLAN stubs (§5.4 + §5.5) are applied in **one maintainer seal commit**. WP-02 likewise
+stages §23–24 and must not seal or bump alone.
 
 ## 5. QFI — one primitive, not two *(Coastline gate)*
 
