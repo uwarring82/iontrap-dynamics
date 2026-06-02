@@ -2,7 +2,7 @@
 
 **The single owner of the `CONVENTIONS.md` v0.2 → v0.3 bump, which more than one WP feeds**
 
-Version 0.2 · Drafted 2026-06-02 · Status: open; **§4 timeline decision RESOLVED 2026-06-02 — Combined, bounded to WP-02 P0**; sections staged, none sealed; `CONVENTION_VERSION` still `"0.2"` (the single bump + seal fire when WP-02 P0 / WI-1–WI-3 lands)
+Version 0.3 · Drafted 2026-06-02 · **Status: SEALED 2026-06-03** (commit `fdcd20f`) — §4 resolved Combined-bounded-to-P0; §19–24 frozen and `CONVENTION_VERSION` bumped 0.2 → 0.3 in one commit once WP-02 P0 (WI-1–WI-3) landed
 
 **Classification:** Coastline gate (per T(h)reehouse +EC CD 0.9) — a binding coordination surface, not revisable guidance. The version bump, section-number allocation, and seal-at-release procedure below are hard gates.
 **Licence:** CC BY-SA 4.0 (`WP/` governance material, `WP/LICENCE`). Permitted **side-car** document (`WP/README.md` §4), not a WP.

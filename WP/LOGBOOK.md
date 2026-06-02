@@ -259,6 +259,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — **v0.3 Convention Freeze SEALED** (commit `fdcd20f`): the combined §19–24 lock turn
+
+- **Refs:** FREEZE-v0.3 · CONVENTIONS §19–24 · `CONVENTION_VERSION` 0.2 → 0.3 · WP-01 + WP-02 (combined)
+- **Stance:** Guardian (the single repo-wide lock-turning event; executed only after both reviewers' line-by-line review of the prepared patch).
+- **What:** The maintainer's combined seal — one commit (`fdcd20f`, 8 governed/public files): `CONVENTIONS.md` §19–22 (estimation/Darwinism) + §23–24 (two-mode/motional) pasted and frozen (freeze lines, H3 subsections, anchored to the two review notes); `CONVENTION_VERSION` "0.2" → "0.3" (`conventions.py`); the `tests/conventions/test_convention_version.py` guard; `mkdocs.yml` both review-note nav lines; `WORKPLAN_v0.3.md` §5.4 + §5.5 amendments + header/footer 0.3.5 → 0.3.7; `CHANGELOG.md` `### Changed`; README + `docs/index.md` v0.2 → v0.3. Gates green: ruff, mypy --strict, mkdocs --strict, **1059 passed**.
+- **Why (the review-round decisions worth recording):** the prepared patch went through two reviewers. The maintainer found and I fixed, **in the seal commit**: (High) the §13 doc field `conventions_version` → `convention_version` (the long-standing §13/§17.5 inconsistency, FREEZE-v0.3 §3); (High) a missing `CHANGELOG ### Changed` entry for the bump; (Medium) the WORKPLAN header/footer lock-step (header was still 0.3.5); (Medium) README/`docs/index.md` still claiming v0.2. **Judgment call (staged tags):** the two reviewers split — the maintainer said **drop** the `*(staged …)*` tags from §19–24, Scout said keep (the §17/§18 precedent). The maintainer's call governs: tags dropped from §19–24, §17/§18 left untouched (a later consistency cleanup if ever).
+- **Outcome:** **§19–24 frozen; `CONVENTION_VERSION` = "0.3".** WP-01 → **Released-pending** (only the release tag remains, §10); WP-02 **P0 subset SEALED**, P1/P2 (F4–F7) additive and non-gating. The FREEZE-v0.3 side-car has done its single job.
+- **Links:** commit `fdcd20f` · `CONVENTIONS.md` §19–24 · `WP/FREEZE-v0.3.md` (now Sealed) · `WP/WP-01-estimation-darwinism.md` (Released-pending) · `WP/WP-02-two-mode-motional.md` (P0 sealed).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -270,7 +281,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` | **landed 2026-06-02** |
-| **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
+| **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **SEALED 2026-06-03** (commit `fdcd20f`): `docs/estimation-darwinism-review.md` + §19–22 frozen, `CONVENTION_VERSION` 0.2 → 0.3 (combined with WP-02 §23–24) |
 | **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | **landed 2026-06-03** (n̄ = sinh²(gτ); Casimir; + beamsplitter) |
 | **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (per-mode n̄ = sinh²\|z\|; Schmidt) |
 | **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `windowed_max_step` union-gap fix; review-round short-window-skip fix; 1028 tests) |

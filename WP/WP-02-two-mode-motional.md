@@ -2,7 +2,7 @@
 
 **Executes the undetected-modes service card: two-mode SU(1,1) physics, typed motional CPTP channels exposed through `solve()`, interferometric observables, Lamb–Dicke regime helpers, a consumed QFI primitive, and a motional mode-frequency drift — all application-agnostic library primitives.**
 
-Version 0.2 · Drafted 2026-06-02 · Ratified 2026-06-02 · Status: In-flight (WI-3 first; FREEZE-v0.3 §4 resolved — **Combined v0.3, bounded to WP-02 P0**)
+Version 0.3 · Drafted 2026-06-02 · Ratified 2026-06-02 · Status: In-flight — **P0 subset (F1+F2+F3 / WI-1–WI-3) SEALED 2026-06-03** under the v0.3 Convention Freeze (commit `fdcd20f`); P1/P2 (F4–F7) additive, non-gating, open
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code is MIT (`src/`, `tests/`, `.github/workflows/`); the literature-review note (§5) is Coastline / CC BY-SA 4.0; CONVENTIONS edits are Coastline / CC BY-SA 4.0. See root `LICENCE`.
