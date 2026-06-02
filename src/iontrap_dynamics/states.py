@@ -293,13 +293,13 @@ def two_mode_squeezed_vacuum(fock_dims: int | tuple[int, int], z: complex) -> qu
     convention and gives ``sinh²(|z|/2)`` instead — this factory does not
     delegate to it). The state has the Schmidt form
 
-        |z⟩ = (1 / cosh r) Σₙ cₙ |n, n⟩,   |cₙ| = tanhⁿ|z| / cosh|z|,
+        |z⟩ = Σₙ cₙ |n, n⟩,   |cₙ| = tanhⁿ|z| / cosh|z|,
 
     so only equal-occupation components ``|n, n⟩`` are populated (hence
     ``⟨n̂_a − n̂_b⟩ = 0``). Evolving the two-mode vacuum under
     :func:`iontrap_dynamics.hamiltonians.two_mode_squeezing_hamiltonian`
     (phase ``φ``) for a time ``τ`` produces this state with the signed complex
-    parameter ``z = −gτ·e^{iφ}`` (so ``|z| = gτ``).
+    parameter ``z = −gτ·e^{iφ}`` (so ``|z| = |g|τ``).
 
     Parameters
     ----------

@@ -52,8 +52,8 @@ WI-3a constant-rate behaviour byte-for-byte.
 
 Application-agnostic boundary (``WP/WP-02-two-mode-motional.md`` §1): this is the
 general typed dissipator *family*. Which channel models a particular physical
-process, and any composition (``ε_total``) logic, belong to the consuming
-programme, not here.
+process, and any channel-composition logic, belong to the consuming programme,
+not here.
 
 ``Depolarising`` is intentionally **not** provided: a depolarising channel is
 canonical for finite-dimensional systems, not for a single bosonic mode, so it is

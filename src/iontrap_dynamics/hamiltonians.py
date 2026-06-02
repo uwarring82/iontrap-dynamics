@@ -1619,7 +1619,7 @@ def two_mode_squeezing_hamiltonian(
     :math:`\tau` produces the two-mode squeezed vacuum
     (:func:`iontrap_dynamics.states.two_mode_squeezed_vacuum`) with the signed
     complex squeeze parameter :math:`z = -g\tau\, e^{i\varphi}` (magnitude
-    :math:`r = |z| = g\tau`) and per-mode mean occupation
+    :math:`r = |z| = |g|\tau`) and per-mode mean occupation
     :math:`\bar n = \sinh^2(g\tau)`. The generators
     :math:`\hat K_+ = \hat a^\dagger \hat b^\dagger`,
     :math:`\hat K_- = \hat a \hat b`,

@@ -51,7 +51,7 @@ one excitation each per pair. The two-mode squeezed states are introduced in
 compact two-mode notation are developed in [Schumaker & Caves 1985] (Part II).
 Acting on the two-mode vacuum it gives the **two-mode squeezed vacuum**
 
-  |z⟩ = S₂(z)|0,0⟩ = (1 / cosh r) Σₙ cₙ |n, n⟩,   |cₙ| = tanhⁿr / cosh r,
+  |z⟩ = S₂(z)|0,0⟩ = Σₙ cₙ |n, n⟩,   |cₙ| = tanhⁿr / cosh r,
 
 so only equal-occupation Schmidt components |n,n⟩ are populated and the per-mode
 mean occupation is
@@ -78,8 +78,8 @@ Casimir label; a state seeded from the vacuum keeps ⟨n̂_a⟩ = ⟨n̂_b⟩ at
 
 Hermitian, with g the parametric coupling (rad·s⁻¹) and φ the squeezing phase.
 Evolving the vacuum for a time τ gives the two-mode squeezed vacuum with the
-**signed complex** parameter z = −gτ·e^{iφ} (magnitude r = |z| = gτ), per-mode
-n̂ = sinh²(gτ). g may be negative (a π phase shift). This phase/sign/ordering
+**signed complex** parameter z = −gτ·e^{iφ} (magnitude r = |z| = |g|τ), per-mode
+n̂ = sinh²(gτ) = sinh²(|g|τ). g may be negative (a π phase shift). This phase/sign/ordering
 choice is exactly what §23 fixes (the convention freeze gate).
 
 **Beamsplitter (SU(2)).** The secondary

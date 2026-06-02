@@ -46,8 +46,9 @@ Schmidt state ``Σₙ cₙ|n,n⟩`` with ``|cₙ| = tanhⁿr/cosh r``, per-mode
 ``H_TMS/ℏ = i g (e^{iφ} â†b̂† − e^{−iφ} âb̂)`` (Hermitian; ``g`` in rad·s⁻¹, ``φ``
 the squeezing phase). Evolving the vacuum for a time ``τ`` gives the two-mode
 squeezed vacuum with the **signed complex** parameter ``z = −gτ·e^{iφ}``
-(magnitude ``r = |z| = gτ``), per-mode ``sinh²(gτ)``. ``g`` may be negative (a
-``π`` phase shift); identical mode labels and non-finite ``g``/``φ`` raise.
+(magnitude ``r = |z| = |g|τ``), per-mode ``sinh²(gτ) = sinh²(|g|τ)``. ``g`` may be
+negative (a ``π`` phase shift); identical mode labels and non-finite ``g``/``φ``
+raise.
 
 #### 23.3 su(1,1) algebra and the conserved Casimir
 
@@ -86,12 +87,13 @@ collapse operator(s) ``L_k`` on a **labelled mode** with rates in **s⁻¹**.
 
 #### 24.2 The three dissipators
 
-- `AmplitudeDamping(mode, rate)` — ``L = √κ·â`` (zero-temperature; ``⟨n̂⟩ →
-  0`` as ``e^{−κt}``).
-- `Heating(mode, rate, n_bar_bath)` — ``L₋ = √(κ(n̄+1))·â``, ``L₊ = √(κn̄)·â†``
-  (relaxes to the bath, ``⟨n̂⟩ → n̄``; the anomalous-heating model).
-- `Dephasing(mode, rate)` — ``L = √γ·n̂`` (coherence ``ρ_{nm}`` decays as
-  ``e^{−(γ/2)(n−m)²t}``; ``⟨n̂⟩`` unchanged).
+- `AmplitudeDamping(*, mode, rate, window=None)` — ``L = √κ·â`` (zero-
+  temperature; ``⟨n̂⟩ → 0`` as ``e^{−κt}``).
+- `Heating(*, mode, rate, n_bar_bath, window=None)` — ``L₋ = √(κ(n̄+1))·â``,
+  ``L₊ = √(κn̄)·â†`` (relaxes to the bath, ``⟨n̂⟩ → n̄``; the anomalous-heating
+  model).
+- `Dephasing(*, mode, rate, window=None)` — ``L = √γ·n̂`` (coherence ``ρ_{nm}``
+  decays as ``e^{−(γ/2)(n−m)²t}``; ``⟨n̂⟩`` unchanged).
 
 `Depolarising` is **deferred** — not a canonical single-mode bosonic dissipator.
 
