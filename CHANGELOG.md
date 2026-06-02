@@ -10,6 +10,23 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch MCA + MCB (WI-1, WI-2) — two-mode SU(1,1) squeezing surface.**
+  `hamiltonians.two_mode_squeezing_hamiltonian(hilbert, *, g, phase, mode_labels)`
+  builds `H/ℏ = ig(e^{iφ}â†b̂† − e^{−iφ}âb̂)` on a labelled motional-mode pair
+  (label-based embedding via the `HilbertSpace` mode-operator API, agnostic to
+  tensor ordering); `beamsplitter_hamiltonian(…)` adds the secondary SU(2)
+  partner `J(e^{iφ}â†b̂ + h.c.)`. `states.two_mode_squeezed_vacuum(fock_dims, z)`
+  builds `S₂(z)|0,0⟩` with `S₂(z) = exp(z*âb̂ − zâ†b̂†)` (per-mode `⟨n̂⟩ =
+  sinh²|z|`; note this is **not** `qutip.squeezing`, whose ½ convention gives
+  `sinh²(|z|/2)`). Oracles reproduced
+  (`tests/regression/analytic/test_two_mode_squeezing.py`): factory per-mode
+  `sinh²|z|`; the Hamiltonian evolves the vacuum to `⟨n̂⟩ = sinh²(gτ)` with the
+  su(1,1) difference number `n̂_a − n̂_b` conserved (Casimir) and matching the
+  factory state with `|z| = gτ`; the beamsplitter conserves `n̂_a + n̂_b` (SU(2)).
+  `two_mode_squeezed_vacuum` is re-exported from the package root. Conventions
+  staged for CONVENTIONS §23 (the shared v0.3 freeze, `WP/FREEZE-v0.3.md`). Per
+  `WP/WP-02-two-mode-motional.md` (WI-1, WI-2). **With WI-1+WI-2+WI-3, the P0
+  freeze subset (F1+F2+F3) is complete.**
 - **Dispatch MCC (WI-3) — channels: typed motional CPTP channels exposed in
   `solve()`, with optional time windows.** New `channels.py` (WP-02):
   `AmplitudeDamping` (`L = √κ·â`),

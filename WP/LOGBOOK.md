@@ -228,6 +228,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — WI-1 + WI-2 landed (MCA, MCB): two-mode SU(1,1) squeezing; **P0 subset complete**
+
+- **Refs:** WP-02 · WI-1/WI-2 · MCA/MCB · §23 · card F1/F2
+- **Stance:** Architect (the §23 squeezing pillar) with a Guardian check (the convention must be self-consistent: factory state == Hamiltonian-evolved vacuum).
+- **What:** `hamiltonians.two_mode_squeezing_hamiltonian` (`H/ℏ = ig(e^{iφ}â†b̂† − e^{−iφ}âb̂)`) and `beamsplitter_hamiltonian` (SU(2) partner), both **label-based** embedded via the `HilbertSpace` mode-operator API (Scout's steer — same discipline as `channels.py`); `states.two_mode_squeezed_vacuum(fock_dims, z) = exp(z*âb̂ − zâ†b̂†)|0,0⟩`, re-exported from the package root. Oracles green: factory per-mode `n̄ = sinh²|z|`; the Hamiltonian evolves the vacuum to `n̄ = sinh²(gτ)` with the su(1,1) difference number conserved and a state-fidelity match to the factory (`|z| = gτ`); the beamsplitter conserves total occupation. 1051 tests.
+- **Why (decisions worth recording):** (1) The two-mode squeeze is **defined explicitly**, *not* delegated to `qutip.squeezing` — the latter carries a factor of ½ (`sinh²(|z|/2)`), which would contradict the card's `sinh²|z|` acceptance and the §6 single-mode parameterisation. §23 fixes the no-½ convention (`exp(z*âb̂ − zâ†b̂†)`), consistent with the Hamiltonian's `r = gτ`. (2) qutip 5 reports a two-mode ket's dims as `[[N_a, N_b], [1]]` (trivial column flattened) — the factory output is already canonical; an initial attempt to force `[[…],[1,1]]` was reverted as wrong (the test expectation was the bug, not the factory).
+- **Outcome:** **The P0 freeze subset F1+F2+F3 (WI-1+WI-2+WI-3) is complete** — the FREEZE-v0.3 §4 trigger for the combined seal. **Next (conventions-before-seal):** draft the WP-02 review note `docs/two-mode-motional-review.md` (§23 + §24) and stage the §23/§24 CONVENTIONS text, then the maintainer's single combined seal (§19–24 + bump + WORKPLAN §5.4/§5.5).
+- **Links:** `src/iontrap_dynamics/hamiltonians.py` (`two_mode_squeezing_hamiltonian`, `beamsplitter_hamiltonian`) · `src/iontrap_dynamics/states.py` (`two_mode_squeezed_vacuum`) · `tests/unit/test_two_mode.py` · `tests/regression/analytic/test_two_mode_squeezing.py`.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -240,8 +251,8 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` | **landed 2026-06-02** |
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
-| **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | minted 2026-06-02; **P0**, open |
-| **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0**, open |
+| **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | **landed 2026-06-03** (n̄ = sinh²(gτ); Casimir; + beamsplitter) |
+| **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (per-mode n̄ = sinh²\|z\|; Schmidt) |
 | **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `windowed_max_step` union-gap fix; review-round short-window-skip fix; 1028 tests) |
 | **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |

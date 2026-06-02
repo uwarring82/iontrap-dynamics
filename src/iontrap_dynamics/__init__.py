@@ -83,6 +83,7 @@ from .states import (
     ground_state,
     squeezed_coherent_mode,
     squeezed_vacuum_mode,
+    two_mode_squeezed_vacuum,
 )
 from .systematics import (
     CommonModePhase,
@@ -189,5 +190,6 @@ __all__ = [
     "solve_spectrum",
     "squeezed_coherent_mode",
     "squeezed_vacuum_mode",
+    "two_mode_squeezed_vacuum",
     "wilson_interval",
 ]

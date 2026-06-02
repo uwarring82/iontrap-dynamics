@@ -1579,7 +1579,108 @@ def modulated_carrier_hamiltonian(
     return [[base_H, coeff]]
 
 
+def two_mode_squeezing_hamiltonian(
+    hilbert: HilbertSpace,
+    *,
+    g: float,
+    phase: float = 0.0,
+    mode_labels: tuple[str, str] = ("a", "b"),
+) -> qutip.Qobj:
+    r"""Return the two-mode parametric (SU(1,1)) squeezing Hamiltonian.
+
+    Couples a labelled pair of motional modes :math:`a, b`
+    (CONVENTIONS.md §23, staged for the v0.3 freeze):
+
+    .. math::
+        H_{\text{TMS}} / \hbar = i\,g \left(
+            e^{i\varphi}\, \hat a^\dagger \hat b^\dagger
+            - e^{-i\varphi}\, \hat a \hat b \right).
+
+    Evolving the two-mode vacuum under this Hamiltonian for a time
+    :math:`\tau` produces the two-mode squeezed vacuum
+    (:func:`iontrap_dynamics.states.two_mode_squeezed_vacuum`) with squeezing
+    parameter :math:`r = g\tau` and per-mode mean occupation
+    :math:`\bar n = \sinh^2(g\tau)`. The generators
+    :math:`\hat K_+ = \hat a^\dagger \hat b^\dagger`,
+    :math:`\hat K_- = \hat a \hat b`,
+    :math:`\hat K_0 = \tfrac12(\hat n_a + \hat n_b + 1)` close the su(1,1)
+    algebra; the Hamiltonian commutes with the difference number
+    :math:`\hat n_a - \hat n_b` (the conserved su(1,1) Casimir label), so a
+    state seeded from the vacuum keeps
+    :math:`\langle \hat n_a\rangle = \langle \hat n_b\rangle` at all times.
+
+    Operators are embedded on the full tensor-product space by **mode label**
+    via the :class:`HilbertSpace` mode-operator API, so the builder is agnostic
+    to the tensor ordering (matching the :mod:`iontrap_dynamics.channels`
+    discipline).
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space; must contain both
+        ``mode_labels``.
+    g
+        Parametric coupling (squeezing rate) in rad·s⁻¹: the squeezing after a
+        time ``τ`` is ``r = g·τ``.
+    phase
+        Squeezing phase ``φ`` in rad. Default ``0.0``.
+    mode_labels
+        The two mode labels to couple. Default ``("a", "b")``; an unknown
+        label raises :class:`ConventionError` from the mode-operator API.
+
+    Returns
+    -------
+    qutip.Qobj
+        Time-independent Hermitian ``H/ℏ`` on the full Hilbert space
+        (:meth:`HilbertSpace.qutip_dims`). Units: rad·s⁻¹.
+    """
+    label_a, label_b = mode_labels
+    a = hilbert.annihilation_for_mode(label_a)
+    b = hilbert.annihilation_for_mode(label_b)
+    phase_factor = cmath.exp(1j * phase)
+    pair_create = a.dag() * b.dag()
+    return 1j * g * (phase_factor * pair_create - phase_factor.conjugate() * pair_create.dag())
+
+
+def beamsplitter_hamiltonian(
+    hilbert: HilbertSpace,
+    *,
+    coupling: float,
+    phase: float = 0.0,
+    mode_labels: tuple[str, str] = ("a", "b"),
+) -> qutip.Qobj:
+    r"""Return the SU(2) beamsplitter Hamiltonian on a labelled mode pair.
+
+    .. math::
+        H_{\text{BS}} / \hbar = J \left(
+            e^{i\varphi}\, \hat a^\dagger \hat b
+            + e^{-i\varphi}\, \hat a \hat b^\dagger \right)
+
+    (CONVENTIONS.md §23). Unlike :func:`two_mode_squeezing_hamiltonian` this
+    conserves the total occupation :math:`\hat n_a + \hat n_b` (it rotates
+    excitation between the modes — the SU(2) partner of the SU(1,1) squeezing
+    interaction). Secondary to the squeezing builder (card F1); the embedding is
+    label-based, as there.
+
+    Parameters mirror :func:`two_mode_squeezing_hamiltonian`, with ``coupling``
+    :math:`J` (rad·s⁻¹) in place of ``g``.
+
+    Returns
+    -------
+    qutip.Qobj
+        Time-independent Hermitian ``H/ℏ`` on the full Hilbert space. Units:
+        rad·s⁻¹.
+    """
+    label_a, label_b = mode_labels
+    a = hilbert.annihilation_for_mode(label_a)
+    b = hilbert.annihilation_for_mode(label_b)
+    phase_factor = cmath.exp(1j * phase)
+    hop = a.dag() * b
+    return coupling * (phase_factor * hop + phase_factor.conjugate() * hop.dag())
+
+
 __all__ = [
+    "beamsplitter_hamiltonian",
     "blue_sideband_hamiltonian",
     "carrier_hamiltonian",
     "carrier_hamiltonian_full_ld",
@@ -1592,4 +1693,5 @@ __all__ = [
     "red_sideband_hamiltonian",
     "two_ion_blue_sideband_hamiltonian",
     "two_ion_red_sideband_hamiltonian",
+    "two_mode_squeezing_hamiltonian",
 ]

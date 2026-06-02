@@ -41,6 +41,22 @@ def _single_mode_hilbert(fock_dim: int, *, label: str = "b") -> HilbertSpace:
     return HilbertSpace(system=system, fock_truncations={label: fock_dim})
 
 
+def _two_mode_hilbert(fock_dim: int, *, labels: tuple[str, str] = ("a", "b")) -> HilbertSpace:
+    """A one-ion, two-motional-mode Hilbert space (spin ⊗ Fock ⊗ Fock).
+
+    Both modes axial (unit eigenvector along z, §11 normalisation) at slightly
+    different frequencies, each truncated to ``fock_dim``. Shared by the WP-02
+    two-mode SU(1,1) squeezing tests.
+    """
+    eigenvector = np.array([[0.0, 0.0, 1.0]])
+    modes = (
+        ModeConfig(label=labels[0], frequency_rad_s=2.0 * np.pi * 1.0e6, eigenvector_per_ion=eigenvector),
+        ModeConfig(label=labels[1], frequency_rad_s=2.0 * np.pi * 1.1e6, eigenvector_per_ion=eigenvector),
+    )
+    system = IonSystem(species_per_ion=(mg25_plus(),), modes=modes)
+    return HilbertSpace(system=system, fock_truncations={labels[0]: fock_dim, labels[1]: fock_dim})
+
+
 def _collective_jz(hilbert: HilbertSpace) -> qutip.Qobj:
     """The collective generator ``J_z = 0.5 * sum_i sigma_z`` on the spins."""
     ops = [hilbert.spin_op_for_ion(sigma_z_ion(), i) for i in range(hilbert.n_ions)]

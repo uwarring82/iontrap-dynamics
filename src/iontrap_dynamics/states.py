@@ -282,6 +282,55 @@ def squeezed_coherent_mode(
     return d_op * s_op * qutip.basis(fock_dim, 0)
 
 
+def two_mode_squeezed_vacuum(fock_dims: int | tuple[int, int], z: complex) -> qutip.Qobj:
+    r"""Return the two-mode squeezed-vacuum ket ``|z⟩ = S₂(z) |0, 0⟩``.
+
+    ``S₂(z) = exp(z* âb̂ − z â†b̂†)`` (CONVENTIONS.md §23, staged for the v0.3
+    freeze) — the two-mode partner of the single-mode
+    :func:`squeezed_vacuum_mode` (§6), **without** the single-mode factor of ½
+    and π-period phase, so the per-mode mean occupation is
+    ``⟨n̂_a⟩ = ⟨n̂_b⟩ = sinh²|z|`` (note: ``qutip.squeezing`` uses the ½
+    convention and gives ``sinh²(|z|/2)`` instead — this factory does not
+    delegate to it). The state has the Schmidt form
+
+        |z⟩ = (1 / cosh r) Σₙ cₙ |n, n⟩,   |cₙ| = tanhⁿ|z| / cosh|z|,
+
+    so only equal-occupation components ``|n, n⟩`` are populated (hence
+    ``⟨n̂_a − n̂_b⟩ = 0``). Evolving the two-mode vacuum under
+    :func:`iontrap_dynamics.hamiltonians.two_mode_squeezing_hamiltonian` for a
+    time ``τ`` produces this state with ``|z| = gτ``.
+
+    Parameters
+    ----------
+    fock_dims
+        Truncated dimensions of the mode pair: a single ``int`` for a symmetric
+        ``(N, N)`` truncation, or a ``(N_a, N_b)`` tuple. Choose large enough
+        that ``tanh^N|z| / cosh|z|`` is negligible.
+    z
+        Two-mode squeeze parameter ``z = r·e^{iθ}``; per-mode ``⟨n̂⟩ = sinh²|z|``.
+
+    Returns
+    -------
+    qutip.Qobj
+        Normalised two-mode ket on dims ``[[N_a, N_b], [1, 1]]``.
+
+    Raises
+    ------
+    ConventionError
+        If either Fock dimension is non-positive, or ``z`` is non-finite.
+    """
+    dim_a, dim_b = (fock_dims, fock_dims) if isinstance(fock_dims, int) else fock_dims
+    if dim_a <= 0 or dim_b <= 0:
+        raise ConventionError(f"fock_dims must be positive; got {fock_dims}.")
+    if not (math.isfinite(z.real) and math.isfinite(z.imag)):
+        raise ConventionError(f"z must be finite; got {z}.")
+    a = qutip.tensor(qutip.destroy(dim_a), qutip.qeye(dim_b))
+    b = qutip.tensor(qutip.qeye(dim_a), qutip.destroy(dim_b))
+    squeeze = (z.conjugate() * a * b - z * a.dag() * b.dag()).expm()
+    vacuum = qutip.tensor(qutip.basis(dim_a, 0), qutip.basis(dim_b, 0))
+    return squeeze * vacuum
+
+
 # ----------------------------------------------------------------------------
 # GHZ and cat-state factories (WI-3 of WP-01; dispatch EDC)
 # ----------------------------------------------------------------------------
@@ -385,4 +434,5 @@ __all__ = [
     "ground_state",
     "squeezed_coherent_mode",
     "squeezed_vacuum_mode",
+    "two_mode_squeezed_vacuum",
 ]
