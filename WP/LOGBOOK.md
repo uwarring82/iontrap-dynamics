@@ -217,6 +217,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-02 — WI-3 review-round fix: short-window skip (High) + R8 wording
+
+- **Refs:** WP-02 · WI-3 · MCC · maintainer review (1 High, 1 Medium, 2 Low)
+- **Stance:** Guardian (a silent-wrong-results bug in a solver abstraction is the worst kind; fix it properly).
+- **What:** (High) The first `max_step` fix used `min(diff(times))`, which still **skipped a short window lying entirely between two output points** (maintainer probe: heating on `[0.53T, 0.54T)` with output spacing `0.1T` → `⟨n̂⟩ ≡ 0`, analytic 0.0784). Replaced with `windowed_max_step(channels, times)` (new `channels.py` helper, unit-tested): the cap is the smallest gap in the **union of the output times and every window endpoint**, so the step is bounded below the shortest boundary interval and no window can fall between steps. Added the binding regression `test_short_window_between_output_points_is_not_skipped`. (Medium) Tightened the R8 wording everywhere (`channels.py`, CHANGELOG, WP-02 §5): the test proves **temporal-schedule** order-dependence (which channel is active *when*), **not** `channels`-list order — channels sharing a window are simultaneous Lindblad terms whose list order is irrelevant. (Low ×2) `solve()` docstring now describes the landed `window=` contract (was "a later dispatch"); WP-02 §5 WI-3 row drops `Depolarising` from the deliverable (matches the logged deferral).
+- **Why:** the maintainer empirically falsified the "cannot skip a window's turn-on" claim. The union-gap rule is the maintainer's suggested option (b), verified against the exact probe (0.0784) and the long-window R8 (unchanged). Augmenting the tlist alone (option a) was tried and **failed** — the integrator's step-size adaptation lags after a quiescent interval even when forced to stop at the boundary, so the step must actually be *bounded*, not merely punctuated.
+- **Outcome:** fixed; 1028 tests. WI-3 (MCC) holds at complete. **Next:** WI-1/WI-2 (§23 two-mode squeezing) per the approved steer.
+- **Links:** `src/iontrap_dynamics/channels.py` (`windowed_max_step`) · `src/iontrap_dynamics/sequences.py` (`solve`) · `tests/regression/analytic/test_motional_channels.py` · `tests/unit/test_channels.py`.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -231,7 +242,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **EDF** | review note + CONVENTIONS §19–22 staged for the shared v0.3 freeze | WP-01 | CHANGELOG `[Unreleased]` + `WP/FREEZE-v0.3.md` | **review note + proposal landed 2026-06-02; seal pending maintainer** (`docs/estimation-darwinism-review.md` + `WP/EDF-conventions-nav-proposal.md`; bump/seal owned by `FREEZE-v0.3.md`) |
 | **MCA** | WI-1 two-mode SU(1,1) squeezing Hamiltonian (`hamiltonians.py`) | WP-02 | CHANGELOG `[Unreleased]` · WORKPLAN §5.5 | minted 2026-06-02; **P0**, open |
 | **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; **P0**, open |
-| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `max_step` fix; 1025 tests) |
+| **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `windowed_max_step` union-gap fix; review-round short-window-skip fix; 1028 tests) |
 | **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCF** | WI-6 probe-QFI benchmark (**consumes** WP-01 `fisher.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |

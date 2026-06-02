@@ -105,7 +105,7 @@ if TYPE_CHECKING:
     # below can still reference the class for mypy.
     from dynamiqs import TimeQArray
 
-from .channels import MotionalChannel, build_collapse_operators
+from .channels import MotionalChannel, build_collapse_operators, windowed_max_step
 from .conventions import FOCK_CONVERGENCE_TOLERANCE
 from .exceptions import (
     ConventionError,
@@ -336,8 +336,12 @@ def solve(
         ``c_ops=[]`` path). ``backend="jax"`` does not yet route collapse
         operators; passing channels with it raises :class:`ConventionError`.
         Forcing ``solver="sesolve"`` together with dissipative channels also
-        raises (sesolve cannot carry collapse operators). Time-windowed
-        (sequence-aware) channels are a later dispatch.
+        raises (sesolve cannot carry collapse operators). A channel may carry an
+        optional ``window=(t0, t1)`` (half-open ``[t0, t1)``, SI seconds): the
+        dissipation acts only inside the window. When any channel is windowed the
+        integrator's ``max_step`` is capped so a short window cannot be stepped
+        over (see :mod:`iontrap_dynamics.channels` and
+        :func:`~iontrap_dynamics.channels.windowed_max_step`).
     request_hash
         Caller-supplied SHA-256 hex of the canonical parameter set —
         typically produced via
@@ -475,6 +479,15 @@ def solve(
     # enforcement (see solver_base.py:598 FutureWarning). We pass empty
     # e_ops because observables are computed downstream from stored states,
     # which lets the caller mix OMITTED/EAGER modes without re-solving.
+    # A time-windowed channel turns its dissipation on partway through the
+    # trajectory. Across a quiescent interval the adaptive integrator would take
+    # one giant step and skip the window's turn-on, so cap max_step below the
+    # shortest interval between any two boundaries (output times ∪ window
+    # endpoints) — this also catches a short window lying entirely between two
+    # output points. None for constant / no channels: the default stepper, path
+    # unchanged.
+    windowed_step = windowed_max_step(channels, time_array) if channels else None
+
     if selected_solver == "sesolve":
         solver_result = qutip.sesolve(
             hamiltonian,
@@ -482,23 +495,14 @@ def solve(
             time_array,
             e_ops=[],
         )
-    elif channels and any(channel.window is not None for channel in channels) and time_array.size > 1:
-        # A time-windowed channel turns its dissipation on partway through the
-        # trajectory. Across a quiescent interval the adaptive integrator would
-        # take one giant step and skip the window's turn-on entirely, so cap
-        # max_step at the output-grid resolution — fine enough to resolve any
-        # window boundary. Only the windowed path pays this; the constant-channel
-        # and no-channel paths are unchanged.
-        diffs = np.diff(time_array)
-        positive = diffs[diffs > 0.0]
-        max_step = float(positive.min()) if positive.size else float(time_array[-1] - time_array[0])
+    elif windowed_step is not None:
         solver_result = qutip.mesolve(
             hamiltonian,
             initial_state,
             time_array,
             c_ops=collapse_operators,
             e_ops=[],
-            options={"max_step": max_step},
+            options={"max_step": windowed_step},
         )
     else:
         solver_result = qutip.mesolve(

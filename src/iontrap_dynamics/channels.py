@@ -34,15 +34,21 @@ This is realised with QuTiP's time-dependent collapse-operator format
 contract **``f(t, args)``** — a two-argument signature; ``args`` is unused here.
 No custom solver path is introduced: :func:`solve` passes the mixed
 constant / time-dependent list straight to ``mesolve``. When any channel is
-windowed, ``solve`` caps the integrator's ``max_step`` at the output-grid
-resolution (``min(diff(times))``) so the adaptive stepper cannot take one giant
-step across a quiescent interval and **skip a window's turn-on** — the only place
-the windowed path differs from the constant-channel path. Because the windows are
-half-open, adjacent windows ``[a, b)`` and ``[b, c)`` partition cleanly, and
-**ordered or overlapping windows make channel composition order-dependent** — the
-library does not assume the dissipators commute (the R8 boundary; see the WP-02
-R8 regression test). ``window = None`` (default) keeps the WI-3a constant-rate
-behaviour byte-for-byte.
+windowed, ``solve`` caps the integrator's ``max_step`` at the smallest gap in the
+union of the output times and the window endpoints (see
+:func:`windowed_max_step`), so the adaptive stepper cannot step over a window —
+including a short window lying entirely between two output points — and miss its
+turn-on. This is the only place the windowed path differs from the
+constant-channel path. Because the windows are half-open, adjacent windows
+``[a, b)`` and ``[b, c)`` partition cleanly.
+
+What is order-dependent here is the **temporal schedule** of the dissipation: a
+channel active on ``[0, T/2]`` followed by another on ``[T/2, T]`` gives a
+different result from the reverse schedule (the R8 boundary; see the WP-02 R8
+regression test). Channels active over the **same** window contribute
+*simultaneous* Lindblad terms — their order in the ``channels`` list is
+irrelevant; only *when* each acts matters. ``window = None`` (default) keeps the
+WI-3a constant-rate behaviour byte-for-byte.
 
 Application-agnostic boundary (``WP/WP-02-two-mode-motional.md`` §1): this is the
 general typed dissipator *family*. Which channel models a particular physical
@@ -62,7 +68,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias
 
+import numpy as np
 import qutip
+from numpy.typing import NDArray
 
 from .hilbert import HilbertSpace
 
@@ -277,6 +285,39 @@ def build_collapse_operators(
     return c_ops
 
 
+def windowed_max_step(
+    channels: Sequence[MotionalChannel], times: NDArray[np.float64]
+) -> float | None:
+    """The integrator ``max_step`` (s) to use when any channel is time-windowed.
+
+    Returns the **smallest gap in the union of the output ``times`` and every
+    window endpoint**, or ``None`` when no channel carries a window. Bounding the
+    step below the shortest interval between two boundaries guarantees the
+    integrator samples *inside* every window — so a short window that falls
+    entirely between two output points cannot be stepped over and skipped (the
+    failure a plain ``min(diff(times))`` cap misses). The constant-channel and
+    no-channel paths get ``None`` and are left on the default adaptive stepper.
+    """
+    endpoints = [
+        float(t) for channel in channels if channel.window is not None for t in channel.window
+    ]
+    if not endpoints:
+        return None
+    times_array = np.asarray(times, dtype=np.float64)
+    if times_array.size < 2:
+        return None
+    lo, hi = float(times_array[0]), float(times_array[-1])
+    interior = [t for t in endpoints if lo < t < hi]
+    grid = (
+        np.unique(np.concatenate([times_array, np.asarray(interior, dtype=np.float64)]))
+        if interior
+        else times_array
+    )
+    gaps = np.diff(grid)
+    positive = gaps[gaps > 0.0]
+    return float(positive.min()) if positive.size else (hi - lo)
+
+
 __all__ = [
     "AmplitudeDamping",
     "CollapseOperator",
@@ -284,4 +325,5 @@ __all__ = [
     "Heating",
     "MotionalChannel",
     "build_collapse_operators",
+    "windowed_max_step",
 ]

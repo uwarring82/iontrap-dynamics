@@ -201,3 +201,32 @@ def test_r8_non_commuting_channels_are_order_dependent() -> None:
     assert n_damp_then_heat == pytest.approx(analytic_damp_then_heat, abs=ATOL_WINDOWED)
     # The two orderings give a materially different final occupation.
     assert abs(n_heat_then_damp - n_damp_then_heat) > R8_MIN_OCCUPATION_SEPARATION
+
+
+def test_short_window_between_output_points_is_not_skipped() -> None:
+    """Regression: a short window lying entirely between two output points fires.
+
+    Heating on ``[0.53T, 0.54T)`` with a coarse output spacing of ``0.1T`` — the
+    whole window falls between grid points. A plain ``min(diff(times))`` step cap
+    would step over it (final ``⟨n̂⟩ = 0``); capping ``max_step`` at the
+    union-of-times-and-endpoints gap captures it.
+    """
+    hilbert = _single_mode_hilbert(40)
+    kappa_h = 4000.0
+    n_bar = 2.0
+    total = 1.0e-3
+    t0, t1 = 0.53 * total, 0.54 * total
+    psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(40, 0))
+    times = np.linspace(0.0, total, 11)  # spacing 0.1T; the window is between points
+    res = solve(
+        hilbert=hilbert,
+        hamiltonian=_zero_hamiltonian(hilbert),
+        initial_state=psi0,
+        times=times,
+        observables=(Observable(label="n", operator=hilbert.number_for_mode("b")),),
+        channels=[Heating(mode="b", rate=kappa_h, n_bar_bath=n_bar, window=(t0, t1))],
+    )
+    n_final = float(res.expectations["n"][-1])
+    analytic = n_bar * (1.0 - np.exp(-kappa_h * (t1 - t0)))
+    assert analytic > 0.05  # the window genuinely does something
+    assert n_final == pytest.approx(analytic, abs=ATOL_WINDOWED)

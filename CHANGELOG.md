@@ -29,12 +29,16 @@ placeholder-only and did not follow semver.
   `window=(t0, t1)`: the dissipation acts only on the half-open `[t0, t1)`, via
   QuTiP's `[op, coeff]` time-dependent format (the `coeff` obeys the `QobjEvo`
   `f(t, args)` contract). When a window is present `solve()` caps the integrator's
-  `max_step` at the output-grid resolution so the adaptive stepper cannot skip a
-  window's turn-on; otherwise the path is unchanged. Ordered/overlapping windows
-  make channel composition order-dependent — the **R8** regression test
-  (heating-then-damping ≠ damping-then-heating) proves the library does not assume
-  the dissipators commute. Per `WP/WP-02-two-mode-motional.md` (WI-3). `Depolarising`
-  is deferred (no canonical single-mode bosonic form).
+  `max_step` at the smallest gap in the union of the output times and the window
+  endpoints, so the adaptive stepper cannot step over a window — including a short
+  one lying entirely between two output points — and miss its turn-on; otherwise
+  the path is unchanged. The **temporal schedule** of windowed dissipation
+  matters: the **R8** regression test (one channel scheduled first, then another,
+  vs the reverse) proves rescheduling which channel is active when changes the
+  result, so the library does not assume the dissipators commute. (Channels active
+  over the *same* window are simultaneous Lindblad terms — their list order is
+  irrelevant.) Per `WP/WP-02-two-mode-motional.md` (WI-3). `Depolarising` is
+  deferred (no canonical single-mode bosonic form).
 - **Dispatch EDF (additive part) — estimation/Darwinism literature-review note.**
   New `docs/estimation-darwinism-review.md` (Coastline / CC BY-SA 4.0): fixes the
   canonical definitions behind the service surface — SLD-QFI, classical Fisher /

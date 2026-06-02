@@ -18,7 +18,7 @@ import qutip
 
 from _helpers import _single_mode_hilbert
 from iontrap_dynamics import AmplitudeDamping, Dephasing, Heating
-from iontrap_dynamics.channels import build_collapse_operators
+from iontrap_dynamics.channels import build_collapse_operators, windowed_max_step
 from iontrap_dynamics.exceptions import ConventionError
 from iontrap_dynamics.observables import Observable
 from iontrap_dynamics.results import StorageMode
@@ -278,3 +278,17 @@ def test_windowed_channel_forces_mesolve():
         channels=[AmplitudeDamping(mode="b", rate=1000.0, window=(0.0, 5e-4))],
     )
     assert res.metadata.backend_name == "qutip-mesolve"
+
+
+def test_windowed_max_step_none_without_windows():
+    times = np.linspace(0.0, 1e-3, 11)
+    assert windowed_max_step([AmplitudeDamping(mode="b", rate=1.0)], times) is None
+    assert windowed_max_step([], times) is None
+
+
+def test_windowed_max_step_uses_union_of_times_and_endpoints():
+    # Output spacing 0.1; a short window between grid points -> the smallest gap
+    # in the union is the window duration (0.01), NOT the output spacing.
+    times = np.linspace(0.0, 1.0, 11)
+    ms = windowed_max_step([AmplitudeDamping(mode="b", rate=1.0, window=(0.53, 0.54))], times)
+    assert ms == pytest.approx(0.01, rel=1e-6)
