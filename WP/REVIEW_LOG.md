@@ -650,7 +650,7 @@ All oracles from WP-01 §4.4 are covered: independent at `c=0`, common-mode reje
 | Prior finding | Status |
 |---|---|
 | Round-6 #1: Collapse `per-file-ignores` to glob | **Resolved** — `information/*.py` glob applied in commit `c672804`. |
-| Round-6 #2: `redundancy.py` double `_ensure_density` | **Still open** — non-blocking; deferred to pre-release hygiene. |
+| Round-6 #2: `redundancy.py` double `_ensure_density` | **Resolved** — the pre-EDE stabilisation pass (commit `261bc1e`) added the private `_partial_information_from_density(rho, …)` helper; `redundancy` now calls `_ensure_density` exactly once (line 208) and passes `rho` straight to it (no second ket→ρ conversion). Verified in current source 2026-06-02. |
 | Round-6 #3: Test helper duplication (four-fold) | **Still open** — non-blocking; deferred to pre-release hygiene. |
 
 ### Non-blocking observations
@@ -659,7 +659,7 @@ All oracles from WP-01 §4.4 are covered: independent at `c=0`, common-mode reje
 
 2. **The `test_common_mode.py` `_drive` helper uses hard-coded `280e-9` wavelength.** This is the same laser wavelength used in other tests (carrier Rabi, etc.), so it's consistent. If the library ever changes its default wavelength, this helper would need updating — but it's a test helper, not a production default.
 
-3. **Benchmark tool naming consistency reminder.** Benchmark 5 in WP-01 §7 is still `run_demo_ghz_cat.py` while all others use `run_benchmark_*.py`. This was noted in Round 2 and remains unfixed. Not a blocker, but a one-line rename would clean it up before EDE starts.
+3. **Benchmark tool naming consistency reminder.** Benchmark 5 in WP-01 §7 is still `run_demo_ghz_cat.py` while all others use `run_benchmark_*.py`. This was noted in Round 2 and remains unfixed. Not a blocker, but a one-line rename would clean it up before EDE starts. **(Resolved in EDE: the tool landed as `run_benchmark_ghz_cat.py`; WP-01 §7 row 5 points at it.)**
 
 ### Recommendation
 
