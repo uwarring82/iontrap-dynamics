@@ -1,0 +1,62 @@
+# LICENCE — `WP/`
+
+This file declares the licence terms for the `WP/` directory, in line with the
+repository's **split-licence architecture** (root [`LICENCE`](../LICENCE), T(h)reehouse +EC
+Corporate Design rule CD 0.3, and Design Principle 12 of
+[`WORKPLAN_v0.3.md`](../WORKPLAN_v0.3.md)). It mirrors the per-folder declaration
+pattern of [`docs/LICENCE`](../docs/LICENCE) and [`assets/LICENCE`](../assets/LICENCE).
+
+## Terms
+
+All material in `WP/` is **project-governance / planning material on the Coastline
+track**, licensed **CC BY-SA 4.0** (`SPDX-License-Identifier: CC-BY-SA-4.0`),
+consistent with the root-level Coastline documents `WORKPLAN_v0.3.md` and
+`CONVENTIONS.md`.
+
+| Path | Layer | Licence | SPDX |
+|---|---|---|---|
+| `WP/README.md`, `WP/TEMPLATE.md`, `WP/LOGBOOK.md` | WP framework (governance) | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| `WP/WP-NN-*.md` | Per-card execution plans | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| `WP/FAIR.md` and other thematic side-cars | Planning side-cars | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| `WP/REVIEW_LOG.md` and other review notes | Review records | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+
+## Coastline / Sail tags vs the folder licence
+
+WP documents carry inline `*(Sail)*` / `*(Coastline)*` / `*(Coastline gate)*`
+section tags (CD 0.9). These mark which **lines** are revisable guidance versus
+binding gates **within** a document; they do **not** change the folder licence.
+The whole folder is CC BY-SA 4.0 because it is project-governance material — the
+same rationale under which `WORKPLAN_v0.3.md` is Coastline despite being a plan.
+
+Code, tests, and tooling that a WP *plans* are **not** governed by this file:
+they land under their own layer's licence per the root split (MIT for `src/`,
+`tests/`, `tools/`, `.github/`; CC BY-NC-SA 4.0 for Sail tutorials under
+`docs/tutorials/`). A WP document is the plan; the deliverable carries its own
+SPDX header.
+
+## Pending ratification — root `LICENCE` table
+
+The root [`LICENCE`](../LICENCE) "Summary of layers" table does not yet list
+`WP/` or `task cards/`. Until the maintainer ratifies the addition, this
+per-folder file is authoritative for `WP/`. The proposed root rows are:
+
+| Path | Layer | Licence | SPDX |
+|---|---|---|---|
+| `WP/` | WP framework, plans, logbook, side-cars (governance) | CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| `task cards/` | Incoming briefs (external handoffs) | per each card's own declaration | — |
+
+(`task cards/` content is authored upstream and arrives with its own status /
+endorsement language; it is not relicensed at the boundary. Each card states its
+own terms — see the card header.)
+
+## Maintainer
+
+U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg).
+
+---
+
+**Endorsement Marker.** Local candidate framework under active stewardship. No
+parity implied with externally validated laws. This declaration is a downstream
+application of the T(h)reehouse +EC Corporate Design blueprint (`cd-rules`,
+consumed via Model B) and reflects the epistemic structure of the project — not a
+claim of institutional authority.
