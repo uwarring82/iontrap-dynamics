@@ -32,8 +32,11 @@ from .exceptions import (
 from .information import (
     classical_fisher_information,
     cramer_rao_bound,
+    fragment_mutual_information,
     linear_gaussian_fisher,
+    partial_information_plot,
     quantum_fisher_information_trajectory,
+    redundancy,
 )
 from .measurement import (
     BernoulliChannel,
@@ -149,6 +152,7 @@ __all__ = [
     "effective_dimension",
     "entanglement_of_formation_trajectory",
     "eth_diagonal",
+    "fragment_mutual_information",
     "ghz_state",
     "ground_state",
     "imperfect_motional_ground",
@@ -157,11 +161,13 @@ __all__ = [
     "linear_gaussian_fisher",
     "load_trajectory",
     "log_negativity_trajectory",
+    "partial_information_plot",
     "perturb_carrier_rabi",
     "perturb_detuning",
     "perturb_phase",
     "phonon_number_diagonals",
     "quantum_fisher_information_trajectory",
+    "redundancy",
     "sample_outcome",
     "save_trajectory",
     "solve_spectrum",

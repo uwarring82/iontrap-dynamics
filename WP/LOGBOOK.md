@@ -124,6 +124,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 - **Outcome:** Landed; gates green (ruff / ruff-format / mypy --strict / 38 regression-analytic + full suite). **Consequence:** the §13 WORKPLAN dispatch-track stub is now **ready to paste**, but that edits the governed `WORKPLAN_v0.3.md`, so it awaits maintainer action. **Next:** WI-2 (EDB) Darwinism, WI-4 (EDD) common-mode, then EDF (review note + §19–22 staged into the shared v0.3 freeze).
 - **Links:** `benchmarks/data/qfi_scaling/` · `tools/run_benchmark_qfi_scaling.py` · `tests/regression/analytic/test_qfi_scaling.py` · `WP/WP-01-estimation-darwinism.md` §7 / §13 / §15 · CHANGELOG `[Unreleased]` (EDA bullet).
 
+### 2026-06-02 — WI-2 redundancy landed; recoverability deferred pending its measure-convention
+
+- **Refs:** WP-01 · EDB · WI-2 · §5 / §20 / EDF
+- **Stance:** Guardian (Design Principle 1 — conventions before code) with Architect follow-through (split EDB along the convention-certainty line).
+- **What:** Landed the **redundancy** half of WI-2 — `information/redundancy.py` (`fragment_mutual_information`, `partial_information_plot`, `redundancy` R_δ), verified on the GHZ-cascade Darwinism plateau (`I(S:F) = H_S`; `R_δ = N`). **Deferred** the **recoverability** half (`recoverability.py`) until its measure-convention is ratified.
+- **Why:** Redundancy rests on *standard, unambiguous* conventions (von Neumann mutual information; Zurek's R_δ deficit) — safe to code now. Recoverability does **not**: WP-01 §5 cites **five** candidate definitions (Knill–Laflamme; Schumacher–Nielsen coherent information; Petz recovery map; Fawzi–Renner; Bény–Oreshkov), and the repo's Design Principle 1 is *conventions before code*. Guessing a measure now risks rework when the §5 review note (EDF) pins §20. **Recommendation (for ratification):** the **Schumacher–Nielsen coherent information** `I_c(S⟩A) = S(ρ_A) − S(ρ_{S∪A})` as the recoverability/residual measure (clamped to ≥ 0 for the "recoverable quantum information" reading), giving exact erasure/dephasing endpoints (perfect recovery → H_S; full decoherence → 0; monotone between). Heavier alternative: a Petz / Fawzi–Renner recovery-*map* fidelity.
+- **Outcome:** redundancy landed (gates green; 869 passed). recoverability open — awaiting the maintainer's measure choice (or EDF). **Next:** WI-4 (EDD) common-mode channel is convention-light and unblocked, or ratify the recoverability measure to finish EDB.
+- **Links:** `src/iontrap_dynamics/information/redundancy.py` · `tests/unit/test_redundancy.py` · `WP/WP-01-estimation-darwinism.md` §4.2 / §5 · CHANGELOG `[Unreleased]` (EDB part).
+
 ---
 
 ## Dispatch-code registry *(Sail)*
@@ -133,7 +142,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | Code | Title | WP | CHANGELOG / WORKPLAN carrier | Status |
 |---|---|---|---|---|
 | **EDA** | WI-1 estimation `information/fisher.py` + keystone QFI-scaling benchmark | WP-01 | CHANGELOG `[Unreleased]` · WORKPLAN §5.4 | **landed 2026-06-02 — EDA complete** (module + benchmark) |
-| **EDB** | WI-2 Darwinism redundancy + recoverability | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
+| **EDB** | WI-2 Darwinism redundancy + recoverability | WP-01 | CHANGELOG `[Unreleased]` | redundancy landed 2026-06-02; recoverability deferred (convention) |
 | **EDC** | WI-3 `states.ghz_state` + `cat_mode` | WP-01 | CHANGELOG `[Unreleased]` | landed 2026-06-02 |
 | **EDD** | WI-4 `systematics/common_mode.py` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |
 | **EDE** | five generic benchmarks under `benchmarks/data/` | WP-01 | CHANGELOG `[Unreleased]` (at landing) | minted |

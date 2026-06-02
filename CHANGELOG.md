@@ -10,6 +10,19 @@ placeholder-only and did not follow semver.
 
 ### Added
 
+- **Dispatch EDB (part) — `information`: quantum-Darwinism redundancy.** New
+  `information/redundancy.py`: `fragment_mutual_information`
+  (`I(S:F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F})`, in bits), `partial_information_plot`
+  (the `I(S:F)`-vs-fragment-size curve over nested fragments), and `redundancy`
+  (`R_δ = N / f_δ`). All three re-exported from the package root.
+  Application-agnostic; conventions staged for CONVENTIONS §20 under the shared
+  v0.3 freeze. Verified in `tests/unit/test_redundancy.py` on the canonical
+  GHZ-cascade decoherence model: the Darwinism **plateau** `I(S:F) = H_S` (1
+  bit) for every non-empty proper fragment, jumping to 2 only at the full
+  environment, and `R_δ = N`. The **recoverability** half of Dispatch EDB is
+  deferred until its measure-convention is ratified (WP-01 §5 cites five
+  candidate definitions — conventions before code). Per
+  `WP/WP-01-estimation-darwinism.md` (WI-2).
 - **Dispatch EDC — `states`: GHZ and cat-state factories, and the `states`
   public surface.** `states.ghz_state(hilbert)` returns the N-ion GHZ ket
   `(|↑⟩^⊗N + |↓⟩^⊗N)/√2 ⊗ |0⟩^⊗M` (the Heisenberg-limit probe);

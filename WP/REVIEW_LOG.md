@@ -376,3 +376,85 @@ The test suite is comprehensive without being redundant. The QFI cross-check is 
 ### Recommendation
 
 **Build the keystone benchmark now.** The branch is in excellent shape — four clean commits, all gates green, 823 passed. WI-3 unblocked EDA and the cross-check already proves `ghz_state` → QFI = N². The next chunk (benchmark tool + report + plot + regression anchor) is well-defined and closes Dispatch EDA. No pause needed.
+
+---
+
+## Round 5 — 2026-06-02 (keystone benchmark + EDA completion review)
+
+Scope reviewed: branch `wp01-estimation-darwinism` (commits `5f9bad4`, `c0576a0` on top of Round 4), `tools/run_benchmark_qfi_scaling.py`, `tests/regression/analytic/test_qfi_scaling.py`, `benchmarks/data/qfi_scaling/report.json` + `arrays.npz`, `CHANGELOG.md`, `WP/LOGBOOK.md`, `WP/WP-01-estimation-darwinism.md`.
+
+### Overall assessment
+
+**Approved. Dispatch EDA is complete. Continue with WI-2 (EDB).**
+
+The keystone benchmark is the headline evidence for DoD-5 and it is impeccable: compute-only, deterministic, zero application framing, max error 1.4e-14, alt-text for WCAG, separate binding oracle preserving `test_analytic.py`'s QuTiP-free invariant. The framework updates (§7, §8, §13, §15, CHANGELOG, LOGBOOK, registry) are all precise and consistent. The branch has earned WI-2.
+
+### What was checked
+
+- `git show --stat 5f9bad4` — keystone benchmark + regression anchor (9 files, +394 / −9).
+- `git show --stat c0576a0` — Round-4 review log committed (1 file, +103).
+- Static reads of `run_benchmark_qfi_scaling.py` (216 lines), `test_qfi_scaling.py` (79 lines), `report.json` (77 lines).
+- `python3 -c np.load('arrays.npz')` — verified keys and floating-point values match report.json.
+- `git diff 5ef4f28 5f9bad4` — framework updates (WP-01 §7/§8/§13/§15, CHANGELOG, LOGBOOK, pyproject.toml).
+
+### Detailed observations
+
+#### 1. Benchmark tool (`run_benchmark_qfi_scaling.py`)
+
+**Compute-only, deterministic:** No `solve()`, no randomness, no `StorageMode.EAGER` cache-pair problem. Builds states directly and calls `quantum_fisher_information_trajectory`. This sidesteps the EAGER-vs-cache-v1 caveat entirely — the right shape for this benchmark.
+
+**Artifact set (`benchmarks/data/qfi_scaling/`):**
+- `report.json` — provenance + oracle + results + environment + alt-text. Contains all the essential fields: `scenario`, `purpose`, `workplan_reference`, `convention_version`, `backend_name`/`version`, `generator`, `n_values`, per-N `results`, `analytic_formulas`, `max_numerical_vs_analytic_error` (1.421e-14), `tolerance` (1e-9), `plot_alt_text`, `environment`, `generated_at`.
+- `arrays.npz` — `n_ions`, `qfi_ghz`, `qfi_product`, `analytic_ghz`, `analytic_product`. Verified that floating-point values match report.json exactly.
+- `plot.png` — log-log GHZ N² vs product N. Not inspected visually (image file), but the code uses standard matplotlib with proper labels, legend, and `tight_layout()`.
+
+**Alt-text:** Descriptive and suitable for WCAG Level A: "Log-log plot of quantum Fisher information versus qubit number N... The GHZ curve follows Heisenberg scaling N squared (slope 2); the product-state curve follows the standard quantum limit N (slope 1). The numerical points lie exactly on the analytic reference lines."
+
+**Graceful matplotlib skip:** `try/except ImportError` returns 0 if matplotlib is absent. This is the same pattern used in other benchmark tools. Good.
+
+**N sweep:** `N_VALUES = (1, 2, 3, 4, 5, 6)`. This is a reasonable range — large enough to show the scaling, small enough that the Hilbert space stays small (dim = 2^N, so N=6 is dim 64, trivial). The unit tests cover N=1..5; the benchmark adds N=6. Good.
+
+**per-file-ignores:** Registered in `pyproject.toml` for the benchmark tool. Good.
+
+#### 2. Regression oracle (`test_qfi_scaling.py`)
+
+**Kept separate from `test_analytic.py` — correct call.** `test_analytic.py` is deliberately QuTiP-free (it validates closed forms in `iontrap_dynamics.analytic` without a backend). The QFI oracle must construct quantum states, so it needs QuTiP. Both sit in the `regression_analytic` tier (`pytestmark = pytest.mark.regression_analytic`). This preserves the architectural invariant without forcing `test_analytic.py` to import QuTiP.
+
+**Named symbolic tolerance:** `ATOL_QFI_SCALING = 1e-9` — follows the migration-tier precedent of per-scenario symbolic tolerances.
+
+**Three test functions:**
+- `test_ghz_qfi_is_heisenberg_n_squared` — parametric `n_ions = [1,2,3,4,5]`.
+- `test_product_qfi_is_standard_quantum_limit_n` — parametric `n_ions = [1,2,3,4,5]`.
+- `test_ghz_qfi_is_n_times_product_qfi` — the scaling-gap test: `F_Q(GHZ) = N · F_Q(product)` for N=2..5. This is a stronger check than the individual oracle tests because it validates the *ratio* independently of absolute calibration.
+
+#### 3. Framework updates
+
+| File | What changed | Quality |
+|---|---|---|
+| `WP/WP-01-estimation-darwinism.md` §7 | Benchmark 1 marked ✓ **landed**; exact error 1.4e-14 noted; regression test location updated to `test_qfi_scaling.py` | Precise |
+| `WP/WP-01-estimation-darwinism.md` §8 | Regression-analytic tier now names `test_qfi_scaling.py` as sibling to `test_analytic.py`, with rationale | Clear |
+| `WP/WP-01-estimation-darwinism.md` §13 | "EDA complete 2026-06-02; stub ready to paste, awaiting maintainer" | Correct — WORKPLAN is governed |
+| `WP/WP-01-estimation-darwinism.md` §15 | EDA status → "landed 2026-06-02 — EDA complete" | Precise |
+| `CHANGELOG.md` | EDA bullet updated: benchmark landed, max error 1.4e-14, completes EDA | Good |
+| `WP/LOGBOOK.md` | New entry: EDA completion with rationale for test-file separation and artifact shape | Excellent — records the *why* |
+| `WP/LOGBOOK.md` registry | EDA status → "landed 2026-06-02 — EDA complete" | Precise |
+
+**The LOGBOOK entry for EDA completion is model-quality.** It records the one genuine decision: why the QFI oracle was placed in a new sibling file rather than `test_analytic.py`. This is exactly what the logbook is for — rationale that the CHANGELOG cannot hold.
+
+#### 4. One minor schema note
+
+WP-01 §7 prescribes `demo_report.json` (with `schema_version: 2`, `threshold_seconds`, `elapsed_seconds`, `parameters`, `canonical_request_hash`, etc.). The keystone benchmark uses `report.json` following the `sparse_vs_dense` compute-only precedent. The content is functionally equivalent — all essential oracle and provenance fields are present. The schema name difference is acceptable given the repo precedent, but if you want strict compliance with WP-01 §7, consider renaming to `demo_report.json` and adding `schema_version: 2` (with `canonical_request_hash` null or noted as "compute-only, no solve()"). This is a one-line rename + two-line addition. Not a blocker.
+
+### Non-blocking observations
+
+1. **Test helper duplication persists.** `test_qfi_scaling.py` defines its own `_spin_hilbert`, `_collective_jz`, and `_product_plus` — the same helpers that exist in `test_fisher.py` and `test_states_ghz_cat.py`. As noted in Round 4, consider a shared `tests/conftest.py` when the suite grows. The duplication is now three-fold.
+
+2. **Benchmark N range.** N=6 is the maximum (dim = 64). If you ever want to demonstrate scaling at larger N (e.g., N=8 or N=10), the benchmark will still run instantly because the SLD-QFI implementation is O(dim³) and dim=1024 at N=10 is ~1 second. No change needed now, but the tool can scale up easily if desired.
+
+3. **WORKPLAN paste.** The §13 stub is ready and correctly flagged as awaiting maintainer action. When you paste it, remember to bump the WORKPLAN header version line, footer `**Workplan version:**`, and Endorsement Marker in the same commit — the lock-step rule is important.
+
+### Recommendation
+
+**Continue with WI-2 (EDB).** Dispatch EDA is complete and the decoupling proof is established. The information/ umbrella is proven, the evaluator shape is exercised, and the helper layer (`_ensure_density`) is ready for WI-2's redundancy/recoverability modules. WI-2 (Darwinism) is the natural next chunk.
+
+The WORKPLAN §5.4 paste can happen asynchronously — it doesn't block coding. If you want to batch it, paste the stub right before or right after WI-2 lands, but don't let it hold up execution.
