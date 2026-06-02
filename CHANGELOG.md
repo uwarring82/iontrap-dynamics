@@ -8,6 +8,29 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-06-03
+
+**Release summary.** Two additive service surfaces plus the GPU spectrum backend,
+under the **v0.3 Convention Freeze**. The `iontrap_dynamics.information` surface
+(WP-01, dispatches EDA–EDF) adds classical/quantum Fisher information + Cramér–Rao,
+quantum-Darwinism redundancy & recoverability, GHZ/cat state factories, and a
+correlated common-mode channel — each application-agnostic and validated against a
+named analytic oracle. The two-mode / motional surface (WP-02 P0, dispatches
+MCA–MCC) adds the two-mode SU(1,1) squeezing Hamiltonian + beamsplitter, the
+two-mode squeezed-vacuum factory, and typed motional CPTP channels
+(`AmplitudeDamping` / `Heating` / `Dephasing`) exposed through `solve(channels=…)`
+with optional time-windowed (sequence-aware) application. `solve_spectrum` gains a
+device-neutral JAX backend (BBA) with a GPU envelope benchmark (BBB). `CONVENTIONS.md`
+seals §19–22 (estimation / Darwinism) and §23–24 (two-mode / motional), bumping
+`CONVENTION_VERSION` 0.2 → 0.3. **Additive only** — §1–18 conventions and every
+existing API are unchanged; new `backend=` / `channels=` arguments default to the
+prior behaviour, so `v0.4.0` callers see no change. Two literature-review notes
+(`docs/estimation-darwinism-review.md`, `docs/two-mode-motional-review.md`)
+document the new conventions.
+
+**Test surface at `v0.5.0`:** 1059 passed / 3 skipped (ruff, ruff-format,
+mypy --strict, mkdocs build --strict all green).
+
 ### Added
 
 - **WP-02 conventions-before-seal — two-mode / motional literature-review note.**
