@@ -151,6 +151,11 @@ def main() -> int:
             "Application-agnostic: textbook oracle only, no application framing."
         ),
         "workplan_reference": "WP/WP-01-estimation-darwinism.md (WI-1/WI-3, dispatch EDA)",
+        "schema_version": 2,
+        # Compute-only benchmark: no solve() trajectory, so no canonical cache
+        # request hash. Carried as null for schema parity with solve-based
+        # demo_report.json artefacts.
+        "canonical_request_hash": None,
         "convention_version": CONVENTION_VERSION,
         "backend_name": "qutip",
         "backend_version": qutip.__version__,

@@ -5,6 +5,7 @@
   },
   "backend_name": "qutip",
   "backend_version": "5.2.3",
+  "canonical_request_hash": null,
   "convention_version": "0.2",
   "environment": {
     "machine": "arm64",
@@ -14,7 +15,7 @@
     "qutip": "5.2.3",
     "scipy": "1.17.1"
   },
-  "generated_at": "2026-06-02T10:30:16.979033+00:00",
+  "generated_at": "2026-06-02T12:26:40.121883+00:00",
   "generator": "J_z = 0.5 * sum_i sigma_z_ion(i)",
   "max_numerical_vs_analytic_error": 1.4210854715202004e-14,
   "n_values": [
@@ -72,6 +73,7 @@
     }
   ],
   "scenario": "qfi_scaling",
+  "schema_version": 2,
   "tolerance": 1e-09,
   "workplan_reference": "WP/WP-01-estimation-darwinism.md (WI-1/WI-3, dispatch EDA)"
 }
