@@ -270,6 +270,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — **`v0.5.0` released** (release cut) — with a tag-placement incident, corrected
+
+- **Refs:** release v0.5.0 · WP-01 §10 release cut · `main` = `c294b5b`
+- **Stance:** Integrator (cut the release) with a Guardian recovery (a mis-placed tag, caught and corrected).
+- **What:** The 5-step release cut for `v0.5.0` (additive minor; package `0.4.0` → `0.5.0`): `[Unreleased]` backfill was already complete (BBA/BBB GPU + EDA–EDF + MCA–MCC + the `### Changed` bump); `pyproject` bumped; `CHANGELOG` rolled to `[0.5.0] — 2026-06-03` with a Release summary + `Test surface: 1059 passed / 3 skipped`; **Release commit `c294b5b`** (SemVer + compatibility justification); `main` fast-forwarded to it and pushed; annotated tag `v0.5.0`. Ships the estimation/Darwinism + two-mode/motional service surfaces and the GPU spectrum backend, under the v0.3 Convention Freeze. **WP-01 → Released; WP-02 P0 sealed on `main`.**
+- **Why (the incident worth recording — Guardian honesty):** the annotated tag `v0.5.0` was first created **on the wrong commit** — `git tag -a` was run while checked out on `main` at its *old* pre-WP HEAD (`beb7e07`), before the fast-forward, so the published tag pointed at content with `CONVENTION_VERSION "0.2"` and none of the release. Caught by verifying `v0.5.0^{commit}` against the release commit before recording closure (the trees differed). **Root cause:** tagging before fast-forwarding `main`. **Fix (maintainer-approved):** `git tag -d v0.5.0` → recreate `git tag -a v0.5.0 c294b5b` → `git push --force origin refs/tags/v0.5.0` (low blast-radius: just-pushed tag, interim-primary repo). Verified: local + remote `v0.5.0` now deref to `c294b5b` (CONVENTION_VERSION "0.3", `pyproject` "0.5.0"); `main` == `origin/main` == `v0.5.0` == `c294b5b`. **Lesson for the next release:** fast-forward `main` first, then tag the merge point (never tag from a stale `main`).
+- **Outcome:** `v0.5.0` release coherent on `main` + origin. **Next:** WP-02 F4–F7 (P1/P2, additive/non-gating) on a fresh branch off `main`.
+- **Links:** tag `v0.5.0` → `c294b5b` · `CHANGELOG.md` `[0.5.0]` · `WP/WP-01-estimation-darwinism.md` (Released) · `pyproject.toml` (`0.5.0`).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
