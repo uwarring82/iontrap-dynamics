@@ -24,9 +24,11 @@ systematics layer + registered entanglement observables), Phase 2
 Clos 2016 integration (full-Lamb–Dicke carrier dynamics, exact-
 diagonalization spectrum tools, four spectrum-analysis observables,
 N = 1 / 2 / 3 reproduction inside declared tolerances) are all
-shipped on `main`. `CONVENTIONS.md` stays frozen at v0.2 — no
-conventions-level changes through `v0.4.0`; the release adds
-capability surface without breaking the v0.2 schema. Existing
+shipped on `main`. `CONVENTIONS.md` was frozen at v0.2 through
+`v0.4.0` (capability surface added without breaking the v0.2 schema);
+post-`v0.4.0` on `main`, the **v0.3 Convention Freeze** adds §19–24
+(estimation / Darwinism; two-mode squeezing & motional channels) and
+bumps `CONVENTION_VERSION` 0.2 → 0.3 — additive, no behaviour change. Existing
 `v0.2.0` callers see no behaviour change: every new `backend=` kwarg
 defaults to `"qutip"`, every JAX-specific entry is behind
 `solve(backend="jax", ...)` or builder-level `backend="jax"`.
@@ -47,7 +49,8 @@ End-to-end stacks work dynamics-through-statistics, on either backend:
 
 Phase 0 + Phase 1 + Phase 2 artefacts delivered:
 
-- Public conventions frozen in `CONVENTIONS.md` v0.2 (§1–18 complete).
+- Public conventions frozen in `CONVENTIONS.md` v0.3 (§1–24 complete;
+  §19–24 added at the v0.3 Convention Freeze, post-`v0.4.0`).
 - Three-layer regression harness populated: migration (5 / 5 scenarios
   with legacy `qc.py`-generated references, bit-identical across
   three runs; 3 / 5 active comparisons, 2 / 5 skipped with
@@ -353,9 +356,10 @@ python -m pip install -e ".[dev,docs]"
   applied: §4.0 repo-hosting, §5.0 release-mapping, §5.1 v0.2
   release, §5.2 post-v0.2 on-`main`, §5.3 β.4 as v0.3.x
   follow-up)
-- `CONVENTIONS.md` — binding conventions document (v0.2 frozen:
+- `CONVENTIONS.md` — binding conventions document (v0.3 frozen:
   §17 measurement and §18 systematics closed at the v0.2.0 release;
-  unchanged through v0.4.0 — no conventions-level schema change)
+  §19–24 estimation/Darwinism + two-mode/motional closed at the v0.3
+  Convention Freeze, post-`v0.4.0`)
 - `CHANGELOG.md` — Keep-a-Changelog log of dispatches on `main`
 
 ## Licence

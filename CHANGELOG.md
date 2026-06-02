@@ -204,6 +204,19 @@ placeholder-only and did not follow semver.
   `docs/gpu-dispatch-design.md` §7 BBA. No schema change; no
   behaviour change for `backend_name = "spectrum-scipy"` callers.
 
+### Changed
+
+- **`CONVENTION_VERSION` bumped `0.2` → `0.3` — the v0.3 Convention Freeze.**
+  Seals `CONVENTIONS.md` §19–22 (estimation / Darwinism: Fisher information,
+  redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24
+  (two-mode squeezing / SU(1,1); motional CPTP channels) under a single
+  Convention Freeze gate. Every new `IonSystem` / `TrajectoryResult` now stamps
+  `metadata.convention_version = "0.3"`; existing callers see no behaviour change
+  (the new conventions are additive — §1–18 carry forward unchanged). Pinned by
+  `tests/conventions/test_convention_version.py`. The §13 doc reference to
+  `conventions_version` is corrected to the real field `convention_version` in
+  the same commit. Per `WP/FREEZE-v0.3.md` §3.
+
 ## [0.4.0] — 2026-04-24
 
 **Release summary.** Ships the Clos/Porras 2016 PRL integration

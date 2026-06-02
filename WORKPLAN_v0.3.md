@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3.5 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
+Version 0.3.7 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -419,6 +419,80 @@ time-dependent portion is scheduled for `v0.3.x` points.
 
 ---
 
+### 5.4 — Estimation & Darwinism service surface as v0.3.x follow-up (2026-06-02) *(Coastline, new in v0.3.6)*
+
+Added as the estimation/Darwinism service surface landed on `main` —
+`iontrap_dynamics.information` supplies the generic estimation and quantum-
+Darwinism primitives (CFI / SLD-QFI / Cramér–Rao; fragment mutual information,
+redundancy, recoverability). Records the scoping decision that the
+four-capability service surface (TC-ITD-ESTDARW-01) is a **v0.3.x follow-up**,
+not a `v0.3` blocker, and is orthogonal to the Phase 2 JAX track (§5.3) and to
+the `open-iontrap` org migration (§4.0). Executed via `WP/WP-01-estimation-darwinism.md`.
+
+**Scope.** Application-agnostic only: classical/quantum Fisher information +
+Cramér–Rao (WI-1); quantum-Darwinism redundancy + recoverability (WI-2);
+GHZ / cat state factories (WI-3); a correlated common-mode channel (WI-4). The
+six generic benchmarks (textbook oracles) are the decoupling proof.
+
+**Rationale.** Additive — every new symbol is well-defined on generic inputs
+(a state, a channel, a partition, a generator) and existing callers observe no
+behaviour change. CONVENTIONS §19–22 were drafted early and are **sealed at this
+v0.3 Convention Freeze** (this amendment's commit), with `CONVENTION_VERSION`
+bumped 0.2 → 0.3 once for the whole freeze (shared with §5.5 / WP-02 via
+`WP/FREEZE-v0.3.md`).
+
+**On `main` (as sealed).** Dispatches **EDA–EDF all landed**: the full library
+surface (WI-1 `information/fisher.py`, WI-2 `information/redundancy.py` +
+`recoverability.py`, WI-3 `states.ghz_state`/`cat_mode`, WI-4
+`systematics/common_mode.py`), all six `§7` benchmarks with binding
+`regression_analytic` anchors, the literature-review note
+`docs/estimation-darwinism-review.md`, and the **CONVENTIONS §19–22** sections
+sealed here.
+
+**Consequence for §5 above.** No re-scoping of Phase 2's target. This track is
+cut into a tagged release per the §10 release plan of WP-01, decoupled from the
+JAX time-dependent track of §5.3.
+
+---
+
+### 5.5 — Two-mode & motional open-system service surface as v0.3.x follow-up (2026-06-03) *(Coastline, new in v0.3.7)*
+
+Added as the two-mode / motional service surface (card `TC-iontrap-dynamics`,
+the undetected-modes dependency) reached its P0 milestone on `main`. Records the
+scoping decision that this surface is a **v0.3.x follow-up**, additive and
+orthogonal to Phase 2 (§5.3). Executed via `WP/WP-02-two-mode-motional.md`.
+
+**Scope.** Application-agnostic only: two-mode SU(1,1) squeezing Hamiltonian +
+beamsplitter (F1/WI-1); two-mode squeezed-vacuum factory (F2/WI-2); typed
+motional CPTP channels + `solve(channels=…)` (F3/WI-3, pivotal); plus the P1/P2
+additive surface (interferometric observables, Lamb–Dicke helpers, a probe-QFI
+that **consumes** WP-01's `information/fisher.py`, a motional mode-frequency
+drift). The service-module boundary (the library owns the forward model and
+general primitives) is the gating invariant.
+
+**Rationale.** Additive — every new symbol is well-defined on generic spin-motion
+inputs (a mode pair, a typed channel, a probe state). **CONVENTIONS §23–24**
+(two-mode squeezing / SU(1,1); motional CPTP channels) join the **same v0.3
+Convention Freeze** as §19–22, sealed here under the single `CONVENTION_VERSION`
+0.2 → 0.3 bump (the FREEZE-v0.3 §4 *Combined* decision, triggered now that the P0
+subset F1+F2+F3 has landed).
+
+**On `main` (as sealed).** The **P0 subset landed** — dispatches MCA
+(`hamiltonians.two_mode_squeezing_hamiltonian` + `beamsplitter_hamiltonian`), MCB
+(`states.two_mode_squeezed_vacuum`), MCC (`channels` + `solve(channels=…)`,
+windowed) — with binding `regression_analytic` anchors, the review note
+`docs/two-mode-motional-review.md`, and CONVENTIONS §23–24 sealed here.
+
+**Remaining sub-dispatches** (additive, non-gating, per `WP/WP-02-two-mode-motional.md`):
+MCD interferometric observables, MCE Lamb–Dicke helpers, MCF probe-QFI, MCG
+`ModeFrequencyDrift`.
+
+**Consequence for §5 above.** No re-scoping of Phase 2's target; lands additively
+toward the next minor release (`v0.5.0`), sharing the combined v0.3 Convention
+Freeze with §5.4.
+
+---
+
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
 
 **Deliverable:** repository skeleton with conventions, regression harness, canonical result schema, corporate-design bootstrap, one end-to-end example.
@@ -688,6 +762,6 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Council status:** Guardian cleared (scope honest, split licence protects downstream). Architect approved (configuration-layer architecture, Lamb–Dicke 3D-native, richer backend contract, three-layer physics/apparatus/observation separation, CD structural compliance). Scout horizon signals addressed (two-repo topology resolves bus-factor; Model B prevents design drift). Integrator has sequenced Phase 0: conventions → legacy-stability → schema → scaffolding → regression → example → corporate-design bootstrap.
 
-**Convention version:** references `CONVENTIONS.md` v0.2 (frozen 2026-04-21 at the `v0.2.0` release, closing §17 measurement layer and §18 systematics layer; §1–16 carry through unchanged from the v0.1 draft).
+**Convention version:** references `CONVENTIONS.md` v0.3 (the v0.2 freeze 2026-04-21 closed §17 measurement layer and §18 systematics layer; the **v0.3 freeze 2026-06-03** closes §19–22 estimation/Darwinism and §23–24 two-mode/motional, per §5.4/§5.5; §1–16 carry through unchanged from the v0.1 draft).
 **Corporate design version:** `cd-v1.7.1` (decision D2 closed 2026-04-23). Upstream `threehouse-plus-ec/cd-rules` cut `cd-v1.7.0` (at commit `8671c933`) and `cd-v1.7.1` (at commit `ee01c803`) on 2026-04-23, executing the "Tag repo" step of the upstream §15.4 deprecation protocol retroactively against the Version History entries in `blueprint-threehouse-CD.md` §16. `assets/SOURCE.md` now pins to `cd-v1.7.1`; the checksum table carries over unchanged from the provisional pin because the six asset files are byte-identical between 1.7.0 and 1.7.1. The CI hash-drift check (`cd-local-integrity`) is a permanent gate. References to `cd-v1.7.0` elsewhere in this document predate the tag-cutting action and remain the literal target-version language of the plan; the operational pin is one minor version ahead.
-**Workplan version:** 0.3.5 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); Phase 2 JAX-backend time-independent surface and twelve tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
+**Workplan version:** 0.3.7 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; Phase 2 JAX-backend time-independent surface and twelve tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.

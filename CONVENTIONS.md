@@ -2,11 +2,11 @@
 
 **Physical, numerical, and notational conventions for `iontrap-dynamics`**
 
-Version 0.2 · Drafted 2026-04-17 · Frozen 2026-04-21 · Status: v0.2 Convention Freeze
+Version 0.3 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · Status: v0.3 Convention Freeze
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
 **Licence:** CC BY-SA 4.0.
-**Scope:** Conventions covering §1–18. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze adds §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
+**Scope:** Conventions covering §1–24. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
 **Endorsement Marker:** Local candidate framework. No external endorsement implied.
 
 This document is authoritative. Every `IonSystem` records the `CONVENTIONS.md` version it was built against; every `TrajectoryResult` carries that version in its metadata. When code and this document disagree, this document wins and the code is the bug.
@@ -257,7 +257,7 @@ The motional Hilbert space of each mode is truncated at N_Fock. Convergence is m
 | Degraded quality | ε ≤ p_top < 10 · ε | Degradation warning (§15 Level 2) |
 | Truncation failure | p_top ≥ 10 · ε | Hard failure (§15 Level 3), typed exception |
 
-Users may override ε per call; the default is set in `conventions.py` and recorded in `TrajectoryResult.metadata.conventions_version`.
+Users may override ε per call; the default is set in `conventions.py` and recorded in `TrajectoryResult.metadata.convention_version`.
 
 ---
 
@@ -581,9 +581,155 @@ Because `compose_density` returns a density matrix, the downstream solver runs `
 
 ---
 
+## 19. Quantum and classical Fisher information
+**Status:** opened at Dispatch EDA (`src/iontrap_dynamics/information/fisher.py`). Definitions are fixed by `docs/estimation-darwinism-review.md` §2.
+
+### 19.1 Quantum Fisher information — SLD convention
+
+The library adopts the **symmetric logarithmic derivative (SLD)** quantum Fisher information. The SLD L_θ solves ∂_θ ρ_θ = ½(L_θ ρ_θ + ρ_θ L_θ), and the QFI is F_Q(θ) = Tr(ρ_θ L_θ²) — the Braunstein–Caves convention (four times the squared Bures metric). The right/left logarithmic-derivative and Kubo–Mori variants are **not** used. `quantum_fisher_information_trajectory` returns F_Q along a state trajectory under a supplied Hermitian generator.
+
+### 19.2 Classical Fisher information
+
+For an outcome distribution p(x; θ), the classical Fisher information is F_cl(θ) = Σ_x (∂_θ p(x; θ))² / p(x; θ). An outcome with p = 0 and ∂_θ p = 0 contributes zero (the 0/0 term is masked); a non-zero derivative at a zero-probability outcome is **rejected as ill-posed** (the CFI diverges), not silently dropped. `classical_fisher_information` takes probabilities and their parameter derivative.
+
+### 19.3 Cramér–Rao bound
+
+`cramer_rao_bound(fisher)` is **scalar-only**: it returns the single-shot bound 1/F for a positive scalar F (raising on non-finite or non-positive input). This release ships no matrix-CRB API; for a multi-parameter bound, invert the Fisher matrix from `linear_gaussian_fisher` directly. The ν-repetition scaling Var(θ̂) ≥ 1/(ν F) is the caller's responsibility — the library does not assume a repetition count.
+
+### 19.4 Linear-Gaussian closed form
+
+For a linear model with known design matrix A and known covariance Σ ≻ 0, `linear_gaussian_fisher` returns F = AᵀΣ⁻¹A (Σ checked positive-definite). The saturation inequality F_cl ≤ F_Q (Braunstein–Caves) holds for every measurement; the library computes CFI and QFI independently and does **not** enforce it internally — it is checked in the §19 regression benchmark (`test_cfi_linear_gaussian.py`).
+
+**Convention.** SLD-QFI; Fisher information carries the parameter's inverse-square unit (1/[θ]²) and is reparameterisation-covariant; CFI ≤ QFI for every measurement.
+**Cross-refs.** §3 (spin basis for the generator J_z); review note §2.
+**Test.** `tests/unit/test_fisher.py` (numerics, CFI ≤ QFI); `tests/regression/analytic/test_qfi_scaling.py` (QFI_GHZ = N², QFI_product = N); `tests/regression/analytic/test_cfi_linear_gaussian.py` (F = AᵀΣ⁻¹A).
+
+**§19 freeze.** Sections 19.1–19.4 received a complete read-through for the Convention Freeze gate at the v0.3 release. Post-freeze additions require a CONVENTIONS.md version bump.
+
+---
+
+## 20. Quantum Darwinism — redundancy and recoverability
+**Status:** opened at Dispatch EDB (`src/iontrap_dynamics/information/redundancy.py`, `src/iontrap_dynamics/information/recoverability.py`). Definitions are fixed by `docs/estimation-darwinism-review.md` §3.
+
+### 20.1 Fragment mutual information
+
+I(S : F) = S(ρ_S) + S(ρ_F) − S(ρ_{S∪F}), with the von Neumann entropy S(·) in **bits** (base-2 logarithm; the library's `_von_neumann_entropy_bits`). `fragment_mutual_information` operates on a system/fragment pair (`system_indices`, `fragment_indices`); `partial_information_plot` sweeps nested fragments `environment_indices[:f]` over a system/environment partition (`system_indices`, `environment_indices`). Both are keyword-only on a `hilbert` and require disjoint, in-range index sets.
+
+### 20.2 Redundancy — information-deficit convention
+
+The library adopts R_δ = N / N_δ (equivalently R_δ = 1 / f_δ), where N_δ is the smallest fragment **size** at which I(S : F) reaches (1 − δ)·H_S, N is the environment size, and f_δ = N_δ / N is the corresponding fragment fraction; δ is the caller-supplied information deficit. `redundancy` returns R_δ for a given δ (its implementation computes `N / k` with `k = N_δ`).
+
+### 20.3 Recoverability — clamped coherent information
+
+recoverability = max(0, S(ρ_A) − S(ρ_{S∪A})) in bits — the Schumacher–Nielsen coherent information I_c(S⟩A), floored at zero. This form is chosen over a fidelity- or relative-entropy-of-recovery measure because it is computed from two reduced-state entropies with no recovery-map optimisation and has exact closed-form endpoints. `recoverability` takes a state, the system indices, and the accessible indices.
+
+**Convention.** Entropies in bits; recoverability clamped at zero; redundancy is the deficit form R_δ = N/N_δ = 1/f_δ (N_δ the smallest qualifying fragment size).
+**Cross-refs.** §19 (shared entropy/partition machinery); review note §3.
+**Test.** `tests/unit/test_redundancy.py`, `tests/unit/test_recoverability.py` (endpoints + monotonicity); `tests/regression/analytic/test_darwinism_redundancy.py` (GHZ-cascade plateau, R_δ = N); `tests/regression/analytic/test_recoverability_channel.py` (Werner endpoints 0 → H_S).
+
+**§20 freeze.** Sections 20.1–20.3 received a complete read-through for the Convention Freeze gate at the v0.3 release. Post-freeze additions require a CONVENTIONS.md version bump.
+
+---
+
+## 21. GHZ and cat state conventions
+**Status:** opened at Dispatch EDC (`src/iontrap_dynamics/states.py`). Definitions are fixed by `docs/estimation-darwinism-review.md` §4.
+
+### 21.1 GHZ state and parity fringe
+
+`ghz_state(hilbert)` builds |GHZ_N⟩ = (|0…0⟩ + |1…1⟩)/√2 in the §3 spin basis. Under e^{−iφ J_z} the parity observable oscillates at N times the single-qubit rate: ⟨X^⊗N⟩ = cos(N φ).
+
+### 21.2 Cat state parity
+
+`cat_mode(fock_dim, alpha, *, parity="even")` builds the even/odd cat |α⟩ ± |−α⟩ in a truncated Fock space; the even (odd) state is the +1 (−1) eigenstate of photon parity. `ConventionError` is raised on `fock_dim ≤ 0`, a `parity` outside {`even`, `odd`}, a non-finite α, or a degenerate odd cat at α = 0 (vanishing norm).
+
+**Convention.** GHZ in the computational/§3 spin basis; cat parity sign maps even → +1, odd → −1; Fock truncation per §13 convergence.
+**Cross-refs.** §3 (spin basis), §13 (Fock truncation); review note §4.
+**Test.** `tests/unit/test_states_ghz_cat.py` (norm, parity, `ConventionError`); `tests/regression/analytic/test_ghz_cat_properties.py` (⟨X^⊗N⟩ = cos(Nφ); cat parity ±1).
+
+**§21 freeze.** Sections 21.1–21.2 received a complete read-through for the Convention Freeze gate at the v0.3 release. Post-freeze additions require a CONVENTIONS.md version bump.
+
+---
+
+## 22. Common-mode (shared-latent) phase channel
+**Status:** opened at Dispatch EDD (`src/iontrap_dynamics/systematics/common_mode.py`). Definitions are fixed by `docs/estimation-darwinism-review.md` §5.
+
+### 22.1 Channel definition
+
+`CommonModePhase(*, sigma_rad, correlation=1.0, label="common_mode_phase")` (a frozen, keyword-only dataclass) draws, per subsystem, offset_i = √c · ξ_shared + √(1 − c) · ξ_i with ξ_shared, ξ_i ~ 𝒩(0, σ²) and c = correlation ∈ [0, 1]. The marginal per-subsystem variance is σ² at every c. `perturb_common_mode` applies the shared draw across a list of drives.
+
+### 22.2 Difference-variance convention and the rejection limit
+
+Var(offset_0 − offset_1) = 2σ²(1 − c). At c = 0 the offsets are independent (variance 2σ²); at c = 1 the shared latent cancels exactly (variance 0) — common-mode rejection, the standard differential-measurement limit. The variance is monotone decreasing in c.
+
+**Convention.** Shared draw is `√c · ξ_shared + √(1−c) · ξ_i` (marginal variance σ² preserved across c); difference variance 2σ²(1−c); c = 1 is exact rejection, **measured, not enforced** (a broken draw would surface in the benchmark).
+**Cross-refs.** §18 (systematics layer — `PhaseJitter`, the stochastic per-drive Gaussian draw, is the c = 0 reduction; `PhaseDrift` is a *deterministic* offset and is not the limit here); review note §5.
+**Test.** `tests/unit/test_common_mode.py` (c = 0 reduces to independent draw; `dataclasses.replace` not mutation; `ValueError` on `shots < 1`); `tests/regression/analytic/test_common_mode_rejection.py` (2σ²(1−c); exact rejection at c = 1).
+
+**§22 freeze.** Sections 22.1–22.2 received a complete read-through for the Convention Freeze gate at the v0.3 release. Post-freeze additions require a CONVENTIONS.md version bump.
+
+---
+
+## 23. Two-mode squeezing / SU(1,1)
+**Status:** opened at Dispatch MCA (`src/iontrap_dynamics/hamiltonians.py`) and MCB (`src/iontrap_dynamics/states.py`). Definitions are fixed by `docs/two-mode-motional-review.md` §2.
+
+### 23.1 Two-mode squeeze operator and squeezed-vacuum factory
+
+The two-mode squeeze operator is `S₂(z) = exp(z* âb̂ − z â†b̂†)` with `z = r·e^{iθ}` — the two-mode partner of the single-mode squeeze (§6), **without** the ½ factor and π-period phase (two distinct modes). `states.two_mode_squeezed_vacuum(fock_dims, z)` returns `S₂(z)|0,0⟩`: the Schmidt state `Σₙ cₙ|n,n⟩` with `|cₙ| = tanhⁿr/cosh r`, per-mode `⟨n̂_a⟩ = ⟨n̂_b⟩ = sinh²|z|`. **This is defined explicitly, not via `qutip.squeezing`** (whose ½-convention gives `sinh²(|z|/2)`).
+
+### 23.2 Hamiltonian convention and phase/sign map
+
+`hamiltonians.two_mode_squeezing_hamiltonian` builds `H_TMS/ℏ = i g (e^{iφ} â†b̂† − e^{−iφ} âb̂)` (Hermitian; `g` in rad·s⁻¹, `φ` the squeezing phase). Evolving the vacuum for a time `τ` gives the two-mode squeezed vacuum with the **signed complex** parameter `z = −gτ·e^{iφ}` (magnitude `r = |z| = |g|τ`), per-mode `sinh²(gτ) = sinh²(|g|τ)`. `g` may be negative (a `π` phase shift); identical mode labels and non-finite `g`/`φ` raise.
+
+### 23.3 su(1,1) algebra and the conserved Casimir
+
+The generators `K̂₊ = â†b̂†`, `K̂₋ = âb̂`, `K̂₀ = ½(n̂_a + n̂_b + 1)` close su(1,1). The squeezing creates/annihilates excitations in **pairs**, so it commutes with the difference number `n̂_a − n̂_b` (the conserved Casimir label): a state seeded from the vacuum keeps `⟨n̂_a⟩ = ⟨n̂_b⟩`.
+
+### 23.4 Beamsplitter (SU(2))
+
+`hamiltonians.beamsplitter_hamiltonian` builds `H_BS/ℏ = J (e^{iφ} â†b̂ + e^{−iφ} âb̂†)` (the SU(2) partner), which conserves the **total** occupation `n̂_a + n̂_b`.
+
+**Convention.** Two-mode squeeze with no ½ factor (per-mode `sinh²|z|`); label-based mode embedding (agnostic to tensor ordering); `z = −gτ·e^{iφ}`; the two interacting modes must be distinct.
+**Cross-refs.** §6 (single-mode squeeze), §3 (spin basis), §11 (mode eigenvectors); review note §2.
+**Test.** `tests/unit/test_two_mode.py` (Hermiticity, conserved-charge commutators, validation); `tests/regression/analytic/test_two_mode_squeezing.py` (`sinh²` occupation, Casimir, factory↔Hamiltonian consistency incl. non-zero phase, beamsplitter total-number conservation).
+
+**§23 freeze.** Sections 23.1–23.4 received a complete read-through for the Convention Freeze gate at the v0.3 release. Post-freeze additions require a CONVENTIONS.md version bump.
+
+---
+
+## 24. Motional CPTP channels
+**Status:** opened at Dispatch MCC (`src/iontrap_dynamics/channels.py`, `src/iontrap_dynamics/sequences.py` `solve`). Definitions are fixed by `docs/two-mode-motional-review.md` §3.
+
+### 24.1 Lindblad parameterisation
+
+Typed motional channels are dissipators in Lindblad (GKSL) form `dρ/dt = −(i/ℏ)[H, ρ] + Σ_k (L_k ρ L_k† − ½{L_k†L_k, ρ})`, each contributing collapse operator(s) `L_k` on a **labelled mode** with rates in **s⁻¹**.
+
+### 24.2 The three dissipators
+
+- `AmplitudeDamping(*, mode, rate, window=None)` — `L = √κ·â` (zero-temperature; `⟨n̂⟩ → 0` as `e^{−κt}`).
+- `Heating(*, mode, rate, n_bar_bath, window=None)` — `L₋ = √(κ(n̄+1))·â`, `L₊ = √(κn̄)·â†` (relaxes to the bath, `⟨n̂⟩ → n̄`; the anomalous-heating model).
+- `Dephasing(*, mode, rate, window=None)` — `L = √γ·n̂` (coherence `ρ_{nm}` decays as `e^{−(γ/2)(n−m)²t}`; `⟨n̂⟩` unchanged).
+
+`Depolarising` is **deferred** — not a canonical single-mode bosonic dissipator.
+
+### 24.3 Solver routing
+
+`sequences.solve(…, channels=[…])` builds the collapse operators and forces the master-equation (`mesolve`) path. An **empty** `channels` leaves the solver byte-for-byte unchanged; `backend="jax"` and `solver="sesolve"` with dissipative channels raise.
+
+### 24.4 Sequence-aware (time-windowed) application
+
+A channel may carry `window=(t0, t1)` (half-open `[t0, t1)`); the dissipation is active only inside, via QuTiP's `[L, coeff]` time-dependent format (the `coeff` obeys the `QobjEvo` `f(t, args)` contract). What is order-dependent is the **temporal schedule**, not the `channels`-list order (same-window channels are simultaneous Lindblad terms) — the library does not assume the dissipators commute (the R8 boundary). When any channel is windowed, `solve` caps the integrator `max_step` at the smallest gap in the union of the output times and window endpoints, so a short window cannot be stepped over.
+
+**Convention.** Lindblad rates in s⁻¹; the collapse-operator map above; channels force `mesolve`; half-open windows; temporal-schedule (not list) order-dependence.
+**Cross-refs.** §18 (systematics layer); §13 (Fock truncation — heating must not saturate the truncation); review note §3.
+**Test.** `tests/unit/test_channels.py`; `tests/regression/analytic/test_motional_channels.py` (decay/heating/dephasing oracles, R8 non-commuting schedule, short-window-not-skipped).
+
+**§24 freeze.** Sections 24.1–24.4 received a complete read-through for the Convention Freeze gate at the v0.3 release. Post-freeze additions require a CONVENTIONS.md version bump.
+
+---
+
 ## Endorsement Marker
 
-**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §1–16 carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
+**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §19–22 (estimation / Darwinism: Fisher information, redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24 (two-mode squeezing / SU(1,1); motional CPTP channels) are closed under the v0.3 Convention Freeze; §1–16 carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
 
-**Convention version:** 0.2 · 2026-04-21 · v0.2 Convention Freeze.
-**Workplan reference:** `WORKPLAN_v0.3.md` §0.A.
+**Convention version:** 0.3 · 2026-06-03 · v0.3 Convention Freeze (§19–24).
+**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional).

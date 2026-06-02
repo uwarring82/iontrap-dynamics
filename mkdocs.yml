@@ -66,6 +66,8 @@ nav:
   - Conventions: conventions.md
   - Phase 1 Architecture: phase-1-architecture.md
   - Benchmarks: benchmarks.md
+  - "Literature Review — Estimation & Darwinism": estimation-darwinism-review.md
+  - "Literature Review — Two-Mode & Motional": two-mode-motional-review.md
   - Tutorials:
       - Overview: tutorials/index.md
       - "1. Carrier Rabi with shot-noise readout": tutorials/01_first_rabi_readout.md

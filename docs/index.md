@@ -59,7 +59,7 @@ change rather than a solver rewrite.
 
 <div class="status-strip" markdown>
 
-`CONVENTIONS.md` v0.2 frozen  
+`CONVENTIONS.md` v0.3 frozen  
 Result schema, cache format, three-layer regression harness  
 QuTiP reference backend + JAX / Dynamiqs opt-in backend  
 Strict package metadata, CI (lint + mypy strict + tests + pa11y WCAG 2 A)
