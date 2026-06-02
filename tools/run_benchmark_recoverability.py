@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
-"""Benchmark — recoverability of a dephased system+accessible qubit pair.
+"""Benchmark — recoverability of a noisy (Werner) system+accessible qubit pair.
 
 WP-01 §7 row 4 (dispatch EDE). Compute-only proof that the recoverability
 primitive (:func:`iontrap_dynamics.information.recoverability`, the clamped
 coherent information ``max(0, S(ρ_A) − S(ρ_{S∪A}))`` in bits) reproduces the
-textbook endpoints of a known-strength dephasing channel — with **zero
+textbook endpoints of a known-strength depolarizing-noise channel — with **zero
 application framing** (the oracle is textbook only).
 
 The channel is realised as the two-qubit Werner family
@@ -67,7 +67,7 @@ N_POINTS = 21  # uniform grid on [0, 1] including both endpoints
 
 PLOT_ALT_TEXT = (
     "Plot of recoverability in bits versus the Werner mixing parameter p for a "
-    "two-qubit dephasing channel rho(p) = p times the Bell state plus one minus "
+    "two-qubit depolarizing-noise channel rho(p) = p times the Bell state plus one minus "
     "p times the maximally mixed state I over four, with qubit zero the system "
     "and qubit one the accessible part. The curve is monotone non-decreasing: it "
     "is exactly zero at p = 0 (full decoherence), stays clamped at zero for small "
@@ -120,7 +120,7 @@ def main() -> int:
     # Monotonicity of the channel between the endpoints.
     monotone_nondecreasing = bool(np.all(np.diff(recov) >= -1e-12))
 
-    print(">>> Recoverability benchmark — Werner dephasing channel rho(p)")
+    print(">>> Recoverability benchmark — Werner depolarizing-noise channel rho(p)")
     print(f"{'p':>6} {'recoverability':>16}")
     print("-" * 24)
     for i in range(N_POINTS):
@@ -143,7 +143,7 @@ def main() -> int:
             "Compute-only proof of WP-01 §7 row 4: the recoverability primitive "
             "(clamped coherent information max(0, S(rho_A) - S(rho_{S union A})) "
             "in bits) reproduces the textbook endpoints of a known-strength "
-            "dephasing channel, realised as the two-qubit Werner family "
+            "depolarizing-noise channel, realised as the two-qubit Werner family "
             "rho(p) = p |Phi+><Phi+| + (1 - p) I/4 with system_indices=[0] and "
             "accessible_indices=[1]. Perfect recovery at p=1 gives H_S = 1 bit; "
             "full decoherence at p=0 gives 0; monotone non-decreasing between. "
@@ -175,6 +175,11 @@ def main() -> int:
             "decohered": "recoverability = 0",
         },
         "max_numerical_vs_analytic_error": max_error,
+        "max_error_scope": (
+            "endpoints p=0 and p=1 (the exact closed forms 0 and H_S); the "
+            "interior recoverability(p) has no simple closed form here and is "
+            "instead verified to be monotone non-decreasing in p"
+        ),
         "tolerance": 1e-9,
         "plot_alt_text": PLOT_ALT_TEXT,
         "environment": _environment(),
@@ -208,7 +213,7 @@ def main() -> int:
     )
     ax.set_xlabel("Werner mixing parameter $p$")
     ax.set_ylabel(r"recoverability $\max(0,\,S(\rho_A) - S(\rho_{S\cup A}))$ [bits]")
-    ax.set_title("Recoverability vs dephasing: 0 at decoherence, $H_S=1$ at recovery")
+    ax.set_title("Recoverability vs depolarizing-noise: 0 at decoherence, $H_S=1$ at recovery")
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.05, 1.05)
     ax.legend(frameon=False, fontsize=8)

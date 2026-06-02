@@ -19,12 +19,13 @@
     "qutip": "5.2.3",
     "scipy": "1.17.1"
   },
-  "generated_at": "2026-06-02T14:25:48.052684+00:00",
+  "generated_at": "2026-06-02T17:02:04.528940+00:00",
+  "max_error_scope": "endpoints p=0 and p=1 (the exact closed forms 0 and H_S); the interior recoverability(p) has no simple closed form here and is instead verified to be monotone non-decreasing in p",
   "max_numerical_vs_analytic_error": 3.3306690738754696e-16,
   "monotone_nondecreasing": true,
   "n_points": 21,
-  "plot_alt_text": "Plot of recoverability in bits versus the Werner mixing parameter p for a two-qubit dephasing channel rho(p) = p times the Bell state plus one minus p times the maximally mixed state I over four, with qubit zero the system and qubit one the accessible part. The curve is monotone non-decreasing: it is exactly zero at p = 0 (full decoherence), stays clamped at zero for small p, then rises smoothly to exactly one bit at p = 1 (perfect recovery), the full system entropy H_S.",
-  "purpose": "Compute-only proof of WP-01 §7 row 4: the recoverability primitive (clamped coherent information max(0, S(rho_A) - S(rho_{S union A})) in bits) reproduces the textbook endpoints of a known-strength dephasing channel, realised as the two-qubit Werner family rho(p) = p |Phi+><Phi+| + (1 - p) I/4 with system_indices=[0] and accessible_indices=[1]. Perfect recovery at p=1 gives H_S = 1 bit; full decoherence at p=0 gives 0; monotone non-decreasing between. Application-agnostic: textbook oracle only, no application framing.",
+  "plot_alt_text": "Plot of recoverability in bits versus the Werner mixing parameter p for a two-qubit depolarizing-noise channel rho(p) = p times the Bell state plus one minus p times the maximally mixed state I over four, with qubit zero the system and qubit one the accessible part. The curve is monotone non-decreasing: it is exactly zero at p = 0 (full decoherence), stays clamped at zero for small p, then rises smoothly to exactly one bit at p = 1 (perfect recovery), the full system entropy H_S.",
+  "purpose": "Compute-only proof of WP-01 §7 row 4: the recoverability primitive (clamped coherent information max(0, S(rho_A) - S(rho_{S union A})) in bits) reproduces the textbook endpoints of a known-strength depolarizing-noise channel, realised as the two-qubit Werner family rho(p) = p |Phi+><Phi+| + (1 - p) I/4 with system_indices=[0] and accessible_indices=[1]. Perfect recovery at p=1 gives H_S = 1 bit; full decoherence at p=0 gives 0; monotone non-decreasing between. Application-agnostic: textbook oracle only, no application framing.",
   "results": [
     {
       "p": 0.0,

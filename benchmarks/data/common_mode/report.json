@@ -4,6 +4,7 @@
   },
   "backend_name": "qutip",
   "backend_version": "5.2.3",
+  "c1_difference_variance_measured": 0.0,
   "canonical_request_hash": null,
   "convention_version": "0.2",
   "correlation_grid": [
@@ -25,7 +26,7 @@
     "qutip": "5.2.3",
     "scipy": "1.17.1"
   },
-  "generated_at": "2026-06-02T14:26:12.687542+00:00",
+  "generated_at": "2026-06-02T17:02:06.645354+00:00",
   "max_numerical_vs_analytic_error": 0.0001395931134756112,
   "phase_difference_invariance_at_c1": {
     "max_perturbed_phase_difference_deviation_rad": 2.220446049250313e-16,

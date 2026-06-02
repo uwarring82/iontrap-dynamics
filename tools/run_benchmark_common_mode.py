@@ -135,14 +135,13 @@ def main() -> int:
 
     analytic_var = 2.0 * SIGMA_RAD**2 * (1.0 - corr)
 
-    # Endpoint c=1 must cancel exactly: the shared latent is identical across the
-    # two subsystems, so offset_0 - offset_1 is identically zero before any
-    # sampling noise. Enforce the exact-zero contract.
+    # The c=1 difference variance is MEASURED, not enforced: at c=1 the shared
+    # latent is identical across both subsystems, so offset_0 - offset_1 is
+    # identically zero — a broken sample_offsets(c=1) would surface here rather
+    # than be masked by an overwrite. The error metric spans all c (the c=1
+    # cancellation included), so the artefact itself proves the rejection.
     c1_index = int(np.argmin(np.abs(corr - 1.0)))
-    measured_var[c1_index] = 0.0
-
-    interior = (corr > 0.0) & (corr < 1.0)
-    max_error = float(np.max(np.abs(measured_var[interior] - analytic_var[interior])))
+    max_error = float(np.max(np.abs(measured_var - analytic_var)))
 
     phase_check = _phase_difference_invariance_at_c1()
 
@@ -156,8 +155,8 @@ def main() -> int:
             f"{abs(measured_var[i] - analytic_var[i]):>12.2e}"
         )
     print("-" * 56)
-    print(f"max |measured - analytic| (interior 0<c<1) = {max_error:.2e}")
-    print(f"c=1 difference variance (exact) = {measured_var[c1_index]:.8f}")
+    print(f"max |measured - analytic| (all c, sampled) = {max_error:.2e}")
+    print(f"c=1 difference variance (measured) = {measured_var[c1_index]:.8f}")
     print(
         "c=1 perturb_common_mode phase-difference max deviation = "
         f"{phase_check['max_perturbed_phase_difference_deviation_rad']:.2e}"
@@ -206,6 +205,7 @@ def main() -> int:
             for i in range(len(CORRELATION_GRID))
         ],
         "phase_difference_invariance_at_c1": phase_check,
+        "c1_difference_variance_measured": float(measured_var[c1_index]),
         "analytic_formulas": {
             "difference_variance": "2 sigma^2 (1 - c)",
         },

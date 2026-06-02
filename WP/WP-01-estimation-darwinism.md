@@ -193,11 +193,11 @@ Each feature gets a generic benchmark following the repository harness: a `tools
 | # | Tool | Generic setup | Analytic oracle | Tolerance | Regression-test location |
 |---|---|---|---|---|---|
 | **1 — keystone** ✓ **landed** | `tools/run_benchmark_qfi_scaling.py` → `benchmarks/data/qfi_scaling/` | GHZ vs product probe, vs qubit number N, under `J_z = ½ Σ σ_z` | QFI_GHZ = N² (Heisenberg); QFI_product = N (SQL) | exact (max error 1.4e-14) | `tests/regression/analytic/test_qfi_scaling.py` (`ATOL_QFI_SCALING`, marker `regression_analytic`) |
-| **2** | `tools/run_benchmark_cfi_linear_gaussian.py` | Linear-Gaussian model, known A, Σ; single-qubit phase readout | `F = AᵀΣ⁻¹A`; CRB = F⁻¹; CFI ≤ QFI (Braunstein–Caves) | exact to numerical precision | `tests/regression/analytic/test_analytic.py` |
-| **3** | `tools/run_benchmark_darwinism_redundancy.py` | System-qubit + N environment-qubit decoherence model | mutual-information **plateau** ≈ H_S; classical-plateau R_δ shape | plateau height & onset within named `atol` | `tests/regression/analytic/test_analytic.py` |
-| **4** | `tools/run_benchmark_recoverability.py` | Erasure / dephasing channel of known strength | perfect recovery → residual = full; full decoherence → residual = 0; monotone between | endpoints exact; monotonicity holds | `tests/regression/analytic/test_analytic.py` |
-| **5** | `tools/run_benchmark_ghz_cat.py` | Parity and entanglement of the produced state | GHZ parity oscillates at N·φ; log-negativity / EoF via `entanglement` | matches analytic within named `atol` | `tests/regression/analytic/test_analytic.py` (parity/EoF closed form) |
-| **6** | `tools/run_benchmark_common_mode.py` | Two-subsystem correlated dephasing; sweep correlation 0 → 1 | corr = 0 reduces to independent `PhaseDrift`; corr = 1 cancels in the difference observable (common-mode rejection) | limiting cases exact | `tests/regression/analytic/test_analytic.py` + `tests/unit/` for the reduction limit |
+| **2** ✓ **landed** | `tools/run_benchmark_cfi_linear_gaussian.py` → `benchmarks/data/cfi_linear_gaussian/` | Linear-Gaussian model, known A, Σ; single-qubit phase readout | `F = AᵀΣ⁻¹A`; CRB = F⁻¹; CFI ≤ QFI (Braunstein–Caves) | exact (max error 6.7e-16) | `tests/regression/analytic/test_cfi_linear_gaussian.py` |
+| **3** ✓ **landed** | `tools/run_benchmark_darwinism_redundancy.py` → `benchmarks/data/darwinism_redundancy/` | GHZ-cascade: 1 system + N environment qubits | mutual-information **plateau** I(S:F) = H_S; redundancy R_δ = N | exact (max error 0) | `tests/regression/analytic/test_darwinism_redundancy.py` |
+| **4** ✓ **landed** | `tools/run_benchmark_recoverability.py` → `benchmarks/data/recoverability/` | Werner depolarizing-noise family ρ(p), p ∈ [0, 1] | perfect recovery → H_S; full decoherence → 0; monotone between | endpoints exact (6.7e-16); monotone | `tests/regression/analytic/test_recoverability_channel.py` |
+| **5** ✓ **landed** | `tools/run_benchmark_ghz_cat.py` → `benchmarks/data/ghz_cat/` | GHZ parity fringe under `e^{-iφ J_z}`; cat parity | `⟨X^⊗N⟩ = cos(Nφ)`; cat parity ±1 | exact (max error 4.4e-16) | `tests/regression/analytic/test_ghz_cat_properties.py` |
+| **6** ✓ **landed** | `tools/run_benchmark_common_mode.py` → `benchmarks/data/common_mode/` | Two-subsystem correlated dephasing; sweep correlation 0 → 1 | difference variance `2σ²(1 − c)`; `c = 0` independent, `c = 1` exact rejection | `c = 1` exact (measured, not enforced); sampled ≤ 1.4e-4 | `tests/regression/analytic/test_common_mode_rejection.py` |
 
 *Naming: all six tools use the `run_benchmark_` prefix for consistency with the section's opening contract. Benchmark 5 (GHZ/cat) validates **state properties** rather than runtime — a "demo" in the repo's `run_demo_*` parlance — but is named `run_benchmark_` here because it is a closed-form-oracle validation, and it emits the same canonical artefact set.*
 
@@ -217,7 +217,7 @@ Each feature gets a generic benchmark following the repository harness: a `tools
 |---|---|---|---|
 | **unit** | `tests/unit/test_*.py` | none | per-module: `test_fisher.py` (CFI/QFI/CRB/linear-Gaussian numerics, CFI ≤ QFI), `test_redundancy.py`, `test_recoverability.py` (endpoints + monotonicity), `test_states_ghz_cat.py` (norm, parity, ConventionError on `fock_dim <= 0`), `test_common_mode.py` (corr=0 reduces to independent draw; `dataclasses.replace` not mutation; `ValueError` on `shots < 1`) |
 | **conventions** | `tests/conventions/test_*.py` | `convention` | `test_convention_version.py` asserting `CONVENTION_VERSION == "0.3"`; new `src/` modules auto-scanned by `test_static_conventions.py` for the qutip-import / `sigmaz` bans (no action beyond compliance) |
-| **regression — analytic** | `tests/regression/analytic/test_analytic.py`; QFI oracle in the sibling `test_qfi_scaling.py` (kept separate to preserve `test_analytic.py`'s QuTiP-free invariant) | `regression_analytic` | the benchmark oracles as closed-form anchors: **QFI_GHZ = N², QFI_product = N landed** (`test_qfi_scaling.py`, `ATOL_QFI_SCALING`); `F = AᵀΣ⁻¹A`, Darwinism plateau, recoverability endpoints/monotonicity, GHZ parity / EoF to follow, each with a named symbolic `atol` |
+| **regression — analytic** | one sibling file per benchmark in `tests/regression/analytic/`, kept separate from the QuTiP-free `test_analytic.py` | `regression_analytic` | **all six benchmark oracles landed**, each with a named symbolic `atol`: `test_qfi_scaling.py` (QFI_GHZ = N², QFI_product = N), `test_cfi_linear_gaussian.py` (`F = AᵀΣ⁻¹A`, CFI ≤ QFI), `test_darwinism_redundancy.py` (plateau, R_δ = N), `test_recoverability_channel.py` (endpoints + monotonicity), `test_ghz_cat_properties.py` (GHZ `cos(Nφ)` fringe, cat parity), `test_common_mode_rejection.py` (`2σ²(1 − c)`, exact rejection) |
 
 Out of scope for this tier set: migration tier (Phase-0 only, retiring); invariant tier may optionally gain trace/positivity checks on produced GHZ/cat states but is not required by the card. No `--cov-fail-under` gate exists; coverage is reported only.
 
@@ -300,19 +300,20 @@ Reproducing the task-card 6-point DoD, plus the decoupling proof:
 
 ---
 
-## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — EDA complete 2026-06-02; stub ready to paste, awaiting maintainer)*
+## 13. Dispatch-track stub for `WORKPLAN_v0.3.md` *(Coastline gate — full library surface + all six benchmarks landed 2026-06-02; stub ready to paste, awaiting maintainer)*
 
-WP-01 is Ratified, dispatch **EDA** is minted, and **EDA is now fully landed** (estimation module + keystone benchmark on `main`, 2026-06-02). The stub below is therefore **ready to paste** — but pasting edits `WORKPLAN_v0.3.md`, a governed Coastline file, so it **awaits maintainer action** (not done unilaterally). To paste: insert it as the next free amendment subsection under §5 (after §5.3, current free slot §5.4 per the v0.3.x patch sequence) and update the header version line, the footer `**Workplan version:**` line, and the Endorsement Marker in lock-step in the same commit.
+WP-01 is Ratified, dispatch codes **EDA–EDF** are minted, and **EDA–EDE are now fully landed** on `main` (2026-06-02): the entire library surface (WI-1 Fisher/CRB, WI-2 Darwinism redundancy + recoverability, WI-3 GHZ/cat factories, WI-4 common-mode channel) and **all six §7 benchmarks** with their binding `regression_analytic` anchors. Only **EDF** (the additive literature-review note + the CONVENTIONS §19–22 freeze and `CONVENTION_VERSION` bump) and the release tag remain. The stub below is therefore **ready to paste** — but pasting edits `WORKPLAN_v0.3.md`, a governed Coastline file, so it **awaits maintainer action** (not done unilaterally). To paste: insert it as the next free amendment subsection under §5 (after §5.3, current free slot §5.4 per the v0.3.x patch sequence) and update the header version line, the footer `**Workplan version:**` line, and the Endorsement Marker in lock-step in the same commit.
 
 ```markdown
 ### 5.4 — Estimation & Darwinism service surface as v0.3.x follow-up (2026-06-02) *(Coastline, new in v0.3.6)*
 
-Added when Dispatch EDA landed on `main` — `iontrap_dynamics.information.fisher`
-supplies the first generic estimation primitive (CFI / SLD-QFI / Cramér–Rao).
-Records the scoping decision that the four-capability estimation/Darwinism
-service surface (TC-ITD-ESTDARW-01, Stream L of TMC-WP-0 v0.3) is a
-**v0.3.x follow-up**, not a `v0.3` blocker, and is orthogonal to the Phase 2
-JAX track (§5.3) and to the `open-iontrap` org migration (§4.0).
+Added as the estimation/Darwinism service surface landed on `main` —
+`iontrap_dynamics.information` supplies the generic estimation and quantum-
+Darwinism primitives (CFI / SLD-QFI / Cramér–Rao; fragment mutual information,
+redundancy, recoverability). Records the scoping decision that the
+four-capability service surface (TC-ITD-ESTDARW-01, Stream L of TMC-WP-0 v0.3)
+is a **v0.3.x follow-up**, not a `v0.3` blocker, and is orthogonal to the
+Phase 2 JAX track (§5.3) and to the `open-iontrap` org migration (§4.0).
 
 **Scope.** Application-agnostic only: classical/quantum Fisher information +
 Cramér–Rao (WI-1); quantum-Darwinism redundancy + recoverability (WI-2);
@@ -327,15 +328,21 @@ release, with `CONVENTION_VERSION` bumped 0.2 → 0.3; this matches the
 workplan's Convention-Freeze commitment without re-opening a phase.
 
 **On `main` toward the service surface at time of this amendment.**
-Dispatch EDA = WI-1 estimation module + keystone QFI-scaling benchmark
-(QFI_GHZ = N² vs QFI_product = N reproduced from closed forms).
+Dispatches **EDA–EDE landed**: the full library surface — WI-1 estimation module
+(`information/fisher.py`), WI-2 Darwinism (`information/redundancy.py`,
+`information/recoverability.py`), WI-3 GHZ / cat factories (`states.py`),
+WI-4 common-mode channel (`systematics/common_mode.py`) — plus **all six §7
+benchmarks** (QFI-scaling keystone, CFI linear-Gaussian, Darwinism redundancy,
+recoverability, GHZ/cat, common-mode), each with a binding `regression_analytic`
+anchor reproducing its textbook oracle (max error ≤ 1.4e-4 sampled, ≤ 1e-15 the
+rest).
 
 **Remaining sub-dispatches** (tracked for v0.3.x point releases, per
-`WP/WP-01-estimation-darwinism.md`): WI-2 Darwinism (redundancy +
-recoverability); WI-3 GHZ / cat factories in `states.py`; WI-4 common-mode
-channel in `systematics/`; the literature-review note
-`docs/estimation-darwinism-review.md`; CONVENTIONS §19–22 freeze + version
-bump; release tag (the handoff artefact the TMC application pins).
+`WP/WP-01-estimation-darwinism.md`): **EDF** — the additive literature-review
+note `docs/estimation-darwinism-review.md` and the CONVENTIONS §19–22 freeze
+with the `CONVENTION_VERSION` 0.2 → 0.3 bump (staged through the shared
+`WP/FREEZE-v0.3.md` side-car, sealed in coordination with WP-02); then the
+release tag (the handoff artefact the TMC application pins).
 
 **Consequence for §5 above.** No re-scoping of Phase 2's target; `v0.3`
 remains the Phase 2 milestone. This track lands under `[Unreleased]` and is
@@ -374,7 +381,7 @@ Dispatch codes for WP-01 were **minted at Ratification (2026-06-02)** as the fre
 | **EDE** | the remaining five generic benchmarks under `benchmarks/data/` | `- **Dispatch EDE — five generic benchmarks (CFI / Darwinism / recoverability / GHZ–cat / common-mode).**` | **landed 2026-06-02** — all five reproduce their oracles (≤ 1.4e-4 sampled / ≤ 1e-15); anchors in `tests/regression/analytic/` |
 | **EDF** | literature-review note + CONVENTIONS §19–22 **staged** into the shared v0.3 freeze (bump/seal owned by `WP/FREEZE-v0.3.md`) | `- **Dispatch EDF — CONVENTIONS §19–22 staged for the shared v0.3 freeze; review note.**` | minted |
 
-The §13 stub carries `EDA`. (This mirrors the §10 CHANGELOG plan; the keystone QFI benchmark ships with `EDA` as the decoupling proof, the other five benchmarks as `EDE`.)
+The §13 stub now carries the landed range `EDA–EDE` (full library surface + all six benchmarks), with only `EDF` (review note + §19–22 freeze) and the release tag outstanding. (This mirrors the §10 CHANGELOG plan; the keystone QFI benchmark ships with `EDA` as the decoupling proof, the other five benchmarks as `EDE`.)
 
 ## 16. Logbook hooks *(Sail)*
 
