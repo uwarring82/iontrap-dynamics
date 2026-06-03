@@ -209,7 +209,7 @@ Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the op
 | `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | **WI-3 complete 2026-06-02** (WI-3a: 3 dissipators + `solve(channels=…)`; WI-3b: time windows + R8 non-commuting test + integrator `max_step` fix; oracles green, 1025 tests) |
 | `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | minted |
 | `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | minted |
-| `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | minted |
+| `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | **landed 2026-06-03** (`wp02-f6-probe-qfi`; §8 resolved → **no new symbol**, consumes `fisher.py`; coherent 4\|α\|² / squeezed 2e^{∓2r} / 2sinh²(2r) closed forms + CFI=QFI saturation; benchmark + `test_probe_qfi.py`) |
 | `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | minted |
 
 ## 16. Logbook hooks *(Sail)*

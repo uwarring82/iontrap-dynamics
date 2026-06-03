@@ -1,0 +1,133 @@
+{
+  "analytic_formulas": {
+    "coherent_phase": "4 * |alpha|^2 (standard quantum limit)",
+    "shot_noise_floor": 2.0,
+    "squeezed_displacement_p": "2 * exp(+2r) (anti-squeezed)",
+    "squeezed_displacement_x": "2 * exp(-2r) (sub-shot-noise)",
+    "squeezed_phase": "2 * sinh(2r)^2"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "canonical_request_hash": null,
+  "cfi_saturation": {
+    "cfi_optimal": 0.9999999999999998,
+    "cramer_rao_bound": 1.0000000000000007,
+    "note": "|+> probe, J_z generator, sigma_y measurement (SLD eigenbasis): CFI = QFI = 1",
+    "qfi": 0.9999999999999993
+  },
+  "coherent": [
+    {
+      "alpha": 0.5,
+      "analytic_displacement": 2.0,
+      "analytic_phase": 1.0,
+      "qfi_displacement_p": 2.0000000000000018,
+      "qfi_displacement_x": 2.000000000000002,
+      "qfi_phase": 1.0000000000000013
+    },
+    {
+      "alpha": 1.0,
+      "analytic_displacement": 2.0,
+      "analytic_phase": 4.0,
+      "qfi_displacement_p": 2.0000000000000044,
+      "qfi_displacement_x": 2.0000000000000044,
+      "qfi_phase": 4.000000000000007
+    },
+    {
+      "alpha": 1.5,
+      "analytic_displacement": 2.0,
+      "analytic_phase": 9.0,
+      "qfi_displacement_p": 1.9999999999999962,
+      "qfi_displacement_x": 1.999999999999996,
+      "qfi_phase": 8.999999999999984
+    },
+    {
+      "alpha": 2.0,
+      "analytic_displacement": 2.0,
+      "analytic_phase": 16.0,
+      "qfi_displacement_p": 1.9999999999999947,
+      "qfi_displacement_x": 1.9999999999999987,
+      "qfi_phase": 15.999999999999964
+    }
+  ],
+  "convention_version": "0.3",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "fock_dim_coherent": 60,
+  "fock_dim_squeezed": 100,
+  "generated_at": "2026-06-03T10:51:06.621747+00:00",
+  "generators": {
+    "displacement_p": "p = (a - a^dag) / (i sqrt(2))",
+    "displacement_x": "x = (a + a^dag) / sqrt(2)",
+    "phase": "n_hat = a^dag a",
+    "qubit_phase": "J_z = 0.5 * sigma_z_ion"
+  },
+  "max_numerical_vs_analytic_error": 8.04039501645093e-10,
+  "plot_alt_text": "Plot of quantum Fisher information versus squeezing parameter r for a squeezed-vacuum probe under displacement sensing, on a logarithmic y-axis. The squeezed-quadrature generator x follows two times e to the minus two r, dipping below the horizontal shot-noise floor at two; the conjugate generator p follows two times e to the plus two r, rising above it. The numerical points lie exactly on the analytic reference curves.",
+  "purpose": "Probe QFI closed-form validation: a coherent probe's phase QFI follows the standard quantum limit 4|alpha|^2, while a squeezed-vacuum probe's displacement QFI drops below the shot-noise floor (2 e^-2r on the squeezed quadrature) and the optimal measurement saturates the Cramer-Rao bound (CFI = QFI). Consumes the WP-01 SLD-QFI primitive with no new symbol. Application-agnostic: textbook oracle only, no application framing.",
+  "scenario": "probe_qfi",
+  "schema_version": 2,
+  "squeezed": [
+    {
+      "analytic_p": 2.0,
+      "analytic_phase": 0.0,
+      "analytic_x": 2.0,
+      "qfi_p": 1.9999999999999996,
+      "qfi_phase": 0.0,
+      "qfi_x": 1.9999999999999996,
+      "r": 0.0
+    },
+    {
+      "analytic_p": 2.9836493952825407,
+      "analytic_phase": 0.3374349463048446,
+      "analytic_x": 1.3406400920712787,
+      "qfi_p": 2.983649395282538,
+      "qfi_phase": 0.3374349463048446,
+      "qfi_x": 1.3406400920712773,
+      "r": 0.2
+    },
+    {
+      "analytic_p": 4.451081856984936,
+      "analytic_phase": 1.5774644711948853,
+      "analytic_x": 0.8986579282344431,
+      "qfi_p": 4.451081856984939,
+      "qfi_phase": 1.577464471194887,
+      "qfi_x": 0.8986579282344445,
+      "r": 0.4
+    },
+    {
+      "analytic_p": 6.6402338454730945,
+      "analytic_phase": 4.556947166965506,
+      "analytic_x": 0.6023884238244043,
+      "qfi_p": 6.64023384547309,
+      "qfi_phase": 4.556947166965505,
+      "qfi_x": 0.6023884238244054,
+      "r": 0.6
+    },
+    {
+      "analytic_p": 9.90606484879023,
+      "analytic_phase": 11.286646200543862,
+      "analytic_x": 0.40379303598931077,
+      "qfi_p": 9.906064848790225,
+      "qfi_phase": 11.286646200543856,
+      "qfi_x": 0.4037930359893118,
+      "r": 0.8
+    },
+    {
+      "analytic_p": 14.7781121978613,
+      "analytic_phase": 26.308232836016483,
+      "analytic_x": 0.2706705664732254,
+      "qfi_p": 14.778112197739159,
+      "qfi_phase": 26.308232835212443,
+      "qfi_x": 0.27067056658720884,
+      "r": 1.0
+    }
+  ],
+  "tolerance": 1e-06,
+  "workplan_reference": "WP/WP-02-two-mode-motional.md (WI-6, dispatch MCF)"
+}
