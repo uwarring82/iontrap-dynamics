@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Systematics layer (Phase 1, v0.2 track — staged, not frozen).
+"""Systematics layer (Phase 1, v0.2 track — CONVENTIONS §18 frozen).
 
 Models the experimental imperfections named in ``WORKPLAN_v0.3.md``
 §5 Phase 1: drifts, jitter, and state-preparation errors. Unlike the
@@ -30,14 +30,15 @@ helpers that produce per-subsystem density matrices for composition
 via :func:`iontrap_dynamics.states.compose_density`. With jitter
 (stochastic, ensemble), drift (systematic, single-solve), and SPAM
 (state-prep) all in place, the ``CONVENTIONS.md`` §18 section is a
-complete read-through and froze under the v0.3 Convention Freeze.
+complete read-through and froze at the v0.2 release.
 
 Dispatch MCG (WP-02) extends the drift family with
 :class:`ModeFrequencyDrift` — the one *motional* drift, acting on
 :class:`~iontrap_dynamics.modes.ModeConfig.frequency_rad_s` rather than
 a :class:`DriveConfig` field, with the matching
 :func:`apply_mode_frequency_drift` helper. It is a further instance of
-the existing §18.4 drift contract (additive; no new convention).
+the existing (v0.2-frozen) §18.4 drift contract — landed under v0.3
+with no new convention.
 """
 
 from __future__ import annotations
