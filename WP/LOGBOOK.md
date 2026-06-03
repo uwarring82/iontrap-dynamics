@@ -333,6 +333,18 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — WP-02 CLOSURE: P1/P2 branches (MCD–MCG) integrated to `main` — WI-1…WI-7 complete
+
+- **Refs:** WP-02 · merge/release sequencing · `main`
+- **Stance:** Integrator (the maintainer-directed four-branch integration into `main`).
+- **What:** The four independent P1/P2 dispatch branches — `wp02-f4-observables` (MCD), `wp02-f5-lamb-dicke` (MCE), `wp02-f6-probe-qfi` (MCF), `wp02-f7-mode-drift` (MCG), all off `e11ccf5` — were merged into `main` via a throwaway `wp02-integration` branch (`--no-ff` per branch, then fast-forward `main`). Code files were disjoint and auto-merged; the only conflicts were the three accumulator docs (`CHANGELOG.md` `[Unreleased]`, `WP/LOGBOOK.md`, the WP-02 card registry), resolved by union (all four bullets/entries) and per-dispatch "landed" rows.
+- **Verification before `main` moved:** on the integrated tip — ruff check clean, mypy --strict clean (42 src files), **1159 passed / 3 skipped**, with the test count reconciling exactly (`main` 1059 + MCD 14 + MCE 40 + MCF 22 + MCG 24 = 1159; no double-count, no loss). All four `[Unreleased]` CHANGELOG bullets and the four "landed" registry rows present.
+- **Note (pre-existing, orthogonal):** `tests/_helpers.py` is byte-identical to `main` but a *local* ruff 0.15.11 flags a line-wrap in `_two_mode_hilbert` (shipped in v0.5.0); the merge changes nothing about that file, so it is a ruff-version drift to address separately, not a WP-02 regression.
+- **Outcome:** **WP-02 (card `TC-iontrap-dynamics`) execution complete** — WI-1…WI-7 all on `main`. P0 shipped in `v0.5.0`; P1/P2 (MCD–MCG) in `CHANGELOG [Unreleased]` for the next release tag. **Next:** the maintainer's release-tag decision for the `[Unreleased]` surface.
+- **Links:** merges `wp02-f4-observables` / `wp02-f5-lamb-dicke` / `wp02-f6-probe-qfi` / `wp02-f7-mode-drift` → `main` · `CHANGELOG.md` `[Unreleased]` · `WP/WP-02-two-mode-motional.md` (Status: COMPLETE).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
