@@ -202,7 +202,7 @@ building up the public surface incrementally:
 |     1 | Configuration objects (species, drives, modes), Hamiltonian builders, observables, measurement layer, systematics layer | Public dynamics surface |
 |     2 | JAX / Dynamiqs alternative backend on the same `solve()` call; performance benchmarks; cross-backend agreement to ≲ 10⁻³ | Backend agnosticism |
 |   v0.4| Reproduction of Clos et al. 2016 (PRL 117, 170401) on N = 1, 2, 3 ions inside declared tolerances; exact-diagonalization spectrum tools and four spectrum-analysis observables | First external validation |
-|   v0.5| Two reusable toolkits: parameter-estimation primitives (quantum Fisher information, Cramér–Rao bounds, GHZ / cat probe states, quantum-Darwinism redundancy) and two-mode / motional open-system tools (two-mode squeezing, motional decoherence channels inside the solver, interferometric fringe analysis, Lamb–Dicke regime helpers, mode-frequency drift) | Estimation + open-system surface |
+|   v0.5| Two reusable toolkits: parameter-estimation primitives (quantum Fisher information, Cramér–Rao bounds, GHZ / cat probe states, quantum-Darwinism redundancy) and two-mode / motional open-system tools — two-mode squeezing and motional decoherence channels inside the solver shipped in `v0.5.0`; interferometric fringe analysis, Lamb–Dicke regime helpers, and a mode-frequency drift were added on the `main` branch since, for the next tagged release | Estimation + open-system surface |
 
 The thirteen tutorials cover the canonical building blocks
 (Rabi, sidebands, π-pulses, MS gates), reach into less common

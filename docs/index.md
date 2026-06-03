@@ -68,8 +68,8 @@ Strict package metadata, CI (lint + mypy strict + tests + pa11y WCAG 2 A)
 
 At `v0.5.0` the library covers Phase 0, Phase 1, and Phase 2 in full,
 the Clos 2016 reproduction track, and two application-agnostic service
-surfaces (estimation / quantum Darwinism and two-mode / motional
-open-system primitives):
+surfaces — estimation / quantum Darwinism, and two-mode / motional
+open-system primitives (the latter rounded out on `main` post-`v0.5.0`):
 
 Foundation (Phase 0):
 
@@ -115,17 +115,22 @@ Performance + JAX backend (Phase 2):
   honest performance characterisation (null result at dim ≥ 100 /
   5000 steps on CPU) in `docs/benchmarks.md`.
 
-Estimation & open-system service surfaces (v0.5.0, §19–24):
+Estimation & open-system service surfaces (§19–24):
 
-- Estimation / quantum Darwinism: SLD quantum Fisher information,
-  classical Fisher information, Cramér–Rao bound, GHZ / cat probe
-  factories, redundancy and recoverability (`iontrap_dynamics.information`).
-- Two-mode / motional: SU(1,1) two-mode squeezing + beamsplitter builders,
-  the `two_mode_squeezed_vacuum` factory, typed motional CPTP channels
-  (`AmplitudeDamping` / `Heating` / `Dephasing`) wired through
-  `solve(channels=…)`, interferometric fringe observables, Lamb–Dicke
-  regime helpers (Debye–Waller + classifier + all-orders sideband-Rabi),
-  a consumed probe-QFI benchmark, and a `ModeFrequencyDrift` systematic.
+- Estimation / quantum Darwinism (in `v0.5.0`): SLD quantum Fisher
+  information, classical Fisher information, Cramér–Rao bound, GHZ / cat
+  probe factories, redundancy and recoverability
+  (`iontrap_dynamics.information`).
+- Two-mode / motional (in `v0.5.0`): SU(1,1) two-mode squeezing +
+  beamsplitter builders, the `two_mode_squeezed_vacuum` factory, and typed
+  motional CPTP channels (`AmplitudeDamping` / `Heating` / `Dephasing`)
+  wired through `solve(channels=…)`.
+- Completing the two-mode / motional surface (on `main`, post-`v0.5.0`,
+  carried in `CHANGELOG.md` `[Unreleased]` for the next tag): interferometric
+  fringe observables, Lamb–Dicke regime helpers (Debye–Waller + a
+  deep/intermediate/beyond classifier + all-orders sideband-Rabi), a probe-QFI
+  benchmark consuming the estimation primitive, and a `ModeFrequencyDrift`
+  systematic.
 
 ## Boundaries
 

@@ -377,10 +377,11 @@ python -m pip install -e ".[dev,docs]"
 - `docs/` — mkdocs-material source for the documentation site
 - `assets/` — design assets consumed from `threehouse-plus-ec/cd-rules`
 - `legacy/` — pinned legacy `qc.py` used by migration-tier regression
-- `WORKPLAN_v0.3.md` — project workplan (v0.3.5 amendments
+- `WORKPLAN_v0.3.md` — project workplan (v0.3.7 amendments
   applied: §4.0 repo-hosting, §5.0 release-mapping, §5.1 v0.2
   release, §5.2 post-v0.2 on-`main`, §5.3 β.4 as v0.3.x
-  follow-up)
+  follow-up, §5.4 estimation/Darwinism and §5.5 two-mode/motional
+  open-system surfaces)
 - `CONVENTIONS.md` — binding conventions document (v0.3 frozen:
   §17 measurement and §18 systematics closed at the v0.2.0 release;
   §19–24 estimation/Darwinism + two-mode/motional closed at the v0.3
