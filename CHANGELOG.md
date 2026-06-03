@@ -45,6 +45,20 @@ placeholder-only and did not follow semver.
   full-LD Hamiltonian numerics) and collapse to leading order as η→0. Per
   `WP/WP-02-two-mode-motional.md` (WI-5); refs Wineland et al. (1998),
   Leibfried et al. (2003).
+- **Dispatch MCF (WI-6) — probe-QFI benchmark (consumes the WP-01 Fisher
+  primitive).** A compute-only benchmark `tools/run_benchmark_probe_qfi.py` and
+  its binding oracle `tests/regression/analytic/test_probe_qfi.py`, validating
+  the SLD quantum Fisher information of coherent and squeezed-vacuum probes
+  against textbook closed forms: coherent phase `F_Q = 4|α|²` (standard quantum
+  limit), coherent displacement `F_Q = 2`, squeezed displacement `F_Q = 2e^{∓2r}`
+  (sub-shot-noise on the squeezed quadrature), squeezed phase `F_Q = 2 sinh²(2r)`,
+  and the qubit `|+⟩`/`J_z` case where the optimal measurement saturates the
+  Cramér–Rao bound (CFI = QFI = 1). **No new public symbol** — per the WP-02 §8
+  reuse rule, it consumes `quantum_fisher_information_trajectory` /
+  `classical_fisher_information` / `cramer_rao_bound` directly (a probe is a pure
+  state under unitary encoding, exactly the existing API's shape). No new
+  convention (cites CONVENTIONS §19). Per `WP/WP-02-two-mode-motional.md` (WI-6);
+  refs Braunstein & Caves (1994), Pezzè et al. (2018).
 
 ## [0.5.0] — 2026-06-03
 
