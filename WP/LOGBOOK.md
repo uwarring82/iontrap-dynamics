@@ -293,6 +293,18 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-03 — WI-5 landed (Dispatch MCE): Lamb–Dicke regime helpers — second post-v0.5.0 additive dispatch
+
+- **Refs:** WP-02 · WI-5 · MCE · card F5 · branch `wp02-f5-lamb-dicke` (off `main` = `e11ccf5`, independent of MCD's `wp02-f4-observables`)
+- **Stance:** Integrator (additive analytic surface) with a Guardian verification pass (a five-lens adversarial-refutation workflow before commit).
+- **What:** `analytic.debye_waller_factor` (`e^{−η²(2n̄+1)/2}`), `lamb_dicke_confinement` (`η²(2n̄+1)`), `lamb_dicke_regime` → **`LambDickeRegime`** (a `StrEnum`: `deep`/`intermediate`/`beyond` on module constants `LAMB_DICKE_DEEP_MAX = 0.1`, `LAMB_DICKE_INTERMEDIATE_MAX = 1.0`), and the all-orders sideband-Rabi forms `blue_/red_sideband_rabi_frequency_full_ld` (exact Wineland–Itano `|η|·e^{−η²/2}·|L_{n_<}^{(1)}(η²)|/√n_>·Ω`). Additive under CONVENTIONS v0.3 — no new convention. Gates green: ruff, ruff format, mypy --strict, **1099 passed** (+40), 3 skipped.
+- **How (two workflows):** an **understand** fan-out (5 agents: surface, conventions verdict, the shipped full-LD numerics, test idioms, an independent physics derivation) confirmed the design before code; a **five-lens adversarial-verify** fan-out (refute the DW exponent / Laguerre magnitudes / regime thresholds / API / test-honesty, each with its own brute-force `expm` oracle) hardened it before commit. The verify found the physics correct to ~1e-16 against four independent oracles but caught one real **test gap** via mutation testing: every test used η ≤ 0.5, where `L_n^{(1)}(η²)` stays positive, so the `abs()` on the Laguerre (the BEYOND-regime / Rabi-null feature) was never exercised — a mutation dropping it passed the suite. Closed with a high-η (0.9/1.0, negative-Laguerre) continuity test against the shipped operators in both branches; re-confirmed the mutation now fails. (Also a small doc nicety: the sideband "(magnitude)" applies to the matrix-element factor; the result inherits Ω's sign, as for the leading-order forms.)
+- **Why the design choices:** (1) **conventions-before-code cleared** — §10 defers "regime checks" to derived quantities, §17.11 seals only the Leibfried–Wineland ratio, §24 (motional, sealed) says nothing about Debye–Waller/regime; MCE adds no convention. (2) **StrEnum by precedent** — `results.StorageMode`/`species.TransitionType` already standardise `StrEnum`, so `LambDickeRegime` is idiom-consistent (members compare equal to their strings). (3) **Continuity by identity** — the shipped `_full_ld_carrier/raising/lowering_single_mode` ARE the exact Laguerre forms, so the all-orders helpers are validated *directly against the shipped operators* (machine precision) rather than a second drifting truth; the η²-Taylor approximant is documented but **not** shipped (it turns unphysical past the deep regime, exactly where the classifier matters).
+- **Outcome:** MCE landed on `wp02-f5-lamb-dicke`. **Next:** MCF (probe-QFI consuming WP-01 `fisher.py`), MCG (`ModeFrequencyDrift`). (MCD lives on `wp02-f4-observables`, pushed, review-clean, not yet merged — MCD/MCE are independent branches off `main`.)
+- **Links:** `src/iontrap_dynamics/analytic.py` (Lamb–Dicke regime helpers section) · `tests/regression/analytic/test_lamb_dicke_regime.py` · `tests/unit/test_lamb_dicke_regime.py` · refs Wineland et al. (1998), Leibfried et al. (2003).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
@@ -309,7 +321,7 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **MCB** | WI-2 `states.two_mode_squeezed_vacuum` | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (per-mode n̄ = sinh²\|z\|; Schmidt) |
 | **MCC** | WI-3 typed motional CPTP channels + `solve(channels=…)` (new `channels.py`) | WP-02 | CHANGELOG `[Unreleased]` | **WI-3 complete 2026-06-02** (WI-3a dissipators + solver wiring; WI-3b time windows + R8 test + `windowed_max_step` union-gap fix; review-round short-window-skip fix; 1028 tests) |
 | **MCD** | WI-4 interferometric observables (visibility, fringe phase) | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (`fringe_visibility` + `fit_fringe`; first post-v0.5.0 additive dispatch) |
-| **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
+| **MCE** | WI-5 Lamb–Dicke regime helpers (`analytic.py`) | WP-02 | CHANGELOG `[Unreleased]` | **landed 2026-06-03** (`wp02-f5-lamb-dicke`; DW `e^{−η²(2n̄+1)/2}`, `LambDickeRegime` StrEnum, exact-Laguerre sideband; adversarial-verify closed an abs() test gap; 1099 tests) |
 | **MCF** | WI-6 probe-QFI benchmark (**consumes** WP-01 `fisher.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P1, open |
 | **MCG** | WI-7 `ModeFrequencyDrift` (`systematics/drift.py`) | WP-02 | CHANGELOG `[Unreleased]` | minted 2026-06-02; P2, open |
 
