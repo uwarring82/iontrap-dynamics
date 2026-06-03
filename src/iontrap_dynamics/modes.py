@@ -80,8 +80,10 @@ class ModeConfig:
         if not self.label:
             raise ConventionError("label must be a non-empty string")
 
-        if self.frequency_rad_s <= 0.0:
-            raise ConventionError(f"frequency_rad_s must be positive; got {self.frequency_rad_s!r}")
+        if not np.isfinite(self.frequency_rad_s) or self.frequency_rad_s <= 0.0:
+            raise ConventionError(
+                f"frequency_rad_s must be a finite positive value; got {self.frequency_rad_s!r}"
+            )
 
         ev = np.asarray(self.eigenvector_per_ion, dtype=np.float64)
         object.__setattr__(self, "eigenvector_per_ion", ev)

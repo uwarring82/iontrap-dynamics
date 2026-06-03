@@ -210,7 +210,7 @@ Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the op
 | `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | **landed 2026-06-03** (`fringe_visibility` + `fit_fringe`/`FringeFit` in `observables.py`; oracles green) |
 | `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | **landed 2026-06-03** (DW `e^{−η²(2n̄+1)/2}` matches the thermal series + shipped full-LD carrier; `LambDickeRegime` StrEnum on η²(2n̄+1) at 0.1/1.0; exact-Laguerre sideband-Rabi continuous with shipped `_full_ld_*`) |
 | `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | **landed 2026-06-03** (`wp02-f6-probe-qfi`; §8 resolved → **no new symbol**, consumes `fisher.py`; coherent 4\|α\|² / squeezed 2e^{∓2r} / 2sinh²(2r) closed forms + CFI=QFI saturation; benchmark + `test_probe_qfi.py`) |
-| `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | minted |
+| `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | **landed 2026-06-03** (`wp02-f7-mode-drift`; multiplicative `ω_m → ω_m·(1+δ)` on `ModeConfig`, §18.4 contract, no new convention; η ∝ ω^{−1/2} → η₀/√(1+δ); finite+positive `ω_m` enforced by `ModeConfig`; §18.4 doc-mention **declined** — CONVENTIONS frozen, documented in docstring/LOGBOOK only) |
 
 ## 16. Logbook hooks *(Sail)*
 

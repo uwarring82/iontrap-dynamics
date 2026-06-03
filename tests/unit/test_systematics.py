@@ -17,6 +17,7 @@ import qutip
 from iontrap_dynamics import (
     DetuningDrift,
     DetuningJitter,
+    ModeFrequencyDrift,
     PhaseDrift,
     PhaseJitter,
     RabiDrift,
@@ -24,6 +25,7 @@ from iontrap_dynamics import (
     SpinPreparationError,
     ThermalPreparationError,
     apply_detuning_drift,
+    apply_mode_frequency_drift,
     apply_phase_drift,
     apply_rabi_drift,
     imperfect_motional_ground,
@@ -32,8 +34,10 @@ from iontrap_dynamics import (
     perturb_detuning,
     perturb_phase,
 )
+from iontrap_dynamics.analytic import lamb_dicke_parameter
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.exceptions import ConventionError
+from iontrap_dynamics.modes import ModeConfig
 
 
 def _drive(
@@ -485,6 +489,112 @@ class TestPhaseDrift:
         first = apply_phase_drift(base, d)
         second = apply_phase_drift(base, d)
         assert first.phase_rad == second.phase_rad
+
+
+# ----------------------------------------------------------------------------
+# ModeFrequencyDrift — motional mode-frequency drift (WP-02 WI-7, MCG)
+# ----------------------------------------------------------------------------
+
+_K_VEC = np.array([0.0, 0.0, 2.0 * np.pi / 355e-9])  # 355 nm drive along z
+_ION_MASS = 24.0 * 1.66053906660e-27  # ~Mg, kg (value irrelevant to the ratios)
+RTOL_MODE_DRIFT = 1e-12
+
+
+def _mode(frequency_rad_s: float = 2.0 * np.pi * 1.5e6) -> ModeConfig:
+    return ModeConfig(
+        label="axial",
+        frequency_rad_s=frequency_rad_s,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+    )
+
+
+def _eta(mode: ModeConfig) -> float:
+    return lamb_dicke_parameter(
+        k_vec=_K_VEC,
+        mode_eigenvector=mode.eigenvector_at_ion(0),
+        ion_mass=_ION_MASS,
+        mode_frequency=mode.frequency_rad_s,
+    )
+
+
+class TestModeFrequencyDrift:
+    def test_construction(self) -> None:
+        d = ModeFrequencyDrift(delta=0.01)
+        assert d.delta == 0.01
+        assert d.label == "mode_frequency_drift"
+
+    def test_negative_delta_accepted(self) -> None:
+        """Drift accepts either sign (above- or below-nominal)."""
+        assert ModeFrequencyDrift(delta=-0.05).delta == -0.05
+
+    def test_frozen(self) -> None:
+        d = ModeFrequencyDrift(delta=0.01)
+        with pytest.raises(FrozenInstanceError):
+            d.delta = 0.05  # type: ignore[misc]
+
+    def test_apply_scales_frequency(self) -> None:
+        drifted = apply_mode_frequency_drift(_mode(2.0e6), ModeFrequencyDrift(delta=0.03))
+        assert drifted.frequency_rad_s == 2.06e6
+
+    def test_zero_delta_is_identity(self) -> None:
+        base = _mode()
+        drifted = apply_mode_frequency_drift(base, ModeFrequencyDrift(delta=0.0))
+        assert drifted.frequency_rad_s == base.frequency_rad_s  # bit-exact: ×1.0
+        assert _eta(drifted) == _eta(base)
+
+    def test_apply_preserves_label_and_eigenvector(self) -> None:
+        base = _mode()
+        drifted = apply_mode_frequency_drift(base, ModeFrequencyDrift(delta=0.2))
+        assert drifted.label == base.label
+        assert np.array_equal(drifted.eigenvector_per_ion, base.eigenvector_per_ion)
+
+    def test_apply_deterministic(self) -> None:
+        base = _mode()
+        d = ModeFrequencyDrift(delta=0.07)
+        assert (
+            apply_mode_frequency_drift(base, d).frequency_rad_s
+            == apply_mode_frequency_drift(base, d).frequency_rad_s
+        )
+
+    @pytest.mark.parametrize("delta", [-0.5, -0.05, 0.01, 0.2])
+    def test_eta_follows_inverse_sqrt_law(self, delta: float) -> None:
+        # η ∝ ω^{−1/2}, so a drift δ rescales η to η₀ / √(1+δ) — magnitude only.
+        base = _mode()
+        eta0 = _eta(base)
+        drifted = apply_mode_frequency_drift(base, ModeFrequencyDrift(delta=delta))
+        assert _eta(drifted) == pytest.approx(eta0 / np.sqrt(1.0 + delta), rel=RTOL_MODE_DRIFT)
+        assert np.sign(_eta(drifted)) == np.sign(eta0)  # sign (k·b) unchanged
+
+    @pytest.mark.parametrize("delta", [-0.5, -0.05, 0.01, 0.2])
+    def test_drift_then_inverse_restores_frequency(self, delta: float) -> None:
+        # The multiplicative inverse of (1+δ) is δ_inv = −δ/(1+δ).
+        base = _mode()
+        forward = apply_mode_frequency_drift(base, ModeFrequencyDrift(delta=delta))
+        restored = apply_mode_frequency_drift(
+            forward, ModeFrequencyDrift(delta=-delta / (1.0 + delta))
+        )
+        assert restored.frequency_rad_s == pytest.approx(base.frequency_rad_s, rel=RTOL_MODE_DRIFT)
+
+    @pytest.mark.parametrize("bad", [-1.0, -1.5])
+    def test_delta_at_or_below_minus_one_raises(self, bad: float) -> None:
+        # ω_m·(1+δ) ≤ 0 is unphysical — ModeConfig rejects it (no phase-flip escape).
+        with pytest.raises(ConventionError, match="positive"):
+            apply_mode_frequency_drift(_mode(), ModeFrequencyDrift(delta=bad))
+
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_delta_raises(self, bad: float) -> None:
+        # A non-finite δ makes ω_m non-finite — ModeConfig rejects it (finiteness
+        # invariant), so the drift cannot fabricate an invalid mode.
+        with pytest.raises(ConventionError, match="frequency_rad_s"):
+            apply_mode_frequency_drift(_mode(), ModeFrequencyDrift(delta=bad))
+
+    def test_drift_scan_composes(self) -> None:
+        base = _mode(1.0e6)
+        drifted = [
+            apply_mode_frequency_drift(base, ModeFrequencyDrift(delta=d)) for d in (-0.1, 0.0, 0.1)
+        ]
+        freqs = np.array([m.frequency_rad_s for m in drifted])
+        np.testing.assert_allclose(freqs, [0.9e6, 1.0e6, 1.1e6])
 
 
 # ----------------------------------------------------------------------------

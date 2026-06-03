@@ -100,6 +100,17 @@ class TestValidation:
                 eigenvector_per_ion=_single_ion_axial_eigenvector(),
             )
 
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_frequency_rejected(self, bad: float) -> None:
+        # NaN/inf slip past a bare `<= 0` check (NaN comparisons are False), so
+        # the invariant must test finiteness explicitly.
+        with pytest.raises(ConventionError, match="frequency_rad_s"):
+            ModeConfig(
+                label="axial",
+                frequency_rad_s=bad,
+                eigenvector_per_ion=_single_ion_axial_eigenvector(),
+            )
+
     def test_wrong_shape_rejected(self) -> None:
         """Eigenvector must have shape (N_ions, 3), not flat (3,)."""
         with pytest.raises(ConventionError, match="shape"):

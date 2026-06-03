@@ -59,6 +59,22 @@ placeholder-only and did not follow semver.
   state under unitary encoding, exactly the existing API's shape). No new
   convention (cites CONVENTIONS §19). Per `WP/WP-02-two-mode-motional.md` (WI-6);
   refs Braunstein & Caves (1994), Pezzè et al. (2018).
+- **Dispatch MCG (WI-7) — systematics: motional mode-frequency drift.** A new
+  `ModeFrequencyDrift` drift primitive in `systematics/drift.py` (the motional
+  complement to `RabiDrift` / `DetuningDrift` / `PhaseDrift`, which drift only
+  drive parameters). `ModeFrequencyDrift(delta)` applies a multiplicative
+  relative offset `ω_m → ω_m·(1 + delta)` to a `ModeConfig` via
+  `apply_mode_frequency_drift(mode, drift)` (deterministic, single-config, no
+  RNG — the §18.4 drift contract). Multiplicative because ω_m is a positive
+  magnitude with no meaningful zero (like Ω, not an offset like a detuning), and
+  trap-frequency drift is conventionally fractional. Positivity (`ω_m > 0`) is
+  enforced by `ModeConfig` — `delta ≤ −1` raises `ConventionError`. The
+  Lamb–Dicke parameter follows `η ∝ ω_m^{−1/2}`, so a drift rescales it to
+  `η → η₀/√(1 + delta)` (magnitude only; sign preserved). Re-exported at the
+  package top level. Additive under CONVENTIONS v0.3, no new convention (a new
+  instance of the existing §18.4 drift taxonomy). Per
+  `WP/WP-02-two-mode-motional.md` (WI-7); the identifiability assembly remains
+  programme-side (out of scope).
 
 ## [0.5.0] — 2026-06-03
 
