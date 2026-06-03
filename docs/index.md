@@ -1,7 +1,7 @@
 # Welcome
 
 <section class="hero-panel">
-  <p class="hero-kicker">iontrap-dynamics · v0.4.0 — Clos 2016 reproduction landed</p>
+  <p class="hero-kicker">iontrap-dynamics · v0.5.0 — estimation + two-mode / motional surfaces landed</p>
   <h1>Open-system quantum dynamics for trapped-ion spin-motion systems</h1>
   <p class="hero-lede">
     A Python library for deterministic, typed, convention-explicit modelling of
@@ -66,8 +66,10 @@ Strict package metadata, CI (lint + mypy strict + tests + pa11y WCAG 2 A)
 
 </div>
 
-At `v0.4.0` the library covers Phase 0, Phase 1, and Phase 2 in full,
-plus the Clos 2016 reproduction track:
+At `v0.5.0` the library covers Phase 0, Phase 1, and Phase 2 in full,
+the Clos 2016 reproduction track, and two application-agnostic service
+surfaces (estimation / quantum Darwinism and two-mode / motional
+open-system primitives):
 
 Foundation (Phase 0):
 
@@ -112,6 +114,18 @@ Performance + JAX backend (Phase 2):
 - Cross-backend numeric equivalence validated at 1e-3 tolerance;
   honest performance characterisation (null result at dim ≥ 100 /
   5000 steps on CPU) in `docs/benchmarks.md`.
+
+Estimation & open-system service surfaces (v0.5.0, §19–24):
+
+- Estimation / quantum Darwinism: SLD quantum Fisher information,
+  classical Fisher information, Cramér–Rao bound, GHZ / cat probe
+  factories, redundancy and recoverability (`iontrap_dynamics.information`).
+- Two-mode / motional: SU(1,1) two-mode squeezing + beamsplitter builders,
+  the `two_mode_squeezed_vacuum` factory, typed motional CPTP channels
+  (`AmplitudeDamping` / `Heating` / `Dephasing`) wired through
+  `solve(channels=…)`, interferometric fringe observables, Lamb–Dicke
+  regime helpers (Debye–Waller + classifier + all-orders sideband-Rabi),
+  a consumed probe-QFI benchmark, and a `ModeFrequencyDrift` systematic.
 
 ## Boundaries
 

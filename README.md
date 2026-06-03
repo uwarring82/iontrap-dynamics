@@ -16,22 +16,30 @@ solver surface via `backend="jax"`.
 
 ## Status
 
-**v0.4.0 released 2026-04-24 — adds the Clos 2016 (PRL 117, 170401)
-reproduction track on top of the Phase 2 performance milestone.**
-Phase 0 foundations, Phase 1 (dynamics core + measurement layer +
-systematics layer + registered entanglement observables), Phase 2
-(performance track + JAX / Dynamiqs backend end-to-end), and the
-Clos 2016 integration (full-Lamb–Dicke carrier dynamics, exact-
-diagonalization spectrum tools, four spectrum-analysis observables,
-N = 1 / 2 / 3 reproduction inside declared tolerances) are all
-shipped on `main`. `CONVENTIONS.md` was frozen at v0.2 through
-`v0.4.0` (capability surface added without breaking the v0.2 schema);
-post-`v0.4.0` on `main`, the **v0.3 Convention Freeze** adds §19–24
-(estimation / Darwinism; two-mode squeezing & motional channels) and
-bumps `CONVENTION_VERSION` 0.2 → 0.3 — additive, no behaviour change. Existing
-`v0.2.0` callers see no behaviour change: every new `backend=` kwarg
-defaults to `"qutip"`, every JAX-specific entry is behind
-`solve(backend="jax", ...)` or builder-level `backend="jax"`.
+**v0.5.0 released 2026-06-03 — adds two application-agnostic service
+surfaces (estimation / quantum Darwinism, and two-mode / motional
+open-system primitives) plus a device-neutral JAX spectrum backend, all
+under the v0.3 Convention Freeze.** Phase 0 foundations, Phase 1
+(dynamics core + measurement layer + systematics layer + registered
+entanglement observables), Phase 2 (performance track + JAX / Dynamiqs
+backend end-to-end), the Clos 2016 integration (full-Lamb–Dicke carrier
+dynamics, exact-diagonalization spectrum tools, N = 1 / 2 / 3 reproduction
+inside declared tolerances), and the `v0.5.0` estimation + two-mode /
+motional surfaces are all shipped on `main`. `CONVENTIONS.md` is frozen at
+**v0.3** (§1–24; §19–24 — Fisher information / quantum Darwinism, two-mode
+squeezing / SU(1,1), and motional CPTP channels — added at the v0.3
+Convention Freeze, `CONVENTION_VERSION` 0.2 → 0.3). **Additive only:**
+existing `v0.2.0` callers see no behaviour change — every new `backend=`
+kwarg defaults to `"qutip"`, every `channels=` argument defaults to none,
+every JAX entry is behind an opt-in `backend="jax"`.
+
+Post-`v0.5.0` on `main` (carried in `CHANGELOG.md` `[Unreleased]`, awaiting
+the next tag), the two-mode / motional service surface is **complete**:
+interferometric fringe observables (MCD), Lamb–Dicke regime helpers —
+Debye–Waller factor, a deep/intermediate/beyond classifier, and the
+all-orders sideband-Rabi forms (MCE), a probe-QFI benchmark that consumes
+the estimation primitive (MCF), and a motional `ModeFrequencyDrift`
+systematic (MCG) — all additive under v0.3.
 
 End-to-end stacks work dynamics-through-statistics, on either backend:
 
@@ -73,7 +81,10 @@ Today the importable code surface covers:
 - `iontrap_dynamics.conventions` — `CONVENTION_VERSION` marker
 - `iontrap_dynamics.invariants` — density-matrix / state-vector validators
 - `iontrap_dynamics.analytic` — closed-form reference formulas (carrier
-  Rabi, sideband rates, Lamb–Dicke parameter, coherent-state occupation)
+  Rabi, sideband rates, Lamb–Dicke parameter, coherent-state occupation),
+  plus the Lamb–Dicke regime helpers (`debye_waller_factor`,
+  `lamb_dicke_regime` → `LambDickeRegime`, all-orders
+  `{red,blue}_sideband_rabi_frequency_full_ld`)
 
 **Configuration layer (Phase 1)**
 
@@ -87,12 +98,14 @@ Today the importable code surface covers:
 - `iontrap_dynamics.system` — `IonSystem` composition with cross-validation
 - `iontrap_dynamics.hilbert` — `HilbertSpace` implementing the §2 tensor
   ordering, operator embedding helpers, motional primitives (a, a†, n̂)
-- `iontrap_dynamics.states` — `ground_state` ket, `compose_density`, plus
+- `iontrap_dynamics.states` — `ground_state` ket, `compose_density`,
   `coherent_mode` / `squeezed_vacuum_mode` / `squeezed_coherent_mode`
-  factories (CONVENTIONS.md §6, §7)
+  factories (CONVENTIONS.md §6, §7), the two-mode `two_mode_squeezed_vacuum`
+  factory (§23), and the `ghz_state` / `cat_mode` entangled-probe factories
 - `iontrap_dynamics.observables` — named `Observable` records and
   `expectations_over_time(...)`; spin x/y/z, multi-ion parity
-  (`σ_z` product), plus mode number
+  (`σ_z` product), mode number, plus the interferometric fringe analysis
+  `fringe_visibility` / `fit_fringe` → `FringeFit`
 - `iontrap_dynamics.entanglement` — nonlinear trajectory evaluators
   for `concurrence`, `entanglement_of_formation`, and
   `log_negativity` (with `partition="spins" | "modes"` for
@@ -104,11 +117,19 @@ Today the importable code surface covers:
   `PhaseJitter` (additive on φ) with `perturb_*` ensemble
   helpers. Parallel drift primitives `RabiDrift`, `DetuningDrift`,
   `PhaseDrift` (deterministic single-value offsets) with
-  `apply_*_drift` composition helpers. SPAM primitives
+  `apply_*_drift` composition helpers — plus the motional
+  `ModeFrequencyDrift` (`ω_m → ω_m·(1+δ)` on a `ModeConfig`) and the
+  correlated `CommonModePhase` channel. SPAM primitives
   `SpinPreparationError`, `ThermalPreparationError` produce
   per-subsystem density matrices via `imperfect_spin_ground` /
   `imperfect_motional_ground` that compose into a full initial
   state via `states.compose_density`.
+- `iontrap_dynamics.information` — the estimation surface (§19–20):
+  SLD quantum Fisher information, classical Fisher information,
+  Cramér–Rao bound and a linear-Gaussian oracle
+  (`quantum_fisher_information_trajectory`, `classical_fisher_information`,
+  `cramer_rao_bound`), plus quantum-Darwinism redundancy and
+  Schumacher–Nielsen recoverability.
 
 **Dynamics (Phase 1, full builder family)**
 
@@ -122,12 +143,15 @@ The public Hamiltonian surface is symmetric across four families:
 | MS gate        | `ms_gate_hamiltonian`      | `detuned_ms_gate_hamiltonian`        |
 
 Plus `modulated_carrier_hamiltonian` (time-dependent envelope primitive),
-`two_ion_{red,blue}_sideband_hamiltonian` (single-tone shared-mode), and a
-`full_lamb_dicke: bool` flag on the sideband builders (Wineland–Itano
-all-orders operator via matrix exponentiation). Solver entry point:
-`iontrap_dynamics.sequences.solve(...)` — accepts both Qobj and QuTiP
-list-format Hamiltonians, enforces the §13 Fock-saturation ladder on
-every call.
+`two_ion_{red,blue}_sideband_hamiltonian` (single-tone shared-mode), the
+two-mode `two_mode_squeezing_hamiltonian` / `beamsplitter_hamiltonian`
+(SU(1,1) / SU(2), §23), and a `full_lamb_dicke: bool` flag on the sideband
+builders (Wineland–Itano all-orders operator via matrix exponentiation).
+Solver entry point: `iontrap_dynamics.sequences.solve(...)` — accepts both
+Qobj and QuTiP list-format Hamiltonians, enforces the §13 Fock-saturation
+ladder on every call, and accepts typed motional CPTP channels via
+`solve(channels=…)` (`iontrap_dynamics.channels`: `AmplitudeDamping`,
+`Heating`, `Dephasing`, with optional time windows; §24).
 
 **Measurement (Phase 1, v0.2 — frozen)**
 
@@ -249,9 +273,10 @@ Phase 2 sparse-matrix-tuning open item),
 QuTiP-vs-JAX at dim ≥ 100 / 5000 steps across all five
 time-dependent builders; needs the `[jax]` extras).
 
-Test suite at `v0.4.0`:
+Test suite on current `main` (v0.5.0 + the post-v0.5.0 two-mode / motional
+surface):
 
-- **Base CI (no extras): 883 passed, 3 skipped.** Two skipped
+- **Base CI (no extras): 1159 passed, 3 skipped.** Two skipped
   tests are migration-tier builder-comparison slots (scenarios 3
   and 4) with probe-informed blockers (see `CHANGELOG.md`); one
   skipped module is the Dynamiqs-gated integration test file
