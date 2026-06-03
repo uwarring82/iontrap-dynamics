@@ -8,6 +8,25 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+### Added
+
+- **Dispatch MCD (WI-4) — observables: interferometric fringe visibility +
+  phase.** New analysis primitives in `observables.py`: `fringe_visibility(signal)`
+  (model-free contrast `(S_max − S_min) / (S_max + S_min)` for a non-negative
+  readout signal) and `fit_fringe(scan_rad, signal)` (least-squares
+  `A + B·cos(θ − φ)` fit → a frozen `FringeFit` with `offset` / `amplitude` /
+  `phase_rad` / `visibility`). Application-agnostic post-processing of a
+  phase / parameter scan — the SU(1,1) interferometer assembly and any
+  resource-constrained benchmark stay programme-side (the WP-02 §1 boundary).
+  Additive under CONVENTIONS v0.3 (standard interferometric definitions, no new
+  convention). Oracles (`tests/regression/analytic/test_interferometric_visibility.py`)
+  are built from the §3 ion spin operators: a phase-scanned spin fringe
+  `P(θ) = (1 + cos θ)/2` → unit visibility at phase 0; a contrast loss →
+  visibility `e^{−Γ}`; and a `⟨σ_y⟩(θ) = +sin θ` quadrature fringe pinning the
+  §3 sign at phase `+π/2` (a `qutip.sigmaz` slip would give `−π/2`). Per
+  `WP/WP-02-two-mode-motional.md` (WI-4); first of the additive P1/P2 surface
+  after the v0.5.0 release.
+
 ## [0.5.0] — 2026-06-03
 
 **Release summary.** Two additive service surfaces plus the GPU spectrum backend,

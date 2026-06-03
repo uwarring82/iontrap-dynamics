@@ -207,7 +207,7 @@ Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the op
 | `MCA` | WI-1 two-mode SU(1,1) Hamiltonian (+ beamsplitter) | `- **Dispatch MCA — hamiltonians: two-mode squeezing (SU(1,1)) generator.**` | **landed 2026-06-03** (n̄ = sinh²(gτ), Casimir conserved; label-based embedding) |
 | `MCB` | WI-2 `two_mode_squeezed_vacuum` | `- **Dispatch MCB — states: two-mode squeezed-vacuum factory.**` | **landed 2026-06-03** (per-mode n̄ = sinh²\|z\|, Schmidt \|n,n⟩; matches MCA evolution) |
 | `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | **WI-3 complete 2026-06-02** (WI-3a: 3 dissipators + `solve(channels=…)`; WI-3b: time windows + R8 non-commuting test + integrator `max_step` fix; oracles green, 1025 tests) |
-| `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | minted |
+| `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | **landed 2026-06-03** (`fringe_visibility` + `fit_fringe`/`FringeFit` in `observables.py`; oracles green) |
 | `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | minted |
 | `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | minted |
 | `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | minted |
