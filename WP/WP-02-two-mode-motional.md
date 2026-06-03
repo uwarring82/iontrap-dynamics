@@ -210,7 +210,7 @@ Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the op
 | `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | minted |
 | `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | minted |
 | `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | minted |
-| `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | minted |
+| `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | **landed 2026-06-03** (`wp02-f7-mode-drift`; multiplicative `ω_m → ω_m·(1+δ)` on `ModeConfig`, §18.4 contract, no new convention; η ∝ ω^{−1/2} → η₀/√(1+δ); finite+positive `ω_m` enforced by `ModeConfig`; §18.4 doc-mention **declined** — CONVENTIONS frozen, documented in docstring/LOGBOOK only) |
 
 ## 16. Logbook hooks *(Sail)*
 

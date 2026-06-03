@@ -30,7 +30,14 @@ helpers that produce per-subsystem density matrices for composition
 via :func:`iontrap_dynamics.states.compose_density`. With jitter
 (stochastic, ensemble), drift (systematic, single-solve), and SPAM
 (state-prep) all in place, the ``CONVENTIONS.md`` §18 section is a
-complete read-through and freezes at the v0.2 release.
+complete read-through and froze under the v0.3 Convention Freeze.
+
+Dispatch MCG (WP-02) extends the drift family with
+:class:`ModeFrequencyDrift` — the one *motional* drift, acting on
+:class:`~iontrap_dynamics.modes.ModeConfig.frequency_rad_s` rather than
+a :class:`DriveConfig` field, with the matching
+:func:`apply_mode_frequency_drift` helper. It is a further instance of
+the existing §18.4 drift contract (additive; no new convention).
 """
 
 from __future__ import annotations
@@ -38,9 +45,11 @@ from __future__ import annotations
 from .common_mode import CommonModePhase, perturb_common_mode
 from .drift import (
     DetuningDrift,
+    ModeFrequencyDrift,
     PhaseDrift,
     RabiDrift,
     apply_detuning_drift,
+    apply_mode_frequency_drift,
     apply_phase_drift,
     apply_rabi_drift,
 )
@@ -63,6 +72,7 @@ __all__ = [
     "CommonModePhase",
     "DetuningDrift",
     "DetuningJitter",
+    "ModeFrequencyDrift",
     "PhaseDrift",
     "PhaseJitter",
     "RabiDrift",
@@ -70,6 +80,7 @@ __all__ = [
     "SpinPreparationError",
     "ThermalPreparationError",
     "apply_detuning_drift",
+    "apply_mode_frequency_drift",
     "apply_phase_drift",
     "apply_rabi_drift",
     "imperfect_motional_ground",
