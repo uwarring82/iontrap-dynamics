@@ -208,7 +208,7 @@ Fresh family **`MC`** (Motional Channels — capturing the pivotal F3 and the op
 | `MCB` | WI-2 `two_mode_squeezed_vacuum` | `- **Dispatch MCB — states: two-mode squeezed-vacuum factory.**` | **landed 2026-06-03** (per-mode n̄ = sinh²\|z\|, Schmidt \|n,n⟩; matches MCA evolution) |
 | `MCC` | WI-3 motional CPTP channels + `solve(channels=…)` | `- **Dispatch MCC — channels: typed motional CPTP channels exposed in solve().**` | **WI-3 complete 2026-06-02** (WI-3a: 3 dissipators + `solve(channels=…)`; WI-3b: time windows + R8 non-commuting test + integrator `max_step` fix; oracles green, 1025 tests) |
 | `MCD` | WI-4 interferometric observables | `- **Dispatch MCD — observables: fringe visibility + phase.**` | minted |
-| `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | minted |
+| `MCE` | WI-5 Lamb–Dicke regime helpers | `- **Dispatch MCE — analytic: Debye–Waller + regime classifier.**` | **landed 2026-06-03** (DW `e^{−η²(2n̄+1)/2}` matches the thermal series + shipped full-LD carrier; `LambDickeRegime` StrEnum on η²(2n̄+1) at 0.1/1.0; exact-Laguerre sideband-Rabi continuous with shipped `_full_ld_*`) |
 | `MCF` | WI-6 probe-QFI (consumes WP-01) | `- **Dispatch MCF — information: probe-QFI benchmark (consumes fisher).**` | minted |
 | `MCG` | WI-7 `ModeFrequencyDrift` | `- **Dispatch MCG — systematics: motional mode-frequency drift.**` | minted |
 

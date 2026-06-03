@@ -32,9 +32,12 @@ Sign conventions match ``CONVENTIONS.md``:
 
 from __future__ import annotations
 
+from enum import StrEnum
+
 import numpy as np
 import scipy.constants as const
 from numpy.typing import ArrayLike, NDArray
+from scipy.special import eval_genlaguerre
 
 #: Reduced Planck constant (CODATA). Re-exported here so the analytic module
 #: is self-contained for readers.
@@ -273,6 +276,268 @@ def blue_sideband_rabi_frequency(
     if n_initial < 0:
         raise ValueError(f"n_initial must be non-negative; got {n_initial}")
     return float(abs(lamb_dicke_parameter) * np.sqrt(n_initial + 1) * carrier_rabi_frequency)
+
+
+# ----------------------------------------------------------------------------
+# Lamb–Dicke regime helpers (Debye–Waller, regime classifier, all-orders
+# sideband Rabi) — Wineland et al. (1998), Leibfried et al. (2003)
+# ----------------------------------------------------------------------------
+
+#: Upper bound on the regime argument η²(2n̄+1) for the *deep* Lamb–Dicke
+#: regime. At η²(2n̄+1) = 0.1 the Debye–Waller carrier suppression
+#: e^{−η²(2n̄+1)/2} is 0.951 — under ~5 %, where the leading-order sideband
+#: Rabi formulas are accurate to a few percent.
+LAMB_DICKE_DEEP_MAX: float = 0.1
+
+#: Upper bound on η²(2n̄+1) for the *intermediate* regime; at or above 1.0 the
+#: carrier suppression is e^{−1/2} = 0.607 and the Laguerre series is no longer
+#: perturbative (the *beyond* regime).
+LAMB_DICKE_INTERMEDIATE_MAX: float = 1.0
+
+
+class LambDickeRegime(StrEnum):
+    """Qualitative Lamb–Dicke regime, classified from η²(2n̄+1).
+
+    Mirrors the ``StrEnum`` idiom used elsewhere in the package
+    (e.g. :class:`~iontrap_dynamics.results.StorageMode`). Members compare
+    equal to their string values, so ``regime is LambDickeRegime.DEEP`` and
+    ``regime == "deep"`` are both valid.
+    """
+
+    DEEP = "deep"
+    INTERMEDIATE = "intermediate"
+    BEYOND = "beyond"
+
+
+def _validate_regime_inputs(lamb_dicke_parameter: float, mean_phonon_number: float) -> None:
+    """Shared validation for the regime helpers: finite η, finite n̄ ≥ 0."""
+    if not np.isfinite(lamb_dicke_parameter):
+        raise ValueError(f"lamb_dicke_parameter must be finite; got {lamb_dicke_parameter}")
+    if not np.isfinite(mean_phonon_number):
+        raise ValueError(f"mean_phonon_number must be finite; got {mean_phonon_number}")
+    if mean_phonon_number < 0.0:
+        raise ValueError(f"mean_phonon_number must be non-negative; got {mean_phonon_number}")
+
+
+def lamb_dicke_confinement(
+    *,
+    lamb_dicke_parameter: float,
+    mean_phonon_number: float,
+) -> float:
+    """Return the Lamb–Dicke regime argument ``η²(2n̄+1)``.
+
+    The squared root-mean-square ratio ``(k·Δx_rms)²`` of the thermal
+    wavepacket extent to the drive wavelength: ``Δx_rms² = x_zpf²(2n̄+1)``, so
+    ``η²(2n̄+1) = (k·Δx_rms)²``. The deep Lamb–Dicke regime is η²(2n̄+1) ≪ 1
+    (Wineland et al. 1998; Leibfried et al. 2003). It is the natural classifier
+    variable because the Debye–Waller carrier suppression is exactly
+    ``e^{−η²(2n̄+1)/2}`` — see :func:`debye_waller_factor`.
+
+    Parameters
+    ----------
+    lamb_dicke_parameter
+        Lamb–Dicke parameter η, dimensionless. Sign is irrelevant — η² is
+        used (CONVENTIONS.md §10: |η| reserved for derived quantities).
+    mean_phonon_number
+        Mean motional occupation n̄ ≥ 0.
+
+    Returns
+    -------
+    float
+        The regime argument η²(2n̄+1), dimensionless and non-negative.
+
+    Raises
+    ------
+    ValueError
+        If ``mean_phonon_number`` is negative, or either input is non-finite.
+    """
+    _validate_regime_inputs(lamb_dicke_parameter, mean_phonon_number)
+    return float(lamb_dicke_parameter**2 * (2.0 * mean_phonon_number + 1.0))
+
+
+def lamb_dicke_regime(
+    *,
+    lamb_dicke_parameter: float,
+    mean_phonon_number: float,
+) -> LambDickeRegime:
+    """Classify the Lamb–Dicke regime from ``η²(2n̄+1)``.
+
+    - :attr:`LambDickeRegime.DEEP` — ``η²(2n̄+1) < LAMB_DICKE_DEEP_MAX`` (0.1):
+      carrier suppression < 5 %; the leading-order sideband Rabi formulas
+      (:func:`red_sideband_rabi_frequency`, :func:`blue_sideband_rabi_frequency`)
+      are trustworthy.
+    - :attr:`LambDickeRegime.INTERMEDIATE` — ``LAMB_DICKE_DEEP_MAX ≤ η²(2n̄+1)
+      < LAMB_DICKE_INTERMEDIATE_MAX`` (1.0): Debye–Waller suppression 5–40 %;
+      the all-orders forms (:func:`blue_sideband_rabi_frequency_full_ld`,
+      :func:`red_sideband_rabi_frequency_full_ld`) are needed for fidelity-grade
+      accuracy.
+    - :attr:`LambDickeRegime.BEYOND` — ``η²(2n̄+1) ≥ LAMB_DICKE_INTERMEDIATE_MAX``:
+      the Laguerre series is non-perturbative (Rabi-rate nulls appear); only the
+      all-orders closed form is valid.
+
+    Thresholds are the module constants :data:`LAMB_DICKE_DEEP_MAX` and
+    :data:`LAMB_DICKE_INTERMEDIATE_MAX`, tied to the Debye–Waller suppression
+    e^{−η²(2n̄+1)/2} crossing 0.951 and 0.607.
+
+    Parameters and Raises are as for :func:`lamb_dicke_confinement`.
+
+    Returns
+    -------
+    LambDickeRegime
+        ``DEEP``, ``INTERMEDIATE``, or ``BEYOND``.
+    """
+    confinement = lamb_dicke_confinement(
+        lamb_dicke_parameter=lamb_dicke_parameter,
+        mean_phonon_number=mean_phonon_number,
+    )
+    if confinement < LAMB_DICKE_DEEP_MAX:
+        return LambDickeRegime.DEEP
+    if confinement < LAMB_DICKE_INTERMEDIATE_MAX:
+        return LambDickeRegime.INTERMEDIATE
+    return LambDickeRegime.BEYOND
+
+
+def debye_waller_factor(
+    *,
+    lamb_dicke_parameter: float,
+    mean_phonon_number: float,
+) -> float:
+    """Return the Debye–Waller factor ``e^{−η²(2n̄+1)/2}``.
+
+    The thermal suppression of the carrier (Δn = 0) Rabi amplitude for an ion
+    in a thermal motional state of mean occupation n̄. Equivalently the thermal
+    average of the per-Fock carrier matrix element,
+
+        Σ_n p_n(n̄) · e^{−η²/2} L_n(η²) = e^{−η²(2n̄+1)/2},
+
+    with ``p_n(n̄) = n̄ⁿ / (n̄+1)^{n+1}`` (proven via the displacement-operator
+    characteristic function of a thermal state, or the Laguerre generating
+    function). The regression tests validate the closed form against this
+    truncated series and against the shipped full-Lamb–Dicke carrier operator.
+
+    Note the exponent is ``η²(2n̄+1)/2 = η²(n̄ + 1/2)``: the vacuum (n̄ = 0)
+    retains the zero-point suppression e^{−η²/2}, *not* unity.
+
+    References: Wineland et al. (1998) §IV; Leibfried et al. (2003) §III.
+
+    Parameters and Raises are as for :func:`lamb_dicke_confinement`.
+
+    Returns
+    -------
+    float
+        Debye–Waller factor in ``(0, 1]``.
+    """
+    confinement = lamb_dicke_confinement(
+        lamb_dicke_parameter=lamb_dicke_parameter,
+        mean_phonon_number=mean_phonon_number,
+    )
+    return float(np.exp(-confinement / 2.0))
+
+
+def blue_sideband_rabi_frequency_full_ld(
+    *,
+    carrier_rabi_frequency: float,
+    lamb_dicke_parameter: float,
+    n_initial: int,
+) -> float:
+    """Return the all-orders (full Lamb–Dicke) blue-sideband Rabi frequency.
+
+    ``Ω_{n→n+1} = |η| · e^{−η²/2} · |L_n^{(1)}(η²)| / √(n+1) · Ω``  (magnitude)
+
+    The exact Wineland–Itano matrix element of ``e^{iη(a+a†)}`` for the first
+    blue sideband |↓,n⟩ ↔ |↑,n+1⟩, of which :func:`blue_sideband_rabi_frequency`
+    (``|η|√(n+1)·Ω``) is the η→0 leading-order limit. This is the
+    "intermediate-order correction" that :func:`lamb_dicke_regime` flags as
+    required past the deep regime; it is continuous *by identity* with the
+    shipped ``full_lamb_dicke=True`` Hamiltonian builders.
+
+    The Rabi *rate* is a magnitude, so the associated Laguerre polynomial —
+    which changes sign past its first zero — enters as ``|L_n^{(1)}(η²)|``. The
+    first explicit correction term is ``|η|√(n+1)·(1 − (n+1)η²/2)·Ω``, but that
+    truncation turns unphysical (negative) once (n+1)η²/2 > 1, so the exact
+    closed form is exposed instead.
+
+    References: Wineland et al. (1998) Eq. (81); Leibfried et al. (2003) §III.
+
+    Parameters
+    ----------
+    carrier_rabi_frequency
+        Carrier Rabi frequency Ω, rad·s⁻¹.
+    lamb_dicke_parameter
+        Lamb–Dicke parameter η. Sign discarded (the rate is a magnitude).
+    n_initial
+        Initial Fock level n ≥ 0.
+
+    Returns
+    -------
+    float
+        Blue-sideband Rabi frequency, rad·s⁻¹. The "(magnitude)" applies to the
+        matrix-element factor (``|η|·e^{−η²/2}·|L|/√(n+1)``); like the
+        leading-order forms, the result carries the sign of
+        ``carrier_rabi_frequency``.
+
+    Raises
+    ------
+    ValueError
+        If ``n_initial < 0`` or ``lamb_dicke_parameter`` is non-finite.
+    """
+    if n_initial < 0:
+        raise ValueError(f"n_initial must be non-negative; got {n_initial}")
+    if not np.isfinite(lamb_dicke_parameter):
+        raise ValueError(f"lamb_dicke_parameter must be finite; got {lamb_dicke_parameter}")
+    eta = abs(lamb_dicke_parameter)
+    laguerre = abs(float(eval_genlaguerre(n_initial, 1, eta**2)))
+    matrix_element = eta * np.exp(-(eta**2) / 2.0) * laguerre / np.sqrt(n_initial + 1)
+    return float(matrix_element * carrier_rabi_frequency)
+
+
+def red_sideband_rabi_frequency_full_ld(
+    *,
+    carrier_rabi_frequency: float,
+    lamb_dicke_parameter: float,
+    n_initial: int,
+) -> float:
+    """Return the all-orders (full Lamb–Dicke) red-sideband Rabi frequency.
+
+    ``Ω_{n→n−1} = |η| · e^{−η²/2} · |L_{n−1}^{(1)}(η²)| / √n · Ω``  (magnitude),
+    and exactly 0 for ``n_initial = 0`` (the vacuum cannot lose a phonon).
+
+    The exact counterpart of the leading-order
+    :func:`red_sideband_rabi_frequency` (``|η|√n·Ω``), which is its η→0 limit.
+    See :func:`blue_sideband_rabi_frequency_full_ld` for the magnitude/sign and
+    continuity notes; here the coupling is |↓,n⟩ ↔ |↑,n−1⟩.
+
+    References: Wineland et al. (1998) Eq. (81); Leibfried et al. (2003) §III.
+
+    Parameters
+    ----------
+    carrier_rabi_frequency
+        Carrier Rabi frequency Ω, rad·s⁻¹.
+    lamb_dicke_parameter
+        Lamb–Dicke parameter η. Sign discarded (the rate is a magnitude).
+    n_initial
+        Initial Fock level n ≥ 0. Returns 0 exactly at ``n_initial = 0``.
+
+    Returns
+    -------
+    float
+        Red-sideband Rabi frequency, rad·s⁻¹. Zero when ``n_initial == 0``.
+
+    Raises
+    ------
+    ValueError
+        If ``n_initial < 0`` or ``lamb_dicke_parameter`` is non-finite.
+    """
+    if n_initial < 0:
+        raise ValueError(f"n_initial must be non-negative; got {n_initial}")
+    if not np.isfinite(lamb_dicke_parameter):
+        raise ValueError(f"lamb_dicke_parameter must be finite; got {lamb_dicke_parameter}")
+    if n_initial == 0:
+        return 0.0
+    eta = abs(lamb_dicke_parameter)
+    laguerre = abs(float(eval_genlaguerre(n_initial - 1, 1, eta**2)))
+    matrix_element = eta * np.exp(-(eta**2) / 2.0) * laguerre / np.sqrt(n_initial)
+    return float(matrix_element * carrier_rabi_frequency)
 
 
 # ----------------------------------------------------------------------------
@@ -535,15 +800,23 @@ def coherent_state_mean_n(alpha: complex) -> float:
 
 __all__ = [
     "HBAR",
+    "LAMB_DICKE_DEEP_MAX",
+    "LAMB_DICKE_INTERMEDIATE_MAX",
+    "LambDickeRegime",
     "blue_sideband_rabi_frequency",
+    "blue_sideband_rabi_frequency_full_ld",
     "carrier_rabi_excited_population",
     "carrier_rabi_sigma_z",
     "coherent_state_mean_n",
+    "debye_waller_factor",
     "detuned_rabi_sigma_z",
     "generalized_rabi_frequency",
+    "lamb_dicke_confinement",
     "lamb_dicke_parameter",
+    "lamb_dicke_regime",
     "ms_gate_closing_detuning",
     "ms_gate_closing_time",
     "ms_gate_phonon_number",
     "red_sideband_rabi_frequency",
+    "red_sideband_rabi_frequency_full_ld",
 ]

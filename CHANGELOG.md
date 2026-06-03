@@ -8,6 +8,28 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+### Added
+
+- **Dispatch MCE (WI-5) — analytic: Debye–Waller + Lamb–Dicke regime helpers.**
+  New closed-form primitives in `analytic.py`: `debye_waller_factor` (thermal
+  carrier suppression `e^{−η²(2n̄+1)/2}`), `lamb_dicke_confinement` (the regime
+  argument `η²(2n̄+1)`), `lamb_dicke_regime` → `LambDickeRegime` (a `StrEnum`
+  classifying `deep` / `intermediate` / `beyond` on the documented thresholds
+  `LAMB_DICKE_DEEP_MAX = 0.1`, `LAMB_DICKE_INTERMEDIATE_MAX = 1.0`), and the
+  all-orders sideband-Rabi forms `blue_sideband_rabi_frequency_full_ld` /
+  `red_sideband_rabi_frequency_full_ld` (the exact Wineland–Itano matrix
+  elements `|η|·e^{−η²/2}·|L_{n_<}^{(1)}(η²)|/√n_>·Ω`, of which the leading-order
+  `{red,blue}_sideband_rabi_frequency` are the η→0 limit). Application-agnostic;
+  additive under CONVENTIONS v0.3, no new convention section. Oracles
+  (`tests/regression/analytic/test_lamb_dicke_regime.py`): the Debye–Waller
+  factor matches the truncated thermal series `Σ_n p_n(n̄)·e^{−η²/2}L_n(η²)` and
+  the thermal average of the shipped `_full_ld_carrier_single_mode` diagonal;
+  the all-orders sideband helpers reproduce the magnitudes of the shipped
+  `_full_ld_{raising,lowering}_single_mode` off-diagonals (continuity with the
+  full-LD Hamiltonian numerics) and collapse to leading order as η→0. Per
+  `WP/WP-02-two-mode-motional.md` (WI-5); refs Wineland et al. (1998),
+  Leibfried et al. (2003).
+
 ## [0.5.0] — 2026-06-03
 
 **Release summary.** Two additive service surfaces plus the GPU spectrum backend,
