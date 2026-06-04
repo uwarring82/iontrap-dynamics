@@ -92,6 +92,31 @@ placeholder-only and did not follow semver.
   coefficients) is green and built inline as the reference the WI-2
   `reduced_models.py` builders must reproduce. Staging proposal:
   `WP/RL-conventions-proposal.md`. Per `WP/WP-03-reduced-models.md` (WI-1).
+- **Dispatch RLB (WP-03 WI-2) — reduced_models: JC / AJC / QRM Hamiltonian
+  builders.** New module `src/iontrap_dynamics/reduced_models.py` with three
+  static `Qobj` builders for the §25 reduced light–matter models —
+  `jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`, and
+  `quantum_rabi_hamiltonian` — each `(hilbert, mode_label, *, ion_index, omega_0,
+  omega_f, g)` on a one-ion ⊗ one-mode embedding, returning the sealed §25 forms
+  (`½ω₀ σ_z + ω_f â†â` plus the co-rotating, counter-rotating, or full-dipole
+  `σ_x(â+â†)` coupling). Schrödinger-picture, physical-SI rad·s⁻¹ inputs, no
+  builder-level `backend=` (backend parity is a solve-layer concern). Re-exported
+  at the package top level (`from iontrap_dynamics import jaynes_cummings_hamiltonian`).
+  Validation is minimal: `ω₀` and `g` (signed) must be finite (`ValueError`);
+  `ω_f` is an oscillator frequency and must be finite and positive
+  (`ConventionError` — §25 grants the negative-sign semantics to `ω₀` alone); an
+  unknown `mode_label` (`ConventionError`) and an out-of-range `ion_index`
+  (`IndexError`, including the negative-index wrap hazard) are delegated to
+  `HilbertSpace`, not re-implemented. Tests (`tests/unit/test_reduced_models.py`,
+  73): Hermiticity / dims, the LOCK-3 identity and ½/ω_f/g magnitude anchors on
+  the *shipped* builders (which reproduce the §25 forms — adversarial
+  verification separately confirmed bit-identity with the §25 conventions-test
+  reference), the JC/AJC/QRM Rabi block element `g√(n+1)`, explicit mode/ion
+  selection on a
+  multi-mode space, API rejection, a structural QRM weak-coupling reference, and
+  QuTiP-vs-JAX spectrum parity. Closed-form dynamics oracles (ground-state
+  ⟨â†â⟩ bands, the `2g√(n±1)` sideband relation, full-LD vs leading-order) are the
+  WI-3 (Dispatch RLC) regression scope. Per `WP/WP-03-reduced-models.md` (WI-2).
 
 ## [0.5.0] — 2026-06-03
 

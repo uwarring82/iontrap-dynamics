@@ -59,6 +59,11 @@ from .measurement import (
     sample_outcome,
     wilson_interval,
 )
+from .reduced_models import (
+    anti_jaynes_cummings_hamiltonian,
+    jaynes_cummings_hamiltonian,
+    quantum_rabi_hamiltonian,
+)
 from .results import (
     MeasurementResult,
     Result,
@@ -152,6 +157,7 @@ __all__ = [
     "ThermalPreparationError",
     "TrajectoryResult",
     "WarningSeverity",
+    "anti_jaynes_cummings_hamiltonian",
     "apply_detuning_drift",
     "apply_mode_frequency_drift",
     "apply_phase_drift",
@@ -177,6 +183,7 @@ __all__ = [
     "imperfect_motional_ground",
     "imperfect_spin_ground",
     "inverse_participation_ratio",
+    "jaynes_cummings_hamiltonian",
     "linear_gaussian_fisher",
     "load_trajectory",
     "log_negativity_trajectory",
@@ -187,6 +194,7 @@ __all__ = [
     "perturb_phase",
     "phonon_number_diagonals",
     "quantum_fisher_information_trajectory",
+    "quantum_rabi_hamiltonian",
     "recoverability",
     "redundancy",
     "sample_outcome",

@@ -169,7 +169,7 @@ Family **`RL`** minted 2026-06-04 (R3) after the authoritative collision grep; m
 | Dispatch | Maps to | CHANGELOG bullet | Status |
 |---|---|---|---|
 | `RLA` | WI-1 §25 convention + §5 scoping note + conventions test | `- **Dispatch RLA — conventions: reduced light–matter models (§25 + §5 scope, CONVENTION_VERSION 0.4).**` | **SEALED 2026-06-04** (`CONVENTIONS.md` §25 + §5 scope; `CONVENTION_VERSION` 0.4; test green) |
-| `RLB` | WI-2 reduced-model builders | `- **Dispatch RLB — reduced_models: JC/AJC/QRM Hamiltonian builders.**` | planned |
+| `RLB` | WI-2 reduced-model builders | `- **Dispatch RLB — reduced_models: JC/AJC/QRM Hamiltonian builders.**` | **landed 2026-06-04** (`reduced_models.py` + package re-exports; 64 unit tests; mypy --strict clean; builders == §25 reference) |
 | `RLC` | WI-3 analytic/benchmark oracles | `- **Dispatch RLC — tests: reduced-model oracle suite (Cases A–D).**` | planned |
 | `RLD` | WI-4 hierarchy note vendoring | `- **Dispatch RLD — docs: model hierarchy companion (vendored).**` | planned |
 | `RLE` | WI-5 comparison helper | `- **Dispatch RLE — reduced_models: model-deviation helper.**` | planned |
