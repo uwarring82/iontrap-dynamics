@@ -60,8 +60,10 @@ from .measurement import (
     wilson_interval,
 )
 from .reduced_models import (
+    ModelDeviation,
     anti_jaynes_cummings_hamiltonian,
     jaynes_cummings_hamiltonian,
+    model_deviation,
     quantum_rabi_hamiltonian,
 )
 from .results import (
@@ -138,6 +140,7 @@ __all__ = [
     "IonTrapWarning",
     "MeasurementResult",
     "ModeFrequencyDrift",
+    "ModelDeviation",
     "MotionalChannel",
     "ParityScan",
     "PhaseDrift",
@@ -187,6 +190,7 @@ __all__ = [
     "linear_gaussian_fisher",
     "load_trajectory",
     "log_negativity_trajectory",
+    "model_deviation",
     "partial_information_plot",
     "perturb_carrier_rabi",
     "perturb_common_mode",

@@ -26,12 +26,18 @@ symmetry contrast are enforced by ``tests/conventions/test_reduced_models_conven
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Any
 
+import numpy as np
 import qutip
+from numpy.typing import NDArray
 
 from .exceptions import ConventionError
 from .hilbert import HilbertSpace
 from .operators import sigma_minus_ion, sigma_plus_ion, sigma_x_ion, sigma_z_ion
+from .results import TrajectoryResult
 
 
 def _validate_couplings(*, omega_0: float, omega_f: float, g: float) -> None:
@@ -197,8 +203,221 @@ def quantum_rabi_hamiltonian(
     return bare + g * sigma_x * (a + a_dag)
 
 
+# ---------------------------------------------------------------------------
+# Model-deviation comparison (WP-03 WI-5 / RM2, Dispatch RLE)
+# ---------------------------------------------------------------------------
+
+_DEVIATION_METHODS = ("auto", "state_fidelity", "observable_rms")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ModelDeviation:
+    """Deviation summary between two matched trajectories (a reduced model vs a
+    realisation), per the RM2 convention.
+
+    Parameters
+    ----------
+    value
+        The pinned scalar deviation: the worst-case (max over time) of ``per_time``.
+    method
+        Which metric produced it — ``"state_fidelity"`` (``1 − qutip.fidelity`` per
+        time step, requires materialised states) or ``"observable_rms"`` (RMS over
+        the shared observable expectations, the explicit fallback). Self-describing
+        so a caller can tell which path was taken.
+    per_time
+        The per-time-sample deviation series, aligned to ``times``.
+    times
+        The shared time grid (seconds).
+    """
+
+    value: float
+    method: str
+    per_time: NDArray[np.float64]
+    times: NDArray[np.float64]
+
+
+def _materialised_states(trajectory: TrajectoryResult) -> tuple[Any, ...] | None:
+    """The trajectory's states if materialised (``StorageMode.EAGER`` directly, or
+    ``LAZY`` via its ``states_loader``); ``None`` if expectation-only."""
+    if trajectory.states is not None:
+        return trajectory.states
+    if trajectory.states_loader is not None:
+        loader = trajectory.states_loader
+        return tuple(loader(i) for i in range(len(trajectory.times)))
+    return None
+
+
+def _state_fidelity_deviation(
+    states_a: tuple[Any, ...], states_b: tuple[Any, ...]
+) -> NDArray[np.float64]:
+    """Per-step ``1 − qutip.fidelity`` (the RM2 pin), clamped to ``[0, 1]``.
+
+    ``qutip.fidelity`` is called on the raw states — it handles ket-vs-ket (a
+    plain overlap, no matrix square root), ket-vs-density-matrix, and
+    density-matrix-vs-density-matrix uniformly, so a pure sesolve trajectory can
+    be compared against a mixed mesolve one without promoting either."""
+    deviations = np.empty(len(states_a), dtype=np.float64)
+    for index, (state_a, state_b) in enumerate(zip(states_a, states_b, strict=True)):
+        # Compare the Hilbert-space (ket) dimensions — a ket and a density matrix
+        # on the same space have different full Qobj dims but are comparable.
+        if state_a.dims[0] != state_b.dims[0]:
+            raise ValueError(
+                f"model_deviation: states at index {index} live on different Hilbert "
+                f"spaces ({state_a.dims[0]} vs {state_b.dims[0]})."
+            )
+        fidelity = float(qutip.fidelity(state_a, state_b))
+        # Clamp: rounding in the matrix square root can push F slightly outside [0, 1].
+        deviations[index] = min(max(1.0 - fidelity, 0.0), 1.0)
+    return deviations
+
+
+def _observable_rms_deviation(
+    reference: TrajectoryResult,
+    comparison: TrajectoryResult,
+    observables: Sequence[str] | None,
+) -> NDArray[np.float64]:
+    """Per-time RMS across the shared observable channels of the two trajectories."""
+    shared = set(reference.expectations) & set(comparison.expectations)
+    if observables is not None:
+        requested = set(observables)
+        missing = requested - shared
+        if missing:
+            raise ValueError(
+                f"model_deviation: observables {sorted(missing)} are not present in both trajectories."
+            )
+        shared = requested
+    if not shared:
+        raise ValueError(
+            "model_deviation: the two trajectories share no observable labels for the RMS fallback."
+        )
+    labels = sorted(shared)
+    n_times = len(reference.times)
+    for label in labels:
+        for source, array in (
+            ("reference", reference.expectations[label]),
+            ("comparison", comparison.expectations[label]),
+        ):
+            shaped = np.asarray(array)
+            if shaped.ndim != 1 or shaped.shape[0] != n_times:
+                raise ValueError(
+                    f"model_deviation: {source} observable {label!r} has shape {shaped.shape}, "
+                    f"expected ({n_times},) — one value per time sample."
+                )
+    diffs = np.stack(
+        [
+            np.asarray(reference.expectations[label], dtype=np.float64)
+            - np.asarray(comparison.expectations[label], dtype=np.float64)
+            for label in labels
+        ]
+    )
+    return np.asarray(np.sqrt(np.mean(diffs**2, axis=0)), dtype=np.float64)
+
+
+def model_deviation(
+    reference: TrajectoryResult,
+    comparison: TrajectoryResult,
+    *,
+    method: str = "auto",
+    observables: Sequence[str] | None = None,
+) -> ModelDeviation:
+    """Deviation between two matched trajectories (e.g. a reduced model vs a
+    full-ion realisation) — the RM2 comparison summary.
+
+    The two trajectories must share a time grid. With materialised states the
+    metric is the worst-case state infidelity ``max_t (1 − qutip.fidelity(ρ_ref(t),
+    ρ_cmp(t)))`` (the §25/RM2 pin, QuTiP's public fidelity value); without them it
+    falls back to the per-time RMS over the shared observable expectations, and the
+    returned :class:`ModelDeviation` says which path was taken via ``method``.
+
+    Parameters
+    ----------
+    reference, comparison
+        The two :class:`~iontrap_dynamics.results.TrajectoryResult` objects to
+        compare (order does not affect the deviation).
+    method
+        ``"auto"`` (default) uses state fidelity when *both* trajectories carry
+        materialised states and the observable-RMS fallback otherwise;
+        ``"state_fidelity"`` requires materialised states (raises otherwise);
+        ``"observable_rms"`` always uses the observable RMS.
+    observables
+        Optional subset of observable labels for the RMS path; defaults to every
+        label shared by both trajectories.
+
+    Returns
+    -------
+    ModelDeviation
+        The scalar deviation, the per-time series, and the metric used.
+
+    Raises
+    ------
+    ValueError
+        If the time grids are not identical or are empty, ``method`` is unknown,
+        the RMS path has no shared observables, a per-time array (materialised
+        states or an expectation channel) does not match the time grid, compared
+        states have mismatched dimensions, or the resulting deviation is non-finite
+        (§15 forbids silent degradation).
+    ConventionError
+        If ``method="state_fidelity"`` but the states are not materialised
+        (``StorageMode.EAGER``, or ``StorageMode.LAZY`` with a ``states_loader``).
+    """
+    if method not in _DEVIATION_METHODS:
+        raise ValueError(
+            f"model_deviation: unknown method {method!r}; expected one of {_DEVIATION_METHODS}."
+        )
+    if len(reference.times) != len(comparison.times):
+        raise ValueError(
+            "model_deviation: the two trajectories have different time-grid lengths "
+            f"({len(reference.times)} vs {len(comparison.times)})."
+        )
+    if len(reference.times) == 0:
+        raise ValueError("model_deviation: empty time grid; nothing to compare.")
+    # "Matched trajectories" must share one grid: require an identical time axis
+    # (np.allclose's default atol=1e-8 would accept a ~10 ns shift on a µs grid).
+    if not np.array_equal(reference.times, comparison.times):
+        raise ValueError("model_deviation: the two trajectories are on different time grids.")
+
+    states_a = _materialised_states(reference)
+    states_b = _materialised_states(comparison)
+    both_materialised = states_a is not None and states_b is not None
+
+    if method == "state_fidelity" or (method == "auto" and both_materialised):
+        if states_a is None or states_b is None:
+            raise ConventionError(
+                "model_deviation: state-fidelity requires materialised states; pass trajectories "
+                "solved with storage_mode=StorageMode.EAGER (or LAZY with a states_loader), "
+                "or use method='observable_rms'."
+            )
+        n_times = len(reference.times)
+        if len(states_a) != n_times or len(states_b) != n_times:
+            raise ValueError(
+                "model_deviation: materialised state count does not match the time grid "
+                f"({len(states_a)} / {len(states_b)} states vs {n_times} times)."
+            )
+        per_time = _state_fidelity_deviation(states_a, states_b)
+        used = "state_fidelity"
+    else:
+        per_time = _observable_rms_deviation(reference, comparison, observables)
+        used = "observable_rms"
+
+    # §15: a non-finite deviation must not propagate silently into a threshold.
+    if not np.isfinite(per_time).all():
+        raise ValueError(
+            "model_deviation: non-finite deviation (NaN/Inf) in the per-time series; "
+            "check the input expectation arrays / states for divergence."
+        )
+
+    return ModelDeviation(
+        value=float(np.max(per_time)),
+        method=used,
+        per_time=per_time,
+        times=np.asarray(reference.times, dtype=np.float64),
+    )
+
+
 __all__ = [
+    "ModelDeviation",
     "anti_jaynes_cummings_hamiltonian",
     "jaynes_cummings_hamiltonian",
+    "model_deviation",
     "quantum_rabi_hamiltonian",
 ]

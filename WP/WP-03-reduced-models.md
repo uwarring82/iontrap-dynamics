@@ -172,7 +172,7 @@ Family **`RL`** minted 2026-06-04 (R3) after the authoritative collision grep; m
 | `RLB` | WI-2 reduced-model builders | `- **Dispatch RLB — reduced_models: JC/AJC/QRM Hamiltonian builders.**` | **landed 2026-06-04** (`reduced_models.py` + package re-exports; 64 unit tests; mypy --strict clean; builders == §25 reference) |
 | `RLC` | WI-3 analytic oracles | `- **Dispatch RLC — tests: reduced-model oracle suite (Cases A–D).**` | **landed 2026-06-04** (`test_reduced_models_oracles.py`, 36 oracle tests; Case A spectrum + JC dressed form, Case B red-dark/blue-bright, Case C QRM PT + committed bands, Case D 2g√(n±1) bridge + LD classifier) |
 | `RLD` | WI-4 hierarchy note vendoring | `- **Dispatch RLD — docs: model hierarchy companion (vendored).**` | planned |
-| `RLE` | WI-5 comparison helper | `- **Dispatch RLE — reduced_models: model-deviation helper.**` | planned |
+| `RLE` | WI-5 comparison helper | `- **Dispatch RLE — reduced_models: model-deviation helper.**` | **landed 2026-06-04** (`model_deviation` + `ModelDeviation` in `reduced_models.py` + re-export; state-fidelity + observable-RMS paths; 22 unit tests; mypy --strict clean) |
 | `RLF` | WI-6 Tutorial 18 + figures | `- **Dispatch RLF — tutorials: reduced models versus full dynamics.**` | planned |
 | `RLG` | WI-7 release hygiene | `- **Dispatch RLG — release hygiene for reduced-model tutorial track.**` | planned |
 

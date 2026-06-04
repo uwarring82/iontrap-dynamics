@@ -141,6 +141,25 @@ placeholder-only and did not follow semver.
   All tolerances are named pre-committed constants; oracles are independent closed
   forms, never recomputed from the function under test. Per
   `WP/WP-03-reduced-models.md` (WI-3).
+- **Dispatch RLE (WP-03 WI-5) — reduced_models: model-deviation helper.** New
+  `model_deviation(reference, comparison, *, method="auto", observables=None)` and
+  the frozen `ModelDeviation` record (`reduced_models.py`, re-exported at the
+  package top level) — the RM2 comparison summary between two matched trajectories
+  (a reduced model vs a realisation). With materialised states it pins the
+  worst-case state infidelity `max_t (1 − qutip.fidelity(ρ_ref(t), ρ_cmp(t)))`
+  (QuTiP's public root-fidelity value, clamped to `[0,1]`); without them it falls
+  back to the per-time RMS over the shared observable expectations and `says so`
+  via `ModelDeviation.method`. `method="state_fidelity"` enforces the
+  materialised-state requirement (`StorageMode.EAGER`, or `LAZY` with a
+  `states_loader`) and raises `ConventionError` otherwise; `method="observable_rms"`
+  forces the RMS path. Pure (sesolve) and mixed (mesolve) trajectories compare via
+  a Hilbert-space dims check; a non-finite deviation raises rather than propagating
+  silently (§15). Tests (`tests/unit/test_reduced_models.py`): identical → 0 (both
+  paths), JC ≈ QRM in the weak-coupling common regime vs separation at strong
+  coupling (the RM2 acceptance), the exact `1 − fidelity` values (identical / 0,
+  orthogonal / 1, overlap `1 − 1/√2`), the single- and multi-channel RMS, and the
+  six validation guards. Additive under CONVENTIONS v0.4, no new convention. Per
+  `WP/WP-03-reduced-models.md` (WI-5).
 
 ## [0.5.0] — 2026-06-03
 
