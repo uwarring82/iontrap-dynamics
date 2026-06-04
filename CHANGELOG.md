@@ -117,6 +117,30 @@ placeholder-only and did not follow semver.
   QuTiP-vs-JAX spectrum parity. Closed-form dynamics oracles (ground-state
   ⟨â†â⟩ bands, the `2g√(n±1)` sideband relation, full-LD vs leading-order) are the
   WI-3 (Dispatch RLC) regression scope. Per `WP/WP-03-reduced-models.md` (WI-2).
+- **Dispatch RLC (WP-03 WI-3) — tests: reduced-model analytic oracle suite (Cases
+  A–D).** New `tests/regression/analytic/test_reduced_models_oracles.py` (36
+  oracle-first tests), the falsifiable physics-layer checks behind the §25
+  builders. **Case A** ("label true"): the LOCK-3 operator identity as an exact
+  `Qobj` equality, `spec(H_AJC(ω₀)) = spec(H_JC(−ω₀))` from `solve_spectrum`, and
+  the JC dressed-state closed form `ω_f(n+½) ± √((δ/2)² + g²(n+1))` (δ = ω_f − ω₀)
+  plus the dark ground `−½ω₀` and the resonant `2g` vacuum-Rabi splitting.
+  **Case B** (the "knob"): `|↓,0⟩` is dark under JC (red-sideband image — the
+  coupling annihilates it) but bright under AJC (blue-sideband image — couples to
+  `|↑,1⟩` at element `g`). **Case C** ("label false"): below the resonance crossing
+  the JC ground is the dark state `|↓,0⟩` (`⟨a†a⟩ = 0`), while the non-RWA QRM
+  acquires virtual phonons matching the
+  independent 2nd-order-PT oracle `⟨a†a⟩ ≈ (g/(ω₀+ω_f))²` (detuned cases pin the
+  denominator) and a linear-in-`g` matrix-element anchor pins the QRM coupling;
+  JC↔QRM ground-energy deviation sits in a pre-committed AGREE band at weak
+  coupling and above a pre-committed SEPARATION band (with `⟨a†a⟩ > floor`) at
+  ultra-strong coupling — no pointwise monotonicity asserted. **Case D**
+  (reduced ↔ apparatus): the `2g√(n±1)` bridge `2|g|√(n+1) =
+  blue_sideband_rabi_frequency`, `2|g|√n = red_sideband_rabi_frequency` with
+  `g = ηΩ/2` (and the shipped AJC block element = half the apparatus rate), plus
+  the full-Lamb–Dicke rate tracking the `deep / intermediate / beyond` classifier.
+  All tolerances are named pre-committed constants; oracles are independent closed
+  forms, never recomputed from the function under test. Per
+  `WP/WP-03-reduced-models.md` (WI-3).
 
 ## [0.5.0] — 2026-06-03
 

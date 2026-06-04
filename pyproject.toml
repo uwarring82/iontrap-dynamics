@@ -217,6 +217,7 @@ ignore = [
 "tests/benchmarks/test_performance_smoke.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/regression/analytic/test_analytic.py" = ["RUF002", "RUF003"]
 "tests/regression/analytic/test_cfi_linear_gaussian.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/regression/analytic/test_reduced_models_oracles.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/unit/test_reduced_models.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/regression/analytic/test_probe_qfi.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/regression/analytic/test_darwinism_redundancy.py" = ["RUF001", "RUF002", "RUF003"]
