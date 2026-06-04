@@ -75,6 +75,23 @@ placeholder-only and did not follow semver.
   instance of the existing §18.4 drift taxonomy). Per
   `WP/WP-02-two-mode-motional.md` (WI-7); the identifiability assembly remains
   programme-side (out of scope).
+- **Dispatch RLA (WP-03 WI-1) — conventions: reduced light–matter models (§25 +
+  §5 scope), sealed (`CONVENTION_VERSION` 0.3 → 0.4).** The conventions-before-code
+  gate for the reduced JC / AJC / QRM Hamiltonians. **`CONVENTIONS.md` §25** (added)
+  fixes the Schrödinger-picture bare-term models, the `ω₀` effective-sign semantics,
+  and the LOCK-3 identity `H_AJC(ω0) = σ_x H_JC(−ω0) σ_x`; the **§5 scope note**
+  re-scopes the interaction-picture mandate to builders *derived from an atomic
+  transition* (so the pure-motional §23/§24 objects and the Schrödinger-picture §25
+  models fall outside it by construction). Sealed 2026-06-04 under a single
+  `CONVENTION_VERSION` 0.3 → 0.4 bump (`conventions.py` + the `test_convention_version.py`
+  pin) — a post-v0.3 amendment, since the v0.3 freeze is spent; the §5 edit re-scopes
+  a *frozen* section, legitimate via the version bump (not a no-bump doc-mention).
+  The runnable gate `tests/conventions/test_reduced_models_conventions.py` (LOCK-3
+  identity on the embedded library operators; the U(1)-excitation / Z₂-parity
+  symmetry contrast; matrix-element anchors pinning the absolute ½ / ω_f / g
+  coefficients) is green and built inline as the reference the WI-2
+  `reduced_models.py` builders must reproduce. Staging proposal:
+  `WP/RL-conventions-proposal.md`. Per `WP/WP-03-reduced-models.md` (WI-1).
 
 ## [0.5.0] — 2026-06-03
 

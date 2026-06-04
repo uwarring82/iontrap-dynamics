@@ -2,12 +2,28 @@
 
 **Executes the reduced-models task card: add abstract JC/AJC/QRM Hamiltonian builders, a model-vs-realisation comparison harness, and Tutorial 18 comparing reduced light–matter models against full trapped-ion dynamics.**
 
-Version 0.1 · Drafted 2026-06-04 · Status: Drafted
+Version 0.2 · Drafted 2026-06-04 · **Ratified 2026-06-04** · Status: Ratified
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code is MIT (`src/`, `tests/`, `.github/workflows/`); authored docs/tutorials are Sail / CC BY-NC-SA 4.0; the vendored hierarchy note and any `CONVENTIONS.md` edit are Coastline / CC BY-SA 4.0. See root `LICENCE`.
 **Stewardship:** U. Warring, AG Schätz. Under T(h)reehouse +EC corporate design (`cd-rules`, consumed via Model B).
 **Endorsement Marker:** Local candidate framework. No external endorsement implied.
+
+---
+
+## 0. Ratification decisions (2026-06-04) *(Coastline)*
+
+Seven decisions resolved at ratification. They bind execution; the cross-referenced sections implement each one.
+
+| # | Decision | Resolution | Binds |
+|---|---|---|---|
+| **R1** | Slug, branch & cadence | Slug `reduced-models`; execution branch `wp03-reduced-models` off `main`; one branch per WI lift with the WP-02 understand→implement→adversarial-verify cadence and a review pause per WI. | §4 |
+| **R2** | **Conventions gate (binding)** | Land an additive **§25 "Reduced light–matter models"** *and* a **§5 scoping note** that re-scopes §5's interaction-picture mandate to builders *derived from an atomic transition* (the drive/apparatus builders, whose free atomic term §5 transforms away) — pure-motional §23/§24 have no atomic transition to transform — and defers reduced-model frames to §25. `CONVENTION_VERSION` **0.3 → 0.4**. Both are governed edits: **staged as a propose-don't-apply proposal, sealed by the maintainer in a single commit *before* WI-2 code** (conventions-before-code). Resolves the §5 ⊥ §25 contradiction the card surfaced. | §6, WI-1 |
+| **R3** | Dispatch family | **`RL`** (RLA…RLG), minted in §4/§11. Collision grep over `CHANGELOG.md`, `WORKPLAN_v0.3.md`, `WP/LOGBOOK.md`, `docs/gpu-dispatch-design.md`, `src/`: GPU families AA–LL and WP-01/WP-02 families ED/MC are taken; `RL` is clear and is deliberately distinct from the card's RM0–RM6 *feature* labels. | §4, §11 |
+| **R4** | Units | Reduced builders take **physical SI** angular frequencies/couplings (rad·s⁻¹), consistent with §1. **Tutorial 18 presents dimensionless ratios** (e.g. `g/ω0`) for pedagogy — a presentation choice, not a builder API. Recorded in §25. | WI-2, WI-6 |
+| **R5** | `model_deviation` placement | Lands **in `reduced_models.py`** alongside the builders — and only if the deviation summary is not already expressible via existing observables / `qutip.fidelity`. Materialised-state requirement enforced; observable-RMS fallback explicit. Keeps the new surface to a single module. | WI-5 |
+| **R6** | Case E | **Deferred** to a future WP behind a first-class two-tone sideband builder + effective-parameter convention. Tutorial 18 shows only the schematic deferred interaction (P2 boundary). | §1, WI-6 |
+| **R7** | WI-4 external dependency | RM5 hierarchy-note vendoring carries an **external dependency**: `hierarchy.md` v0.4 + its source commit hash/DOI must be supplied before WI-4 lands. Gates WI-4 only; does **not** block WI-1/WI-2/WI-3. | WI-4 |
 
 ---
 
@@ -62,17 +78,21 @@ Executes **`task cards/TC-reduced-models-tutorial.md`** (**ID: TC-reduced-models
 
 ## 4. Work-item plan WI-1…WI-7 *(Sail)*
 
-Dispatch codes are **not minted while Drafted**. They will be assigned at Ratified after an authoritative collision grep of `CHANGELOG.md`, `WORKPLAN_v0.3.md`, `docs/gpu-dispatch-design.md`, and `WP/LOGBOOK.md`.
+Dispatch codes are minted at Ratified (2026-06-04, R3) as family **`RL`** after the authoritative collision grep of `CHANGELOG.md`, `WORKPLAN_v0.3.md`, `docs/gpu-dispatch-design.md`, `WP/LOGBOOK.md`, and `src/` (GPU families AA–LL and WP-01/WP-02 families ED/MC taken; `RL` clean and distinct from the card's RM0–RM6 feature labels).
 
-| WI | Card | Module / doc | Key contents | Reuse | Acceptance (oracle) | Conv. | Priority |
-|---|---|---|---|---|---|---|---|
-| **WI-1** | RM0 | `CONVENTIONS.md` §25 + `tests/conventions/test_reduced_models_conventions.py` | Reduced light–matter model convention: Schrödinger-picture bare terms, `H/ℏ` in rad·s⁻¹, `ω0` sign semantics, JC/AJC/QRM term selection, LOCK-3 identity | §3 Pauli convention; §5 Hamiltonian picture contrast | LOCK-3 identity holds using embedded library operators; convention version bump and §25 text present | **new §25, mandatory before code** | P0 |
-| **WI-2** | RM1 | `src/iontrap_dynamics/reduced_models.py` + exports | `jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`, `quantum_rabi_hamiltonian`; static `Qobj` builders with explicit `mode_label`, keyword-only `ion_index`; no builder-level `backend=` | `HilbertSpace`, `operators`, `solve`, `solve_spectrum` | Hermiticity/dims/API rejection; JC/AJC Rabi block rates; QRM weak-coupling reference; QuTiP/JAX solve parity < 1e-3 | per WI-1 | P0 |
-| **WI-3** | RM6 core | `tests/regression/analytic/` + `tests/benchmarks/` references | Analytic and benchmark oracles for Cases A–D, including `2g√(n±1)` sideband/RM coupling relation | existing `analytic.py`, `spectrum.py`, `sequences.py` | Case A identity/spectrum equality; Case C ground-state photon and reference-control points; Case D full-LD vs leading-order control points | none new | P0/P1 |
-| **WI-4** | RM5 | `docs/models-hierarchy.md` + `mkdocs.yml` | Vendor `ajc-provenance/docs/hierarchy.md` v0.4 with provenance header, commit hash/DOI slot, licence preserved | task-card source note; mkdocs nav pattern | links resolve; note renders; provenance recorded; tutorial can cite sections | none new | P1 |
-| **WI-5** | RM2 | comparison helper module or existing analysis surface | `model_deviation(...)` if needed: pinned `1 - qutip.fidelity(...)` convention for materialised states, observable/population RMS fallback | `TrajectoryResult`, `StorageMode`, observables, `qutip.fidelity` | deviation → 0 in common regimes; materialised-state requirement enforced; observable-only fallback explicit | none new | P1 |
-| **WI-6** | RM3/RM4 | `docs/tutorials/18_reduced_models_vs_full_dynamics.md`; `tools/plot_reduced_models_comparison.py`; `benchmarks/data/` | Tutorial 18 walking Cases A–D; analytical-expression block from task card; deterministic figures for A–D with arrays/report metadata | tutorial/benchmark house style; docs nav | snippets execute; figures regenerate and are cited; pa11y WCAG A; no claim beyond hierarchy note | none new | P1/P2 |
-| **WI-7** | release hygiene | `CHANGELOG.md`, `WP/LOGBOOK.md`, release docs | Dispatch-keyed changelog bullets, logbook decisions/deferrals, final WP status/release notes | existing WP/CHANGELOG pattern | all landed WI entries accounted for; CI green; release SemVer justification recorded if tagged | none new | P1 |
+| WI | Dispatch | Card | Module / doc | Key contents | Reuse | Acceptance (oracle) | Conv. | Priority |
+|---|---|---|---|---|---|---|---|---|
+| **WI-1** | `RLA` | RM0 | `CONVENTIONS.md` §25 + §5 scoping note + `tests/conventions/test_reduced_models_conventions.py` | Reduced light–matter model convention: Schrödinger-picture bare terms, `H/ℏ` in rad·s⁻¹, `ω0` sign semantics, JC/AJC/QRM term selection, LOCK-3 identity; §5 scoping note re-scopes the interaction-picture mandate to builders derived from an atomic transition | §3 Pauli convention; §5 Hamiltonian picture contrast | LOCK-3 identity + symmetry/magnitude anchors hold on embedded operators (runnable, green now); `CONVENTION_VERSION` 0.3→0.4 bump + §25 text + §5 note present **at seal** | **new §25 + §5 note, staged, sealed before code (R2)** | P0 |
+| **WI-2** | `RLB` | RM1 | `src/iontrap_dynamics/reduced_models.py` + exports | `jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`, `quantum_rabi_hamiltonian`; static `Qobj` builders with explicit `mode_label`, keyword-only `ion_index`; physical-SI inputs (R4); no builder-level `backend=` | `HilbertSpace`, `operators`, `solve`, `solve_spectrum` | Hermiticity/dims/API rejection; JC/AJC Rabi block rates; QRM weak-coupling reference; QuTiP/JAX solve parity < 1e-3 | per WI-1 | P0 |
+| **WI-3** | `RLC` | RM6 core | `tests/regression/analytic/` + `tests/benchmarks/` references | Analytic and benchmark oracles for Cases A–D, including `2g√(n±1)` sideband/RM coupling relation | existing `analytic.py`, `spectrum.py`, `sequences.py` | Case A identity/spectrum equality; Case C ground-state photon and reference-control points; Case D full-LD vs leading-order control points | none new | P0/P1 |
+| **WI-4** † | `RLD` | RM5 | `docs/models-hierarchy.md` + `mkdocs.yml` | Vendor `ajc-provenance/docs/hierarchy.md` v0.4 with provenance header, commit hash/DOI slot, licence preserved | task-card source note; mkdocs nav pattern | links resolve; note renders; provenance recorded; tutorial can cite sections | none new (external dep, R7) | P1 |
+| **WI-5** | `RLE` | RM2 | `reduced_models.py` (R5) | `model_deviation(...)` if needed: pinned `1 - qutip.fidelity(...)` convention for materialised states, observable/population RMS fallback | `TrajectoryResult`, `StorageMode`, observables, `qutip.fidelity` | deviation → 0 in common regimes; materialised-state requirement enforced; observable-only fallback explicit | none new | P1 |
+| **WI-6** | `RLF` | RM3/RM4 | `docs/tutorials/18_reduced_models_vs_full_dynamics.md`; `tools/plot_reduced_models_comparison.py`; `benchmarks/data/` | Tutorial 18 walking Cases A–D; analytical-expression block from task card; dimensionless-ratio presentation (R4); deterministic figures for A–D with arrays/report metadata | tutorial/benchmark house style; docs nav | snippets execute; figures regenerate and are cited; pa11y WCAG A; no claim beyond hierarchy note | none new | P1/P2 |
+| **WI-7** | `RLG` | release hygiene | `CHANGELOG.md`, `WP/LOGBOOK.md`, release docs | Dispatch-keyed changelog bullets, logbook decisions/deferrals, final WP status/release notes | existing WP/CHANGELOG pattern | all landed WI entries accounted for; CI green; release SemVer justification recorded if tagged | none new | P1 |
+
+> **†  WI-4 (RLD) external dependency (R7).** Blocked by an external input: the vendored `hierarchy.md` v0.4 note *and* its source commit hash / DOI must be supplied before RLD lands. This gates **WI-4 only** — WI-1/WI-2/WI-3 proceed without it — and is why §25 forward-references the note rather than linking it live (§6).
+
+**Sequencing.** WI-1 (RLA) is a hard gate for WI-2 (RLB) — conventions before code. After WI-2, WI-3/WI-4/WI-5 (RLC/RLD/RLE) parallelise; WI-6 (RLF) consumes them; WI-7 (RLG) closes. RLD's external dependency (above) is off the WI-1→WI-3 critical path.
 
 ## 5. Analytical-expression requirements for Tutorial 18 *(Sail)*
 
@@ -89,15 +109,20 @@ This section is an execution checklist, not new physics; the authoritative conce
 
 ## 6. Convention plan *(Coastline)*
 
-`CONVENTIONS.md` is frozen at v0.3 (§1–24). WP-03 requires an additive §25 and a `CONVENTION_VERSION` bump **before WI-2**. The reason is structural: current §5 declares apparatus builders to be in the interaction picture of the atomic transition, while reduced JC/AJC/QRM builders intentionally carry Schrödinger-picture bare model terms.
+`CONVENTIONS.md` is frozen at v0.3 (§1–24). WP-03 requires a **two-part governed amendment** carried through `CONVENTION_VERSION` **0.3 → 0.4** **before WI-2** (R2). The reason is structural and was surfaced by the card: current **§5 declares *all* builders to be in the interaction picture** of the atomic transition (atomic term removed, RWA by default), while reduced JC/AJC/QRM builders intentionally carry **Schrödinger-picture bare `½ω0σz` terms** (and the QRM is non-RWA by construction). Left unamended, §5 would contradict §25 — so §5 must be *scoped*, not merely supplemented.
 
-Planned section:
+Planned amendment (both parts land together, staged as a single propose-don't-apply proposal, sealed by the maintainer before WI-2):
 
-| New § | Title | Backs | Required before |
+| Part | Edit | Content | Required before |
 |---|---|---|---|
-| `## 25. Reduced light–matter models` | Schrödinger-picture reduced-model Hamiltonians, `ω0` sign semantics, JC/AJC/QRM term selection, LOCK-3 identity | WI-2 builders, Tutorial 18 Case A/C | WI-2 |
+| **§5 scoping note** | short re-scope of §5's opening scope sentence | Re-scopes §5 from "All builders" to builders **derived from an atomic transition** (the drive/apparatus builders, whose free atomic term §5 transforms away); pure-motional objects (the §23 two-mode-squeezing builder, the §24 motional channels) lie outside by construction; reduced models in a different picture/RWA regime are governed by §25. **Canonical to-paste text: `WP/RL-conventions-proposal.md` §A.1.** | WI-2 |
+| **new `## 25. Reduced light–matter models`** | additive section | Schrödinger-picture reduced-model Hamiltonians; physical-SI inputs in rad·s⁻¹ (R4); `ω0` sign semantics; JC/AJC/QRM term selection; LOCK-3 identity `H_AJC(ω0)=σx H_JC(−ω0)σx`; explicit non-RWA QRM caveat | WI-2 |
 
-The §25 text should cite the vendored hierarchy note and `CONVENTIONS.md` §3/§5. Its conventions test is the first runnable gate.
+**Why the §5 note re-scopes the *predicate* (not a §23/§24 carve-out).** Grounding the wording against the live `CONVENTIONS.md` (5-agent verification, incl. an adversarial refuter) confirmed §5 literally opens "All builders return Hamiltonians in the interaction picture of the atomic transition" — genuinely overbroad — but **§25 is the *only* frame-specialising section**. §23/§24 are *not* counterexamples: §23's time-independent `iℏg(â†b̂† − âb̂)` form is already the rotating-frame/interaction-picture object (it fixes a *parameter* convention, `z = −gτe^{iφ}`, per-mode `sinh²|z|`, not a frame), and §24 is a dissipation-layer convention. They fall outside §5 only because, being pure-motional, they have **no atomic transition to transform away** — so the fix narrows §5's predicate from "all builders" to "builders derived from an atomic transition," which closes the gap without misattributing §23 as a frame departure.
+
+The §25 text cites `CONVENTIONS.md` §3/§5 and **forward-references** the model-hierarchy companion note (vendored later under Dispatch RLD, §4) rather than linking it live — so §25 carries no dead internal link during the WI-1 → WI-4 interval. The conventions test (`tests/conventions/test_reduced_models_conventions.py`) is the first runnable gate, and it is **behavioural and green now**: the LOCK-3 identity on the embedded library operators, the U(1)/Z₂ symmetry contrast, and matrix-element anchors pinning the absolute ½/ω_f/g coefficients. It deliberately does **not** assert the `CONVENTION_VERSION` value or §25/§5 markdown presence — per the suite's house style those are validated at **seal time** (the `CONVENTION_VERSION` 0.3→0.4 pin lands in `test_convention_version.py` in the seal commit), not by this test.
+
+**Propose-don't-apply.** Per the standing governance rule, this WP does **not** edit `CONVENTIONS.md` at ratification. WI-1 (RLA) stages the §25 + §5-note text as the **actual `CONVENTIONS.md` patch** (the exact diff on the branch, so review is grounded in text, not intent); the maintainer seals it (one commit, `CONVENTION_VERSION` 0.3→0.4) before any WI-2 code lands. Whether the seal carries a `FREEZE`-style side-car or amends in place is the maintainer's call; a single additive section + one re-scoped sentence is lighter than the v0.3 §19–24 batch and likely needs none.
 
 ## 7. Benchmark and test plan *(Coastline)*
 
@@ -137,27 +162,28 @@ Each landed dispatch gets a dispatch-keyed `[Unreleased]` bullet. A release cut 
 | Case E scope creep blocks Tutorial 18 | Medium | High | explicit deferred status and future-WP prerequisite |
 | Full-LD signed/magnitude convention confused in tutorial | Low | Medium | tutorial text must state signed matrix element vs helper magnitude |
 
-## 11. Dispatch register *(Sail — unminted while Drafted)*
+## 11. Dispatch register *(Sail — family `RL` minted at Ratified)*
 
-No dispatch codes are minted yet. At Ratified, choose a fresh family after the required collision grep and populate both this section and `WP/LOGBOOK.md`.
+Family **`RL`** minted 2026-06-04 (R3) after the authoritative collision grep; mirrored into `WP/LOGBOOK.md`'s dispatch registry. Codes are atomic per WI; each lands one `[Unreleased]` CHANGELOG bullet.
 
 | Dispatch | Maps to | CHANGELOG bullet | Status |
 |---|---|---|---|
-| `<TBD>` | WI-1 §25 convention + conventions test | `- **Dispatch <TBD> — conventions: reduced light–matter models.**` | planned |
-| `<TBD>` | WI-2 reduced-model builders | `- **Dispatch <TBD> — reduced_models: JC/AJC/QRM Hamiltonian builders.**` | planned |
-| `<TBD>` | WI-3 analytic/benchmark oracles | `- **Dispatch <TBD> — tests: reduced-model oracle suite.**` | planned |
-| `<TBD>` | WI-4 hierarchy note vendoring | `- **Dispatch <TBD> — docs: model hierarchy companion.**` | planned |
-| `<TBD>` | WI-5 comparison helper | `- **Dispatch <TBD> — analysis: model-deviation helper.**` | planned |
-| `<TBD>` | WI-6 Tutorial 18 + figures | `- **Dispatch <TBD> — tutorials: reduced models versus full dynamics.**` | planned |
-| `<TBD>` | WI-7 release hygiene | `- **Dispatch <TBD> — release hygiene for reduced-model tutorial track.**` | planned |
+| `RLA` | WI-1 §25 convention + §5 scoping note + conventions test | `- **Dispatch RLA — conventions: reduced light–matter models (§25 + §5 scope, CONVENTION_VERSION 0.4).**` | **SEALED 2026-06-04** (`CONVENTIONS.md` §25 + §5 scope; `CONVENTION_VERSION` 0.4; test green) |
+| `RLB` | WI-2 reduced-model builders | `- **Dispatch RLB — reduced_models: JC/AJC/QRM Hamiltonian builders.**` | planned |
+| `RLC` | WI-3 analytic/benchmark oracles | `- **Dispatch RLC — tests: reduced-model oracle suite (Cases A–D).**` | planned |
+| `RLD` | WI-4 hierarchy note vendoring | `- **Dispatch RLD — docs: model hierarchy companion (vendored).**` | planned |
+| `RLE` | WI-5 comparison helper | `- **Dispatch RLE — reduced_models: model-deviation helper.**` | planned |
+| `RLF` | WI-6 Tutorial 18 + figures | `- **Dispatch RLF — tutorials: reduced models versus full dynamics.**` | planned |
+| `RLG` | WI-7 release hygiene | `- **Dispatch RLG — release hygiene for reduced-model tutorial track.**` | planned |
 
 ## 12. Logbook hooks *(Sail)*
 
 Entries this WP has generated in `WP/LOGBOOK.md` (dated):
 
 - 2026-06-04 — WP-03 Drafted against `TC-reduced-models-tutorial`; task card staged as v0.2.1; dispatch codes unminted pending ratification.
+- 2026-06-04 — WP-03 **Ratified** (v0.2). Decisions R1–R7 recorded (§0); dispatch family **`RL`** (RLA…RLG) minted after collision grep and registered; binding conventions gate fixed as §25 + §5 scoping note at `CONVENTION_VERSION` 0.4, staged propose-don't-apply, sealed before WI-2.
 
-Expected future hooks: one entry at Ratified (with code minting), one per decision/deferral during execution, one at release cut.
+Expected future hooks: one per decision/deferral during execution, one at the §25/§5 convention seal (R2), one at release cut.
 
 ---
 
@@ -165,8 +191,8 @@ Expected future hooks: one entry at Ratified (with code minting), one per decisi
 
 **Local candidate framework under active stewardship.** No parity implied with externally validated laws. This Work-Plan is a Sail execution document within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg), under the Coastline gates of `WORKPLAN_v0.3.md` and `CONVENTIONS.md`. Lock–Key rule applies: this WP is a key built on the stable locks those documents specify. The repository adopts the T(h)reehouse +EC Corporate Design blueprint (`cd-rules`, consumed via Model B).
 
-**Council status:** Guardian pending — confirm §25 is routed before code and no Coastline gate is relaxed. Architect pending — confirm `reduced_models.py` respects the physics/apparatus separation and reuses `HilbertSpace`/operators/solvers. Scout horizon — Case E two-tone convention and hierarchy-note provenance. Integrator sequenced — WI-1 → WI-2 → WI-3/WI-4/WI-5 → WI-6 → WI-7.
+**Council status (at Ratified):** Guardian cleared — the conventions gate is routed *before* code as a staged, propose-don't-apply §25 + §5 scoping note (R2), and no Coastline gate is relaxed. Architect cleared — `reduced_models.py` is a single physics-layer module reusing `HilbertSpace`/operators/solvers; sidebands stay apparatus-layer in `hamiltonians.py` (§1 invariant). Scout horizon — Case E two-tone convention (R6) and the RM5 hierarchy-note provenance/external dependency (R7) remain on the horizon, not on the critical path. Integrator sequenced — WI-1 (RLA) → WI-2 (RLB) → WI-3/WI-4/WI-5 (RLC/RLD/RLE) → WI-6 (RLF) → WI-7 (RLG).
 
-**Convention version:** references `CONVENTIONS.md` v0.3 (frozen 2026-06-03). This WP intentionally introduces a new §25 through WI-1 and therefore requires a `CONVENTION_VERSION` bump before code.
+**Convention version:** references `CONVENTIONS.md` v0.3 (frozen 2026-06-03). This WP introduces a new §25 and a §5 scoping note through WI-1, bumping `CONVENTION_VERSION` **0.3 → 0.4**, staged propose-don't-apply and sealed before WI-2 code (R2).
 **Corporate design version:** `cd-v1.7.1` (consumed via Model B).
-**Workplan reference:** `WORKPLAN_v0.3.md`; this WP's track lands as a future append-only `§5.x` amendment once ratified.
+**Workplan reference:** `WORKPLAN_v0.3.md`. Pasting this WP's track into `WORKPLAN_v0.3.md` as an append-only `§5.x` amendment is a **separate future maintainer act** — not performed at ratification (propose-don't-apply); the WP is Ratified without it.

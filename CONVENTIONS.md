@@ -2,11 +2,11 @@
 
 **Physical, numerical, and notational conventions for `iontrap-dynamics`**
 
-Version 0.3 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · Status: v0.3 Convention Freeze
+Version 0.4 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · v0.4 frozen 2026-06-04 · Status: v0.4 Convention amendment (§25 + §5 scope)
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
 **Licence:** CC BY-SA 4.0.
-**Scope:** Conventions covering §1–24. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
+**Scope:** Conventions covering §1–25. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC); the **v0.4 amendment** adds §25 (reduced light–matter models, dispatches RLA–RLB) and re-scopes §5 (the interaction-picture mandate now names builders derived from an atomic transition, so the pure-motional §23/§24 objects and the Schrödinger-picture §25 models fall outside it). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
 **Endorsement Marker:** Local candidate framework. No external endorsement implied.
 
 This document is authoritative. Every `IonSystem` records the `CONVENTIONS.md` version it was built against; every `TrajectoryResult` carries that version in its metadata. When code and this document disagree, this document wins and the code is the bug.
@@ -117,6 +117,8 @@ Every sideband Hamiltonian builder takes `detuning` in this sign convention. A r
 ## 5. Hamiltonian form and interaction picture
 
 All builders return Hamiltonians in the **interaction picture of the atomic transition**: the free atomic term Σ_i (ω_atom / 2) σ_z^{(i)} is removed, and drives are written in the rotating frame at the atomic frequency.
+
+**Scope** *(v0.4)*. This interaction-picture discipline governs builders **derived from an atomic (spin) transition**, whose lab-frame free atomic term Σ_i (ω_atom / 2) σ_z^{(i)} has been transformed away — the apparatus/drive builders (carrier, sidebands, Mølmer–Sørensen, full-Lamb–Dicke). Pure-motional objects — the §23 two-mode-squeezing builder and the §24 motional channels — have no atomic transition to transform and lie outside it by construction. A builder family deliberately placed in a different picture or RWA regime — notably the Schrödinger-picture, non-RWA reduced light–matter models of §25 — is governed by that section instead.
 
 **Rotating-wave approximation.** The RWA is applied by default; fast-rotating counter-rotating terms are dropped. Builders that support exact (non-RWA) evolution carry an explicit `rwa=False` flag and document the additional structure.
 
@@ -727,9 +729,40 @@ A channel may carry `window=(t0, t1)` (half-open `[t0, t1)`); the dissipation is
 
 ---
 
+## 25. Reduced light–matter models
+**Status:** opened at Dispatch RLA (this section + `tests/conventions/test_reduced_models_conventions.py`) and Dispatch RLB (`src/iontrap_dynamics/reduced_models.py`, the JC/AJC/QRM builders). Definitions are anchored by the vendored model-hierarchy companion note (Dispatch RLD; forward-referenced until it lands).
+
+Reduced light–matter models are **physics-layer** abstract qubit–oscillator Hamiltonians: what the apparatus approximates, distinct from the §5 apparatus/drive builders that realise them. They are written in the **Schrödinger picture** with a **bare** atomic term — NOT the §5 interaction picture (see the §5 scope note) — and returned as static, Hermitian `Qobj` in `H/ℏ` units of rad·s⁻¹ on a one-spin + one-mode embedding (§2 order, §3 spin basis).
+
+### 25.1 Term selection
+
+For atomic frequency ω₀, oscillator/field frequency ω_f (builder kwarg `omega_f`; the physical motional mode ω_m of §10/§11 in an apparatus realisation), coupling g (all rad·s⁻¹), with σ_z = |↑⟩⟨↑| − |↓⟩⟨↓| and σ_+ = |↑⟩⟨↓| (§3) and â the mode annihilation operator:
+
+- **Jaynes–Cummings (JC):** `H_JC/ℏ = ½ω₀ σ_z + ω_f â†â + g(â σ_+ + â† σ_−)` — co-rotating; conserves the excitation number `N̂ = â†â + |↑⟩⟨↑| = â†â + σ_+σ_−` (a U(1) symmetry); couples `|↑,n⟩ ↔ |↓,n+1⟩`, leaving `|↓,0⟩` dark.
+- **Anti-Jaynes–Cummings (AJC):** `H_AJC/ℏ = ½ω₀ σ_z + ω_f â†â + g(â† σ_+ + â σ_−)` — counter-rotating; conserves the difference number `Ĉ = â†â − |↑⟩⟨↑| = â†â − σ_+σ_−`; couples `|↓,n⟩ ↔ |↑,n+1⟩` (its dark state is `|↑,0⟩`).
+- **Quantum Rabi (QRM):** `H_QRM/ℏ = ½ω₀ σ_z + ω_f â†â + g σ_x(â + â†)` — full dipole coupling, **non-RWA** (JC + AJC); conserves neither `N̂` nor `Ĉ`, only the **Z₂ parity** `P = exp(iπ N̂) = −σ_z(−1)^{â†â}` (equal up to an immaterial global sign to the form `Π = σ_z(−1)^{â†â}`; same ±1 eigenspaces).
+
+### 25.2 ω₀ sign semantics
+
+`ω₀` is an **effective model bare splitting**, not a physical ion transition frequency. It may be taken **negative** as a reduced-model parameter (e.g. red-sideband selection maps to an effective `−ω₀` frame). Physically `ω₀ > 0` puts `|↑⟩` above `|↓⟩` (§3); the negative argument in the LOCK-3 identity below is a **model sign**, distinct from the §4 drive detuning `δ = ω_laser − ω_atom`.
+
+### 25.3 LOCK-3 identity
+
+`H_AJC(ω₀) = σ_x H_JC(−ω₀) σ_x`.
+
+Holds exactly under §3 (`σ_x σ_z σ_x = −σ_z`, `σ_x σ_± σ_x = σ_∓`; `σ_x` is the identity on the motional factor). The negative argument `−ω₀` is **essential for ω₀ ≠ 0**: the `σ_x` conjugation flips the `σ_z` sign, so the input frequency must be pre-flipped to recover the physical `+½ω₀ σ_z` AJC term (at `ω₀ = 0` the sign is immaterial). The QRM coupling `σ_x(â + â†)` is `σ_x`-invariant, so `σ_x H_QRM(−ω₀) σ_x = H_QRM(ω₀)` (only the bare sign moves). Symmetry contrast: JC/AJC carry a U(1) excitation-like number, the QRM only a Z₂ parity.
+
+**Convention.** Reduced-model builders return Schrödinger-picture, bare-term, static Hermitian `Qobj` per 25.1; physical-SI inputs (rad·s⁻¹); `ω₀` sign per 25.2; the LOCK-3 identity 25.3 is the conventions-test gate.
+**Cross-refs.** §2 (tensor order), §3 (spin basis), §5 scope note (why these are exempt from the interaction-picture / RWA default), §4 (drive detuning — a distinct sign), §10 (Lamb–Dicke — the apparatus realisation), §23/§24 (other physics-layer / dissipation conventions).
+**Test.** `tests/conventions/test_reduced_models_conventions.py` (LOCK-3 identity + JC/AJC/QRM symmetry contrast + ½/ω_f/g magnitude anchors); reduced-model builder behaviour under Dispatch RLB/RLC.
+
+**§25 freeze.** Sections 25.1–25.3 received a complete read-through for the v0.4 convention gate. Post-v0.4 additions require a CONVENTIONS.md version bump.
+
+---
+
 ## Endorsement Marker
 
-**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §19–22 (estimation / Darwinism: Fisher information, redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24 (two-mode squeezing / SU(1,1); motional CPTP channels) are closed under the v0.3 Convention Freeze; §1–16 carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
+**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §19–22 (estimation / Darwinism: Fisher information, redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24 (two-mode squeezing / SU(1,1); motional CPTP channels) are closed under the v0.3 Convention Freeze; §25 (reduced light–matter models) is added under the **v0.4 amendment** (2026-06-04, dispatches RLA–RLB), which also re-scopes §5 (the only change to a §1–16 section); §1–16 otherwise carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
 
-**Convention version:** 0.3 · 2026-06-03 · v0.3 Convention Freeze (§19–24).
-**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional).
+**Convention version:** 0.4 · 2026-06-04 · v0.4 amendment (§25 reduced light–matter models + §5 scope note).
+**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional); WP-03 reduced-models track to land as the next §5.x stub.
