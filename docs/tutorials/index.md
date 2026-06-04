@@ -5,11 +5,16 @@ Task-oriented walkthroughs of `iontrap-dynamics`. Each tutorial takes
 adaptive guidance with specific parameter choices, not coastline
 constraints.
 
-The track now spans thirteen tutorials, covering every
+The track now spans seventeen tutorials, covering every
 architectural layer of the library (configuration, Hamiltonians,
 solve, observables, measurement, systematics, persistence,
-entanglement diagnostics) plus an end-to-end reproduction of a
-publication dataset against a legacy MATLAB bundle. The runnable demo tools under `tools/`
+entanglement diagnostics), an end-to-end reproduction of a
+publication dataset against a legacy MATLAB bundle, and the two
+service surfaces introduced at `v0.5.0` — parameter estimation /
+quantum Darwinism and two-mode / motional open-system physics —
+together with the post-`v0.5.0` motional completion (interferometric
+observables, Lamb–Dicke regime helpers, and mode-frequency drift,
+tutorials 14–17). The runnable demo tools under `tools/`
 and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.
@@ -163,6 +168,38 @@ cover the same ground for users who prefer reading code to prose.
   ~6 % and ~4 % respectively. Closes with the dense-eigh
   envelope table that motivates the AAG / AAH benchmark
   dispatches.
+- [**Tutorial 14 — Quantum metrology: the Fisher-information limit**](14_quantum_metrology_qfi.md).
+  First tutorial on the `iontrap_dynamics.information` estimation surface.
+  Encodes a parameter unitarily and reads the precision ceiling with
+  `quantum_fisher_information_trajectory`: the pure-state identity
+  `F_Q = 4·Var(G)`, GHZ Heisenberg scaling `N²` versus the product
+  standard quantum limit `N`, and `classical_fisher_information` /
+  `cramer_rao_bound` showing the σ_y measurement saturates the bound while
+  σ_x is phase-blind. Closes on continuous-variable probes (coherent
+  `4|α|²`, sub-shot-noise squeezed `2e^{−2r}`). Embeds `qfi_scaling`,
+  `cfi_linear_gaussian`, and `probe_qfi`.
+- [**Tutorial 15 — Quantum Darwinism: why the world looks classical**](15_quantum_darwinism.md).
+  The companion estimation tutorial. Reads the partial-information plateau
+  (`partial_information_plot`), the redundancy `R_δ = N`
+  (`redundancy`), and the recoverability of quantum information from a
+  Werner-mixed Bell pair (`recoverability`) off a GHZ cascade. Distinguishes
+  *how much* each fragment knows (plateau height) from *how many* fragments
+  know it (redundancy). Embeds `darwinism_redundancy` and `recoverability`.
+- [**Tutorial 16 — Two-mode SU(1,1) squeezing**](16_two_mode_squeezing.md).
+  First two-mode motional Hilbert space. Builds the
+  `two_mode_squeezed_vacuum` (per-mode `n̄ = sinh²|z|`, §23), reproduces it
+  dynamically under `two_mode_squeezing_hamiltonian` (`n̄ = sinh²(gτ)`, the
+  difference number pinned by the su(1,1) Casimir), and contrasts the SU(2)
+  `beamsplitter_hamiltonian` that conserves the sum and swaps excitation
+  instead. Heavy on the Fock-truncation gotcha. Embeds `two_mode_squeezing`.
+- [**Tutorial 17 — Motional decoherence and the Lamb–Dicke regime**](17_motional_decoherence_and_lamb_dicke.md).
+  Bundles four motional-imperfection surfaces into one workflow: typed CPTP
+  channels through `solve(channels=…)` (heating / damping / dephasing, with
+  a windowed variant), reading the contrast loss off a fringe with
+  `fringe_visibility` / `fit_fringe`, the Lamb–Dicke regime map
+  (`debye_waller_factor`, `lamb_dicke_regime`, full-LD vs leading-order
+  sideband), and budgeting a `ModeFrequencyDrift` (`η → η/√(1+δ)`). Embeds
+  `motional_channels` and `lamb_dicke_regime`.
 
 ## Scope and licensing
 

@@ -83,6 +83,10 @@ nav:
       - "11. Systematics: jitter ensembles": tutorials/11_jitter_ensembles.md
       - "12. Two-ion Bell-state entanglement": tutorials/12_bell_entanglement.md
       - "13. Reproducing Clos 2016 (PRL 117, 170401)": tutorials/13_reproducing_clos_2016.md
+      - "14. Quantum metrology: the Fisher-information limit": tutorials/14_quantum_metrology_qfi.md
+      - "15. Quantum Darwinism": tutorials/15_quantum_darwinism.md
+      - "16. Two-mode SU(1,1) squeezing": tutorials/16_two_mode_squeezing.md
+      - "17. Motional decoherence and the Lamb–Dicke regime": tutorials/17_motional_decoherence_and_lamb_dicke.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:

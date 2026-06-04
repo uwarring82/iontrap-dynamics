@@ -1,0 +1,228 @@
+{
+  "analytic_formulas": {
+    "debye_waller": "exp(-eta^2 (2 n-bar + 1) / 2)",
+    "full_ld_sideband": "|eta| e^{-eta^2/2} |L_n^(1)(eta^2)| / sqrt(n+1) Omega",
+    "leading_sideband": "|eta| sqrt(n+1) Omega"
+  },
+  "backend_name": "numpy",
+  "backend_version": "2.4.4",
+  "canonical_request_hash": null,
+  "convention_version": "0.3",
+  "debye_waller_samples": [
+    {
+      "dw_closed": 0.9559974818331,
+      "dw_lib": 0.9559974818331,
+      "dw_series": 0.9559974818331,
+      "regime": "deep",
+      "x": 0.09
+    },
+    {
+      "dw_closed": 0.7144970069829023,
+      "dw_lib": 0.7144970069829023,
+      "dw_series": 0.7144970069829023,
+      "regime": "intermediate",
+      "x": 0.6723529411764706
+    },
+    {
+      "dw_closed": 0.5340034703947586,
+      "dw_lib": 0.5340034703947586,
+      "dw_series": 0.5340034703947587,
+      "regime": "beyond",
+      "x": 1.2547058823529411
+    },
+    {
+      "dw_closed": 0.3991055296337576,
+      "dw_lib": 0.3991055296337576,
+      "dw_series": 0.3991055296337579,
+      "regime": "beyond",
+      "x": 1.8370588235294119
+    },
+    {
+      "dw_closed": 0.29828499741114345,
+      "dw_lib": 0.29828499741114345,
+      "dw_series": 0.2982849974111424,
+      "regime": "beyond",
+      "x": 2.4194117647058824
+    },
+    {
+      "dw_closed": 0.22293336742844305,
+      "dw_lib": 0.22293336742844305,
+      "dw_series": 0.22293336742844141,
+      "regime": "beyond",
+      "x": 3.0017647058823527
+    },
+    {
+      "dw_closed": 0.16661678175011188,
+      "dw_lib": 0.16661678175011188,
+      "dw_series": 0.16661678175011302,
+      "regime": "beyond",
+      "x": 3.584117647058824
+    },
+    {
+      "dw_closed": 0.1245266793436616,
+      "dw_lib": 0.1245266793436616,
+      "dw_series": 0.1245266793436654,
+      "regime": "beyond",
+      "x": 4.166470588235295
+    },
+    {
+      "dw_closed": 0.09306921971170955,
+      "dw_lib": 0.09306921971170955,
+      "dw_series": 0.09306921971171192,
+      "regime": "beyond",
+      "x": 4.748823529411765
+    },
+    {
+      "dw_closed": 0.06955842477612288,
+      "dw_lib": 0.06955842477612288,
+      "dw_series": 0.06955842477612077,
+      "regime": "beyond",
+      "x": 5.331176470588236
+    },
+    {
+      "dw_closed": 0.05198683810096248,
+      "dw_lib": 0.05198683810096248,
+      "dw_series": 0.05198683810095727,
+      "regime": "beyond",
+      "x": 5.9135294117647055
+    },
+    {
+      "dw_closed": 0.038854119316735956,
+      "dw_lib": 0.038854119316735956,
+      "dw_series": 0.03885411931673141,
+      "regime": "beyond",
+      "x": 6.4958823529411776
+    },
+    {
+      "dw_closed": 0.02903893837411908,
+      "dw_lib": 0.02903893837411908,
+      "dw_series": 0.029038938374119194,
+      "regime": "beyond",
+      "x": 7.078235294117648
+    },
+    {
+      "dw_closed": 0.02170323138768613,
+      "dw_lib": 0.02170323138768613,
+      "dw_series": 0.02170323138769103,
+      "regime": "beyond",
+      "x": 7.660588235294118
+    },
+    {
+      "dw_closed": 0.016220643006951304,
+      "dw_lib": 0.016220643006951304,
+      "dw_series": 0.0162206430069581,
+      "regime": "beyond",
+      "x": 8.242941176470588
+    },
+    {
+      "dw_closed": 0.012123045405498443,
+      "dw_lib": 0.012123045405498443,
+      "dw_series": 0.012123045405502979,
+      "regime": "beyond",
+      "x": 8.82529411764706
+    },
+    {
+      "dw_closed": 0.009060567441179383,
+      "dw_lib": 0.009060567441179383,
+      "dw_series": 0.009060567441179196,
+      "regime": "beyond",
+      "x": 9.40764705882353
+    },
+    {
+      "dw_closed": 0.006771721098967921,
+      "dw_lib": 0.006771721098967921,
+      "dw_series": 0.006771721098962911,
+      "regime": "beyond",
+      "x": 9.99
+    }
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "scipy": "1.17.1"
+  },
+  "eta_debye_waller": 0.3,
+  "eta_sideband": 0.5,
+  "generated_at": "2026-06-04T07:21:24.906523+00:00",
+  "max_numerical_vs_analytic_error": 6.852157730108388e-15,
+  "physical_eta_25mg_1mhz_280nm": 0.319141649905774,
+  "plot_alt_text": "Two panels. Left: the Debye–Waller thermal carrier-suppression factor versus the regime parameter eta squared times (2 n-bar + 1) on a log x-axis; the library values and the truncated thermal series both lie on the closed form e to the minus x over two. Vertical lines at x = 0.1 and x = 1.0 split the axis into the deep, intermediate, and beyond Lamb–Dicke regimes from the classifier. Right: the blue-sideband Rabi frequency versus initial Fock level; the leading-order square-root-of-(n+1) line (dashed) climbs without bound while the exact all-orders curve (solid) bends over and turns down — the linearised sideband breaking down as the Fock level grows.",
+  "purpose": "Lamb-Dicke regime helpers: the Debye-Waller carrier suppression debye_waller_factor equals e^{-eta^2(2 n-bar+1)/2} and the truncated thermal series; lamb_dicke_regime partitions eta^2(2 n-bar+1) into deep/intermediate/beyond at 0.1 and 1.0; the all-orders blue-sideband Rabi frequency bends away from the leading-order |eta| sqrt(n+1) Omega as the Fock level climbs. Application-agnostic: textbook Wineland-Itano oracles only.",
+  "regime_thresholds": {
+    "deep_max": 0.1,
+    "intermediate_max": 1.0
+  },
+  "scenario": "lamb_dicke_regime",
+  "schema_version": 2,
+  "sideband_samples": [
+    {
+      "n": 0,
+      "rabi_full_over_omega0": 0.4412484512922977,
+      "rabi_leading_over_omega0": 0.5
+    },
+    {
+      "n": 1,
+      "rabi_full_over_omega0": 0.54601710116948,
+      "rabi_leading_over_omega0": 0.7071067811865476
+    },
+    {
+      "n": 2,
+      "rabi_full_over_omega0": 0.5811596433036653,
+      "rabi_leading_over_omega0": 0.8660254037844386
+    },
+    {
+      "n": 3,
+      "rabi_full_over_omega0": 0.5785640500668539,
+      "rabi_leading_over_omega0": 1.0
+    },
+    {
+      "n": 4,
+      "rabi_full_over_omega0": 0.552459798596897,
+      "rabi_leading_over_omega0": 1.118033988749895
+    },
+    {
+      "n": 5,
+      "rabi_full_over_omega0": 0.5110371861431308,
+      "rabi_leading_over_omega0": 1.224744871391589
+    },
+    {
+      "n": 6,
+      "rabi_full_over_omega0": 0.4596295605301359,
+      "rabi_leading_over_omega0": 1.3228756555322954
+    },
+    {
+      "n": 7,
+      "rabi_full_over_omega0": 0.40196183879428554,
+      "rabi_leading_over_omega0": 1.4142135623730951
+    },
+    {
+      "n": 8,
+      "rabi_full_over_omega0": 0.34074842693062335,
+      "rabi_leading_over_omega0": 1.5
+    },
+    {
+      "n": 9,
+      "rabi_full_over_omega0": 0.278019575085034,
+      "rabi_leading_over_omega0": 1.5811388300841898
+    },
+    {
+      "n": 10,
+      "rabi_full_over_omega0": 0.21531694714520322,
+      "rabi_leading_over_omega0": 1.6583123951777
+    },
+    {
+      "n": 11,
+      "rabi_full_over_omega0": 0.15381934239470002,
+      "rabi_leading_over_omega0": 1.7320508075688772
+    },
+    {
+      "n": 12,
+      "rabi_full_over_omega0": 0.09442805255523888,
+      "rabi_leading_over_omega0": 1.8027756377319948
+    }
+  ],
+  "tolerance": 1e-09,
+  "workplan_reference": "WP/WP-02-two-mode-motional.md (WI-5, dispatch MCE)"
+}

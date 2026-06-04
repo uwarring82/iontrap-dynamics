@@ -1,0 +1,343 @@
+{
+  "analytic_formulas": {
+    "difference_number": "0  (conserved su(1,1) Casimir)",
+    "per_mode_occupation": "sinh(g*tau)^2  (dynamics) ;  sinh(|z|)^2  (factory)"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "canonical_request_hash": null,
+  "convention_version": "0.3",
+  "dynamics": [
+    {
+      "analytic_sinh2": 0.0,
+      "n_a": 0.0,
+      "n_b": 0.0,
+      "n_diff": 0.0,
+      "r": 0.0
+    },
+    {
+      "analytic_sinh2": 0.0009470443755678107,
+      "n_a": 0.0009470442435541178,
+      "n_b": 0.0009470442435541178,
+      "n_diff": 0.0,
+      "r": 0.030769230769230767
+    },
+    {
+      "analytic_sinh2": 0.003791765074468421,
+      "n_a": 0.003791765128114441,
+      "n_b": 0.003791765128114441,
+      "n_diff": 0.0,
+      "r": 0.061538461538461535
+    },
+    {
+      "analytic_sinh2": 0.008544938403653654,
+      "n_a": 0.008544943039195233,
+      "n_b": 0.008544943039195233,
+      "n_diff": 0.0,
+      "r": 0.09230769230769231
+    },
+    {
+      "analytic_sinh2": 0.015224570227393517,
+      "n_a": 0.015224587051007122,
+      "n_b": 0.015224587051007122,
+      "n_diff": 0.0,
+      "r": 0.12307692307692307
+    },
+    {
+      "analytic_sinh2": 0.023855964176686173,
+      "n_a": 0.02385600348717325,
+      "n_b": 0.02385600348717325,
+      "n_diff": 0.0,
+      "r": 0.15384615384615385
+    },
+    {
+      "analytic_sinh2": 0.03447181750390355,
+      "n_a": 0.034471886493540944,
+      "n_b": 0.034471886493540944,
+      "n_diff": 0.0,
+      "r": 0.18461538461538463
+    },
+    {
+      "analytic_sinh2": 0.047112344945787234,
+      "n_a": 0.047112451917996755,
+      "n_b": 0.047112451917996755,
+      "n_diff": 0.0,
+      "r": 0.21538461538461537
+    },
+    {
+      "analytic_sinh2": 0.06182543106400942,
+      "n_a": 0.061825584202998586,
+      "n_b": 0.061825584202998586,
+      "n_diff": 0.0,
+      "r": 0.24615384615384614
+    },
+    {
+      "analytic_sinh2": 0.07866681164039215,
+      "n_a": 0.07866701979141057,
+      "n_b": 0.07866701979141057,
+      "n_diff": 0.0,
+      "r": 0.27692307692307694
+    },
+    {
+      "analytic_sinh2": 0.09770028481394204,
+      "n_a": 0.09770055724373362,
+      "n_b": 0.09770055724373362,
+      "n_diff": 0.0,
+      "r": 0.3076923076923077
+    },
+    {
+      "analytic_sinh2": 0.11899795275952517,
+      "n_a": 0.11899829932247029,
+      "n_b": 0.11899829932247029,
+      "n_diff": 0.0,
+      "r": 0.3384615384615384
+    },
+    {
+      "analytic_sinh2": 0.14264049482370394,
+      "n_a": 0.1426409257670328,
+      "n_b": 0.1426409257670328,
+      "n_diff": 0.0,
+      "r": 0.36923076923076925
+    },
+    {
+      "analytic_sinh2": 0.16871747315242225,
+      "n_a": 0.16871799887148126,
+      "n_b": 0.16871799887148126,
+      "n_diff": 0.0,
+      "r": 0.39999999999999997
+    },
+    {
+      "analytic_sinh2": 0.1973276719683123,
+      "n_a": 0.19732830351647926,
+      "n_b": 0.19732830351647926,
+      "n_diff": 0.0,
+      "r": 0.43076923076923074
+    },
+    {
+      "analytic_sinh2": 0.2285794717828639,
+      "n_a": 0.2285802209704046,
+      "n_b": 0.2285802209704046,
+      "n_diff": 0.0,
+      "r": 0.4615384615384615
+    },
+    {
+      "analytic_sinh2": 0.26259125996104,
+      "n_a": 0.2625921394538996,
+      "n_b": 0.2625921394538996,
+      "n_diff": 0.0,
+      "r": 0.4923076923076923
+    },
+    {
+      "analytic_sinh2": 0.29949187919362924,
+      "n_a": 0.2994929026138315,
+      "n_b": 0.2994929026138315,
+      "n_diff": 0.0,
+      "r": 0.5230769230769231
+    },
+    {
+      "analytic_sinh2": 0.3394211155762283,
+      "n_a": 0.33942229760770193,
+      "n_b": 0.33942229760770193,
+      "n_diff": 0.0,
+      "r": 0.5538461538461539
+    },
+    {
+      "analytic_sinh2": 0.3825302281437846,
+      "n_a": 0.382531584644317,
+      "n_b": 0.382531584644317,
+      "n_diff": 0.0,
+      "r": 0.5846153846153846
+    },
+    {
+      "analytic_sinh2": 0.4289825218666697,
+      "n_a": 0.4289840699860166,
+      "n_b": 0.4289840699860166,
+      "n_diff": 0.0,
+      "r": 0.6153846153846154
+    },
+    {
+      "analytic_sinh2": 0.4789539662788929,
+      "n_a": 0.4789557245841403,
+      "n_b": 0.4789557245841403,
+      "n_diff": 0.0,
+      "r": 0.6461538461538461
+    },
+    {
+      "analytic_sinh2": 0.5326338620819334,
+      "n_a": 0.5326358506907196,
+      "n_b": 0.5326358506907196,
+      "n_diff": 0.0,
+      "r": 0.6769230769230768
+    },
+    {
+      "analytic_sinh2": 0.5902255582493959,
+      "n_a": 0.5902277989717981,
+      "n_b": 0.5902277989717981,
+      "n_diff": 0.0,
+      "r": 0.7076923076923076
+    },
+    {
+      "analytic_sinh2": 0.6519472223490204,
+      "n_a": 0.6519497388397467,
+      "n_b": 0.6519497388397467,
+      "n_diff": 0.0,
+      "r": 0.7384615384615385
+    },
+    {
+      "analytic_sinh2": 0.7180326670001504,
+      "n_a": 0.7180354370793375,
+      "n_b": 0.7180354370793375,
+      "n_diff": 0.0,
+      "r": 0.7692307692307692
+    },
+    {
+      "analytic_sinh2": 0.7887322355974424,
+      "n_a": 0.7887352007700125,
+      "n_b": 0.7887352007700125,
+      "n_diff": 0.0,
+      "r": 0.7999999999999999
+    },
+    {
+      "analytic_sinh2": 0.8643137506560763,
+      "n_a": 0.8643169230348033,
+      "n_b": 0.8643169230348033,
+      "n_diff": 0.0,
+      "r": 0.8307692307692307
+    },
+    {
+      "analytic_sinh2": 0.9450635283709847,
+      "n_a": 0.9450669198795772,
+      "n_b": 0.9450669198795772,
+      "n_diff": 0.0,
+      "r": 0.8615384615384615
+    },
+    {
+      "analytic_sinh2": 1.0312874632334208,
+      "n_a": 1.0312910877129882,
+      "n_b": 1.0312910877129882,
+      "n_diff": 0.0,
+      "r": 0.8923076923076922
+    },
+    {
+      "analytic_sinh2": 1.123312186813588,
+      "n_a": 1.123316055701286,
+      "n_b": 1.123316055701286,
+      "n_diff": 0.0,
+      "r": 0.923076923076923
+    },
+    {
+      "analytic_sinh2": 1.221486305099005,
+      "n_a": 1.2214904327149279,
+      "n_b": 1.2214904327149279,
+      "n_diff": 0.0,
+      "r": 0.9538461538461538
+    },
+    {
+      "analytic_sinh2": 1.326181719075866,
+      "n_a": 1.3261861206145151,
+      "n_b": 1.3261861206145151,
+      "n_diff": 0.0,
+      "r": 0.9846153846153846
+    },
+    {
+      "analytic_sinh2": 1.4377950335559895,
+      "n_a": 1.4377997254572104,
+      "n_b": 1.4377997254572104,
+      "n_diff": 0.0,
+      "r": 1.0153846153846153
+    },
+    {
+      "analytic_sinh2": 1.5567490595862425,
+      "n_a": 1.5567540596314697,
+      "n_b": 1.5567540596314697,
+      "n_diff": 0.0,
+      "r": 1.0461538461538462
+    },
+    {
+      "analytic_sinh2": 1.6834944161318373,
+      "n_a": 1.6834997431154797,
+      "n_b": 1.6834997431154797,
+      "n_diff": 0.0,
+      "r": 1.0769230769230769
+    },
+    {
+      "analytic_sinh2": 1.8185112371009586,
+      "n_a": 1.8185169105738979,
+      "n_b": 1.8185169105738979,
+      "n_diff": 0.0,
+      "r": 1.1076923076923078
+    },
+    {
+      "analytic_sinh2": 1.962310990177228,
+      "n_a": 1.9623170291622947,
+      "n_b": 1.9623170291622947,
+      "n_diff": 0.0,
+      "r": 1.1384615384615384
+    },
+    {
+      "analytic_sinh2": 2.115438414350083,
+      "n_a": 2.1154448330517313,
+      "n_b": 2.1154448330517313,
+      "n_diff": 0.0,
+      "r": 1.1692307692307693
+    },
+    {
+      "analytic_sinh2": 2.278473583482753,
+      "n_a": 2.2784803778388554,
+      "n_b": 2.2784803778388554,
+      "n_diff": 0.0,
+      "r": 1.2
+    }
+  ],
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "factory": [
+    {
+      "analytic": 0.040536185919227405,
+      "n_factory": 0.04053618591922744,
+      "z": 0.2
+    },
+    {
+      "analytic": 0.1687174731524223,
+      "n_factory": 0.1687174731524225,
+      "z": 0.4
+    },
+    {
+      "analytic": 0.4053277836621873,
+      "n_factory": 0.40532778366218697,
+      "z": 0.6
+    },
+    {
+      "analytic": 0.7887322355974427,
+      "n_factory": 0.7887322355974431,
+      "z": 0.8
+    },
+    {
+      "analytic": 1.3810978455418155,
+      "n_factory": 1.3810978455375424,
+      "z": 1.0
+    },
+    {
+      "analytic": 2.278473583482753,
+      "n_factory": 2.2784735272036416,
+      "z": 1.2
+    }
+  ],
+  "fock_dim": 50,
+  "g_rate_rad_s": 12566.370614359172,
+  "generated_at": "2026-06-04T07:33:58.556614+00:00",
+  "hamiltonian": "H/hbar = i g (a-dag b-dag - a b) (two_mode_squeezing_hamiltonian)",
+  "max_numerical_vs_analytic_error": 6.794356102179933e-06,
+  "plot_alt_text": "Two panels. Left: per-mode mean occupation of the two squeezed modes versus the dimensionless squeezing r = g times tau, for both the time-evolved dynamics and the static two-mode squeezed-vacuum factory, overlaid on the analytic curve sinh squared of r; all numerical points lie on the curve, showing exponential parametric gain. Right: the difference between the two mode occupations stays flat at zero across the whole evolution, the conserved su(1,1) Casimir that marks the photon-number correlation.",
+  "purpose": "Two-mode SU(1,1) squeezing: evolving the two-mode vacuum under H/hbar = i g (a-dag b-dag - a b) grows the per-mode occupation as the closed form sinh^2(g tau) while the difference number a-dag a - b-dag b is conserved at zero (the su(1,1) Casimir / photon-number correlation). The static two_mode_squeezed_vacuum factory reproduces per-mode n-bar = sinh^2|z| (CONVENTIONS v0.3 convention, not qutip.squeezing's 1/2). Application-agnostic: textbook oracle only, no application framing.",
+  "scenario": "two_mode_squeezing",
+  "schema_version": 2,
+  "tolerance": 0.0001,
+  "workplan_reference": "WP/WP-02-two-mode-motional.md (WI-1/WI-2, dispatches MCA/MCB)"
+}
