@@ -12,10 +12,11 @@ entanglement diagnostics), an end-to-end reproduction of a
 publication dataset against a legacy MATLAB bundle, and the two
 service surfaces introduced at `v0.5.0` — parameter estimation /
 quantum Darwinism and two-mode / motional open-system physics —
-together with the post-`v0.5.0` motional completion (interferometric
+together with the `v0.6.0` motional completion (interferometric
 observables, Lamb–Dicke regime helpers, and mode-frequency drift,
-tutorials 14–17), and the reduced light–matter models of `v0.4`
-conventions (JC / AJC / QRM vs full ion dynamics, Tutorial 18). The runnable demo tools under `tools/`
+tutorials 14–17), and the `v0.6.0` reduced light–matter models
+(JC / AJC / QRM vs full ion dynamics, Tutorial 18, anchored by
+CONVENTIONS §25). The runnable demo tools under `tools/`
 and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.

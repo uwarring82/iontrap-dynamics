@@ -82,12 +82,13 @@ detuning drift, amplitude jitter, finite measurement shots) on
 top of the ideal physics — without the imperfections leaking
 back into the Hamiltonian.
 
-The thirteen tutorials under
+The eighteen tutorials under
 [Tutorials](tutorials/index.md) walk through these capabilities
-one at a time, ending with a full reproduction of a published
-2016 result (Clos et al.,
+one at a time — from the canonical building blocks, through a full
+reproduction of a published 2016 result (Clos et al.,
 *Phys. Rev. Lett.* **117**, 170401) on the dynamics of a
-strongly-driven Mølmer–Sørensen gate.
+strongly-driven Mølmer–Sørensen gate, to the estimation,
+two-mode / motional, and reduced light–matter model surfaces.
 
 ![A single trapped ion: spin coupled to motion via lasers](figures/ion_trap_schematic.png)
 
@@ -193,8 +194,8 @@ or in the [Phase 1 architecture document](phase-1-architecture.md).
 
 ## Where we are today
 
-The project tagged `v0.4.0` in April 2026 and `v0.5.0` in June 2026,
-building up the public surface incrementally:
+The project tagged `v0.4.0` in April 2026, `v0.5.0` in June 2026, and
+`v0.6.0` in June 2026, building up the public surface incrementally:
 
 | Phase | What it added                                                                 | Anchor            |
 |------:|-------------------------------------------------------------------------------|-------------------|
@@ -202,14 +203,17 @@ building up the public surface incrementally:
 |     1 | Configuration objects (species, drives, modes), Hamiltonian builders, observables, measurement layer, systematics layer | Public dynamics surface |
 |     2 | JAX / Dynamiqs alternative backend on the same `solve()` call; performance benchmarks; cross-backend agreement to ≲ 10⁻³ | Backend agnosticism |
 |   v0.4| Reproduction of Clos et al. 2016 (PRL 117, 170401) on N = 1, 2, 3 ions inside declared tolerances; exact-diagonalization spectrum tools and four spectrum-analysis observables | First external validation |
-|   v0.5| Two reusable toolkits: parameter-estimation primitives (quantum Fisher information, Cramér–Rao bounds, GHZ / cat probe states, quantum-Darwinism redundancy) and two-mode / motional open-system tools — two-mode squeezing and motional decoherence channels inside the solver shipped in `v0.5.0`; interferometric fringe analysis, Lamb–Dicke regime helpers, and a mode-frequency drift were added on the `main` branch since, for the next tagged release | Estimation + open-system surface |
+|   v0.5| Two reusable toolkits: parameter-estimation primitives (quantum Fisher information, Cramér–Rao bounds, GHZ / cat probe states, quantum-Darwinism redundancy) and two-mode / motional open-system tools — two-mode squeezing and motional decoherence channels inside the solver | Estimation + open-system surface |
+|   v0.6| Completion of the two-mode / motional surface (interferometric fringe analysis, Lamb–Dicke regime helpers, a probe-QFI benchmark, a mode-frequency drift) and the reduced light–matter models surface: Jaynes–Cummings / anti-JC / quantum-Rabi builders, a `model_deviation` comparison harness, Tutorial 18 against full ion dynamics, and the vendored model-hierarchy note (CONVENTIONS §25) | Reduced models + open-system completion |
 
-The thirteen tutorials cover the canonical building blocks
+The eighteen tutorials cover the canonical building blocks
 (Rabi, sidebands, π-pulses, MS gates), reach into less common
 regimes (squeezed motional states, finite-shot statistics,
-hot-ion full-Lamb–Dicke dynamics), and end with the Clos 2016
+hot-ion full-Lamb–Dicke dynamics), the Clos 2016
 reproduction as the first end-to-end validation against a
-published external result.
+published external result, and the estimation / Darwinism,
+two-mode / motional, and reduced-models service surfaces
+(tutorials 14–18).
 
 ---
 

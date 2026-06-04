@@ -8,6 +8,30 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-06-04
+
+**Release summary.** Two additive surfaces on top of `v0.5.0`, both decoupled from
+the Phase 2 JAX track. **WP-02 P1/P2** (dispatches MCD–MCG) completes the two-mode /
+motional surface with interferometric fringe-visibility observables (MCD), Debye–Waller
++ `LambDickeRegime` helpers and an exact-Laguerre sideband (MCE), a probe-QFI benchmark
+that **consumes** WP-01's `information/fisher.py` (MCF, benchmark-only — no new §8 symbol),
+and a multiplicative `ModeFrequencyDrift` systematic (MCG). **WP-03** (dispatches RLA–RLF
++ RLD) adds the `iontrap_dynamics.reduced_models` surface — the Jaynes–Cummings,
+anti-Jaynes–Cummings, and quantum-Rabi Hamiltonian builders plus a `model_deviation`
+comparison helper — with an analytic oracle suite (Cases A–D), Tutorial 18 (_reduced
+models vs full dynamics_) and its deterministic comparison benchmark, and the vendored
+model-hierarchy companion note. `CONVENTIONS.md` gains **§25** (reduced light–matter
+models — the three bare-term Hamiltonians, the LOCK-3 identity, the effective-`ω₀`-sign
+semantics) plus a §5 scope note, sealed under a `CONVENTION_VERSION` **0.3 → 0.4** bump.
+**Additive only** — §1–24 conventions and every existing API are unchanged; the new
+`reduced_models` module, observables, helpers, and `ModeFrequencyDrift` introduce no
+behaviour change for `v0.5.0` callers.
+
+**Test surface at `v0.6.0`:** 1319 passed / 3 skipped (ruff, ruff-format, mypy --strict,
+mkdocs build --strict all green). The 3 skips are pre-existing: `dynamiqs` not installed,
+and the two documented migration-scenario deferrals (two-ion single-tone coupling pre-factor;
+full-exponential Lamb–Dicke carrier).
+
 ### Added
 
 - **Dispatch MCD (WI-4) — observables: interferometric fringe visibility +

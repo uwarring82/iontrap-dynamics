@@ -16,30 +16,37 @@ solver surface via `backend="jax"`.
 
 ## Status
 
-**v0.5.0 released 2026-06-03 — adds two application-agnostic service
-surfaces (estimation / quantum Darwinism, and two-mode / motional
-open-system primitives) plus a device-neutral JAX spectrum backend, all
-under the v0.3 Convention Freeze.** Phase 0 foundations, Phase 1
+**v0.6.0 released 2026-06-04 — adds the reduced light–matter models
+surface (Jaynes–Cummings / anti-Jaynes–Cummings / quantum-Rabi builders
+plus a `model_deviation` comparison harness) and completes the two-mode /
+motional surface, on top of the v0.5.0 estimation / quantum-Darwinism and
+two-mode / motional service surfaces and the device-neutral JAX spectrum
+backend.** Phase 0 foundations, Phase 1
 (dynamics core + measurement layer + systematics layer + registered
 entanglement observables), Phase 2 (performance track + JAX / Dynamiqs
 backend end-to-end), the Clos 2016 integration (full-Lamb–Dicke carrier
 dynamics, exact-diagonalization spectrum tools, N = 1 / 2 / 3 reproduction
-inside declared tolerances), and the `v0.5.0` estimation + two-mode /
-motional surfaces are all shipped on `main`. `CONVENTIONS.md` is frozen at
-**v0.3** (§1–24; §19–24 — Fisher information / quantum Darwinism, two-mode
-squeezing / SU(1,1), and motional CPTP channels — added at the v0.3
-Convention Freeze, `CONVENTION_VERSION` 0.2 → 0.3). **Additive only:**
+inside declared tolerances), and the `v0.5.0` / `v0.6.0` service surfaces
+are all shipped on `main`. `CONVENTIONS.md` carries
+**§1–25**: §19–24 (Fisher information / quantum Darwinism, two-mode
+squeezing / SU(1,1), motional CPTP channels) sealed at the v0.3 Convention
+Freeze (`CONVENTION_VERSION` 0.2 → 0.3), and §25 (reduced light–matter
+models) sealed by WP-03 (`CONVENTION_VERSION` 0.3 → 0.4). **Additive only:**
 existing `v0.2.0` callers see no behaviour change — every new `backend=`
 kwarg defaults to `"qutip"`, every `channels=` argument defaults to none,
 every JAX entry is behind an opt-in `backend="jax"`.
 
-Post-`v0.5.0` on `main` (carried in `CHANGELOG.md` `[Unreleased]`, awaiting
-the next tag), the two-mode / motional service surface is **complete**:
-interferometric fringe observables (MCD), Lamb–Dicke regime helpers —
-Debye–Waller factor, a deep/intermediate/beyond classifier, and the
-all-orders sideband-Rabi forms (MCE), a probe-QFI benchmark that consumes
-the estimation primitive (MCF), and a motional `ModeFrequencyDrift`
-systematic (MCG) — all additive under v0.3.
+The `v0.6.0` cut bundles two things. The two-mode / motional service
+surface is **complete**: interferometric fringe observables (MCD),
+Lamb–Dicke regime helpers — Debye–Waller factor, a deep/intermediate/beyond
+classifier, and the all-orders sideband-Rabi forms (MCE), a probe-QFI
+benchmark that consumes the estimation primitive (MCF), and a motional
+`ModeFrequencyDrift` systematic (MCG). And the **reduced light–matter
+models** surface (WP-03) is new: the `reduced_models` JC / AJC / QRM
+builders, a `model_deviation` comparison helper, an analytic oracle suite
+(the four hierarchy cases), Tutorial 18 with a deterministic comparison
+benchmark, and the vendored model-hierarchy companion note
+(`docs/models-hierarchy.md`), anchored by CONVENTIONS §25 — all additive.
 
 End-to-end stacks work dynamics-through-statistics, on either backend:
 
@@ -273,20 +280,20 @@ Phase 2 sparse-matrix-tuning open item),
 QuTiP-vs-JAX at dim ≥ 100 / 5000 steps across all five
 time-dependent builders; needs the `[jax]` extras).
 
-Test suite on current `main` (v0.5.0 + the post-v0.5.0 two-mode / motional
-surface):
+Test suite at `v0.6.0` (base CI, no extras):
 
-- **Base CI (no extras): 1159 passed, 3 skipped.** Two skipped
+- **1319 passed, 3 skipped.** Two skipped
   tests are migration-tier builder-comparison slots (scenarios 3
   and 4) with probe-informed blockers (see `CHANGELOG.md`); one
   skipped module is the Dynamiqs-gated integration test file
   (`tests/unit/test_backends_jax_dynamiqs.py`, gated on
   `pytest.importorskip("dynamiqs")`).
-- **With `[jax]` extras: 869 passed, 2 skipped.** Adds the 49
-  Dynamiqs-gated integration tests covering cross-backend
-  numeric equivalence, result metadata, storage modes,
-  Fock-saturation check, time-dependent builders, user-envelope
-  dual-callable contract, and `solve_ensemble` on JAX.
+- **With the `[jax]` extras** the suite additionally runs the
+  Dynamiqs-gated integration tests (cross-backend numeric
+  equivalence, result metadata, storage modes, Fock-saturation
+  check, time-dependent builders, user-envelope dual-callable
+  contract, and `solve_ensemble` on JAX); run under the extra to
+  confirm the current total.
 
 Docs site scaffold:
 

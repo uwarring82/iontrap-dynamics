@@ -1,7 +1,7 @@
 # Welcome
 
 <section class="hero-panel">
-  <p class="hero-kicker">iontrap-dynamics · v0.5.0 — estimation + two-mode / motional surfaces landed</p>
+  <p class="hero-kicker">iontrap-dynamics · v0.6.0 — reduced light–matter models + two-mode / motional surfaces landed</p>
   <h1>Open-system quantum dynamics for trapped-ion spin-motion systems</h1>
   <p class="hero-lede">
     A Python library for deterministic, typed, convention-explicit modelling of
@@ -67,9 +67,10 @@ Strict package metadata, CI (lint + mypy strict + tests + pa11y WCAG 2 A)
 </div>
 
 At `v0.5.0` the library covers Phase 0, Phase 1, and Phase 2 in full,
-the Clos 2016 reproduction track, and two application-agnostic service
+the Clos 2016 reproduction track, two application-agnostic service
 surfaces — estimation / quantum Darwinism, and two-mode / motional
-open-system primitives (the latter rounded out on `main` post-`v0.5.0`):
+open-system primitives (completed in `v0.6.0`) — and the reduced
+light–matter models surface (`v0.6.0`):
 
 Foundation (Phase 0):
 
@@ -125,12 +126,15 @@ Estimation & open-system service surfaces (§19–24):
   beamsplitter builders, the `two_mode_squeezed_vacuum` factory, and typed
   motional CPTP channels (`AmplitudeDamping` / `Heating` / `Dephasing`)
   wired through `solve(channels=…)`.
-- Completing the two-mode / motional surface (on `main`, post-`v0.5.0`,
-  carried in `CHANGELOG.md` `[Unreleased]` for the next tag): interferometric
+- Two-mode / motional completion (in `v0.6.0`): interferometric
   fringe observables, Lamb–Dicke regime helpers (Debye–Waller + a
   deep/intermediate/beyond classifier + all-orders sideband-Rabi), a probe-QFI
   benchmark consuming the estimation primitive, and a `ModeFrequencyDrift`
   systematic.
+- Reduced light–matter models (in `v0.6.0`): the `reduced_models` JC / AJC /
+  QRM builders, a `model_deviation` comparison helper, Tutorial 18 against full
+  ion dynamics, and the vendored model-hierarchy note — anchored by
+  CONVENTIONS §25.
 
 ## Boundaries
 

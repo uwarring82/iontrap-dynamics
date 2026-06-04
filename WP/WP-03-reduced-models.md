@@ -2,7 +2,9 @@
 
 **Executes the reduced-models task card: add abstract JC/AJC/QRM Hamiltonian builders, a model-vs-realisation comparison harness, and Tutorial 18 comparing reduced light–matter models against full trapped-ion dynamics.**
 
-Version 0.2 · Drafted 2026-06-04 · **Ratified 2026-06-04** · Status: Ratified
+Version 0.2 · Drafted 2026-06-04 · **Ratified 2026-06-04** · **Content-complete 2026-06-04** · Status: **CLOSED** (WI-1…7 landed; `wp03-reduced-models` staged for `v0.6.0`)
+
+> **Close-out (WI-7 / RLG, 2026-06-04).** All seven work items landed on `wp03-reduced-models`: WI-1 RLA (§25 + §5 scope seal, `CONVENTION_VERSION` 0.4) · WI-2 RLB (JC/AJC/QRM builders) · WI-3 RLC (analytic oracles, Cases A–D) · WI-5 RLE (`model_deviation`) · WI-6 RLF (Tutorial 18 + benchmark) · WI-4 RLD (vendored hierarchy note) · WI-7 RLG (this close-out: `pyproject` 0.5.0→0.6.0, CHANGELOG `[Unreleased]`→`[0.6.0]`, user-facing release docs refreshed to `v0.6.0`, governed WORKPLAN §5.6 **applied** — staged propose-don't-apply, then folded into RLG on the maintainer's go-ahead). Release gate green: **1319 passed / 3 skipped**, ruff + mypy --strict + mkdocs --strict clean. **Open thread:** R7 is **partially discharged** — the v0.4 note is vendored but its upstream source commit/DOI is pending lock (recorded in `docs/models-hierarchy.md`); and the sealed §25 forward-reference wording is left for the next convention bump (propose-don't-apply). The branch ff-merges cleanly to `main`; the `v0.6.0` tag is the maintainer's release act.
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code is MIT (`src/`, `tests/`, `.github/workflows/`); authored docs/tutorials are Sail / CC BY-NC-SA 4.0; the vendored hierarchy note and any `CONVENTIONS.md` edit are Coastline / CC BY-SA 4.0. See root `LICENCE`.
@@ -174,7 +176,7 @@ Family **`RL`** minted 2026-06-04 (R3) after the authoritative collision grep; m
 | `RLD` | WI-4 hierarchy note vendoring | `- **Dispatch RLD — docs: model hierarchy companion (vendored).**` | **landed 2026-06-04** (`docs/models-hierarchy.md` vendors `hierarchy.md` v0.4; provenance header + CC BY-SA 4.0 preserved; transit-encoding repaired, source-repo links neutralised; `mkdocs.yml` nav; Tutorial 18 §4/§5/§6/§8 refs now live links; mkdocs --strict clean. R7 note supplied; source commit/DOI pending upstream lock) |
 | `RLE` | WI-5 comparison helper | `- **Dispatch RLE — reduced_models: model-deviation helper.**` | **landed 2026-06-04** (`model_deviation` + `ModelDeviation` in `reduced_models.py` + re-export; state-fidelity + observable-RMS paths; 22 unit tests; mypy --strict clean) |
 | `RLF` | WI-6 Tutorial 18 + figures | `- **Dispatch RLF — tutorials: reduced models versus full dynamics.**` | **landed 2026-06-04** (Tutorial 18 Cases A–D, snippets execute; `tools/plot_reduced_models_comparison.py` + `benchmarks/data/reduced_models_comparison/` figures, oracle < 1e-3; nav + index; mkdocs --strict clean) |
-| `RLG` | WI-7 release hygiene | `- **Dispatch RLG — release hygiene for reduced-model tutorial track.**` | planned |
+| `RLG` | WI-7 release hygiene | `- **Dispatch RLG — release hygiene for reduced-model tutorial track.**` | **staged 2026-06-04** (`pyproject` 0.5.0→0.6.0; CHANGELOG `[Unreleased]`→`[0.6.0]`; user-facing release docs refreshed (README, `docs/index.md`, `docs/overview.md`, `docs/tutorials/index.md`); WP status→CLOSED; governed WORKPLAN §5.6 **applied** (maintainer go-ahead; record kept in `WP/RL-workplan-5.6-proposal.md`); release gate 1319/3; ff-merge + `v0.6.0` tag are the maintainer's act) |
 
 ## 12. Logbook hooks *(Sail)*
 
@@ -183,7 +185,7 @@ Entries this WP has generated in `WP/LOGBOOK.md` (dated):
 - 2026-06-04 — WP-03 Drafted against `TC-reduced-models-tutorial`; task card staged as v0.2.1; dispatch codes unminted pending ratification.
 - 2026-06-04 — WP-03 **Ratified** (v0.2). Decisions R1–R7 recorded (§0); dispatch family **`RL`** (RLA…RLG) minted after collision grep and registered; binding conventions gate fixed as §25 + §5 scoping note at `CONVENTION_VERSION` 0.4, staged propose-don't-apply, sealed before WI-2.
 
-Expected future hooks: one per decision/deferral during execution, one at the §25/§5 convention seal (R2), one at release cut.
+All hooks logged in `WP/LOGBOOK.md`: per-WI decisions/deferrals during execution, the §25/§5 convention seal (RLA, R2), and the release cut (RLG).
 
 ---
 
