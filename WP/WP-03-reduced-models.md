@@ -1,0 +1,172 @@
+# WP-03 — Reduced Light–Matter Models & Full-Ion Comparison Tutorial
+
+**Executes the reduced-models task card: add abstract JC/AJC/QRM Hamiltonian builders, a model-vs-realisation comparison harness, and Tutorial 18 comparing reduced light–matter models against full trapped-ion dynamics.**
+
+Version 0.1 · Drafted 2026-06-04 · Status: Drafted
+
+**Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
+**Licence:** This WP document is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code is MIT (`src/`, `tests/`, `.github/workflows/`); authored docs/tutorials are Sail / CC BY-NC-SA 4.0; the vendored hierarchy note and any `CONVENTIONS.md` edit are Coastline / CC BY-SA 4.0. See root `LICENCE`.
+**Stewardship:** U. Warring, AG Schätz. Under T(h)reehouse +EC corporate design (`cd-rules`, consumed via Model B).
+**Endorsement Marker:** Local candidate framework. No external endorsement implied.
+
+---
+
+## 1. Purpose and the physics/apparatus boundary invariant *(Coastline)*
+
+WP-03 executes the reduced-models tutorial card by adding **application-agnostic** library primitives for abstract qubit–oscillator models and by using the already-shipped trapped-ion sideband/full-Lamb-Dicke surface to compare those reduced models against physical realisations.
+
+**The governing boundary invariant — quoted from the card §1, not paraphrased** (hard acceptance gate):
+
+> **One boundary must hold (and it mirrors the library's architecture):** the *reduced models* are physics-layer objects (what the apparatus approximates); the *sideband Hamiltonians* are apparatus-layer objects (how a real ion realises them). The tutorial's whole point is to compare the two — Axis A (model containment) against Axis B (physical realisation) in the language of `hierarchy.md`. Keeping that separation is what makes the tutorial a *falsifiable demonstration* of the note rather than an illustration of it.
+
+Concretely:
+
+- reduced JC/AJC/QRM builders live in a new physics-layer module (`reduced_models.py`) and are not tied to a drive, species, wave-vector, or sideband selection;
+- red/blue sideband and full-Lamb-Dicke builders remain apparatus-layer objects in `hamiltonians.py`;
+- the comparison harness and Tutorial 18 make the mapping explicit instead of hiding it in a builder name;
+- Case E (bichromatic simulated QRM) is **deferred** until a separate two-tone sideband convention/builder is scoped.
+
+## 2. Reuse-first posture *(Coastline)*
+
+The task card §3 lists the existing machinery that WP-03 must reuse, not rebuild:
+
+| Already shipped (do not rebuild) | WP-03 builds on it |
+|---|---|
+| `operators.{sigma_z_ion, sigma_x_ion, sigma_plus_ion, sigma_minus_ion, spin_up, spin_down}` | reduced-model terms and LOCK-3 conventions test |
+| `HilbertSpace` mode/spin embedding helpers | all reduced builders (`mode_label`, keyword-only `ion_index`) |
+| `hamiltonians.{red_sideband_hamiltonian, blue_sideband_hamiltonian}` with `full_lamb_dicke=True` on red/blue sidebands | Cases B and D; no apparatus rebuild |
+| `analytic.{red_sideband_rabi_frequency, blue_sideband_rabi_frequency, red_sideband_rabi_frequency_full_ld, blue_sideband_rabi_frequency_full_ld, debye_waller_factor, lamb_dicke_confinement, lamb_dicke_regime}` | analytic oracles and Tutorial 18 formulas |
+| `solve(...)` / `solve_ensemble` with QuTiP default and `backend="jax"` | trajectory comparisons and backend parity |
+| `spectrum.solve_spectrum` | Case A spectrum equality; Case C QRM ground-state and spectral deviation |
+| tutorial/benchmark house style (`docs/tutorials/`, `tools/run_*`, `benchmarks/data/`) | Tutorial 18 and reproducible figure artefacts |
+
+**New module expected:** `src/iontrap_dynamics/reduced_models.py`. Everything else extends existing surfaces or documentation.
+
+## 3. Card linkage *(Sail)*
+
+Executes **`task cards/TC-reduced-models-tutorial.md`** (**ID: TC-reduced-models-tutorial**, v0.2.1, 2026-06-04).
+
+**Objective lifted from the card (one line):** deliver reduced JC/AJC/QRM physics-layer builders, a model-vs-realisation comparison harness, and Tutorial 18 with reproducible figures and oracle-backed comparisons against full trapped-ion dynamics.
+
+**Governing gates from the card — quoted, not paraphrased**:
+
+> **Oracle-first.** No case "passes" on a plot; each pass condition above is a runnable oracle check.
+
+> **Conventions before code (RM0).** `CONVENTIONS.md` §25 and its conventions test land *before* the reduced-model builders.
+
+> **Cross-backend.** Reduced-model solves agree QuTiP vs JAX under 1e-3 where a JAX path exists; builders themselves remain static QuTiP `Qobj` producers.
+
+> **No claim beyond the note.** The tutorial introduces no physics statement absent from the locked `hierarchy.md`; it cites rungs.
+
+**Out of scope (explicit).** Case E's bichromatic simulated-QRM bridge is deferred to a future WP unless a first-class two-tone sideband builder and effective-parameter convention land first. The WP does not redefine sideband builders, does not introduce consuming-application framing, and does not make hardware claims.
+
+## 4. Work-item plan WI-1…WI-7 *(Sail)*
+
+Dispatch codes are **not minted while Drafted**. They will be assigned at Ratified after an authoritative collision grep of `CHANGELOG.md`, `WORKPLAN_v0.3.md`, `docs/gpu-dispatch-design.md`, and `WP/LOGBOOK.md`.
+
+| WI | Card | Module / doc | Key contents | Reuse | Acceptance (oracle) | Conv. | Priority |
+|---|---|---|---|---|---|---|---|
+| **WI-1** | RM0 | `CONVENTIONS.md` §25 + `tests/conventions/test_reduced_models_conventions.py` | Reduced light–matter model convention: Schrödinger-picture bare terms, `H/ℏ` in rad·s⁻¹, `ω0` sign semantics, JC/AJC/QRM term selection, LOCK-3 identity | §3 Pauli convention; §5 Hamiltonian picture contrast | LOCK-3 identity holds using embedded library operators; convention version bump and §25 text present | **new §25, mandatory before code** | P0 |
+| **WI-2** | RM1 | `src/iontrap_dynamics/reduced_models.py` + exports | `jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`, `quantum_rabi_hamiltonian`; static `Qobj` builders with explicit `mode_label`, keyword-only `ion_index`; no builder-level `backend=` | `HilbertSpace`, `operators`, `solve`, `solve_spectrum` | Hermiticity/dims/API rejection; JC/AJC Rabi block rates; QRM weak-coupling reference; QuTiP/JAX solve parity < 1e-3 | per WI-1 | P0 |
+| **WI-3** | RM6 core | `tests/regression/analytic/` + `tests/benchmarks/` references | Analytic and benchmark oracles for Cases A–D, including `2g√(n±1)` sideband/RM coupling relation | existing `analytic.py`, `spectrum.py`, `sequences.py` | Case A identity/spectrum equality; Case C ground-state photon and reference-control points; Case D full-LD vs leading-order control points | none new | P0/P1 |
+| **WI-4** | RM5 | `docs/models-hierarchy.md` + `mkdocs.yml` | Vendor `ajc-provenance/docs/hierarchy.md` v0.4 with provenance header, commit hash/DOI slot, licence preserved | task-card source note; mkdocs nav pattern | links resolve; note renders; provenance recorded; tutorial can cite sections | none new | P1 |
+| **WI-5** | RM2 | comparison helper module or existing analysis surface | `model_deviation(...)` if needed: pinned `1 - qutip.fidelity(...)` convention for materialised states, observable/population RMS fallback | `TrajectoryResult`, `StorageMode`, observables, `qutip.fidelity` | deviation → 0 in common regimes; materialised-state requirement enforced; observable-only fallback explicit | none new | P1 |
+| **WI-6** | RM3/RM4 | `docs/tutorials/18_reduced_models_vs_full_dynamics.md`; `tools/plot_reduced_models_comparison.py`; `benchmarks/data/` | Tutorial 18 walking Cases A–D; analytical-expression block from task card; deterministic figures for A–D with arrays/report metadata | tutorial/benchmark house style; docs nav | snippets execute; figures regenerate and are cited; pa11y WCAG A; no claim beyond hierarchy note | none new | P1/P2 |
+| **WI-7** | release hygiene | `CHANGELOG.md`, `WP/LOGBOOK.md`, release docs | Dispatch-keyed changelog bullets, logbook decisions/deferrals, final WP status/release notes | existing WP/CHANGELOG pattern | all landed WI entries accounted for; CI green; release SemVer justification recorded if tagged | none new | P1 |
+
+## 5. Analytical-expression requirements for Tutorial 18 *(Sail)*
+
+Tutorial 18 must display, at minimum, the task card's compact equations:
+
+- QRM, JC, and AJC Hamiltonians and their symmetry contrast (`Z2` parity vs `U(1)` excitation-like numbers);
+- the LOCK-3 identity `H_AJC(ω0)=σx H_JC(-ω0) σx`, with the negative-frequency caveat;
+- the schematic full-ion Hamiltonian and first-order Lamb-Dicke red/blue sideband terms that explain red→JC and blue→AJC;
+- the full-LD Debye–Waller / Laguerre sideband expression and its Lamb-Dicke limit `Ω|η|√(n±1)=2g√(n±1)`;
+- the regime parameter `η²(2n+1)` / `η²(2 n̄+1)`;
+- only a **schematic** deferred bichromatic retained interaction, with no committed effective-frequency map until the future Case-E convention lands.
+
+This section is an execution checklist, not new physics; the authoritative conceptual source remains the vendored hierarchy note.
+
+## 6. Convention plan *(Coastline)*
+
+`CONVENTIONS.md` is frozen at v0.3 (§1–24). WP-03 requires an additive §25 and a `CONVENTION_VERSION` bump **before WI-2**. The reason is structural: current §5 declares apparatus builders to be in the interaction picture of the atomic transition, while reduced JC/AJC/QRM builders intentionally carry Schrödinger-picture bare model terms.
+
+Planned section:
+
+| New § | Title | Backs | Required before |
+|---|---|---|---|
+| `## 25. Reduced light–matter models` | Schrödinger-picture reduced-model Hamiltonians, `ω0` sign semantics, JC/AJC/QRM term selection, LOCK-3 identity | WI-2 builders, Tutorial 18 Case A/C | WI-2 |
+
+The §25 text should cite the vendored hierarchy note and `CONVENTIONS.md` §3/§5. Its conventions test is the first runnable gate.
+
+## 7. Benchmark and test plan *(Coastline)*
+
+| Case | Tool / test | Oracle |
+|---|---|---|
+| A | unit + conventions test; spectrum check | `H_AJC(+ω0) = σx H_JC(-ω0) σx`; eigenvalue sets equal |
+| B | tutorial snippet + figure data | red sideband dark from `|↓,0⟩`; blue sideband bright with `blue_sideband_rabi_frequency` |
+| C | spectrum/trajectory reference curve | weak-coupling JC≈QRM; QRM ground-state `⟨a†a⟩`; reference control points, not monotonicity |
+| D | analytic + trajectory control points | full-LD sideband rates vs leading order; `2g√(n±1)` reduced limit; regime bands via `η²(2n+1)` |
+
+Every benchmark artefact follows the existing compute/report style (`arrays.npz`, `report.json`, `plot.png` with alt text) where a figure is generated.
+
+## 8. CHANGELOG + release plan *(Coastline gate)*
+
+Target release: additive minor or patch depending on the surrounding unreleased surface. The current task card suggests an additive minor release theme: **reduced light–matter models + model-vs-realisation tutorial**.
+
+Each landed dispatch gets a dispatch-keyed `[Unreleased]` bullet. A release cut follows the WP template's five-step procedure and records the explicit SemVer decision in `WP/LOGBOOK.md`.
+
+## 9. Definition of Done *(Coastline)*
+
+- [ ] `CONVENTIONS.md` §25 and `CONVENTION_VERSION` bump landed before reduced builders.
+- [ ] `reduced_models.py` builders are static `Qobj` producers, explicit on `mode_label` and keyword-only `ion_index`, with no builder-level `backend=`.
+- [ ] Cases A–D each have a runnable oracle; no plot-only acceptance.
+- [ ] Case C/D reference bands/control points are committed before benchmark tests depend on them.
+- [ ] Tutorial 18 includes the analytical-expression block and cites the vendored hierarchy note.
+- [ ] Case E remains deferred unless a separate two-tone convention/builder lands first.
+- [ ] SPDX headers on new code, docs licences preserved, CHANGELOG/logbook entries present, CI green.
+
+## 10. Risks and mitigations *(Sail)*
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Reduced-model builder silently blurs physics and apparatus layers | Medium | High | §1 invariant; separate `reduced_models.py`; sidebands remain in `hamiltonians.py` |
+| §25 convention delayed but code begins | Medium | High | WI-1 is first and blocks WI-2; conventions test required |
+| Monotonicity accidentally reintroduced in Case C/D tests | Medium | Medium | use pre-committed control points/reference bands only |
+| Fidelity comparison uses omitted states | Medium | Medium | RM2 helper requires materialised states or falls back to observable RMS |
+| Case E scope creep blocks Tutorial 18 | Medium | High | explicit deferred status and future-WP prerequisite |
+| Full-LD signed/magnitude convention confused in tutorial | Low | Medium | tutorial text must state signed matrix element vs helper magnitude |
+
+## 11. Dispatch register *(Sail — unminted while Drafted)*
+
+No dispatch codes are minted yet. At Ratified, choose a fresh family after the required collision grep and populate both this section and `WP/LOGBOOK.md`.
+
+| Dispatch | Maps to | CHANGELOG bullet | Status |
+|---|---|---|---|
+| `<TBD>` | WI-1 §25 convention + conventions test | `- **Dispatch <TBD> — conventions: reduced light–matter models.**` | planned |
+| `<TBD>` | WI-2 reduced-model builders | `- **Dispatch <TBD> — reduced_models: JC/AJC/QRM Hamiltonian builders.**` | planned |
+| `<TBD>` | WI-3 analytic/benchmark oracles | `- **Dispatch <TBD> — tests: reduced-model oracle suite.**` | planned |
+| `<TBD>` | WI-4 hierarchy note vendoring | `- **Dispatch <TBD> — docs: model hierarchy companion.**` | planned |
+| `<TBD>` | WI-5 comparison helper | `- **Dispatch <TBD> — analysis: model-deviation helper.**` | planned |
+| `<TBD>` | WI-6 Tutorial 18 + figures | `- **Dispatch <TBD> — tutorials: reduced models versus full dynamics.**` | planned |
+| `<TBD>` | WI-7 release hygiene | `- **Dispatch <TBD> — release hygiene for reduced-model tutorial track.**` | planned |
+
+## 12. Logbook hooks *(Sail)*
+
+Entries this WP has generated in `WP/LOGBOOK.md` (dated):
+
+- 2026-06-04 — WP-03 Drafted against `TC-reduced-models-tutorial`; task card staged as v0.2.1; dispatch codes unminted pending ratification.
+
+Expected future hooks: one entry at Ratified (with code minting), one per decision/deferral during execution, one at release cut.
+
+---
+
+## Endorsement Marker
+
+**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This Work-Plan is a Sail execution document within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg), under the Coastline gates of `WORKPLAN_v0.3.md` and `CONVENTIONS.md`. Lock–Key rule applies: this WP is a key built on the stable locks those documents specify. The repository adopts the T(h)reehouse +EC Corporate Design blueprint (`cd-rules`, consumed via Model B).
+
+**Council status:** Guardian pending — confirm §25 is routed before code and no Coastline gate is relaxed. Architect pending — confirm `reduced_models.py` respects the physics/apparatus separation and reuses `HilbertSpace`/operators/solvers. Scout horizon — Case E two-tone convention and hierarchy-note provenance. Integrator sequenced — WI-1 → WI-2 → WI-3/WI-4/WI-5 → WI-6 → WI-7.
+
+**Convention version:** references `CONVENTIONS.md` v0.3 (frozen 2026-06-03). This WP intentionally introduces a new §25 through WI-1 and therefore requires a `CONVENTION_VERSION` bump before code.
+**Corporate design version:** `cd-v1.7.1` (consumed via Model B).
+**Workplan reference:** `WORKPLAN_v0.3.md`; this WP's track lands as a future append-only `§5.x` amendment once ratified.

@@ -345,6 +345,17 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-04 — WP-03 Drafted against reduced-models tutorial card
+
+- **Refs:** WP-03 · `TC-reduced-models-tutorial`
+- **Stance:** Architect (lift a reviewed task card into an execution plan) with Guardian gatekeeping (conventions before code).
+- **What:** Tracked `task cards/TC-reduced-models-tutorial.md` as v0.2.1 and drafted `WP/WP-03-reduced-models.md` (Status: Drafted). The WP decomposes the card into seven work items: mandatory `CONVENTIONS.md` §25 + conventions test, static `Qobj` reduced-model builders, analytic/benchmark oracles, hierarchy-note vendoring, optional deviation helper, Tutorial 18 + figures, and release hygiene.
+- **Why:** The card is now specification-complete and review-clean, but execution needs the governed WP carrier before code begins. Drafting WP-03 makes the hard boundary explicit: reduced JC/AJC/QRM models are physics-layer objects, sideband/full-LD Hamiltonians are apparatus-layer realisations, and Case E remains deferred behind a separate bichromatic two-tone convention/builder. Dispatch codes are **not minted** while Drafted; ratification will run the normal collision grep and populate the registry.
+- **Outcome:** Drafted; open for ratification. **Next:** maintainer ratifies WP-03, mints a fresh dispatch family, and opens WI-1 (`CONVENTIONS.md` §25) before any reduced-model code lands.
+- **Links:** `task cards/TC-reduced-models-tutorial.md` · `WP/WP-03-reduced-models.md`.
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
