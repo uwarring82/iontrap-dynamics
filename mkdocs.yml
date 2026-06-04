@@ -87,6 +87,7 @@ nav:
       - "15. Quantum Darwinism": tutorials/15_quantum_darwinism.md
       - "16. Two-mode SU(1,1) squeezing": tutorials/16_two_mode_squeezing.md
       - "17. Motional decoherence and the Lamb–Dicke regime": tutorials/17_motional_decoherence_and_lamb_dicke.md
+      - "18. Reduced models vs full dynamics": tutorials/18_reduced_models_vs_full_dynamics.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:

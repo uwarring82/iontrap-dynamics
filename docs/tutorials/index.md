@@ -5,7 +5,7 @@ Task-oriented walkthroughs of `iontrap-dynamics`. Each tutorial takes
 adaptive guidance with specific parameter choices, not coastline
 constraints.
 
-The track now spans seventeen tutorials, covering every
+The track now spans eighteen tutorials, covering every
 architectural layer of the library (configuration, Hamiltonians,
 solve, observables, measurement, systematics, persistence,
 entanglement diagnostics), an end-to-end reproduction of a
@@ -14,7 +14,8 @@ service surfaces introduced at `v0.5.0` — parameter estimation /
 quantum Darwinism and two-mode / motional open-system physics —
 together with the post-`v0.5.0` motional completion (interferometric
 observables, Lamb–Dicke regime helpers, and mode-frequency drift,
-tutorials 14–17). The runnable demo tools under `tools/`
+tutorials 14–17), and the reduced light–matter models of `v0.4`
+conventions (JC / AJC / QRM vs full ion dynamics, Tutorial 18). The runnable demo tools under `tools/`
 and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.
@@ -200,6 +201,15 @@ cover the same ground for users who prefer reading code to prose.
   (`debye_waller_factor`, `lamb_dicke_regime`, full-LD vs leading-order
   sideband), and budgeting a `ModeFrequencyDrift` (`η → η/√(1+δ)`). Embeds
   `motional_channels` and `lamb_dicke_regime`.
+- [**Tutorial 18 — Reduced models vs full dynamics**](18_reduced_models_vs_full_dynamics.md).
+  Walks the four falsifiable cases of the reduced light–matter hierarchy
+  (CONVENTIONS §25): the LOCK-3 identity makes JC and AJC spectra coincide
+  (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`,
+  `solve_spectrum`); the same label becomes a physical red-dark / blue-bright knob
+  on the ion; `model_deviation` measures the rotating-wave approximation breaking
+  down as `g/ω₀` grows into the `quantum_rabi_hamiltonian`; and the `2g√(n±1)`
+  limit ties the reduced coupling back to the apparatus sideband rate. Embeds
+  `reduced_models_comparison`.
 
 ## Scope and licensing
 

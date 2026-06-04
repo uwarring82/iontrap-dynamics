@@ -1,0 +1,132 @@
+{
+  "analytic_formulas": {
+    "case_A": "spec(H_AJC(+w0)) = spec(H_JC(-w0))  (LOCK-3)",
+    "case_B": "red P_up = 0 (dark); blue P_up = sin^2(Omega_blue t / 2)",
+    "case_C": "QRM ground <a-dag a> ~= (g/(w0+w_f))^2  (2nd-order PT, weak)",
+    "case_D": "leading red rate = Omega |eta| sqrt(n) = 2 g sqrt(n); deep dev = 1 - exp(-eta^2/2)"
+  },
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "blue_sideband_rate_rad_s": 35743.864789446685,
+  "canonical_request_hash": null,
+  "case_c": [
+    {
+      "analytic_phonons_pt": 0.0001,
+      "deviation": 0.00020002000200014525,
+      "g_over_w0": 0.02,
+      "n_qrm": 0.000100050010500596
+    },
+    {
+      "analytic_phonons_pt": 0.0006250000000000001,
+      "deviation": 0.0012507817382804154,
+      "g_over_w0": 0.05,
+      "n_qrm": 0.0006269556893882107
+    },
+    {
+      "analytic_phonons_pt": 0.0025000000000000005,
+      "deviation": 0.005012531249410701,
+      "g_over_w0": 0.1,
+      "n_qrm": 0.0025314142928998693
+    },
+    {
+      "analytic_phonons_pt": 0.010000000000000002,
+      "deviation": 0.02020199938627576,
+      "g_over_w0": 0.2,
+      "n_qrm": 0.010510555816729354
+    },
+    {
+      "analytic_phonons_pt": 0.04000000000000001,
+      "deviation": 0.0833273289684765,
+      "g_over_w0": 0.4,
+      "n_qrm": 0.04868259955573445
+    },
+    {
+      "analytic_phonons_pt": 0.12249999999999998,
+      "deviation": 0.2784783411805568,
+      "g_over_w0": 0.7,
+      "n_qrm": 0.21654662545750383
+    },
+    {
+      "analytic_phonons_pt": 0.25,
+      "deviation": 0.647945729315976,
+      "g_over_w0": 1.0,
+      "n_qrm": 0.6814047937149588
+    },
+    {
+      "analytic_phonons_pt": 0.5625,
+      "deviation": 1.2879006759638947,
+      "g_over_w0": 1.5,
+      "n_qrm": 2.1541159281507047
+    }
+  ],
+  "case_d": [
+    {
+      "confinement_eta2_2n1": 0.0012000000000000001,
+      "deviation": 0.00019998000133315857,
+      "eta": 0.02,
+      "regime": "deep"
+    },
+    {
+      "confinement_eta2_2n1": 0.0108,
+      "deviation": 0.001798380971562713,
+      "eta": 0.06,
+      "regime": "deep"
+    },
+    {
+      "confinement_eta2_2n1": 0.0432,
+      "deviation": 0.007174142096186666,
+      "eta": 0.12,
+      "regime": "deep"
+    },
+    {
+      "confinement_eta2_2n1": 0.12000000000000002,
+      "deviation": 0.01980132669324484,
+      "eta": 0.2,
+      "regime": "intermediate"
+    },
+    {
+      "confinement_eta2_2n1": 0.36749999999999994,
+      "deviation": 0.05941193663565793,
+      "eta": 0.35,
+      "regime": "intermediate"
+    },
+    {
+      "confinement_eta2_2n1": 1.08,
+      "deviation": 0.16472978858872786,
+      "eta": 0.6,
+      "regime": "beyond"
+    },
+    {
+      "confinement_eta2_2n1": 3.0,
+      "deviation": 0.3934693402873666,
+      "eta": 1.0,
+      "regime": "beyond"
+    }
+  ],
+  "case_errors": {
+    "A": 5.81756864903582e-14,
+    "B": 3.107368234778196e-06,
+    "C": 3.141429289986886e-05,
+    "D": 9.676504389433127e-17
+  },
+  "convention_version": "0.4",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "fock_dynamics": 12,
+  "fock_spectrum": 30,
+  "generated_at": "2026-06-04T18:27:02.398005+00:00",
+  "lamb_dicke_parameter": 0.11377625532897578,
+  "max_numerical_vs_analytic_error": 3.141429289986886e-05,
+  "plot_alt_text": "Four panels, one per case of the reduced-model hierarchy. Panel A: the lowest eigenvalues of the Jaynes-Cummings model at minus omega-zero and the anti-Jaynes-Cummings model at plus omega-zero lie exactly on top of each other, confirming the LOCK-3 identity that the two are the same model up to a label. Panel B: starting from spin-down with zero phonons, the spin-up population stays flat at zero under the red sideband (dark, the Jaynes-Cummings image) but oscillates fully between zero and one under the blue sideband (bright, the anti-Jaynes-Cummings image). Panel C: as the dimensionless coupling g over omega-zero grows from weak to ultra-strong, the ground-state energy gap between the Jaynes-Cummings and quantum Rabi models rises from near zero, while the quantum Rabi ground-state phonon number, overlaid, grows from zero, showing the rotating-wave approximation breaking down. Panel D: the relative deviation between the all-orders full-Lamb-Dicke red-sideband rate and the leading-order rate rises with the confinement parameter eta squared times two n plus one, crossing the deep, intermediate, and beyond regime bands.",
+  "purpose": "Reduced light-matter models (JC/AJC/QRM, physics layer) vs the apparatus sideband realisations, along the four hierarchy cases. Case A: the LOCK-3 identity H_AJC(w0)=sigma_x H_JC(-w0) sigma_x makes spec(H_AJC(+w0)) and spec(H_JC(-w0)) coincide. Case B: from |down,0> the red sideband (JC image) is dark while the blue sideband (AJC image) flops at the blue-sideband Rabi rate. Case C: the non-RWA QRM ground state acquires virtual phonons <a-dag a> ~= (g/(w0+w_f))^2 at weak coupling and its ground energy departs from JC as g/w0 grows. Case D: the full-Lamb-Dicke red-sideband rate tends to the leading-order 2g sqrt(n) limit as eta^2 (2n+1) -> 0. Application-agnostic: textbook/oracle comparison only, no application framing.",
+  "scenario": "reduced_models_comparison",
+  "schema_version": 2,
+  "tolerance": 0.001,
+  "workplan_reference": "WP/WP-03-reduced-models.md (WI-6, dispatch RLF)"
+}

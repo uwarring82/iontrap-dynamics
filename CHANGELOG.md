@@ -160,6 +160,27 @@ placeholder-only and did not follow semver.
   orthogonal / 1, overlap `1 − 1/√2`), the single- and multi-channel RMS, and the
   six validation guards. Additive under CONVENTIONS v0.4, no new convention. Per
   `WP/WP-03-reduced-models.md` (WI-5).
+- **Dispatch RLF (WP-03 WI-6) — docs/benchmarks: Tutorial 18 (reduced models vs
+  full dynamics) + comparison figures.** New
+  `docs/tutorials/18_reduced_models_vs_full_dynamics.md` walks the four falsifiable
+  cases of the reduced light–matter hierarchy with runnable snippets: Case A the
+  LOCK-3 identity makes JC and AJC spectra coincide; Case B the same label is a
+  physical red-dark / blue-bright knob on the ion; Case C `model_deviation` measures
+  the rotating-wave breakdown as `g/ω₀` grows into the quantum Rabi model; Case D
+  the `2g√(n±1)` limit ties the reduced coupling back to the apparatus sideband
+  rate. It carries the §25 analytical block (the three Hamiltonians, the U(1)/Z₂
+  symmetry contrast, LOCK-3 with the −ω₀ effective-sign caveat, the ion→sideband
+  bridge, the full-LD Laguerre/Debye–Waller matrix elements with the signed-vs-helper-magnitude
+  caveat, the `η²(2n+1)` regime parameter, and a schematic-only deferred Case E with
+  no committed effective-parameter map), cites the model-hierarchy note by section,
+  and presents dimensionless ratios. New companion benchmark
+  `tools/plot_reduced_models_comparison.py` regenerates the deterministic four-panel
+  figure and writes `benchmarks/data/reduced_models_comparison/` (`report.json`
+  schema_v2 + `arrays.npz` + `plot.png`); each case is checked against its analytic
+  oracle (`max_numerical_vs_analytic_error` < `1e-3`). Registered in `mkdocs.yml`
+  nav and `docs/tutorials/index.md`. Sail / CC BY-NC-SA 4.0; reuses the landed
+  RLB builders, RLC oracles, and RLE `model_deviation` — no new physics, no claim
+  beyond the hierarchy note. Per `WP/WP-03-reduced-models.md` (WI-6).
 
 ## [0.5.0] — 2026-06-03
 

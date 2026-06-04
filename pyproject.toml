@@ -261,6 +261,7 @@ ignore = [
 "tools/run_benchmark_cfi_linear_gaussian.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_probe_qfi.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_two_mode_squeezing.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/plot_reduced_models_comparison.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_motional_channels.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_lamb_dicke_regime.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_darwinism_redundancy.py" = ["RUF001", "RUF002", "RUF003"]
