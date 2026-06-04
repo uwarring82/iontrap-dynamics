@@ -12,13 +12,13 @@
 
 ## The scenario
 
-A reduced light–matter model is a piece of *physics* — what a trapped ion approximates — while a sideband Hamiltonian is a piece of *apparatus* — how a real ion realises it. Keeping those two layers apart is the whole point: it lets us ask whether the reduction is faithful and, where it is not, measure by how much it fails. The model-hierarchy note (cited by section below, vendored separately) lays out four falsifiable cases, and this tutorial walks all four against the shipped library. They span the claim "the Jaynes–Cummings and anti-Jaynes–Cummings models are merely relabelled" from **true in isolation** (Case A), to **a physical knob** (Case B), to **false under strong coupling** (Case C), with the Lamb–Dicke reduction itself put to the test in Case D.
+A reduced light–matter model is a piece of *physics* — what a trapped ion approximates — while a sideband Hamiltonian is a piece of *apparatus* — how a real ion realises it. Keeping those two layers apart is the whole point: it lets us ask whether the reduction is faithful and, where it is not, measure by how much it fails. The [model-hierarchy note](../models-hierarchy.md) (now vendored; cited by section below) lays out four falsifiable cases, and this tutorial walks all four against the shipped library. They span the claim "the Jaynes–Cummings and anti-Jaynes–Cummings models are merely relabelled" from **true in isolation** (Case A), to **a physical knob** (Case B), to **false under strong coupling** (Case C), with the Lamb–Dicke reduction itself put to the test in Case D.
 
 ![Four panels. Panel A: the Jaynes-Cummings spectrum at minus omega-zero and the anti-Jaynes-Cummings spectrum at plus omega-zero lie exactly on top of each other. Panel B: from spin-down with no phonons, the spin-up population stays flat at zero under the red sideband but oscillates fully between zero and one under the blue sideband. Panel C: as the coupling g over omega-zero grows, the Jaynes-Cummings to quantum Rabi ground-energy deviation and the quantum Rabi ground-state phonon number both rise from near zero. Panel D: the relative deviation between the full-Lamb-Dicke and leading-order red-sideband rate rises with the confinement parameter eta squared times two n plus one, crossing the deep, intermediate, and beyond bands.](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/reduced_models_comparison/plot.png)
 
 ## Step 1 — Case A: "only a label" is true (LOCK-3)
 
-In isolation the anti-Jaynes–Cummings model is the Jaynes–Cummings model conjugated by `σ_x` with the qubit splitting flipped — the LOCK-3 identity `H_AJC(ω₀) = σ_x H_JC(−ω₀) σ_x` (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`). A unitary conjugation cannot move eigenvalues, so the two spectra coincide. This is the model-hierarchy note's §6 (LOCK-3) / §8 regime 1.
+In isolation the anti-Jaynes–Cummings model is the Jaynes–Cummings model conjugated by `σ_x` with the qubit splitting flipped — the LOCK-3 identity `H_AJC(ω₀) = σ_x H_JC(−ω₀) σ_x` (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`). A unitary conjugation cannot move eigenvalues, so the two spectra coincide. This is the [model-hierarchy note](../models-hierarchy.md)'s §6 (LOCK-3) / §8 regime 1.
 
 ```python
 import numpy as np
@@ -98,7 +98,7 @@ assert np.max(pop_blue) > 0.99  # |↓,0⟩ is BRIGHT under the blue sideband (�
 
 ## Step 3 — Case C: "only a label" is false (RWA breakdown)
 
-The Jaynes–Cummings model drops the counter-rotating terms the quantum Rabi model keeps. As the dimensionless coupling `g/ω₀` grows, those terms matter: the QRM ground state stops being the dark state `|↓,0⟩` and acquires virtual phonons, and the two trajectories part company. `model_deviation` measures the parting as a worst-case state infidelity — small in the common (weak-coupling) regime, large at strong coupling (note §4 / §8 regime 3). No terms are dropped by hand; the agreement *emerges* from the `g/ω₀ → 0` limit.
+The Jaynes–Cummings model drops the counter-rotating terms the quantum Rabi model keeps. As the dimensionless coupling `g/ω₀` grows, those terms matter: the QRM ground state stops being the dark state `|↓,0⟩` and acquires virtual phonons, and the two trajectories part company. `model_deviation` measures the parting as a worst-case state infidelity — small in the common (weak-coupling) regime, large at strong coupling ([model-hierarchy note](../models-hierarchy.md) §4 / §8 regime 3). No terms are dropped by hand; the agreement *emerges* from the `g/ω₀ → 0` limit.
 
 ```python
 from iontrap_dynamics.results import StorageMode
@@ -138,7 +138,7 @@ assert strong.value > 10 * weak.value   # breakdown: the counter-rotating terms 
 
 ## Step 4 — Case D: tying the reduction back to the apparatus
 
-The reduced-model coupling `g` is not free — it is the Lamb–Dicke image of the apparatus drive, `g = ηΩ/2`. In that limit the blue-sideband rate is exactly twice the reduced AJC block element: `Ω|η|√(n+1) = 2g√(n+1)` (`blue_sideband_rabi_frequency`). Beyond the deep regime the all-orders Debye–Waller × Laguerre structure bends the rate away from that line, tracked by the confinement parameter `η²(2n+1)` and the `lamb_dicke_regime` classifier (note §5, nonlinear branch).
+The reduced-model coupling `g` is not free — it is the Lamb–Dicke image of the apparatus drive, `g = ηΩ/2`. In that limit the blue-sideband rate is exactly twice the reduced AJC block element: `Ω|η|√(n+1) = 2g√(n+1)` (`blue_sideband_rabi_frequency`). Beyond the deep regime the all-orders Debye–Waller × Laguerre structure bends the rate away from that line, tracked by the confinement parameter `η²(2n+1)` and the `lamb_dicke_regime` classifier ([model-hierarchy note](../models-hierarchy.md) §5, nonlinear branch).
 
 ```python
 from iontrap_dynamics.analytic import (
@@ -178,7 +178,7 @@ The three reduced Hamiltonians (`H/ℏ`, rad·s⁻¹, §25.1) on one qubit ⊗ o
 
 **Ion → sideband.** The schematic full-ion drive `H = (ω_at/2) σ_z + ν â†â + Ω σ_x cos(η(â + â†) − ω_L t + φ)`, after the optical RWA, yields first-order sideband terms `∝ σ_+ â e^{−i(δ+ν)t}` and `∝ σ_+ â† e^{−i(δ−ν)t}` — the red tone selects JC, the blue tone selects AJC. The all-orders matrix elements are `Ω_{n,n+1} = Ω e^{−η²/2} η L_n^{(1)}(η²)/√(n+1)` (blue) and `Ω_{n,n−1} = Ω e^{−η²/2} η L_{n−1}^{(1)}(η²)/√n` (red, zero at `n = 0`), reducing in the Lamb–Dicke limit to `Ω|η|√(n+1) = 2g√(n+1)` and `Ω|η|√n = 2g√n` with `g = ηΩ/2`. The visible regime knob throughout is `η²(2n+1)` (Fock `n`) or `η²(2n̄+1)` (thermal), the argument of `lamb_dicke_confinement` and the deep/intermediate/beyond classifier.
 
-**Deferred — Case E (bichromatic simulated QRM).** Driving both sidebands at once can *simulate* a quantum Rabi model on the ion, with the schematic retained interaction `H_I ≃ g(σ_+ â e^{−iΔ_r t} + σ_+ â† e^{−iΔ_b t} + h.c.)` and detunings `δ_r = −ν + Δ_r`, `δ_b = +ν + Δ_b`. The effective-parameter map (`ω₀^eff`, `ω_f^eff`) is **not** committed here — it requires a first-class two-tone sideband builder and a derived convention under the shipped detuned-sideband signs, which is future work (note §5 laboratory branch).
+**Deferred — Case E (bichromatic simulated QRM).** Driving both sidebands at once can *simulate* a quantum Rabi model on the ion, with the schematic retained interaction `H_I ≃ g(σ_+ â e^{−iΔ_r t} + σ_+ â† e^{−iΔ_b t} + h.c.)` and detunings `δ_r = −ν + Δ_r`, `δ_b = +ν + Δ_b`. The effective-parameter map (`ω₀^eff`, `ω_f^eff`) is **not** committed here — it requires a first-class two-tone sideband builder and a derived convention under the shipped detuned-sideband signs, which is future work ([model-hierarchy note](../models-hierarchy.md) §5 laboratory branch).
 
 ## Where to next
 

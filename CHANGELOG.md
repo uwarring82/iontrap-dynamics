@@ -181,6 +181,22 @@ placeholder-only and did not follow semver.
   nav and `docs/tutorials/index.md`. Sail / CC BY-NC-SA 4.0; reuses the landed
   RLB builders, RLC oracles, and RLE `model_deviation` — no new physics, no claim
   beyond the hierarchy note. Per `WP/WP-03-reduced-models.md` (WI-6).
+- **Dispatch RLD (WP-03 WI-4) — docs: vendored model-hierarchy companion note.**
+  New `docs/models-hierarchy.md` vendors `ajc-provenance/docs/hierarchy.md` **v0.4**
+  (lock candidate) — the conceptual source that anchors `CONVENTIONS.md` §25 and
+  Tutorial 18. Carries a provenance header (source, v0.4 lock-candidate status,
+  pending source commit/DOI slot) and preserves the upstream **CC BY-SA 4.0**
+  (Coastline) licence, distinct from the Sail tutorials. The upstream Markdown
+  arrived with a UTF-8/Latin-1 transit corruption; the prose punctuation (§, en/em
+  dashes, ×, −, →) is repaired and the embedded GitHub-flavoured LaTeX preserved
+  verbatim. Three source-repo relative links (`../LICENCE`, `../cases/bibliography.bib`,
+  `../task-card/locked-wording.md`) are rendered as plain-text references since their
+  targets live in `ajc-provenance`. Registered in `mkdocs.yml` nav beside the
+  literature reviews; the §6/§8/§4/§5 forward-references in Tutorial 18 are now live
+  links to the vendored page. `mkdocs build --strict` clean. **Partially** discharges the
+  WP-03 R7 external dependency: the v0.4 note is supplied (so WI-4 lands), but R7 is **not**
+  fully closed — its other precondition, the upstream source commit/DOI, is recorded as
+  pending until the note is locked upstream. Per `WP/WP-03-reduced-models.md` (WI-4).
 
 ## [0.5.0] — 2026-06-03
 
