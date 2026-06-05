@@ -11,6 +11,7 @@
 #
 # Gate ladder for a green PR:
 #   detect ─┬─ lint → typecheck → install-smoke → (test)
+#           │                                   └─ (tutorials)
 #           ├─ cd-upstream-drift
 #           ├─ (cd-local-integrity)
 #           ├─ (notebooks)
@@ -189,7 +190,9 @@ jobs:
           pip install -e ".[dev]"
 
       - name: pytest
-        run: pytest --cov --cov-report=term-missing
+        # Tutorials run in the dedicated `tutorials` job (they need the [plot]
+        # extra); deselect them here to keep the matrix lean.
+        run: pytest -m "not tutorial" --cov --cov-report=term-missing
 
   # ---------------------------------------------------------------------------
   # CD — local integrity. Verifies that files in assets/ match the SHA-256
@@ -280,6 +283,36 @@ jobs:
             echo "::error::Run 'python tools/build_tutorial_notebooks.py' and commit the result."
             exit 1
           fi
+
+  # ---------------------------------------------------------------------------
+  # Tutorials — execute every docs/tutorials notebook end-to-end so the
+  # embedded ``assert``s (the oracle) actually run. The `notebooks` job above
+  # only checks freshness (notebook == regeneration); this one runs the code,
+  # the guard that catches a tutorial whose physics regressed. Needs the
+  # runtime + the [plot] extra (the tutorials import matplotlib), so it is a
+  # separate job from the lean unit-test matrix. Activates once docs/ exists.
+  # ---------------------------------------------------------------------------
+  tutorials:
+    name: Tutorials (execute notebooks)
+    runs-on: ubuntu-latest
+    needs: [install-smoke, detect]
+    if: needs.detect.outputs.has_docs == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev + plot extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,plot]"
+
+      - name: Execute tutorials (asserts are the oracle)
+        run: pytest -m tutorial -ra
 
   # ---------------------------------------------------------------------------
   # Docs — mkdocs strict build. Activates once docs/ exists.

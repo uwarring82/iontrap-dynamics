@@ -345,6 +345,7 @@ markers = [
     "benchmark: performance smoke-test thresholds (0.F)",
     "slow: runs longer than the 0.F performance smoke thresholds",
     "gpu: requires JAX/GPU backend (Phase 2)",
+    "tutorial: executes a docs/tutorials notebook end-to-end (asserts are the oracle; needs the [plot] extra)",
 ]
 
 # -----------------------------------------------------------------------------
