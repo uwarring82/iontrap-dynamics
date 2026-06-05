@@ -13,6 +13,7 @@
 #   detect ─┬─ lint → typecheck → install-smoke → (test)
 #           ├─ cd-upstream-drift
 #           ├─ (cd-local-integrity)
+#           ├─ (notebooks)
 #           └─ (docs → accessibility)
 #
 # Jobs marked (…) activate only when their target files land. Until then
@@ -247,6 +248,36 @@ jobs:
           if ! git diff --exit-code -- assets/SOURCE.md; then
             echo "::error::assets/SOURCE.md drifted after re-running hash_assets.sh against the pinned commit."
             echo "::error::This should never happen on a fixed commit SHA. Check upstream, tampering, or tools/hash_assets.sh regex."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Notebooks — freshness guard. The Colab notebooks under
+  # docs/tutorials/notebooks/ are generated from the Markdown tutorials by
+  # tools/build_tutorial_notebooks.py; the Markdown is the single source of
+  # truth. `--check` regenerates each committed notebook in memory and fails
+  # if it differs from the committed file, so an edited tutorial cannot ship
+  # with a stale notebook. Stdlib-only (reads pyproject + the tutorials) —
+  # no package install needed. Activates once docs/ exists.
+  # ---------------------------------------------------------------------------
+  notebooks:
+    name: Notebooks (Colab freshness)
+    runs-on: ubuntu-latest
+    needs: [lint, detect]
+    if: needs.detect.outputs.has_docs == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"   # tomllib
+
+      - name: Verify notebooks match their tutorials
+        run: |
+          if ! python tools/build_tutorial_notebooks.py --check; then
+            echo "::error::A committed Colab notebook is out of date with its Markdown tutorial."
+            echo "::error::Run 'python tools/build_tutorial_notebooks.py' and commit the result."
             exit 1
           fi
 

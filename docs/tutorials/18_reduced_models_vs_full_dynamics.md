@@ -1,5 +1,7 @@
 # Tutorial 18 — Reduced models vs full dynamics
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/18_reduced_models_vs_full_dynamics.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** By the end you will have confirmed that the Jaynes–Cummings and anti-Jaynes–Cummings models are the same model up to a label, watched that label become a physical knob on the ion, measured the rotating-wave approximation breaking down with `model_deviation`, and tied the reduced-model coupling back to the apparatus sideband rate through the `2g√(n±1)` limit.
 
 **Reference implementation.** [`tools/plot_reduced_models_comparison.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/plot_reduced_models_comparison.py) regenerates the four-panel figure below and writes [`benchmarks/data/reduced_models_comparison/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data/reduced_models_comparison) (`report.json` + `arrays.npz` + `plot.png`); its `max_numerical_vs_analytic_error` is the oracle bar.
