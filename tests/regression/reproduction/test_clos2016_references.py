@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -27,9 +25,17 @@ def _allclose_up_to_global_sign(
     )
 
 
-def test_legacy_bundle_directory_exists() -> None:
-    assert Path("legacy/clos 2016 prl").resolve() == DEFAULT_LEGACY_CLOS2016_DIR
+def test_packaged_reference_data_present() -> None:
+    # The Clos 2016 reference tables are vendored INTO the package (_data/),
+    # mirroring the archival ``legacy/clos 2016 prl/`` structure, so the loaders
+    # resolve from any installed copy — repo checkout, wheel, or Colab — not just
+    # a repo working tree. Guards against the data being dropped from the package.
     assert DEFAULT_LEGACY_CLOS2016_DIR.is_dir()
+    assert DEFAULT_LEGACY_CLOS2016_DIR.parent.name == "_data"
+    assert (DEFAULT_LEGACY_CLOS2016_DIR / "1ions_ipr_vs_nc.txt").is_file()
+    assert (
+        DEFAULT_LEGACY_CLOS2016_DIR / "DP num res_fig_1_2015_07_30" / "theo_dim_N_1.dat"
+    ).is_file()
 
 
 @pytest.mark.parametrize(

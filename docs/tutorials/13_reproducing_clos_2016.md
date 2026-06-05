@@ -288,15 +288,25 @@ absolute error stays within ~0.2 across all three.
 ## Why we stop at N=3 here
 
 The `theo_dim_N_*.dat` tables go to N=5, but the dense
-diagonalisation cost climbs as $d = 2 \cdot n_c^N$:
+diagonalisation cost climbs as $d = 2 \cdot (n_c + 1)^N$ — the
+factor of 2 is the spin, and a cutoff $n_c$ admits $n_c + 1$ Fock
+states per mode. Figures below are synced to the measured
+[exact-diagonalisation envelope](../benchmarks.md) (`scipy.linalg.eigh`):
 
-| N | n_c | dim       | dense matrix storage (complex128) |
-|---|-----|-----------|-----------------------------------|
-| 3 | 6   | 686       | 7.5 MB                            |
-| 3 | 10  | 21 296    | 7.3 GB                            |
-| 4 | 6   | 4 802     | 0.37 GB                           |
-| 5 | 5   | 7 776     | 0.97 GB                           |
-| 5 | 10  | ~6.7 × 10⁵ | ~7.2 TB (infeasible dense)       |
+| N | n_c | dim       | dense matrix (complex128) | peak RSS |
+|---|-----|-----------|---------------------------|----------|
+| 3 | 6   | 686       | 7.2 MB                    | —        |
+| 3 | 10  | 2 662     | 108 MB                    | 1.22 GB  |
+| 4 | 6   | 4 802     | 352 MB                    | 2.53 GB  |
+| 5 | 5   | 15 552    | ~3.6 GB                   | ~14 GB   |
+| 5 | 10  | ~3.2 × 10⁵ | ~1.5 TB (infeasible dense) | —       |
+
+**Watch the RSS, not the matrix.** Peak resident memory runs several
+times the dense matrix size — `eigh` allocates its own workspace plus
+a copy — so the 108 MB matrix at (N=3, n_c=10) peaks at 1.22 GB, and
+the 352 MB matrix at (N=4, n_c=6) peaks at 2.53 GB. Size your headroom
+off the RSS column ([`benchmarks.md`](../benchmarks.md)), or a “3.6 GB
+matrix” will OOM an 8 GB laptop.
 
 For N ≥ 4 the inferred-converged cutoff already exceeds what a
 laptop can `eigh` in a single call. The library will eventually

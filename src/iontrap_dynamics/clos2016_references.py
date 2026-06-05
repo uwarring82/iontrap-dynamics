@@ -9,7 +9,13 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
-DEFAULT_LEGACY_CLOS2016_DIR = Path(__file__).resolve().parents[2] / "legacy/clos 2016 prl"
+# Clos 2016 reference tables (the group's own PRL 117, 170401 numeric output)
+# are vendored INTO the package under ``_data/`` — mirroring the archival
+# ``legacy/clos 2016 prl/`` bundle structure — so the loaders work from any
+# installed copy (wheel / Colab), not just a repo checkout. Resolving via
+# ``__file__.parent`` keeps that true after ``pip install``. Pass ``legacy_dir=``
+# to read the original archival bundle instead.
+DEFAULT_LEGACY_CLOS2016_DIR = Path(__file__).resolve().parent / "_data" / "clos2016_legacy"
 DEFAULT_CUTOFF_RELATIVE_TOLERANCE = 0.01
 
 
