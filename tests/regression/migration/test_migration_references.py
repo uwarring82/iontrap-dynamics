@@ -288,7 +288,7 @@ def test_builder_matches_scenario_1() -> None:
         spin_z(hilbert, 0).operator,
         number(hilbert, "axial").operator,
     ]
-    result = qutip.mesolve(H, rho_0, tlist_s, [], obs)
+    result = qutip.mesolve(H, rho_0, tlist_s, c_ops=[], e_ops=obs)
     my_sx, my_sy, my_sz, my_n = result.expect
 
     atol = 5e-3
@@ -379,7 +379,7 @@ def test_builder_matches_scenario_2() -> None:
     tlist_s = np.linspace(0.0, t_end_s, 300)
 
     obs = [spin_z(hilbert, 0).operator, number(hilbert, "axial").operator]
-    result = qutip.mesolve(H, psi_0, tlist_s, [], obs)
+    result = qutip.mesolve(H, psi_0, tlist_s, c_ops=[], e_ops=obs)
     my_sz, my_n = result.expect
 
     qc_sz = qc_translated["sigma_z"]
@@ -503,7 +503,7 @@ def test_builder_matches_scenario_5() -> None:
         spin_z(hilbert, 0).operator,
         number(hilbert, "axial").operator,
     ]
-    result = qutip.mesolve(H, psi_0, tlist_s, [], obs)
+    result = qutip.mesolve(H, psi_0, tlist_s, c_ops=[], e_ops=obs)
     my_sx, my_sy, my_sz, my_n = result.expect
 
     atol = 2e-2

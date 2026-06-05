@@ -252,7 +252,7 @@ class TestDynamicsSanity:
         psi_0 = ground_state(h)
         t_pi = np.pi / omega
         # mesolve with no collapse operators → unitary evolution
-        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
@@ -272,7 +272,7 @@ class TestDynamicsSanity:
 
         psi_0 = ground_state(h)
         t_half_pi = np.pi / (2 * omega)
-        result = qutip.mesolve(H, psi_0, [0.0, t_half_pi], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_half_pi], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
@@ -465,7 +465,7 @@ class TestRedSidebandDynamics:
         t_pi = np.pi / rate
 
         psi_0 = qutip.tensor(spin_down(), qutip.basis(10, 1))
-        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         # σ_z = −1 at start (|↓⟩), +1 at the end (|↑⟩). ⟨n̂⟩: 1 → 0.
@@ -524,7 +524,7 @@ class TestBlueSidebandAction:
         t_pi = np.pi / rate
 
         psi_0 = ground_state(h)  # |↓, 0⟩
-        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
@@ -741,7 +741,7 @@ class TestMSGateConservationLaws:
         tlist = np.linspace(0.0, t_end, 10)
 
         psi_0 = qutip.tensor(_plus_state(), _plus_state(), qutip.basis(10, 0))
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
 
         sx0 = h.spin_op_for_ion(sigma_x_ion(), 0)
         sx1 = h.spin_op_for_ion(sigma_x_ion(), 1)
@@ -760,7 +760,7 @@ class TestMSGateConservationLaws:
         tlist = np.linspace(0.0, t_end, 10)
 
         psi_0 = qutip.tensor(_plus_state(), _minus_state(), qutip.basis(10, 0))
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
 
         sx_product = h.spin_op_for_ion(sigma_x_ion(), 0) * h.spin_op_for_ion(sigma_x_ion(), 1)
         for state in result.states:
@@ -780,7 +780,7 @@ class TestMSGateConservationLaws:
         tlist = np.linspace(0.0, t_end, 8)
 
         psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(10, 0))
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
 
         sz0 = h.spin_op_for_ion(sigma_z_ion(), 0)
         sz1 = h.spin_op_for_ion(sigma_z_ion(), 1)
@@ -813,7 +813,7 @@ class TestMSGateCoherentDisplacement:
         tlist = np.linspace(0.0, t_end, 12)
 
         psi_0 = qutip.tensor(_plus_state(), _plus_state(), qutip.basis(20, 0))
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
 
         n_op = h.number_for_mode("com")
         numerical = np.array([qutip.expect(n_op, s) for s in result.states])
@@ -837,7 +837,7 @@ class TestMSGateCoherentDisplacement:
         tlist = np.linspace(0.0, t_end, 20)
 
         psi_0 = qutip.tensor(_plus_state(), _minus_state(), qutip.basis(10, 0))
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
 
         n_op = h.number_for_mode("com")
         occupations = np.array([qutip.expect(n_op, s) for s in result.states])
@@ -936,8 +936,8 @@ class TestModulatedCarrierDynamics:
         tlist = np.linspace(0.0, 2 * np.pi / rabi, 50)
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
 
-        static_result = qutip.mesolve(H_static, psi_0, tlist, [], [sigma_z])
-        modulated_result = qutip.mesolve(H_modulated, psi_0, tlist, [], [sigma_z])
+        static_result = qutip.mesolve(H_static, psi_0, tlist, c_ops=[], e_ops=[sigma_z])
+        modulated_result = qutip.mesolve(H_modulated, psi_0, tlist, c_ops=[], e_ops=[sigma_z])
 
         np.testing.assert_allclose(
             modulated_result.expect[0],
@@ -955,7 +955,7 @@ class TestModulatedCarrierDynamics:
 
         psi_0 = ground_state(h)
         tlist = np.linspace(0.0, np.pi / rabi, 5)
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
 
         for state in result.states:
             assert (state - psi_0).norm() < 1e-8
@@ -988,7 +988,7 @@ class TestModulatedCarrierDynamics:
 
         psi_0 = ground_state(h)
         tlist = np.linspace(0.0, t_end, 200)
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
@@ -1119,7 +1119,7 @@ class TestDetunedMSGateClosure:
         H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
 
         psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
-        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         n_op = h.number_for_mode("com")
@@ -1149,7 +1149,7 @@ class TestDetunedMSGateClosure:
         H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
 
         psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
-        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         # Project onto the four two-spin computational-basis states (trace over motion)
@@ -1196,7 +1196,7 @@ class TestDetunedMSGateClosure:
         H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
 
         psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
-        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         sz0 = h.spin_op_for_ion(sigma_z_ion(), 0)
@@ -1225,7 +1225,7 @@ class TestDetunedMSGateClosure:
         H = detuned_ms_gate_hamiltonian(h, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta)
 
         psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(15, 0))
-        result = qutip.mesolve(H, psi_0, [0.0, t_gate], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_gate], c_ops=[], e_ops=[])
         psi_final = result.states[-1]
 
         n_op = h.number_for_mode("com")
@@ -1419,7 +1419,7 @@ class TestDetunedCarrierDynamics:
         omega_gen = generalized_rabi_frequency(carrier_rabi_frequency=omega, detuning_rad_s=delta)
         tlist = np.linspace(0.0, 2 * 2 * np.pi / omega_gen, 100)
 
-        result = qutip.mesolve(H, psi_0, tlist, [], [sigma_z])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[sigma_z])
         analytic = detuned_rabi_sigma_z(carrier_rabi_frequency=omega, detuning_rad_s=delta, t=tlist)
         np.testing.assert_allclose(result.expect[0], analytic, atol=1e-4)
 
@@ -1439,7 +1439,7 @@ class TestDetunedCarrierDynamics:
         omega_gen = generalized_rabi_frequency(carrier_rabi_frequency=omega, detuning_rad_s=delta)
         tlist = np.linspace(0.0, 2 * np.pi / omega_gen, 200)
 
-        result = qutip.mesolve(H, psi_0, tlist, [], [sigma_z])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[sigma_z])
         max_population = 0.5 * (1 + float(np.max(result.expect[0])))
         # max P↑ = (Ω/Ω_gen)² = (Ω/(2Ω))² = 1/4
         assert max_population == pytest.approx(0.25, abs=5e-3)
@@ -1460,7 +1460,7 @@ class TestDetunedCarrierDynamics:
         sigma_z = h.spin_op_for_ion(sigma_z_ion(), 0)
 
         tlist = np.linspace(0.0, np.pi / omega, 50)  # one half-period
-        result = qutip.mesolve(H, psi_0, tlist, [], [sigma_z])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[sigma_z])
         analytic_resonant = carrier_rabi_sigma_z(omega, tlist)
         np.testing.assert_allclose(result.expect[0], analytic_resonant, atol=1e-3)
 
@@ -1605,7 +1605,7 @@ class TestDetunedRedSidebandDynamics:
         )
         psi_0 = ground_state(h)
         tlist = np.linspace(0.0, 5e-6, 20)
-        result = qutip.mesolve(H, psi_0, tlist, [], [])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
         n = h.number_for_mode("axial")
         for state in result.states:
@@ -1632,7 +1632,7 @@ class TestDetunedRedSidebandDynamics:
         tlist = np.linspace(0.0, 2 * np.pi / omega_gen, 100)
 
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
-        result = qutip.mesolve(H, psi_0, tlist, [], [sz])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[sz])
         analytic = -1.0 + 2.0 * (omega_sb / omega_gen) ** 2 * np.sin(omega_gen * tlist / 2.0) ** 2
         np.testing.assert_allclose(result.expect[0], analytic, atol=5e-4)
 
@@ -1655,8 +1655,8 @@ class TestDetunedRedSidebandDynamics:
         tlist = np.linspace(0.0, np.pi / omega_sb, 30)  # half of an exact-resonance flop
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
 
-        r_d = qutip.mesolve(H_detuned, psi_0, tlist, [], [sz])
-        r_e = qutip.mesolve(H_exact, psi_0, tlist, [], [sz])
+        r_d = qutip.mesolve(H_detuned, psi_0, tlist, c_ops=[], e_ops=[sz])
+        r_e = qutip.mesolve(H_exact, psi_0, tlist, c_ops=[], e_ops=[sz])
         np.testing.assert_allclose(r_d.expect[0], r_e.expect[0], atol=1e-3)
 
 
@@ -1738,7 +1738,7 @@ class TestDetunedBlueSidebandDynamics:
         tlist = np.linspace(0.0, 2 * np.pi / omega_gen, 100)
 
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
-        result = qutip.mesolve(H, psi_0, tlist, [], [sz])
+        result = qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[sz])
         max_population = 0.5 * (1 + float(np.max(result.expect[0])))
         assert max_population == pytest.approx(0.5, abs=5e-3)
 
@@ -1834,7 +1834,7 @@ class TestFullLambDickeConsistency:
         H = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
         psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 1))
         t_pi_full = np.pi / expected_rate
-        result = qutip.mesolve(H, psi_0, [0.0, t_pi_full], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi_full], c_ops=[], e_ops=[])
 
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
         n = h.number_for_mode("axial")
@@ -1856,7 +1856,7 @@ class TestFullLambDickeConsistency:
         H = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
         psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 2))
         t_pi = np.pi / expected_rate
-        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], c_ops=[], e_ops=[])
 
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
         n = h.number_for_mode("axial")
@@ -1876,7 +1876,7 @@ class TestFullLambDickeConsistency:
         H = blue_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
         psi_0 = ground_state(h)
         t_pi = np.pi / expected_rate
-        result = qutip.mesolve(H, psi_0, [0.0, t_pi], [], [])
+        result = qutip.mesolve(H, psi_0, [0.0, t_pi], c_ops=[], e_ops=[])
 
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
         n = h.number_for_mode("axial")
@@ -1902,7 +1902,7 @@ class TestFullLambDickeDiffersFromLeading:
         H_full = red_sideband_hamiltonian(h, drive, "axial", ion_index=0, full_lamb_dicke=True)
         psi_0 = qutip.tensor(spin_down(), qutip.basis(12, 1))
         t_pi_leading = np.pi / abs(rabi * eta)
-        result = qutip.mesolve(H_full, psi_0, [0.0, t_pi_leading], [], [])
+        result = qutip.mesolve(H_full, psi_0, [0.0, t_pi_leading], c_ops=[], e_ops=[])
 
         sz = h.spin_op_for_ion(sigma_z_ion(), 0)
         sz_at_leading_t_pi = qutip.expect(sz, result.states[-1])

@@ -110,7 +110,7 @@ def test_single_ion_sideband_flopping_under_5s() -> None:
     psi_0 = qutip.tensor(spin_down(), qutip.basis(n_fock, 1))
 
     t0 = time.perf_counter()
-    qutip.mesolve(H, psi_0, tlist, [], [])
+    qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
     elapsed = time.perf_counter() - t0
 
     assert elapsed < T_SINGLE_ION_SIDEBAND, (
@@ -177,7 +177,7 @@ def test_two_ion_ms_gate_under_30s() -> None:
     psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(n_fock, 0))
 
     t0 = time.perf_counter()
-    qutip.mesolve(H, psi_0, tlist, [], [])
+    qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
     elapsed = time.perf_counter() - t0
 
     assert elapsed < T_TWO_ION_MS_GATE, f"took {elapsed:.2f}s (threshold {T_TWO_ION_MS_GATE}s)"
@@ -242,7 +242,7 @@ def test_stroboscopic_ac_halfpi_under_60s() -> None:
     psi_0 = qutip.tensor(spin_down(), qutip.basis(n_fock, 0))
 
     t0 = time.perf_counter()
-    qutip.mesolve(H, psi_0, tlist, [], [])
+    qutip.mesolve(H, psi_0, tlist, c_ops=[], e_ops=[])
     elapsed = time.perf_counter() - t0
 
     assert elapsed < T_STROBOSCOPIC_AC, f"took {elapsed:.2f}s (threshold {T_STROBOSCOPIC_AC}s)"
