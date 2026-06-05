@@ -1,5 +1,7 @@
 # Tutorial 1 — Carrier Rabi flopping with finite-shot readout
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/01_first_rabi_readout.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** By the end of this tutorial you will have built a complete
 simulation pipeline that drives a single ²⁵Mg⁺ ion through a carrier
 Rabi flop, reads out the spin with a projective Poisson-counting
@@ -55,12 +57,16 @@ compose into an `IonSystem`. None of them commit to a basis or a
 Hilbert-space dimension yet — that comes in Step 2.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — match the reference Wilson-CI figure above.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 # Single axial mode along +z. Eigenvector is per-ion; for a single
 # ion this is just one row of shape (3,).
@@ -81,6 +87,8 @@ drive = DriveConfig(
     carrier_rabi_frequency_rad_s=2 * np.pi * 1.0e6,
     phase_rad=0.0,
 )
+print(f"Ω / 2π = {drive.carrier_rabi_frequency_rad_s / (2 * np.pi) * 1e-6:.1f} MHz  →  "
+      f"T_Ω = {2 * np.pi / drive.carrier_rabi_frequency_rad_s * 1e6:.1f} µs")
 ```
 
 !!! note "Why the wavevector direction matters"
@@ -104,6 +112,7 @@ from iontrap_dynamics.hilbert import HilbertSpace
 
 hilbert = HilbertSpace(system=system, fock_truncations={"axial": 3})
 hamiltonian = carrier_hamiltonian(hilbert, drive, ion_index=0)
+print(f"Hilbert-space dimension = {hilbert.total_dim}  (2 spin × 3 Fock)")
 ```
 
 `carrier_hamiltonian` returns a QuTiP `Qobj` whose dims match
@@ -140,11 +149,27 @@ result = solve(
 )
 
 sigma_z_trajectory = result.expectations["sigma_z_0"]
+
+analytic_sz = -np.cos(drive.carrier_rabi_frequency_rad_s * times)
+max_residual = float(np.max(np.abs(np.array(sigma_z_trajectory) - analytic_sz)))
+print(f"Step 3 — backend: {result.metadata.backend_name};  "
+      f"max |⟨σ_z⟩ − (−cos Ωt)| = {max_residual:.2e}")
+assert max_residual < 1e-3  # Rabi flop matches the textbook cosine
+
+times_us = times * 1e6  # convert to µs for the axis label
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times_us, analytic_sz, color=GREY, linewidth=1.0, label=r"$-\cos(\Omega t)$ (analytic)")
+ax.plot(times_us, sigma_z_trajectory, color=BLUE, linewidth=1.5, linestyle="--",
+        label=r"$\langle\sigma_z\rangle$ (sesolve)")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel(r"$\langle\sigma_z\rangle$")
+ax.set_title("Step 3 · ideal carrier Rabi flop")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 At this point `sigma_z_trajectory` is the **ideal** (noise-free)
-expectation-value curve. Plotting it against `times` would give the
-textbook cosine `−cos(Ω t)`. The `result.metadata.backend_name` is
+expectation-value curve, matching the textbook cosine `−cos(Ω t)`. The `result.metadata.backend_name` is
 `"qutip-sesolve"` because `psi_0` is a ket — `solve()` auto-
 dispatches (see [Benchmarks](../benchmarks.md) for why sesolve is
 the default for pure kets).
@@ -183,6 +208,11 @@ measurement = readout.run(result, shots=80, seed=20260420)
 
 bits = measurement.sampled_outcome["spin_readout_bits"]
 # bits has shape (80, 100) — 80 shots × 100 time points.
+
+fid = detector.classification_fidelity(lambda_bright=readout.lambda_bright, lambda_dark=readout.lambda_dark)
+print(f"Step 4 — bits shape: {bits.shape};  "
+      f"detector fidelity F = {fid['fidelity']:.4f}  "
+      f"(TPR = {fid['true_positive_rate']:.4f},  TNR = {fid['true_negative_rate']:.4f})")
 ```
 
 `SpinReadout.run` returns a `MeasurementResult` with a **dual
@@ -206,6 +236,28 @@ successes = bits.sum(axis=0)  # shape (100,) — per-time-bin bright count
 summary = binomial_summary(successes, trials=80, confidence=0.95, method="wilson")
 
 # summary.point_estimate, summary.lower, summary.upper all have shape (100,)
+
+p_up_ideal = np.array(measurement.ideal_outcome["p_up"])
+bright_envelope = np.array(measurement.ideal_outcome["bright_fraction_envelope"])
+inside = (np.array(summary.lower) <= bright_envelope) & (bright_envelope <= np.array(summary.upper))
+mean_half_width = float(np.mean((np.array(summary.upper) - np.array(summary.lower)) / 2))
+print(f"Step 5 — method: {summary.method},  confidence: {summary.confidence};  "
+      f"Wilson coverage = {inside.mean():.3f}  (nominal 0.95);  "
+      f"mean half-width = {mean_half_width:.3f}")
+
+times_us = times * 1e6  # µs axis (times defined in Step 3, shared namespace)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times_us, p_up_ideal, color=GREY, linestyle="--", linewidth=1.0, label=r"ideal $p_\uparrow(t)$")
+ax.plot(times_us, bright_envelope, color=BLUE, linestyle="--", linewidth=1.0,
+        label="fidelity-limited envelope")
+ax.scatter(times_us, summary.point_estimate, color=RED, s=10, zorder=3, label=r"$\hat{p}$ (80 shots)")
+ax.fill_between(times_us, summary.lower, summary.upper, color=RED, alpha=0.20,
+                label="Wilson 95 % CI")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel(r"bright fraction")
+ax.set_title("Step 5 · Wilson CI on finite-shot Rabi readout")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 The `summary` record names its method and confidence level so

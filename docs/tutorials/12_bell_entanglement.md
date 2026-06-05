@@ -1,5 +1,7 @@
 # Tutorial 12 — Two-ion Bell-state entanglement
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/12_bell_entanglement.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Close the tutorials track by taking the
 [Tutorial 4](04_ms_gate_bell.md) MS-gate scenario and exercising
 the **two measurement surfaces** that the library specifically
@@ -63,6 +65,7 @@ entanglement evaluators (the state trajectory feeds the partial
 traces):
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 
@@ -81,6 +84,9 @@ from iontrap_dynamics.results import StorageMode
 from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 N_FOCK = 12
 
@@ -119,6 +125,8 @@ hamiltonian = detuned_ms_gate_hamiltonian(
 )
 psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(N_FOCK, 0))
 times = np.linspace(0.0, t_gate, 200)
+
+print(f"MS-gate parameters: η = {eta:.4f},  δ/2π = {delta / (2 * np.pi) * 1e-3:.2f} kHz,  t_gate = {t_gate * 1e6:.2f} µs")
 
 # Run 1: expectations only — for ParityScan.
 result_expectations = solve(
@@ -179,6 +187,25 @@ measurement = parity_scan.run(
 
 parity_estimate = measurement.sampled_outcome["parity_scan_parity_estimate"]
 parity_envelope = measurement.ideal_outcome["parity_envelope"]
+
+# Ideal ⟨σ_z σ_z⟩ from the expectations trajectory (label set by the parity factory).
+parity_ideal = np.asarray(result_expectations.expectations["parity_0_1"], dtype=float)
+
+print(f"Parity at t_gate — ideal ⟨σ_z σ_z⟩: {parity_ideal[-1]:+.4f},  "
+      f"envelope (detector-limited): {float(parity_envelope[-1]):+.4f},  "
+      f"500-shot estimate: {float(parity_estimate[-1]):+.4f}")
+
+t_us = times * 1e6  # convert to µs for the x-axis
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_us, parity_ideal, color=GREY, linewidth=1.0, label=r"ideal $\langle\sigma_z^{(0)}\sigma_z^{(1)}\rangle$")
+ax.plot(t_us, parity_envelope, color=BLUE, linewidth=1.5, label="envelope (detector-limited)")
+ax.scatter(t_us, parity_estimate, color=RED, s=6, zorder=3, label="500-shot estimate")
+ax.axvline(t_gate * 1e6, color=GREY, linestyle="--", linewidth=0.8, alpha=0.6)
+ax.set_xlabel("time (µs)")
+ax.set_ylabel("parity")
+ax.set_title("Parity-scan readout — MS gate")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 Two series are interesting side-by-side:
@@ -229,8 +256,20 @@ eof_trajectory = entanglement_of_formation_trajectory(
     result_states.states, hilbert=hilbert, ion_indices=(0, 1),
 )
 
+print(f"Concurrence: C(0) = {c_trajectory[0]:.4f}  →  C(t_gate) = {c_trajectory[-1]:.4f}")
+print(f"EoF:         EoF(0) = {eof_trajectory[0]:.4f}  →  EoF(t_gate) = {eof_trajectory[-1]:.4f}")
 assert c_trajectory[0] == 0.0               # starts separable
 assert abs(c_trajectory[-1] - 1.0) < 1e-4   # Bell state at t_gate
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times * 1e6, c_trajectory, color=BLUE, label="concurrence $C$")
+ax.plot(times * 1e6, eof_trajectory, color=GREEN, linestyle="--", label="EoF $E_F$")
+ax.axvline(t_gate * 1e6, color=GREY, linestyle="--", linewidth=0.8, alpha=0.6)
+ax.set_xlabel("time (µs)")
+ax.set_ylabel("spin–spin entanglement")
+ax.set_title("Concurrence and EoF — MS gate")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 `entanglement_of_formation_trajectory` follows the closed-form
@@ -252,6 +291,23 @@ after the motion has been traced out):
 ln_trajectory = log_negativity_trajectory(
     result_states.states, hilbert=hilbert, partition="spins",
 )
+
+mid_idx = len(times) // 2
+print(f"Log-negativity (spin|motion): E_N(0) = {ln_trajectory[0]:.4f},  "
+      f"E_N(t_mid) = {ln_trajectory[mid_idx]:.4f},  "
+      f"E_N(t_gate) = {ln_trajectory[-1]:.4f}")
+
+# Three witnesses on one panel: concurrence, EoF, and log-negativity (scaled to [0,1]).
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times * 1e6, c_trajectory, color=BLUE, label="concurrence $C$ (spin–spin)")
+ax.plot(times * 1e6, eof_trajectory, color=GREEN, linestyle="--", label="EoF $E_F$ (spin–spin)")
+ax.plot(times * 1e6, ln_trajectory, color=PURPLE, linestyle=":", label=r"log-negativity $E_N$ (spin|motion)")
+ax.axvline(t_gate * 1e6, color=GREY, linestyle="--", linewidth=0.8, alpha=0.6, label="$t_\\mathrm{gate}$")
+ax.set_xlabel("time (µs)")
+ax.set_ylabel("entanglement measure")
+ax.set_title("Three witnesses — Bell entanglement via MS gate")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! note "Log-negativity's `partition` argument, not `ion_indices`"

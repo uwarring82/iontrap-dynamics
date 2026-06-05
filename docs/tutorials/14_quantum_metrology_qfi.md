@@ -1,5 +1,7 @@
 # Tutorial 14 — Quantum metrology: the Fisher-information limit
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/14_quantum_metrology_qfi.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Estimate a parameter encoded on a quantum probe, read off the
 best possible precision with the quantum Fisher information (QFI), and
 see which measurement actually reaches it. By the end you will have
@@ -52,6 +54,7 @@ information (which agrees on pure states and is strictly smaller on mixed
 ones), so we can check the number directly.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -59,6 +62,10 @@ from iontrap_dynamics.system import IonSystem
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.operators import sigma_z_ion, spin_up, spin_down
 from iontrap_dynamics.information import quantum_fisher_information_trajectory
+
+# House colours — match the reference style throughout.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
+
 
 def spin_hilbert(n_ions):
     system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
@@ -69,8 +76,20 @@ jz = 0.5 * h1.spin_op_for_ion(sigma_z_ion(), 0)         # generator on the FULL 
 plus = (spin_up() + spin_down()).unit()
 
 qfi = quantum_fisher_information_trajectory([plus], hilbert=h1, generator=jz)[0]
+var_g = float(qutip.variance(jz, plus))
+print(f"Step 1 — F_Q[|+⟩, J_z] = {qfi:.6f}  (predicted 1.000000)")
+print(f"Step 1 — 4·Var(J_z)    = {4.0 * var_g:.6f}  (pure-state identity check)")
 assert abs(qfi - 1.0) < 1e-12                            # F_Q = 4·Var(J_z) = 1
-assert abs(qfi - 4.0 * qutip.variance(jz, plus)) < 1e-12 # the pure-state identity
+assert abs(qfi - 4.0 * var_g) < 1e-12                   # the pure-state identity
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.bar(["$F_Q$ (SLD)", r"$4\cdot\mathrm{Var}(J_z)$"], [qfi, 4.0 * var_g],
+       color=[BLUE, GREY], width=0.4)
+ax.axhline(1.0, color=RED, linewidth=1.0, linestyle="--", label="predicted = 1")
+ax.set_ylabel(r"Fisher information")
+ax.set_title(r"Step 1 · $F_Q[|+\rangle, J_z] = 4\,\mathrm{Var}(J_z) = 1$")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! note "Two easy-to-miss conventions"
@@ -104,12 +123,33 @@ def product_plus(h):
     plus = (spin_up() + spin_down()).unit()
     return qutip.tensor([plus] * h.n_ions)
 
-for N in range(1, 7):
+ns = list(range(1, 7))
+qfi_ghz_vals, qfi_prod_vals = [], []
+for N in ns:
     h = spin_hilbert(N); jz = collective_jz(h)
     qfi_ghz = quantum_fisher_information_trajectory([ghz_state(h)], hilbert=h, generator=jz)[0]
     qfi_prod = quantum_fisher_information_trajectory([product_plus(h)], hilbert=h, generator=jz)[0]
     assert abs(qfi_ghz - N**2) < 1e-9 and abs(qfi_prod - N) < 1e-9
+    qfi_ghz_vals.append(qfi_ghz)
+    qfi_prod_vals.append(qfi_prod)
 # F_Q(GHZ) = [1, 4, 9, 16, 25, 36];  F_Q(product) = [1, 2, 3, 4, 5, 6]
+
+print("Step 2 — QFI scaling:  N   GHZ (N²)   product (N)")
+for N, g, p in zip(ns, qfi_ghz_vals, qfi_prod_vals):
+    print(f"                      {N}   {g:6.1f}     {p:.1f}")
+print(f"         Heisenberg gain at N=6: {qfi_ghz_vals[-1] / qfi_prod_vals[-1]:.0f}×")
+
+n_arr = np.array(ns)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(n_arr, n_arr**2, color=GREY, linewidth=1.0, label=r"$N^2$ (Heisenberg)")
+ax.scatter(n_arr, qfi_ghz_vals, color=PURPLE, s=40, zorder=3, label="GHZ probe")
+ax.plot(n_arr, n_arr, color=GREY, linewidth=1.0, linestyle="--", label="$N$ (SQL)")
+ax.scatter(n_arr, qfi_prod_vals, color=BLUE, marker="s", s=40, zorder=3, label="product probe")
+ax.set_xlabel("number of ions $N$")
+ax.set_ylabel(r"$F_Q$")
+ax.set_title("Step 2 · Heisenberg vs SQL scaling")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 The two scalings are the headline of the estimation surface:
@@ -148,9 +188,26 @@ def cfi_in_basis(measurement):
 
 h1 = spin_hilbert(1); jz = 0.5 * h1.spin_op_for_ion(sigma_z_ion(), 0)
 qfi = quantum_fisher_information_trajectory([plus], hilbert=h1, generator=jz)[0]
-assert abs(cfi_in_basis(sigma_y_ion()) - qfi) < 1e-12   # σ_y SATURATES: F_C = F_Q = 1
-assert abs(cfi_in_basis(sigma_x_ion()) - 0.0) < 1e-12   # σ_x is phase-blind: F_C = 0
-assert abs(cramer_rao_bound(qfi) - 1.0) < 1e-12         # Var(θ̂) ≥ 1/F_Q = 1
+cfi_y = cfi_in_basis(sigma_y_ion())
+cfi_x = cfi_in_basis(sigma_x_ion())
+crb = cramer_rao_bound(qfi)
+print(f"Step 3 — F_Q         = {qfi:.6f}  (the ceiling)")
+print(f"Step 3 — F_C(σ_y)   = {cfi_y:.6f}  (saturates: optimal basis)")
+print(f"Step 3 — F_C(σ_x)   = {cfi_x:.6f}  (phase-blind: F_C = 0)")
+print(f"Step 3 — CRB 1/F_Q  = {crb:.6f}  → σ_θ ≥ {crb**0.5:.6f} rad")
+assert abs(cfi_y - qfi) < 1e-12   # σ_y SATURATES: F_C = F_Q = 1
+assert abs(cfi_x - 0.0) < 1e-12   # σ_x is phase-blind: F_C = 0
+assert abs(crb - 1.0) < 1e-12     # Var(θ̂) ≥ 1/F_Q = 1
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+labels = [r"$F_Q$  (ceiling)", r"$F_C(\sigma_y)$  optimal", r"$F_C(\sigma_x)$  blind"]
+values = [qfi, cfi_y, cfi_x]
+colours = [GREY, GREEN, RED]
+ax.bar(labels, values, color=colours, width=0.5)
+ax.axhline(qfi, color=GREY, linewidth=1.0, linestyle="--")
+ax.set_ylabel("Fisher information")
+ax.set_title(r"Step 3 · Cramér–Rao saturation: right vs wrong basis")
+plt.show()
 ```
 
 ![Classical Fisher information of a linear-Gaussian model matching the analytic reference, and Cramér–Rao saturation on the single-qubit phase model](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/cfi_linear_gaussian/plot.png)
@@ -173,7 +230,103 @@ The squeezed-quadrature curve (`2e^{−2r}`) dives under the floor; the
 conjugate quadrature pays `2e^{+2r}` above it. This is sub-shot-noise
 metrology — the continuous-variable analogue of the GHZ gain in Step 2 —
 and it is built on exactly the same `quantum_fisher_information_trajectory`
-call, just with a mode probe and a quadrature generator.
+call, just with a mode probe and a quadrature generator. The code below
+computes both curves live and redraws the figure.
+
+```python
+from iontrap_dynamics.modes import ModeConfig
+from iontrap_dynamics.states import coherent_mode, squeezed_vacuum_mode
+
+# FOCK4=40 is safe for |α|² ≤ 9 and r ≤ 1.0 (sinh²(1) ≈ 1.4 phonons).
+FOCK4 = 40
+
+def mode_hilbert(fock_dim: int) -> HilbertSpace:
+    """One ion + one axial mode — the minimal CV Hilbert space."""
+    mode = ModeConfig(
+        label="m",
+        frequency_rad_s=2 * np.pi * 1e6,
+        eigenvector_per_ion=np.array([[0.0, 0.0, 1.0]]),
+    )
+    system = IonSystem(species_per_ion=(mg25_plus(),), modes=(mode,))
+    return HilbertSpace(system=system, fock_truncations={"m": fock_dim})
+
+hm = mode_hilbert(FOCK4)
+# Mode operators embedded on the full (spin ⊗ mode) space.
+n_hat  = hm.number_for_mode("m")                              # G = n̂  (phase encoding, F_Q = 4|α|²)
+a_op   = hm.mode_op_for(qutip.destroy(FOCK4), "m")
+# Normalised quadratures: Var(x̂)_{vac} = ½, so F_Q = 4·½ = 2 at shot-noise floor.
+x_hat  = (a_op + a_op.dag()) / np.sqrt(2)                     # squeezed-quadrature generator
+p_hat  = 1j * (a_op.dag() - a_op) / np.sqrt(2)               # anti-squeezed-quadrature generator
+
+# ------- coherent probe: F_Q = 4|α|² -------
+alpha_vals = np.linspace(0.5, 3.0, 10)
+qfi_coherent = []
+for alpha in alpha_vals:
+    psi_m = coherent_mode(FOCK4, float(alpha))
+    psi = qutip.tensor(spin_down(), psi_m)
+    qfi_coherent.append(
+        quantum_fisher_information_trajectory([psi], hilbert=hm, generator=n_hat)[0]
+    )
+qfi_coherent = np.array(qfi_coherent)
+analytic_coherent = 4.0 * alpha_vals**2
+
+print("Step 4 — coherent probe F_Q = 4|α|²:")
+for a, fq, fa in zip(alpha_vals, qfi_coherent, analytic_coherent):
+    print(f"    α = {a:.2f}  F_Q = {fq:.4f}  (predicted {fa:.4f})")
+
+# ------- squeezed probe: squeezed / anti-squeezed quadrature (r ≤ 1.0) -------
+# F_Q(x̂, S(r)|0⟩) = 4·Var(x̂) = 2e^{−2r} < 2 (sub-shot-noise)
+# F_Q(p̂, S(r)|0⟩) = 4·Var(p̂) = 2e^{+2r} > 2 (anti-squeezed)
+r_vals = np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+qfi_sq, qfi_antisq = [], []
+for r in r_vals:
+    psi_m = squeezed_vacuum_mode(FOCK4, float(r))
+    psi = qutip.tensor(spin_down(), psi_m)
+    qfi_sq.append(
+        quantum_fisher_information_trajectory([psi], hilbert=hm, generator=x_hat)[0]
+    )
+    qfi_antisq.append(
+        quantum_fisher_information_trajectory([psi], hilbert=hm, generator=p_hat)[0]
+    )
+qfi_sq     = np.array(qfi_sq)
+qfi_antisq = np.array(qfi_antisq)
+analytic_sq     = 2.0 * np.exp(-2.0 * r_vals)   # squeezed quadrature: 4·Var(x̂) = 2e^{-2r}
+analytic_antisq = 2.0 * np.exp(+2.0 * r_vals)   # anti-squeezed quadrature: 2e^{+2r}
+
+print("\nStep 4 — squeezed probe F_Q vs squeezing r (shot-noise floor = 2.0):")
+for r, fs, fa in zip(r_vals, qfi_sq, qfi_antisq):
+    print(f"    r = {r:.1f}   squeezed F_Q = {fs:.4f}  anti-sq F_Q = {fa:.4f}")
+print(f"    sub-shot-noise at r=1.0: F_Q = {qfi_sq[-1]:.4f} < 2.0 = floor")
+
+# The squeezed quadrature must be sub-shot-noise for r > 0.
+assert qfi_sq[-1] < 1.0          # deep sub-shot-noise at r = 1.0  (2e^{-2} ≈ 0.27)
+assert qfi_antisq[-1] > 10.0     # anti-squeezed quadrature: 2e^{+2} ≈ 14.8 >> floor
+
+fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.2))
+
+ax = axes[0]
+ax.plot(alpha_vals, analytic_coherent, color=GREY, linewidth=1.0, label=r"$4|\alpha|^2$")
+ax.scatter(alpha_vals, qfi_coherent, color=BLUE, s=30, zorder=3, label="coherent probe")
+ax.set_xlabel(r"coherent amplitude $|\alpha|$")
+ax.set_ylabel(r"$F_Q$")
+ax.set_title(r"CV SQL: coherent probe $F_Q = 4|\alpha|^2$")
+ax.legend(frameon=False)
+
+ax = axes[1]
+ax.plot(r_vals, analytic_sq,     color=GREEN, linewidth=1.0, label=r"$2e^{-2r}$ (squeezed)")
+ax.scatter(r_vals, qfi_sq,       color=GREEN, s=30, zorder=3)
+ax.plot(r_vals, analytic_antisq, color=RED,   linewidth=1.0, label=r"$2e^{+2r}$ (anti-sq.)")
+ax.scatter(r_vals, qfi_antisq,   color=RED,   s=30, zorder=3)
+ax.axhline(2.0, color=GREY, linewidth=1.0, linestyle="--", label="shot-noise floor")
+ax.set_yscale("log")
+ax.set_xlabel(r"squeezing parameter $r$")
+ax.set_ylabel(r"$F_Q$  (log scale)")
+ax.set_title(r"CV sub-shot-noise: squeezed probe")
+ax.legend(frameon=False)
+
+plt.tight_layout()
+plt.show()
+```
 
 ## Where to next
 

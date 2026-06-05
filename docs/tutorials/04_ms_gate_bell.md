@@ -1,5 +1,7 @@
 # Tutorial 4 — Mølmer–Sørensen Bell gate
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/04_ms_gate_bell.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Scale the four-step pattern from Tutorials
 [1](01_first_rabi_readout.md)–[3](03_gaussian_pi_pulse.md) up to
 a **two-ion** system and exercise the flagship entangling operation
@@ -80,12 +82,16 @@ participation in the mode; normalisation
 (Σ‖b_i‖² = 1, CONVENTIONS §11) is enforced at construction.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — match the reference figure palette.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 mode = ModeConfig(
     label="com",
@@ -105,6 +111,11 @@ drive = DriveConfig(
     carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,  # Ω/2π = 100 kHz
     phase_rad=0.0,
 )
+
+print(f"Step 1 — two-ion system configured")
+print(f"  COM mode frequency  ω/2π = {mode.frequency_rad_s / (2*np.pi*1e6):.2f} MHz")
+print(f"  Carrier Rabi freq   Ω/2π = {drive.carrier_rabi_frequency_rad_s / (2*np.pi*1e3):.1f} kHz")
+print(f"  Drive wavelength         = {2*np.pi / float(np.linalg.norm(drive.k_vector_m_inv)) * 1e9:.0f} nm")
 ```
 
 !!! note "Why `IonSystem(...)` instead of `IonSystem.homogeneous(...)`"
@@ -155,9 +166,11 @@ t_gate = ms_gate_closing_time(
     lamb_dicke_parameter=eta,
     loops=1,
 )
-print(f"η = {eta:.4f}")
-print(f"δ/2π = {delta / (2*np.pi*1e3):.2f} kHz")
-print(f"t_gate = {t_gate*1e6:.2f} μs")
+print(f"Step 2 — Bell-closing parameters (K = 1)")
+print(f"  η_COM   = {eta:.4f}  (single-ion η / √2)")
+print(f"  δ/2π    = {delta / (2*np.pi*1e3):.2f} kHz  (loop-closing detuning)")
+print(f"  t_gate  = {t_gate*1e6:.2f} μs  (single-loop gate time)")
+print(f"  |α|_max = {drive.carrier_rabi_frequency_rad_s * eta / delta:.4f}  (peak phase-space excursion)")
 # η = 0.1843
 # δ/2π = 36.85 kHz
 # t_gate = 27.14 μs
@@ -165,6 +178,22 @@ print(f"t_gate = {t_gate*1e6:.2f} μs")
 hamiltonian = detuned_ms_gate_hamiltonian(
     hilbert, drive, "com", ion_indices=(0, 1), detuning_rad_s=delta
 )
+
+# Illustrate the loop-closing condition: δ = 2|Ω η|√K as a function of loop count K.
+k_vals = np.arange(1, 6)
+omega_eta = drive.carrier_rabi_frequency_rad_s * eta
+delta_k = 2 * omega_eta * np.sqrt(k_vals) / (2 * np.pi * 1e3)   # kHz
+tgate_k = np.pi * np.sqrt(k_vals) / omega_eta * 1e6              # µs
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(k_vals, delta_k, color=BLUE, marker="o", markersize=6, label=r"$\delta/2\pi$ (kHz)")
+ax.plot(k_vals, tgate_k, color=RED, marker="s", markersize=6, label=r"$t_\mathrm{gate}$ (µs)")
+ax.axvline(1, color=GREY, linewidth=0.8, linestyle="--")
+ax.set_xlabel("loop count $K$")
+ax.set_ylabel("kHz  /  µs")
+ax.set_title(r"Loop-closing detuning and gate time vs $K$")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 `detuned_ms_gate_hamiltonian` returns the list-format
@@ -238,6 +267,16 @@ result = solve(
         *bell_observables,
     ],
 )
+
+p_dd_final = float(result.expectations["p_dd"][-1])
+p_uu_final = float(result.expectations["p_uu"][-1])
+p_flip_final = float(result.expectations["p_flip"][-1])
+n_final = float(result.expectations["n_com"][-1])
+print(f"Step 3 — observables at t_gate = {t_gate*1e6:.2f} µs")
+print(f"  P(|↓↓⟩)  = {p_dd_final:.5f}  (target 0.5)")
+print(f"  P(|↑↑⟩)  = {p_uu_final:.5f}  (target 0.5)")
+print(f"  P_flip   = {p_flip_final:.2e}  (target 0)")
+print(f"  ⟨n̂⟩      = {n_final:.2e}  (loop closure → 0)")
 ```
 
 At `t = t_gate` all four final-state targets land within solver
@@ -253,6 +292,51 @@ assert abs(result.expectations["n_com"][-1]  - 0.0) < 1e-5
 sz0 = result.expectations["sigma_z_0"]
 sz1 = result.expectations["sigma_z_1"]
 assert np.max(np.abs(sz0 - sz1)) < 1e-12
+
+times_us = times * 1e6  # µs — shared x-axis for all panels
+
+# Panel 1: phonon number — phase-space loop, peaks mid-gate, closes to zero.
+n_traj = np.asarray(result.expectations["n_com"], dtype=float)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times_us, n_traj, color=PURPLE)
+ax.axvline(t_gate * 1e6, color=GREY, linewidth=0.8, linestyle="--", label=r"$t_\mathrm{gate}$")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel(r"$\langle \hat{n} \rangle$")
+ax.set_title("Phase-space loop closure")
+ax.legend(frameon=False)
+plt.show()
+
+# Panel 2: Bell populations — |↓↓⟩ and |↑↑⟩ land at 0.5, P_flip stays at 0.
+p_dd = np.asarray(result.expectations["p_dd"], dtype=float)
+p_uu = np.asarray(result.expectations["p_uu"], dtype=float)
+p_flip = np.asarray(result.expectations["p_flip"], dtype=float)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times_us, p_dd,   color=BLUE,  label=r"$P(|{\downarrow\downarrow}\rangle)$")
+ax.plot(times_us, p_uu,   color=RED,   label=r"$P(|{\uparrow\uparrow}\rangle)$")
+ax.plot(times_us, p_flip, color=GREEN, linestyle="--", label=r"$P_\mathrm{flip}$ (parity-forbidden)")
+ax.axvline(t_gate * 1e6, color=GREY, linewidth=0.8, linestyle="--")
+ax.axhline(0.5, color=GREY, linewidth=0.5, linestyle=":")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel("population")
+ax.set_title(r"Bell populations: $|{\downarrow\downarrow}\rangle \to (|{\downarrow\downarrow}\rangle - i|{\uparrow\uparrow}\rangle)/\sqrt{2}$")
+ax.legend(frameon=False)
+plt.show()
+
+# Panel 3: σ_z trajectories — overlap to machine precision (ion-exchange symmetry).
+sz0_arr = np.asarray(sz0, dtype=float)
+sz1_arr = np.asarray(sz1, dtype=float)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times_us, sz0_arr, color=BLUE, linewidth=2.0, label=r"$\langle\sigma_z^{(0)}\rangle$")
+ax.plot(times_us, sz1_arr, color=RED,  linewidth=1.0, linestyle="--",
+        label=r"$\langle\sigma_z^{(1)}\rangle$ (hidden by symmetry)")
+ax.axvline(t_gate * 1e6, color=GREY, linewidth=0.8, linestyle="--")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel(r"$\langle\sigma_z\rangle$")
+ax.set_title(r"Ion-exchange symmetry: $\sigma_z^{(0)} = \sigma_z^{(1)}$")
+ax.legend(frameon=False)
+plt.show()
+
+print(f"Step 4 — ion-exchange symmetry: max |σ_z⁽⁰⁾ − σ_z⁽¹⁾| = {float(np.max(np.abs(sz0_arr - sz1_arr))):.2e}")
 ```
 
 The ion-exchange-symmetry check is the strongest of the four —

@@ -1,5 +1,7 @@
 # Tutorial 10 — Finite-shot statistics
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/10_finite_shot_statistics.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Tutorial 1 ended with a Wilson 95 % CI on a
 bright-fraction estimate. This tutorial zooms in on that
 one step — the three statistics functions
@@ -166,6 +168,11 @@ summary = binomial_summary(
 assert summary.point_estimate.shape == times.shape
 assert summary.lower.shape == times.shape
 assert summary.upper.shape == times.shape
+
+ci_width = summary.upper - summary.lower
+print(f"Trajectory: {shots} shots, {len(times)} time steps")
+print(f"Point estimate range: [{summary.point_estimate.min():.3f}, {summary.point_estimate.max():.3f}]")
+print(f"95 % Wilson CI width — min: {ci_width.min():.4f}, mean: {ci_width.mean():.4f}, max: {ci_width.max():.4f}")
 ```
 
 `summary.point_estimate` is the per-time-step
@@ -186,6 +193,7 @@ plt.plot(times_us, summary.point_estimate, color="steelblue",
 plt.xlabel("time (µs)")
 plt.ylabel("bright fraction")
 plt.legend()
+plt.show()
 ```
 
 The CI band widens where the fringe is near `0.5` (maximum

@@ -1,5 +1,7 @@
 # Tutorial 9 — Squeezed / coherent state preparation
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/09_squeezed_coherent_prep.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Move past `qutip.basis(N, n)` and
 `qutip.thermal_dm(N, n̄)` for the motional initial state. This
 tutorial walks through the three named single-mode state
@@ -46,21 +48,43 @@ through `compose_density` (or `qutip.tensor`).
 ```
 
 Mean phonon number `⟨n̂⟩ = |α|²`. The amplitude `α` is complex —
-its phase rotates the coherent state around phase space:
+its phase rotates the coherent state around phase space.
+Each step below **prints its key numbers and renders a P(n) bar
+chart live**: in the notebook you watch the calculation produce
+the result instead of trusting a static image.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 from iontrap_dynamics.states import coherent_mode
 
+# House colours — match the exemplar Tutorial 18 palette.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
+
 N = 40
 
-psi = coherent_mode(N, alpha=2.0)
-assert abs(qutip.expect(qutip.num(N), psi) - 4.0) < 1e-10
+psi_coh = coherent_mode(N, alpha=2.0)
+n_mean_coh = float(qutip.expect(qutip.num(N), psi_coh))
+print(f"Coherent |α=2⟩  ⟨n̂⟩ = {n_mean_coh:.6f}  (expected 4.000000)")
+assert abs(n_mean_coh - 4.0) < 1e-10
 # |α=2⟩ carries ⟨n̂⟩ = 4 exactly (within Fock truncation).
 
 psi_rotated = coherent_mode(N, alpha=2.0 * np.exp(1j * np.pi / 2))
+n_mean_rot = float(qutip.expect(qutip.num(N), psi_rotated))
+print(f"Rotated |α=2i⟩  ⟨n̂⟩ = {n_mean_rot:.6f}  (same distribution, 90° phase shift)")
 # Same ⟨n̂⟩ = 4, but rotated 90° in phase space.
+
+pn_coh = np.abs(psi_coh.full().flatten()) ** 2
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.bar(range(N), pn_coh, color=BLUE, label=r"$|\alpha=2\rangle$ coherent")
+ax.set_xlabel("Fock level $n$")
+ax.set_ylabel("$P(n) = |\\langle n|\\alpha\\rangle|^2$")
+ax.set_title(r"Coherent state $|\alpha=2\rangle$: Poissonian $P(n)$")
+ax.set_xlim(-0.5, 20.5)
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! tip "Choosing `fock_dim` for coherent states"
@@ -95,15 +119,32 @@ from iontrap_dynamics.states import squeezed_vacuum_mode
 
 # Real z = r squeezes the X-quadrature and anti-squeezes the Y-quadrature.
 r = 1.0
-psi = squeezed_vacuum_mode(N, z=r)
+psi_sq = squeezed_vacuum_mode(N, z=r)
 
 # Quadrature-variance sanity check: Var(X) = e^(-2r)/2, Var(Y) = e^(+2r)/2.
 a = qutip.destroy(N)
 X = (a + a.dag()) / np.sqrt(2)
 Y = -1j * (a - a.dag()) / np.sqrt(2)
-assert abs(qutip.variance(X, psi) - np.exp(-2 * r) / 2) < 1e-3  # 0.068
-assert abs(qutip.variance(Y, psi) - np.exp(+2 * r) / 2) < 1e-3  # 3.695
-assert abs(qutip.expect(qutip.num(N), psi) - np.sinh(r) ** 2) < 1e-6  # 1.381
+var_x = float(qutip.variance(X, psi_sq))
+var_y = float(qutip.variance(Y, psi_sq))
+n_mean_sq = float(qutip.expect(qutip.num(N), psi_sq))
+print(f"Squeezed vacuum |r=1.0⟩  ⟨n̂⟩ = {n_mean_sq:.6f}  (expected {np.sinh(r)**2:.6f})")
+print(f"  Var(X) = {var_x:.5f}  (expected {np.exp(-2*r)/2:.5f},  compressed)")
+print(f"  Var(Y) = {var_y:.5f}  (expected {np.exp(+2*r)/2:.5f},  stretched)")
+assert abs(var_x - np.exp(-2 * r) / 2) < 1e-3  # 0.068
+assert abs(var_y - np.exp(+2 * r) / 2) < 1e-3  # 3.695
+assert abs(n_mean_sq - np.sinh(r) ** 2) < 1e-4  # 1.381 (Fock-truncation tolerance)
+
+pn_sq = np.abs(psi_sq.full().flatten()) ** 2
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.bar(range(N), pn_sq, color=RED, label=r"$|r=1.0\rangle$ squeezed vac.")
+ax.set_xlabel("Fock level $n$")
+ax.set_ylabel("$P(n)$")
+ax.set_title(r"Squeezed vacuum $|r=1.0\rangle$: even-$n$ only")
+ax.set_xlim(-0.5, 20.5)
+ax.legend(frameon=False)
+plt.show()
 ```
 
 Even with `⟨n̂⟩ = 1.38`, the state is **pure** (it's a ket). The
@@ -122,9 +163,27 @@ Squeeze first, then displace. Mean phonon number
 ```python
 from iontrap_dynamics.states import squeezed_coherent_mode
 
-psi = squeezed_coherent_mode(N, z=1.0, alpha=2.0)
+psi_sc = squeezed_coherent_mode(N, z=1.0, alpha=2.0)
 # ⟨n̂⟩ = |α|² + sinh²(|ξ|) = 4 + 1.381 = 5.381
-assert abs(qutip.expect(qutip.num(N), psi) - 5.381) < 1e-3
+n_mean_sc = float(qutip.expect(qutip.num(N), psi_sc))
+print(f"Squeezed-coherent |α=2, r=1⟩  ⟨n̂⟩ = {n_mean_sc:.6f}  (expected {4.0 + np.sinh(1.0)**2:.6f})")
+assert abs(n_mean_sc - 5.381) < 1e-3
+
+pn_sc = np.abs(psi_sc.full().flatten()) ** 2
+
+# Plot all three P(n) distributions together for comparison.
+ns = np.arange(N)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+width = 0.28
+ax.bar(ns - width, pn_coh, width=width, color=BLUE,   label=r"coherent $|\alpha=2\rangle$")
+ax.bar(ns,          pn_sq,  width=width, color=RED,    label=r"squeezed vac. $|r=1\rangle$")
+ax.bar(ns + width,  pn_sc,  width=width, color=GREEN,  label=r"squeezed coh. $|\alpha=2,r=1\rangle$")
+ax.set_xlabel("Fock level $n$")
+ax.set_ylabel("$P(n)$")
+ax.set_title("Phonon distributions: three prepared states")
+ax.set_xlim(-0.5, 18.5)
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! note "Why squeeze-then-displace, not the other way"
@@ -171,6 +230,7 @@ rho_0 = compose_density(
     mode_states_by_label={"axial": coherent_mode(N, alpha=2.0)},
 )
 # rho_0 is a density matrix on the full space with dims [[2, 40], [2, 40]].
+print(f"rho_0 dims = {rho_0.dims}  (full-space density matrix: spin ⊗ axial)")
 ```
 
 `compose_density` enforces the CONVENTIONS §2 tensor order
@@ -219,6 +279,7 @@ eta = lamb_dicke_parameter(
     ion_mass=mg25_plus().mass_kg,
     mode_frequency=mode.frequency_rad_s,
 )
+print(f"Lamb–Dicke parameter η = {eta:.4f}")
 
 # Full Lamb–Dicke because |α|²=4 populates n≈4 where the leading-order
 # correction is already > 10% off (Tutorial 8).
@@ -229,6 +290,7 @@ hamiltonian = red_sideband_hamiltonian(
 # Characteristic Rabi period at ⟨n̂⟩ = 4 (leading-order estimate — the
 # full rate is ~16% slower, but this is just a time-axis baseline).
 flop_period = 2 * np.pi / (abs(eta) * np.sqrt(4.0) * drive.carrier_rabi_frequency_rad_s)
+print(f"Estimated flop period at ⟨n̂⟩=4: {flop_period * 1e6:.2f} μs")
 times = np.linspace(0.0, 8 * flop_period, 400)
 
 result = solve(
@@ -241,6 +303,26 @@ result = solve(
 
 sigma_z = result.expectations["sigma_z_0"]
 n_mode = result.expectations["n_axial"]
+
+sz_max = float(np.max(sigma_z))
+sz_std = float(np.std(sigma_z))
+n_final = float(n_mode[-1])
+print(f"Collapse demo — ⟨σ_z⟩ max = {sz_max:.3f},  σ(⟨σ_z⟩) = {sz_std:.3f}")
+print(f"  ⟨n̂⟩ drift: {float(n_mode[0]):.3f} → {n_final:.3f} phonons  (red-sideband cooling)")
+assert sz_max > 0.5       # clear Rabi oscillation at the start
+assert sz_std < 0.5       # oscillations collapse — std well below ideal 1/√2 ≈ 0.71
+
+times_us = times * 1e6
+fig, axes = plt.subplots(2, 1, figsize=(5.0, 5.2), sharex=True)
+axes[0].plot(times_us, sigma_z, color=BLUE, linewidth=0.8)
+axes[0].axhline(0.0, color=GREY, linewidth=0.5, linestyle="--")
+axes[0].set_ylabel(r"$\langle\sigma_z\rangle$")
+axes[0].set_title(r"Rabi-rate collapse from $|\downarrow,\alpha=2\rangle$")
+axes[1].plot(times_us, n_mode, color=RED, linewidth=0.8)
+axes[1].set_ylabel(r"$\langle\hat{n}\rangle$  (phonons)")
+axes[1].set_xlabel(r"time (μs)")
+plt.tight_layout()
+plt.show()
 ```
 
 What you see:
@@ -290,14 +372,19 @@ say). `compose_density` then wants one state per mode, and
 different modes can have different prep:
 
 ```python
-rho_0_two_mode = compose_density(
-    hilbert_two_mode,
-    spin_states_per_ion=[spin_down()],
-    mode_states_by_label={
-        "axial": coherent_mode(N, alpha=1.5),
-        "radial": squeezed_vacuum_mode(N, z=0.5),
-    },
-)
+# hilbert_two_mode is not constructed in this tutorial —
+# the snippet below illustrates the calling convention only.
+try:
+    rho_0_two_mode = compose_density(
+        hilbert_two_mode,
+        spin_states_per_ion=[spin_down()],
+        mode_states_by_label={
+            "axial": coherent_mode(N, alpha=1.5),
+            "radial": squeezed_vacuum_mode(N, z=0.5),
+        },
+    )
+except NameError as exc:
+    print("expected (hilbert_two_mode not built in this tutorial):", exc)
 ```
 
 Useful for state-prep dispatches on multi-mode systems (e.g.

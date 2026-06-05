@@ -1,5 +1,7 @@
 # Tutorial 5 — Custom observables
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/05_custom_observables.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Move past the built-in `spin_x` / `spin_y` / `spin_z` /
 `parity` / `number` factories and learn the hook that lets you
 stream **any** operator through `sequences.solve` as a named
@@ -38,10 +40,15 @@ observable-construction hook.
 An `Observable` is a two-field frozen dataclass:
 
 ```python
+# Illustrative pseudo-code — the real class lives in iontrap_dynamics.observables
+from dataclasses import dataclass
+import qutip as _qutip
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Observable:
-    label: str          # appears in result.expectations[...]
-    operator: qutip.Qobj  # embedded on the FULL Hilbert space
+    label: str             # appears in result.expectations[...]
+    operator: _qutip.Qobj  # embedded on the FULL Hilbert space
 ```
 
 Everything else follows. As long as `operator.dims` matches
@@ -65,6 +72,7 @@ into one block so the custom observables are the interesting part.
 before:
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 
@@ -82,6 +90,9 @@ from iontrap_dynamics.operators import (
 )
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — shared across all figures in this tutorial.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 N_FOCK = 12
 mode = ModeConfig(
@@ -118,6 +129,9 @@ hamiltonian = detuned_ms_gate_hamiltonian(
 )
 psi_0 = qutip.tensor(spin_down(), spin_down(), qutip.basis(N_FOCK, 0))
 times = np.linspace(0.0, t_gate, 500)
+
+print(f"Scenario — η = {eta:.4f},  δ/(2π) = {delta / (2 * np.pi) * 1e-3:.3f} kHz,  "
+      f"t_gate = {t_gate * 1e6:.2f} µs")
 ```
 
 ## Pattern A — Hermitian multi-subsystem projector (`|Φ⁻⟩⟨Φ⁻|`)
@@ -166,10 +180,10 @@ bell_fidelity = Observable(label="bell_fidelity", operator=fidelity_op)
 ## Pattern B — Two-ion correlator (`⟨σ_x⁽⁰⁾ σ_x⁽¹⁾⟩`) via `HilbertSpace`
 
 The joint correlator is the time-domain signal that a physical
-parity scan samples once per analysis phase. Since we're not
-rotating the analysis axis (the MS gate output *is* the
-σ_x-diagonal Bell state directly), `⟨σ_x σ_x⟩` peaks at `−1` at
-`t_gate` — the maximally-entangled signature of a good gate.
+parity scan samples once per analysis phase. For the `|Φ⁻⟩` Bell
+state produced by this gate, `⟨σ_x σ_x⟩` returns to `0` at
+`t_gate` — the two equal-weight but phase-shifted components
+interfere destructively in the σ_x–σ_x basis.
 
 `HilbertSpace.spin_op_for_ion` is the idiomatic way to build
 per-ion operators — no counting qeyes, no risk of transposing
@@ -240,9 +254,9 @@ coherence = Observable(label="coherence_dd_uu", operator=coherence_op)
 ```
 
 At `t = 0`: expectation is 0 (state is `|↓↓, 0⟩`, no `|↑↑⟩`
-component). At `t = t_gate`: expectation is `+i / 2` — the
-`−i` amplitude on `|↑↑⟩` in `|Φ⁻⟩` combined with the
-`⟨↓↓|·⟩⟨·|↑↑⟩` projector picks out exactly that phase. The
+component). At `t = t_gate`: expectation is `−i / 2` — the gate
+output `(0.5−0.5i)|↓↓⟩ + (−0.5−0.5i)|↑↑⟩` gives
+`⟨↓↓|ρ|↑↑⟩ = (0.5+0.5i)(−0.5−0.5i) = −i/2`. The
 **imaginary-part trajectory** is the coherence-oscillation fringe
 you'd reconstruct from a Ramsey-style analysis; getting it
 straight from one observable saves a lot of reconstruction
@@ -265,42 +279,85 @@ the built-ins:
 
 ```python
 from iontrap_dynamics.observables import number, parity, spin_z
+from iontrap_dynamics.results import StorageMode
 from iontrap_dynamics.sequences import solve
 
+# The non-Hermitian coherence observable yields complex expectations, which
+# we evaluate directly from the stored states rather than passing to solve
+# (the solver's expectations engine uses float64 storage for Hermitian ops).
+# We store states with StorageMode.EAGER so we can also compute the coherence
+# trajectory and reuse the states for concurrence below.
 result = solve(
     hilbert=hilbert,
     hamiltonian=hamiltonian,
     initial_state=psi_0,
     times=times,
+    storage_mode=StorageMode.EAGER,
     observables=[
         # Built-in factories (Tutorials 1–4)
         spin_z(hilbert, 0),
         spin_z(hilbert, 1),
         number(hilbert, "com"),
         parity(hilbert, ion_indices=(0, 1)),
-        # Custom observables (this tutorial)
+        # Custom Hermitian observables (this tutorial)
         bell_fidelity,
         sigma_xx,
         p_fock1,
-        coherence,
     ],
 )
 
+# Evaluate the non-Hermitian coherence trajectory from the stored states.
+coherence_traj = np.array(
+    [complex(qutip.expect(coherence_op, s)) for s in result.states]
+)
+final_coherence = coherence_traj[-1]
+
+fid_final = float(result.expectations["bell_fidelity"][-1])
+sxx_final = float(result.expectations["sigma_xx"][-1])
+p1_final  = float(result.expectations["p_fock1_com"][-1])
+
+print(f"At t_gate = {t_gate * 1e6:.2f} µs:")
+print(f"  Bell fidelity  ⟨Φ⁻|ρ|Φ⁻⟩  = {fid_final:.5f}  (target 1.0)")
+print(f"  ⟨σ_x σ_x⟩                  = {sxx_final:.5f}  (target 0.0)")
+print(f"  P(n_com = 1)               = {p1_final:.2e}  (target 0.0)")
+print(f"  coherence Im[⟨↓↓|ρ|↑↑⟩]   = {final_coherence.imag:.5f}  (target −0.5)")
+print(f"  coherence Re[⟨↓↓|ρ|↑↑⟩]   = {final_coherence.real:.2e}  (target 0.0)")
+
 assert abs(result.expectations["bell_fidelity"][-1] - 1.0) < 1e-4
-assert abs(result.expectations["sigma_xx"][-1] - (-1.0)) < 1e-4
+assert abs(result.expectations["sigma_xx"][-1] - 0.0) < 1e-4
 assert abs(result.expectations["p_fock1_com"][-1] - 0.0) < 1e-4
 
 # Non-Hermitian result is complex; inspect imag / real separately.
-final_coherence = result.expectations["coherence_dd_uu"][-1]
-assert abs(final_coherence.imag - 0.5) < 1e-4
+assert abs(final_coherence.imag - (-0.5)) < 1e-4
 assert abs(final_coherence.real) < 1e-4
+
+# Plot all four custom observables vs time so you can watch each approach
+# its Bell-gate target continuously rather than just checking the endpoint.
+t_us = times * 1e6  # time axis in µs
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_us, result.expectations["bell_fidelity"],
+        color=BLUE,   label=r"Bell fidelity $\langle\Phi^-|\rho|\Phi^-\rangle$")
+ax.plot(t_us, result.expectations["sigma_xx"],
+        color=RED,    label=r"$\langle\sigma_x\sigma_x\rangle$")
+ax.plot(t_us, result.expectations["p_fock1_com"],
+        color=GREEN,  label=r"$P(n_\mathrm{com}=1)$")
+ax.plot(t_us, coherence_traj.imag,
+        color=PURPLE, label=r"$\mathrm{Im}\langle{\downarrow\downarrow}|\rho|{\uparrow\uparrow}\rangle$")
+ax.axvline(t_gate * 1e6, color=GREY, linewidth=0.8, linestyle="--", label=r"$t_\mathrm{gate}$")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel("expectation value")
+ax.set_title("Custom observables through the MS gate")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 All four land on their expected Bell-gate targets at `t_gate`.
-The Bell fidelity saturates at 1; the σ_x σ_x correlator lands at
-−1 (the `|Φ⁻⟩` signature in the σ_x–σ_x basis); the
-Fock-1 population returns to 0 (loop closure); and the coherence
-picks up its full `+i / 2` phase.
+The Bell fidelity saturates at 1; the σ_x σ_x correlator stays at 0
+(`|Φ⁻⟩ = (|↓↓⟩ − i|↑↑⟩)/√2` has equal-weight computational-basis
+components with opposite phases, so `⟨σ_x σ_x⟩` averages to zero);
+the Fock-1 population returns to 0 (loop closure); and the coherence
+`⟨↓↓|ρ|↑↑⟩` acquires its full `−i / 2` phase (the `−i` amplitude on
+`|↑↑⟩` in `|Φ⁻⟩` contributes a negative imaginary part).
 
 ## When to build a brand-new factory vs. a one-off `Observable`
 
@@ -343,20 +400,25 @@ subsystem), pass `storage_mode=StorageMode.EAGER`:
 
 ```python
 from iontrap_dynamics.entanglement import concurrence_trajectory
-from iontrap_dynamics.results import StorageMode
 
-result_full = solve(
-    hilbert=hilbert,
-    hamiltonian=hamiltonian,
-    initial_state=psi_0,
-    times=times,
-    observables=[spin_z(hilbert, 0)],
-    storage_mode=StorageMode.EAGER,
-)
+# result.states was stored with StorageMode.EAGER in the previous block —
+# reuse it directly so we avoid a second solve call.
 # result_full.states is a tuple of qutip.Qobj — one per time step
 c_traj = concurrence_trajectory(
-    result_full.states, hilbert=hilbert, ion_indices=(0, 1),
+    result.states, hilbert=hilbert, ion_indices=(0, 1),
 )
+
+print(f"Concurrence at t_gate: C = {c_traj[-1]:.5f}  (target 1.0)")
+assert abs(c_traj[-1] - 1.0) < 1e-3  # maximally entangled at t_gate
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times * 1e6, c_traj, color=BLUE)
+ax.axvline(t_gate * 1e6, color=GREY, linewidth=0.8, linestyle="--", label=r"$t_\mathrm{gate}$")
+ax.set_xlabel(r"time $t$ (µs)")
+ax.set_ylabel("Wootters concurrence $C$")
+ax.set_title("Entanglement build-up through the MS gate")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 For a two-ion Bell gate `c_traj` should reach `1.0` at `t_gate`.

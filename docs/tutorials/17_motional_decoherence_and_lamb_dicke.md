@@ -1,5 +1,7 @@
 # Tutorial 17 — Motional decoherence and the Lamb–Dicke regime
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/17_motional_decoherence_and_lamb_dicke.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Characterise and budget the imperfections of a real motional
 mode. By the end you will have driven a mode with typed open-system
 channels through `solve(channels=…)`, read the resulting contrast loss off
@@ -43,6 +45,7 @@ and **Dephasing** kills the coherence quadrature while leaving the energy
 untouched.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -54,6 +57,10 @@ from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.states import coherent_mode, compose_density
 from iontrap_dynamics.operators import spin_down
 from iontrap_dynamics import AmplitudeDamping, Heating, Dephasing
+
+# House colours — match the reference figure.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
+
 
 def single_mode_hilbert(fock_dim):
     mode = ModeConfig(label="b", frequency_rad_s=2 * np.pi * 1.0e6,
@@ -74,6 +81,8 @@ res_h = solve(hilbert=h, hamiltonian=H0, initial_state=ground, times=times,
               observables=(Observable(label="n", operator=n_op),),
               channels=[Heating(mode="b", rate=3000.0, n_bar_bath=2.0)])
 n_t = np.asarray(res_h.expectations["n"])
+print(f"Step 1 — backend: {res_h.metadata.backend_name}")
+print(f"Step 1 — Heating: ⟨n⟩(t_end) = {n_t[-1]:.4f}  (analytic n̄(1−e^{{−κt}}) = {2.0 * (1 - np.exp(-3000.0 * times[-1])):.4f})")
 assert res_h.metadata.backend_name == "qutip-mesolve"     # channels FORCE the master equation
 assert abs(n_t[-1] - 2.0 * (1 - np.exp(-3000.0 * times[-1]))) < 5e-3   # n̄(1 − e^{−κt})
 
@@ -84,8 +93,32 @@ res_d = solve(hilbert=h, hamiltonian=H0, initial_state=coherent, times=times,
               observables=(Observable(label="x", operator=x_op), Observable(label="n", operator=n_op)),
               channels=[Dephasing(mode="b", rate=4000.0)])
 x_t = np.asarray(res_d.expectations["x"]); n_t2 = np.asarray(res_d.expectations["n"])
+print(f"Step 1 — Dephasing: ⟨x⟩(t_end) = {x_t[-1]:.4f}  (analytic e^{{−γt/2}}⟨x⟩₀ = {x_t[0] * np.exp(-4000.0 * times[-1] / 2):.4f})")
+print(f"Step 1 — Dephasing: |Δ⟨n⟩| = {abs(n_t2[-1] - n_t2[0]):.2e}  (energy preserved)")
 assert abs(x_t[-1] - x_t[0] * np.exp(-4000.0 * times[-1] / 2)) < 5e-3   # coherence decay
 assert abs(n_t2[-1] - n_t2[0]) < 1e-6                                    # energy preserved
+
+# Plot: occupation decay (heating) and coherence decay (dephasing) vs time.
+t_ms = times * 1e3  # milliseconds
+n_analytic = 2.0 * (1 - np.exp(-3000.0 * times))
+x_analytic = x_t[0] * np.exp(-4000.0 * times / 2)
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.0, 3.2))
+ax1.plot(t_ms, n_analytic, color=GREY, linewidth=1.0, label=r"$\bar{n}(1-e^{-\kappa t})$")
+ax1.scatter(t_ms, n_t, color=RED, s=12, zorder=3, label=r"Heating  $\langle n\rangle$")
+ax1.set_xlabel("time  (ms)")
+ax1.set_ylabel(r"phonon number  $\langle n\rangle$")
+ax1.set_title("Heating: occupation relaxation")
+ax1.legend(frameon=False)
+
+ax2.plot(t_ms, x_analytic, color=GREY, linewidth=1.0, label=r"$e^{-\gamma t/2}\langle x\rangle_0$")
+ax2.scatter(t_ms, x_t, color=BLUE, s=12, zorder=3, label=r"Dephasing  $\langle x\rangle$")
+ax2.scatter(t_ms, n_t2, color=GREEN, s=10, zorder=3, marker="s", label=r"$\langle n\rangle$ (flat)")
+ax2.set_xlabel("time  (ms)")
+ax2.set_ylabel(r"quadrature / phonon number")
+ax2.set_title("Dephasing: coherence decay")
+ax2.legend(frameon=False)
+plt.show()
 ```
 
 ![Occupation relaxation under heating, amplitude damping and a windowed heating run; and coherence decay under dephasing while the occupation stays flat](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/motional_channels/plot.png)
@@ -128,8 +161,23 @@ signal = np.clip(signal, 0.0, None)            # a readout probability must be n
 
 v = fringe_visibility(signal)                  # model-free contrast ≈ 0.82 (biased high by noise)
 fit = fit_fringe(theta, signal)                # robust fit → FringeFit(offset, amplitude, phase_rad, visibility)
+print(f"Step 2 — model-free visibility = {v:.3f}  (biased high by noise)")
+print(f"Step 2 — fit: phase = {fit.phase_rad:.3f} rad  (true {phi_true}),  visibility = {fit.visibility:.3f}  (true {V_true})")
 assert abs(fit.phase_rad - phi_true) < 0.05    # recovers the interferometer phase
 assert abs(fit.visibility - V_true) < 0.05     # and the contrast B/A
+
+# Plot: measured fringe data and the fitted sinusoid.
+theta_fine = np.linspace(0, 2 * np.pi, 200)
+fit_curve = fit.offset + fit.amplitude * np.cos(theta_fine - fit.phase_rad)
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.scatter(theta, signal, color=BLUE, s=20, zorder=3, label="measured signal")
+ax.plot(theta_fine, fit_curve, color=RED, linewidth=1.5, label=f"fit  $V={fit.visibility:.2f}$, $\\phi={fit.phase_rad:.2f}$")
+ax.set_xlabel(r"phase $\theta$  (rad)")
+ax.set_ylabel("signal (arb.)")
+ax.set_title("Step 2 — Interferometer fringe and fit")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! tip "Which contrast estimator?"
@@ -160,6 +208,11 @@ from iontrap_dynamics.analytic import (
 eta = lamb_dicke_parameter(k_vec=np.array([0.0, 0.0, 2 * np.pi / 280e-9]),
                            mode_eigenvector=np.array([0.0, 0.0, 1.0]),
                            ion_mass=mg25_plus().mass_kg, mode_frequency=2 * np.pi * 1.0e6)
+dw_vacuum = debye_waller_factor(lamb_dicke_parameter=eta, mean_phonon_number=0.0)
+print(f"Step 3 — physical η = {eta:.4f}")
+print(f"Step 3 — Debye–Waller at vacuum (n̄=0): DW = {dw_vacuum:.4f}  (< 1 due to zero-point motion)")
+print(f"Step 3 — regime(η={eta:.2f}, n̄=0) = {lamb_dicke_regime(lamb_dicke_parameter=eta, mean_phonon_number=0.0).name}")
+print(f"Step 3 — regime(η={eta:.2f}, n̄=5) = {lamb_dicke_regime(lamb_dicke_parameter=eta, mean_phonon_number=5.0).name}")
 
 # a tightly-confined mode (small η) is comfortably deep…
 assert lamb_dicke_regime(lamb_dicke_parameter=0.15, mean_phonon_number=0.0) is LambDickeRegime.DEEP
@@ -175,7 +228,42 @@ assert debye_waller_factor(lamb_dicke_parameter=eta, mean_phonon_number=0.0) < 1
 Omega0 = 2 * np.pi * 1e5
 lo = blue_sideband_rabi_frequency(carrier_rabi_frequency=Omega0, lamb_dicke_parameter=0.5, n_initial=8)
 full = blue_sideband_rabi_frequency_full_ld(carrier_rabi_frequency=Omega0, lamb_dicke_parameter=0.5, n_initial=8)
+print(f"Step 3 — BSB rate at η=0.5, n=8: leading-order = {lo/(2*np.pi*1e3):.2f} kHz,  full-LD = {full/(2*np.pi*1e3):.2f} kHz  (full < leading)")
 assert full < lo                               # the linearised √(n+1) form breaks down
+
+# Plot: Debye–Waller factor and sideband rate vs regime parameter, showing the
+# three bands (deep / intermediate / beyond).
+n_bar_scan = np.linspace(0.0, 10.0, 200)
+confinement_scan = eta ** 2 * (2 * n_bar_scan + 1)
+dw_scan = np.array([debye_waller_factor(lamb_dicke_parameter=eta, mean_phonon_number=nb)
+                    for nb in n_bar_scan])
+
+n_fock = np.arange(0, 20)
+lo_scan = np.array([blue_sideband_rabi_frequency(carrier_rabi_frequency=Omega0,
+                    lamb_dicke_parameter=0.5, n_initial=int(n)) for n in n_fock])
+full_scan = np.array([blue_sideband_rabi_frequency_full_ld(carrier_rabi_frequency=Omega0,
+                      lamb_dicke_parameter=0.5, n_initial=int(n)) for n in n_fock])
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.0, 3.2))
+
+ax1.axvspan(0.0, 0.1, color=GREEN, alpha=0.12, label="deep")
+ax1.axvspan(0.1, 1.0, color=BLUE, alpha=0.10, label="intermediate")
+ax1.axvspan(1.0, confinement_scan.max(), color=RED, alpha=0.08, label="beyond")
+ax1.plot(confinement_scan, dw_scan, color=GREY, linewidth=1.5)
+ax1.set_xlabel(r"$\eta^2(2\bar{n}+1)$")
+ax1.set_ylabel("Debye–Waller factor")
+ax1.set_title(r"Step 3 — DW vs regime  ($\eta \approx 0.32$)")
+ax1.legend(frameon=False, fontsize=8)
+
+ax2.plot(n_fock, lo_scan / (2 * np.pi * 1e3), color=RED, marker="o", markersize=4,
+         label=r"leading-order $|\eta|\sqrt{n+1}$")
+ax2.plot(n_fock, full_scan / (2 * np.pi * 1e3), color=BLUE, marker="s", markersize=4,
+         label="full-LD (all orders)")
+ax2.set_xlabel("Fock level  $n$")
+ax2.set_ylabel("BSB Rabi rate  (kHz)")
+ax2.set_title(r"Step 3 — BSB rate at $\eta=0.5$")
+ax2.legend(frameon=False)
+plt.show()
 ```
 
 ![Debye–Waller factor versus the regime parameter with the deep, intermediate and beyond bands, and the sideband Rabi frequency where the leading-order form diverges from the exact all-orders curve](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/lamb_dicke_regime/plot.png)
@@ -210,12 +298,36 @@ k_vec = np.array([0.0, 0.0, 2 * np.pi / 280e-9]); ev = np.array([0.0, 0.0, 1.0])
 eta0 = lamb_dicke_parameter(k_vec=k_vec, mode_eigenvector=ev,
                             ion_mass=mg25_plus().mass_kg, mode_frequency=mode.frequency_rad_s)
 
-for delta in [-0.10, -0.02, 0.02, 0.10]:
+print(f"Step 4 — η₀ = {eta0:.4f}  (nominal, no drift)")
+print(f"{'delta':>8}  {'η_drifted':>10}  {'Δη/η₀':>10}  {'−δ/2 (approx)':>16}")
+deltas = [-0.10, -0.02, 0.02, 0.10]
+eta_drifted_vals = []
+for delta in deltas:
     drifted = apply_mode_frequency_drift(mode, ModeFrequencyDrift(delta=delta))  # ω → ω(1+δ), a NEW config
     eta_d = lamb_dicke_parameter(k_vec=k_vec, mode_eigenvector=ev,
                                  ion_mass=mg25_plus().mass_kg, mode_frequency=drifted.frequency_rad_s)
+    eta_drifted_vals.append(eta_d)
+    frac = (eta_d / eta0) - 1.0
+    print(f"{delta:>+8.2f}  {eta_d:>10.4f}  {frac:>+10.4f}  {-delta/2:>+16.4f}")
     assert np.isclose(eta_d, eta0 / np.sqrt(1.0 + delta))   # η rescales as 1/√(1+δ)
 # the fractional η change is ≈ −δ/2, NOT −δ — half as sensitive as a naive estimate
+
+# Plot: fractional η change vs trap-frequency drift — error budget bar chart.
+frac_changes = [(ed / eta0 - 1.0) * 100 for ed in eta_drifted_vals]  # in percent
+approx_changes = [-d / 2 * 100 for d in deltas]
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+x = np.arange(len(deltas))
+w = 0.35
+ax.bar(x - w/2, frac_changes, width=w, color=BLUE, label=r"exact  $\eta/\eta_0 - 1$")
+ax.bar(x + w/2, approx_changes, width=w, color=RED, alpha=0.7, label=r"approx  $-\delta/2$")
+ax.set_xticks(x)
+ax.set_xticklabels([f"{d:+.0%}" for d in deltas])
+ax.set_xlabel(r"trap-frequency drift  $\delta$")
+ax.set_ylabel(r"$\Delta\eta / \eta_0$  (%)")
+ax.set_title(r"Step 4 — $\eta$ sensitivity to trap-frequency drift")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! tip "Half the sensitivity you'd guess"

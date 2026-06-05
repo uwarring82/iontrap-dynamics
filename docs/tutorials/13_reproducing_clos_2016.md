@@ -1,5 +1,7 @@
 # Tutorial 13 — Reproducing Clos 2016 (Phys. Rev. Lett. 117, 170401)
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/13_reproducing_clos_2016.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Reproduce the published `IPR_av` (averaged effective
 dimension) numbers from the legacy spin–boson bundle that ships
 under [`legacy/clos 2016 prl/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/legacy/clos%202016%20prl).
@@ -150,6 +152,9 @@ for detuning in surface.detunings_legacy_units:
     )
 
 calculated = np.asarray(calculated)
+print(f"N=1 IPR_av at detuning=0.0 : {calculated[0]:.3f}  (reference: {reference[0]:.3f})")
+print(f"N=1 IPR_av at detuning=1.0 : {calculated[5]:.3f}  (reference: {reference[5]:.3f})")
+print(f"N=1 IPR_av max calculated  : {calculated.max():.3f}")
 ```
 
 `clos2016_initial_state` returns the legacy
@@ -208,6 +213,7 @@ ax.set_xlabel(r"detuning $\omega_z / 2\pi$  [MHz]")
 ax.set_ylabel(r"averaged effective dimension $\mathrm{IPR}_\mathrm{av}$")
 ax.legend()
 fig.tight_layout()
+plt.show()
 ```
 
 The two curves should sit on top of each other at the off-resonance

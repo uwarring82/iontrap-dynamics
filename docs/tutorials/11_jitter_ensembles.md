@@ -1,5 +1,7 @@
 # Tutorial 11 — Systematics: jitter ensembles
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/11_jitter_ensembles.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Take the single-shot carrier-Rabi scenario from
 [Tutorial 1](01_first_rabi_readout.md), layer a **shot-to-shot
 Rabi-amplitude jitter** on it (σ = 3 % — a realistic
@@ -195,6 +197,25 @@ sem = ensemble_std / np.sqrt(N_SHOTS)      # standard error of the mean
 omega_bar = drive.carrier_rabi_frequency_rad_s
 envelope = np.exp(-0.5 * (jitter.sigma * omega_bar * times) ** 2)
 predicted = -np.cos(omega_bar * times) * envelope
+
+# Snapshots at 1 µs, 4 µs, 10 µs (indices: 400 pts over 10 µs → 40 pts/µs)
+idx_1us  = int(round(1e-6 / times[-1] * (len(times) - 1)))
+idx_4us  = int(round(4e-6 / times[-1] * (len(times) - 1)))
+idx_10us = len(times) - 1
+print(f"Snapshot t=1 µs  — ensemble mean: {ensemble_mean[idx_1us]:.3f}, "
+      f"analytic: {predicted[idx_1us]:.3f}, "
+      f"ensemble std: {ensemble_std[idx_1us]:.3f}")
+print(f"Snapshot t=4 µs  — ensemble mean: {ensemble_mean[idx_4us]:.3f}, "
+      f"analytic: {predicted[idx_4us]:.3f}, "
+      f"ensemble std: {ensemble_std[idx_4us]:.3f}")
+print(f"Snapshot t=10 µs — ensemble mean: {ensemble_mean[idx_10us]:.3f}, "
+      f"analytic: {predicted[idx_10us]:.3f}, "
+      f"SEM: {sem[idx_10us]:.3f}, "
+      f"ensemble std: {ensemble_std[idx_10us]:.3f}")
+max_abs_deviation = float(np.max(np.abs(ensemble_mean - predicted)))
+print(f"Max |ensemble mean − analytic| over all times: {max_abs_deviation:.4f}")
+# The ensemble mean should track the analytic dephasing curve to within ~3 SEM at all times.
+assert max_abs_deviation < 0.15  # within ~3 SEM for N=200 — expected statistical noise
 ```
 
 ### What the numbers look like
@@ -234,6 +255,7 @@ Three things worth taking from the table:
 import matplotlib.pyplot as plt
 
 t_us = times * 1e6
+plt.figure(figsize=(6.4, 3.8))
 plt.plot(t_us, predicted, color="black", linewidth=1.2,
          linestyle="--", label="analytic ⟨σ_z⟩")
 plt.plot(t_us, ensemble_mean, color="steelblue", linewidth=1.8,
@@ -249,6 +271,8 @@ plt.fill_between(
 plt.xlabel("time (µs)")
 plt.ylabel(r"$\langle \sigma_z \rangle$")
 plt.legend(loc="lower right")
+plt.tight_layout()
+plt.show()
 ```
 
 The ensemble-mean curve hugs the analytic dashed line; the

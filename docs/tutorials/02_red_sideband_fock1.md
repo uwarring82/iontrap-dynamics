@@ -1,5 +1,7 @@
 # Tutorial 2 — Red-sideband flopping from Fock ∣1⟩
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/02_red_sideband_fock1.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Take the four-step pattern from [Tutorial 1](01_first_rabi_readout.md)
 (configure → build → solve → read out), swap the carrier Hamiltonian
 for the red-sideband variant, and start the motion in the first
@@ -59,12 +61,16 @@ turned down by 10× — the sideband coupling is already
 in the tens-of-microseconds range instead of hundreds:
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — shared across all figures in this tutorial.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 mode = ModeConfig(
     label="axial",
@@ -103,7 +109,7 @@ you from those four ingredients; knowing the value before the solve
 starts is useful for sanity-checking the physics.
 
 ```python
-from iontrap_dynamics.analytic import lamb_dicke_parameter
+from iontrap_dynamics.analytic import lamb_dicke_parameter, red_sideband_rabi_frequency
 from iontrap_dynamics.hamiltonians import red_sideband_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
 
@@ -116,8 +122,16 @@ eta = lamb_dicke_parameter(
     mode_frequency=mode.frequency_rad_s,
 )
 sideband_rabi_rate = drive.carrier_rabi_frequency_rad_s * eta  # Ω η for n=1
-print(f"η = {eta:.4f},  Ω_RSB(n=1)/2π ≈ {sideband_rabi_rate / (2*np.pi):.1f} Hz")
-# η = 0.2606,  Ω_RSB(n=1)/2π ≈ 26058 Hz
+
+omega_rsb = red_sideband_rabi_frequency(
+    carrier_rabi_frequency=drive.carrier_rabi_frequency_rad_s,
+    lamb_dicke_parameter=eta,
+    n_initial=1,
+)
+flop_period = 2 * np.pi / omega_rsb
+print(f"η = {eta:.4f}")
+print(f"Ω_RSB(n=1)/2π = {omega_rsb / (2 * np.pi):.1f} Hz  (Ω·η·√1 = {sideband_rabi_rate / (2 * np.pi):.1f} Hz)")
+print(f"T_RSB = {flop_period * 1e6:.1f} μs  →  π-pulse at {flop_period / 2 * 1e6:.1f} μs")
 
 hamiltonian = red_sideband_hamiltonian(hilbert, drive, "axial", ion_index=0)
 ```
@@ -161,7 +175,6 @@ from iontrap_dynamics.sequences import solve
 psi_0 = qutip.tensor(spin_down(), qutip.basis(30, 1))
 
 # Duration = two full flop cycles at the expected Ω_RSB rate.
-flop_period = 2 * np.pi / sideband_rabi_rate
 times = np.linspace(0.0, 2 * flop_period, 200)
 
 result = solve(
@@ -172,8 +185,25 @@ result = solve(
     observables=[spin_z(hilbert, 0), number(hilbert, "axial")],
 )
 
-sigma_z = result.expectations["sigma_z_0"]
-n_mode = result.expectations["n_axial"]
+sigma_z = np.asarray(result.expectations["sigma_z_0"])
+n_mode = np.asarray(result.expectations["n_axial"])
+
+# π-pulse: at t = T_RSB/2 the spin has flipped and the phonon has been absorbed.
+idx_pi = np.argmin(np.abs(times - flop_period / 2))
+print(f"At π-pulse  (t = {times[idx_pi] * 1e6:.1f} μs):  ⟨σ_z⟩ = {sigma_z[idx_pi]:+.4f},  ⟨n̂⟩ = {n_mode[idx_pi]:.4f}")
+print(f"At 2π-pulse (t = {times[-1] * 1e6:.1f} μs):  ⟨σ_z⟩ = {sigma_z[-1]:+.4f},  ⟨n̂⟩ = {n_mode[-1]:.4f}")
+
+# Plot the coupled spin-motion trajectory over two flop cycles.
+t_us = times * 1e6
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_us, sigma_z, color=BLUE, label=r"$\langle\sigma_z\rangle$")
+ax.plot(t_us, n_mode, color=RED, label=r"$\langle\hat{n}\rangle$")
+ax.axvline(flop_period / 2 * 1e6, color=GREY, linewidth=0.8, linestyle="--")
+ax.set_xlabel(r"time  $t$  (μs)")
+ax.set_ylabel("expectation value")
+ax.set_title(r"RSB flop: $|\downarrow,1\rangle \leftrightarrow |\uparrow,0\rangle$")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 Two observables, one solve. At half the flop period `t = π / Ω_RSB`
@@ -185,6 +215,7 @@ phase-locked by the conservation law — during the RSB flop,
 out a useful sanity check on your setup:
 
 ```python
+print(f"Conservation law  max |⟨σ_z⟩ − (1 − 2⟨n̂⟩)| = {np.max(np.abs(sigma_z - (1 - 2 * n_mode))):.2e}")
 assert np.max(np.abs(sigma_z - (1 - 2 * n_mode))) < 1e-6
 ```
 
@@ -192,7 +223,9 @@ assert np.max(np.abs(sigma_z - (1 - 2 * n_mode))) < 1e-6
 
 If you want the finite-shot readout numbers from Tutorial 1, the
 same `SpinReadout` protocol works unchanged — the readout layer is
-agnostic to the dynamics that produced the trajectory:
+agnostic to the dynamics that produced the trajectory. The
+`bright_fraction` time series shows how the sampled bright count
+tracks the underlying `⟨σ_z⟩` trajectory:
 
 ```python
 from iontrap_dynamics import DetectorConfig, SpinReadout
@@ -203,6 +236,21 @@ readout = SpinReadout(
 )
 measurement = readout.run(result, shots=500, seed=20260421)
 bright_fraction = measurement.sampled_outcome["spin_readout_bright_fraction"]
+
+print(f"Bright fraction at π-pulse   (t = {times[idx_pi]*1e6:.1f} μs): {bright_fraction[idx_pi]:.3f}  (ideal ≈ 1.0)")
+print(f"Bright fraction at 2π-pulse  (t = {times[-1]*1e6:.1f} μs): {bright_fraction[-1]:.3f}  (ideal ≈ 0.0)")
+
+# The sampled bright fraction follows the spin-up population with
+# finite-statistics noise from the detector model.
+p_up_ideal = (sigma_z + 1.0) / 2.0  # ⟨P_↑⟩ from the exact trajectory
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_us, p_up_ideal, color=GREY, linewidth=1.0, label=r"$\langle P_\uparrow\rangle$ (exact)")
+ax.scatter(t_us, bright_fraction, color=BLUE, s=6, zorder=3, label="bright fraction (500 shots)")
+ax.set_xlabel(r"time  $t$  (μs)")
+ax.set_ylabel("spin-up population")
+ax.set_title("Step 4 · sampled readout vs exact trajectory")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 A complementary "motional thermometry" step — reading out the

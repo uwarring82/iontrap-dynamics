@@ -1,5 +1,7 @@
 # Tutorial 15 — Quantum Darwinism: why the world looks classical
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/15_quantum_darwinism.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Quantify *how* a quantum system becomes objective — measure the
 redundant records an environment keeps about a system, and the
 recoverability of that information from an accessible fragment. By the end
@@ -52,12 +54,17 @@ classical objectivity — only doubling to two bits when the whole
 environment (which restores the global quantum coherence) is included.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
+import qutip
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.system import IonSystem
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.states import ghz_state
 from iontrap_dynamics.information import partial_information_plot
+
+# House colours — match the shipped benchmark figures.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 def spin_hilbert(n_ions):
     system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
@@ -69,9 +76,24 @@ pip = partial_information_plot(
     state, hilbert=hilbert, system_indices=[0], environment_indices=[1, 2, 3, 4, 5]
 )
 # pip = [0, 1, 1, 1, 1, 2]  — zero, then a flat 1-bit plateau, then 2 bits at the full env
+print(f"Step 1 — partial-information plot (bits):  {[round(float(v), 6) for v in pip]}")
+print(f"  plateau value pip[1..4] = {[round(float(v), 6) for v in pip[1:-1]]}  (expect all 1.0)")
+print(f"  full-environment value pip[-1] = {float(pip[-1]):.6f}  (expect 2.0)")
 assert pip[0] == 0.0
 assert np.allclose(pip[1:-1], 1.0)            # every proper fragment: the plateau
 assert abs(pip[-1] - 2.0) < 1e-9              # full environment restores global coherence
+
+# Fragment sizes: 0 env qubits → 5 env qubits (i.e. fragment = 0..5 out of 5)
+frag_sizes = list(range(len(pip)))
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(frag_sizes, pip, color=BLUE, marker="o", markersize=5, linewidth=1.4,
+        label=r"$I(S{:}F)$  GHZ")
+ax.axhline(1.0, color=GREY, linewidth=0.8, linestyle="--", label=r"plateau: $H_S = 1$ bit")
+ax.set_xlabel("fragment size (# env qubits)")
+ax.set_ylabel(r"$I(S{:}F)$  (bits)")
+ax.set_title("Darwinism plateau — each fragment carries the full system bit")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 ![Quantum-Darwinism partial-information plot rising to a one-bit plateau, and redundancy growing linearly with environment size](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/darwinism_redundancy/plot.png)
@@ -92,15 +114,33 @@ the system bit is imprinted `N` times over.
 ```python
 from iontrap_dynamics.information import redundancy
 
-for n_env in range(1, 7):
-    hilbert = spin_hilbert(n_env + 1)
-    state = ghz_state(hilbert)
+r_values = []
+n_env_values = list(range(1, 7))
+for n_env in n_env_values:
+    hilbert_r = spin_hilbert(n_env + 1)
+    state_r = ghz_state(hilbert_r)
     r = redundancy(
-        state, hilbert=hilbert, system_indices=[0],
+        state_r, hilbert=hilbert_r, system_indices=[0],
         environment_indices=list(range(1, n_env + 1)), delta=0.1,
     )
+    r_values.append(float(r))
     assert abs(r - n_env) < 1e-9              # R_δ = N: one independent record per qubit
 # redundancy = [1, 2, 3, 4, 5, 6]
+
+print(f"Step 2 — redundancy R_δ (δ=0.1) vs environment size:")
+for n_env, r in zip(n_env_values, r_values):
+    print(f"  N_env = {n_env}  →  R_δ = {r:.1f}  (expect {n_env})")
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(n_env_values, r_values, color=GREEN, marker="o", markersize=5, linewidth=1.4,
+        label=r"$R_\delta$  GHZ  ($\delta = 0.1$)")
+ax.plot(n_env_values, n_env_values, color=GREY, linewidth=0.8, linestyle="--",
+        label=r"$R_\delta = N$  (ideal)")
+ax.set_xlabel("environment size $N$")
+ax.set_ylabel(r"redundancy $R_\delta$")
+ax.set_title(r"$R_\delta = N$: every qubit is an independent record")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 The right panel of the figure above is `R_δ` versus environment size — a
@@ -126,18 +166,33 @@ shared state is purified. We sweep a Werner-mixed Bell pair from fully
 decohered to pure.
 
 ```python
-import qutip
 from iontrap_dynamics.information import recoverability
 
 pair = spin_hilbert(2)                        # system qubit 0, accessible qubit 1
 bell = qutip.bell_state("00")                 # |Φ⁺⟩
 maximally_mixed = qutip.qeye([2, 2]) / 4.0
-for p in [0.0, 0.25, 0.5, 0.75, 1.0]:
+p_values = [0.0, 0.25, 0.5, 0.75, 1.0]
+rec_values = []
+for p in p_values:
     werner = p * (bell * bell.dag()) + (1.0 - p) * maximally_mixed
     rec = recoverability(werner, hilbert=pair, system_indices=[0], accessible_indices=[1])
+    rec_values.append(float(rec))
     # rec = 0 at p=0 (no quantum info), rising monotonically to 1 bit at p=1 (pure Bell)
+
+print("Step 3 — recoverability (bits) vs Werner mixing parameter p:")
+for p, r in zip(p_values, rec_values):
+    print(f"  p = {p:.2f}  →  recoverability = {r:.4f} bits")
 assert abs(recoverability(bell, hilbert=pair, system_indices=[0], accessible_indices=[1]) - 1.0) < 1e-9
 assert recoverability(maximally_mixed, hilbert=pair, system_indices=[0], accessible_indices=[1]) == 0.0
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(p_values, rec_values, color=RED, marker="o", markersize=5, linewidth=1.4,
+        label="recoverability")
+ax.set_xlabel(r"Werner purity $p$  ($p=0$: maximally mixed, $p=1$: pure Bell)")
+ax.set_ylabel("recoverability (bits)")
+ax.set_title("Quantum information recovered from a Werner-mixed Bell pair")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 ![Recoverability rising from zero to one bit as a Werner-mixed Bell pair is purified](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/recoverability/plot.png)

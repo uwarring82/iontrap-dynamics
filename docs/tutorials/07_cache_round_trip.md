@@ -1,5 +1,7 @@
 # Tutorial 7 — Hash-verified cache round-trip
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/07_cache_round_trip.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Every `tools/run_benchmark_*.py` and
 `tools/run_demo_*.py` in this repo writes a
 `benchmarks/data/<scenario>/` bundle that another process — or
@@ -74,6 +76,7 @@ numbers look close" fallback.
 Pure Tutorial 2 — RSB flop from `|↓, 1⟩`:
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 
@@ -88,6 +91,9 @@ from iontrap_dynamics.operators import spin_down
 from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — consistent across all figures in this tutorial.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 N_FOCK = 30
 
@@ -127,7 +133,8 @@ parameters = {
 }
 request_hash = compute_request_hash(parameters)
 print(f"request_hash = {request_hash}")
-# request_hash = d3c81eef… (64 hex chars, deterministic for this exact dict)
+print(f"hash length  = {len(request_hash)} hex chars")
+assert len(request_hash) == 64  # SHA-256 → 64 hex chars
 ```
 
 !!! note "What belongs in the parameter dict"
@@ -175,6 +182,13 @@ result = solve(
 
 cache_dir = Path("/tmp/iontrap_cache_tutorial7")
 save_trajectory(result, cache_dir, overwrite=True)
+
+print(f"hash stamped on result : {result.metadata.request_hash}")
+print(f"storage_mode           : {result.metadata.storage_mode.value}")
+files_written = sorted(p.name for p in cache_dir.iterdir())
+print(f"files in cache_dir     : {files_written}")
+assert result.metadata.request_hash == request_hash
+assert set(files_written) == {"manifest.json", "arrays.npz"}
 ```
 
 !!! warning "`StorageMode.OMITTED` is the only supported cache input"
@@ -221,8 +235,22 @@ expectation, prefixed `expectation__<label>`:
 
 ```python
 with np.load(cache_dir / "arrays.npz") as npz:
-    print(sorted(npz.files))
-# ['expectation__n_axial', 'expectation__sigma_z_0', 'times']
+    npz_keys = sorted(npz.files)
+    print(f"npz keys : {npz_keys}")
+    times_npz = npz["times"]
+    sz_npz = npz["expectation__sigma_z_0"]
+    n_npz = npz["expectation__n_axial"]
+
+# The observable arrays are plottable time-series — show the RSB flop from |↓,1⟩
+# directly from the raw npz, before even invoking load_trajectory.
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times_npz * 1e6, sz_npz, color=BLUE, label=r"$\langle\sigma_z\rangle$")
+ax.plot(times_npz * 1e6, n_npz, color=RED, label=r"$\langle a^\dagger a\rangle$")
+ax.set_xlabel(r"time ($\mu$s)")
+ax.set_ylabel("expectation value")
+ax.set_title("cached RSB flop from |↓, n=1⟩ (read directly from arrays.npz)")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 Bundle shape is strict by design — `load_trajectory` checks that
@@ -250,15 +278,21 @@ the cache if it doesn't match the manifest:
 from iontrap_dynamics.cache import load_trajectory
 
 restored = load_trajectory(cache_dir, expected_request_hash=request_hash)
+print(f"load succeeded — restored.metadata.request_hash = {restored.metadata.request_hash}")
 
 # Every numeric array round-trips bit-identical.
-assert np.array_equal(restored.times, result.times)
+times_match = np.array_equal(restored.times, result.times)
+print(f"times bit-identical    : {times_match}")
+assert times_match
 for label in result.expectations:
-    assert np.array_equal(
-        restored.expectations[label], result.expectations[label]
-    ), f"mismatch on {label}"
+    arrays_match = np.array_equal(restored.expectations[label], result.expectations[label])
+    print(f"  {label} bit-identical : {arrays_match}")
+    assert arrays_match, f"mismatch on {label}"
 
 # Metadata restores too.
+print(f"fock_truncations       : {restored.metadata.fock_truncations}")
+print(f"storage_mode           : {restored.metadata.storage_mode.value}")
+print(f"warnings               : {restored.warnings}")
 assert restored.metadata.request_hash == request_hash
 assert restored.metadata.fock_truncations == {"axial": 30}
 assert restored.metadata.storage_mode.value == "omitted"
@@ -289,8 +323,7 @@ try:
         expected_request_hash="0" * 64,   # ← deliberately wrong
     )
 except IntegrityError as exc:
-    print(exc)
-# request_hash mismatch: expected '000…', cache recorded 'd3c81eef…'.
+    print(f"expected IntegrityError (wrong hash): {exc}")
 ```
 
 ### Missing files
@@ -304,13 +337,14 @@ there:
 try:
     load_trajectory(cache_dir, expected_request_hash=request_hash)
 except IntegrityError as exc:
-    print(exc)
-# cache arrays file missing: /tmp/iontrap_cache_tutorial7/arrays.npz
+    print(f"expected IntegrityError (missing arrays.npz): {exc}")
+
+# Restore the complete bundle before the next demo.
+save_trajectory(result, cache_dir, overwrite=True)
+print(f"bundle restored — files: {sorted(p.name for p in cache_dir.iterdir())}")
 ```
 
-`manifest.json` missing produces the symmetric error. (Restore
-the file before the next failure demo: `save_trajectory(result,
-cache_dir, overwrite=True)`.)
+`manifest.json` missing produces the symmetric error.
 
 ### Tampered manifest (hash changed after write)
 
@@ -330,8 +364,7 @@ manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
 try:
     load_trajectory(cache_dir, expected_request_hash=request_hash)
 except IntegrityError as exc:
-    print(exc)
-# request_hash mismatch: expected 'd3c81eef…', cache recorded 'fff…'.
+    print(f"expected IntegrityError (tampered manifest): {exc}")
 ```
 
 This is the same `IntegrityError` class as the first failure —
@@ -355,8 +388,7 @@ np.savez(cache_dir / "arrays.npz", **tampered)
 try:
     load_trajectory(cache_dir, expected_request_hash=request_hash)
 except IntegrityError as exc:
-    print(exc)
-# arrays.npz has unexpected keys: ['expectation__unexpected_label']
+    print(f"expected IntegrityError (extra npz key): {exc}")
 ```
 
 The reason this is an error rather than a warning: an extra
@@ -373,13 +405,18 @@ Three common patterns:
 1. **Skip recomputation in a notebook loop.** Attempt a load;
    if `IntegrityError` (or `FileNotFoundError`), run the solve
    and save. Pattern:
-   ```python
-   try:
-       result = load_trajectory(cache_dir, expected_request_hash=request_hash)
-   except (IntegrityError, FileNotFoundError):
-       result = solve(...)
-       save_trajectory(result, cache_dir, overwrite=True)
-   ```
+
+```python
+# Re-save clean so the cache is consistent for this demo.
+save_trajectory(result, cache_dir, overwrite=True)
+try:
+    result = load_trajectory(cache_dir, expected_request_hash=request_hash)
+    print(f"cache hit  — loaded {len(result.times)} time steps from {cache_dir.name}/")
+except (IntegrityError, FileNotFoundError):
+    # In real use you would call solve(...) here; the result above is already in scope.
+    print("cache miss — would re-solve here")
+    save_trajectory(result, cache_dir, overwrite=True)
+```
 
 2. **Commit reference results alongside the code.** `tools/run_demo_*.py`
    writes bundles under `benchmarks/data/<scenario>/`; CI diff-checks

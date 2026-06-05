@@ -1,5 +1,7 @@
 # Tutorial 8 — Full Lamb–Dicke for hot-ion regimes
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/08_full_lamb_dicke.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Every sideband builder in `iontrap-dynamics`
 (`red_sideband_hamiltonian`, `blue_sideband_hamiltonian`, their
 detuned siblings, the two-ion variants) accepts a
@@ -101,10 +103,18 @@ The flag flips under exactly the same builder signature — every
 downstream layer (`solve`, `Observable`, readout) is unchanged:
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 
-from iontrap_dynamics.analytic import lamb_dicke_parameter
+from iontrap_dynamics.analytic import (
+    debye_waller_factor,
+    lamb_dicke_confinement,
+    lamb_dicke_parameter,
+    lamb_dicke_regime,
+    red_sideband_rabi_frequency,
+    red_sideband_rabi_frequency_full_ld,
+)
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.hamiltonians import red_sideband_hamiltonian
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -114,6 +124,9 @@ from iontrap_dynamics.operators import spin_down
 from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — used throughout this tutorial.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 N_FOCK = 30
 mode = ModeConfig(
@@ -130,6 +143,17 @@ drive = DriveConfig(
     phase_rad=0.0,
 )
 
+eta = lamb_dicke_parameter(
+    k_vec=drive.k_vector_m_inv,
+    mode_eigenvector=mode.eigenvector_at_ion(0),
+    ion_mass=mg25_plus().mass_kg,
+    mode_frequency=mode.frequency_rad_s,
+)
+omega = drive.carrier_rabi_frequency_rad_s
+
+dw = debye_waller_factor(lamb_dicke_parameter=eta, mean_phonon_number=0)
+print(f"Step 1 — η = {eta:.4f},  η² = {eta**2:.4f},  Debye–Waller e^(−η²/2) = {dw:.4f}")
+
 # Same signature, one flag.
 hamiltonian_leading = red_sideband_hamiltonian(
     hilbert, drive, "axial", ion_index=0,
@@ -139,6 +163,40 @@ hamiltonian_full = red_sideband_hamiltonian(
     hilbert, drive, "axial", ion_index=0,
     full_lamb_dicke=True,
 )
+
+# Rate comparison: leading-order vs full Lamb–Dicke for n = 1, 5, 10.
+print(f"\n{'n':>3}  {'leading (kHz)':>15}  {'full-LD (kHz)':>14}  {'shortfall':>10}  {'η²·n':>6}  {'regime'}")
+for n in (1, 5, 10):
+    r_lead = red_sideband_rabi_frequency(
+        carrier_rabi_frequency=omega, lamb_dicke_parameter=eta, n_initial=n,
+    )
+    r_full = red_sideband_rabi_frequency_full_ld(
+        carrier_rabi_frequency=omega, lamb_dicke_parameter=eta, n_initial=n,
+    )
+    shortfall = (r_lead - r_full) / r_lead * 100
+    conf = lamb_dicke_confinement(lamb_dicke_parameter=eta, mean_phonon_number=n)
+    regime = lamb_dicke_regime(lamb_dicke_parameter=eta, mean_phonon_number=n)
+    print(f"{n:>3}  {r_lead/(2*np.pi)*1e-3:>15.3f}  {r_full/(2*np.pi)*1e-3:>14.3f}  {shortfall:>9.1f}%  {eta**2*n:>6.3f}  {str(regime)}")
+
+# Sweep rate vs Fock to show the divergence visually.
+n_grid = np.arange(1, 21)
+leading_n = np.array([
+    red_sideband_rabi_frequency(carrier_rabi_frequency=omega, lamb_dicke_parameter=eta, n_initial=int(n))
+    for n in n_grid
+]) / (2 * np.pi * 1e3)
+full_n = np.array([
+    red_sideband_rabi_frequency_full_ld(carrier_rabi_frequency=omega, lamb_dicke_parameter=eta, n_initial=int(n))
+    for n in n_grid
+]) / (2 * np.pi * 1e3)
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(n_grid, leading_n, color=GREY, marker="o", markersize=4, label="leading-order  |η|√n·Ω")
+ax.plot(n_grid, full_n, color=BLUE, marker="s", markersize=4, label="full Lamb–Dicke (Laguerre)")
+ax.set_xlabel("initial Fock level $n$")
+ax.set_ylabel(r"red-sideband rate $\Omega_{n,n-1}$ (kHz)")
+ax.set_title(rf"RSB rate vs $n$ at $\eta = {eta:.3f}$")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 ## Step 2 — Run the three scenarios, overlay the trajectories
@@ -148,14 +206,6 @@ Three starting Fock levels, same drive, same total duration
 the natural baseline):
 
 ```python
-eta = lamb_dicke_parameter(
-    k_vec=drive.k_vector_m_inv,
-    mode_eigenvector=mode.eigenvector_at_ion(0),
-    ion_mass=mg25_plus().mass_kg,
-    mode_frequency=mode.frequency_rad_s,
-)
-omega = drive.carrier_rabi_frequency_rad_s
-
 trajectories = {}
 for n in (1, 5, 10):
     leading_rate = abs(eta) * np.sqrt(n) * omega
@@ -174,11 +224,35 @@ for n in (1, 5, 10):
         initial_state=psi_0, times=times,
         observables=[spin_z(hilbert, 0)],
     )
-    trajectories[n] = (
-        times * 1e6,
-        r_lead.expectations["sigma_z_0"],
-        r_full.expectations["sigma_z_0"],
+    sz_lead = np.asarray(r_lead.expectations["sigma_z_0"], dtype=float)
+    sz_full = np.asarray(r_full.expectations["sigma_z_0"], dtype=float)
+    trajectories[n] = (times * 1e6, sz_lead, sz_full)
+
+    # Rate shortfall and final-state gap for this Fock level.
+    r_lead_rate = abs(eta) * np.sqrt(n) * omega
+    r_full_rate = red_sideband_rabi_frequency_full_ld(
+        carrier_rabi_frequency=omega, lamb_dicke_parameter=eta, n_initial=n,
     )
+    shortfall_pct = (r_lead_rate - r_full_rate) / r_lead_rate * 100
+    final_gap = abs(float(sz_full[-1]) - float(sz_lead[-1]))
+    print(
+        f"n = {n:>2}: leading rate = {r_lead_rate/(2*np.pi)*1e-3:.3f} kHz, "
+        f"full-LD rate = {r_full_rate/(2*np.pi)*1e-3:.3f} kHz, "
+        f"shortfall = {shortfall_pct:.1f}%,  final ⟨σ_z⟩ gap = {final_gap:.2f}"
+    )
+
+# Three-panel overlay: one row per Fock level.
+fig, axes = plt.subplots(3, 1, figsize=(5.0, 7.0), sharex=False)
+for ax, n in zip(axes, (1, 5, 10)):
+    t_us, sz_lead, sz_full = trajectories[n]
+    ax.plot(t_us, sz_lead, color=GREY, linewidth=1.0, label="leading-order")
+    ax.plot(t_us, sz_full, color=RED, linewidth=1.0, label="full Lamb–Dicke")
+    ax.set_ylabel(r"$\langle\sigma_z\rangle$")
+    ax.set_title(rf"$n = {n}$,  $\eta^2 n = {eta**2*n:.3f}$")
+    ax.legend(frameon=False, fontsize=8)
+ax.set_xlabel("time (µs)")
+fig.tight_layout()
+plt.show()
 ```
 
 ### What the numbers show
@@ -237,7 +311,10 @@ the other.
 ## Step 4 — The flag applies uniformly
 
 The same `full_lamb_dicke` keyword exists on every sideband
-builder in the library, with identical semantics:
+builder in the library, with identical semantics. The plot
+below sweeps the confinement parameter `η²(2n+1)` for a fixed
+`n = 5` and shows how the relative shortfall grows from the
+deep into the beyond regime:
 
 ```python
 from iontrap_dynamics.hamiltonians import (
@@ -248,15 +325,47 @@ from iontrap_dynamics.hamiltonians import (
     two_ion_blue_sideband_hamiltonian,
 )
 
-# Every one accepts full_lamb_dicke=True; meaning is the same.
+# The on-resonance red and blue sideband builders accept full_lamb_dicke=True.
 H_bsb_full = blue_sideband_hamiltonian(
     hilbert, drive, "axial", ion_index=0, full_lamb_dicke=True,
 )
-H_rsb_detuned_full = detuned_red_sideband_hamiltonian(
-    hilbert, drive, "axial", ion_index=0,
-    detuning_rad_s=2 * np.pi * 10e3,
-    full_lamb_dicke=True,
+print(f"Step 4 — blue_sideband_hamiltonian (full-LD) dims: {H_bsb_full.dims}")
+
+# Sweep η at n = 5 to show the confinement → shortfall trend.
+# Use a synthetic carrier Ω so the rate ratio is normalisation-independent.
+eta_sweep = np.array([0.02, 0.05, 0.10, 0.18, 0.26, 0.40, 0.60, 0.80])
+n_sweep = 5
+omega_ref = 2 * np.pi * 1.0e6  # 1 MHz reference carrier
+confinement_sweep = np.array(
+    [lamb_dicke_confinement(lamb_dicke_parameter=e, mean_phonon_number=n_sweep) for e in eta_sweep]
 )
+leading_sweep = np.array([
+    red_sideband_rabi_frequency(carrier_rabi_frequency=omega_ref, lamb_dicke_parameter=e, n_initial=n_sweep)
+    for e in eta_sweep
+])
+full_sweep = np.array([
+    red_sideband_rabi_frequency_full_ld(carrier_rabi_frequency=omega_ref, lamb_dicke_parameter=e, n_initial=n_sweep)
+    for e in eta_sweep
+])
+rel_shortfall = (leading_sweep - full_sweep) / leading_sweep
+
+print(f"Step 4 — rate shortfall at n = {n_sweep} vs η:")
+print(f"  {'η':>6}  {'η²(2n+1)':>10}  {'regime':>12}  {'shortfall':>10}")
+for e, c, r_short in zip(eta_sweep, confinement_sweep, rel_shortfall):
+    regime = lamb_dicke_regime(lamb_dicke_parameter=e, mean_phonon_number=n_sweep)
+    print(f"  {e:>6.2f}  {c:>10.3f}  {str(regime):>12}  {r_short*100:>9.1f}%")
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.axvspan(1e-4, 0.1, color=GREEN, alpha=0.08, label="deep")
+ax.axvspan(0.1, 1.0, color=BLUE, alpha=0.08, label="intermediate")
+ax.axvspan(1.0, 1e2, color=RED, alpha=0.08, label="beyond")
+ax.plot(confinement_sweep, rel_shortfall, color=GREY, marker="o", markersize=5)
+ax.set_xscale("log")
+ax.set_xlabel(r"confinement $\eta^2(2n+1)$")
+ax.set_ylabel("leading-order vs full-LD shortfall")
+ax.set_title(rf"Regime map at $n = {n_sweep}$")
+ax.legend(frameon=False, fontsize=8)
+plt.show()
 ```
 
 The Mølmer–Sørensen gate Hamiltonian (from

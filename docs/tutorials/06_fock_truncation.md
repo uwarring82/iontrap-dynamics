@@ -1,5 +1,7 @@
 # Tutorial 6 — Fock truncation diagnosis
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/06_fock_truncation.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Every `sequences.solve` call runs a silent bookkeeper
 that classifies your Fock truncation against a tolerance ε. This
 tutorial shows what the three levels mean, how to read the
@@ -71,6 +73,7 @@ makes the warning classification a deterministic function of
 `N_Fock` alone, perfect for walking the ladder end-to-end.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 
@@ -84,7 +87,11 @@ from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
+# House colours — match the project reference figures.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
+
 N_BAR = 0.5
+EPSILON = 1e-4  # library default FOCK_CONVERGENCE_TOLERANCE
 
 def build_scenario(n_fock: int):
     mode = ModeConfig(
@@ -106,6 +113,29 @@ def build_scenario(n_fock: int):
     motion = qutip.thermal_dm(n_fock, N_BAR)
     rho_0 = qutip.tensor(spin, motion)
     return hilbert, hamiltonian, rho_0
+
+# Theoretical top-Fock population for a thermal state:
+# P_thermal(N_Fock-1) = (n̄/(1+n̄))^(N_Fock-1) / (1+n̄)
+nfock_grid = np.arange(3, 22)
+p_top_theory = (N_BAR / (1 + N_BAR)) ** (nfock_grid - 1) / (1 + N_BAR)
+
+print("Setup — thermal tail p_top(N_Fock) for n̄ = 0.5:")
+for nf, pt in zip(nfock_grid, p_top_theory):
+    label = ("Level 3" if pt >= 10 * EPSILON else
+             "Level 2" if pt >= EPSILON else
+             "Level 1" if pt >= EPSILON / 10 else "OK")
+    print(f"  N_Fock={nf:2d}: p_top = {pt:.3e}  →  {label}")
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.semilogy(nfock_grid, p_top_theory, color=GREY, marker="o", markersize=4, label=r"$p_\mathrm{top}$")
+ax.axhline(10 * EPSILON, color=RED,    linestyle="--", linewidth=1.0, label=r"$10\varepsilon$ (Level 3 raise)")
+ax.axhline(EPSILON,      color=PURPLE, linestyle="--", linewidth=1.0, label=r"$\varepsilon$ (Level 2)")
+ax.axhline(EPSILON / 10, color=BLUE,   linestyle="--", linewidth=1.0, label=r"$\varepsilon/10$ (Level 1)")
+ax.set_xlabel(r"Fock dimension $N_\mathrm{Fock}$")
+ax.set_ylabel(r"top-Fock population $p_\mathrm{top}$")
+ax.set_title(r"Thermal tail vs truncation ($\bar{n}=0.5$, $\varepsilon=10^{-4}$)")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 A thermal initial state is a **density matrix**, not a ket —
@@ -121,6 +151,8 @@ population is `P_thermal(4) ≈ 8.23e-3`, well above `10·ε = 1e-3`:
 from iontrap_dynamics.exceptions import ConvergenceError
 
 hilbert, hamiltonian, rho_0 = build_scenario(n_fock=5)
+_p_top_level3 = (N_BAR / (1 + N_BAR)) ** (5 - 1) / (1 + N_BAR)
+print(f"Level 3 — N_Fock=5: theoretical p_top = {_p_top_level3:.3e}  (threshold 10·ε = {10*EPSILON:.1e})")
 try:
     result = solve(
         hilbert=hilbert,
@@ -155,6 +187,8 @@ import warnings
 from iontrap_dynamics.exceptions import FockQualityWarning
 
 hilbert, hamiltonian, rho_0 = build_scenario(n_fock=7)
+_p_top_level2 = (N_BAR / (1 + N_BAR)) ** (7 - 1) / (1 + N_BAR)
+print(f"Level 2 — N_Fock=7: theoretical p_top = {_p_top_level2:.3e}  (ε/10={EPSILON/10:.1e} ≤ p_top < 10·ε={10*EPSILON:.1e})")
 with warnings.catch_warnings(record=True) as caught:
     warnings.simplefilter("always")
     result = solve(
@@ -184,6 +218,8 @@ generating this for a publication-grade figure, you should widen
 from iontrap_dynamics.exceptions import FockConvergenceWarning
 
 hilbert, hamiltonian, rho_0 = build_scenario(n_fock=11)
+_p_top_level1 = (N_BAR / (1 + N_BAR)) ** (11 - 1) / (1 + N_BAR)
+print(f"Level 1 — N_Fock=11: theoretical p_top = {_p_top_level1:.3e}  (ε/10={EPSILON/10:.1e} ≤ p_top < ε={EPSILON:.1e})")
 with warnings.catch_warnings(record=True) as caught:
     warnings.simplefilter("always")
     result = solve(
@@ -215,6 +251,8 @@ result = solve(
     times=np.linspace(0.0, 1e-6, 20),
     observables=[spin_z(hilbert, 0)],
 )
+_p_top_ok = (N_BAR / (1 + N_BAR)) ** (13 - 1) / (1 + N_BAR)
+print(f"Silent OK — N_Fock=13: theoretical p_top = {_p_top_ok:.3e}  (< ε/10={EPSILON/10:.1e}); result.warnings = {result.warnings}")
 assert result.warnings == ()
 ```
 
@@ -248,6 +286,47 @@ for w in result.warnings:
 #     fock_dim: 9
 #     p_top_max: 0.0001016...
 #     tolerance_epsilon: 0.0001
+
+# Sweep N_Fock from 5 to 15 and collect the measured p_top_max from
+# result.warnings (or 0 when warnings is empty).  Overlay the theoretical
+# thermal tail and the three ε thresholds to confirm the ladder.
+_sweep_nfock = [5, 7, 9, 11, 13, 15]
+_measured_ptop = []
+for _nf in _sweep_nfock:
+    _h, _ham, _rho = build_scenario(n_fock=_nf)
+    try:
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            _r = solve(hilbert=_h, hamiltonian=_ham, initial_state=_rho,
+                       times=np.linspace(0.0, 1e-6, 20),
+                       observables=[spin_z(_h, 0)])
+        _pt = max((w.diagnostics["p_top_max"] for w in _r.warnings), default=0.0)
+    except ConvergenceError as _exc:
+        # Level 3 — extract p_top from the exception message string
+        import re as _re
+        _m = _re.search(r"p_top\s*=\s*([0-9.e+-]+)", str(_exc))
+        _pt = float(_m.group(1)) if _m else 10 * EPSILON
+    _measured_ptop.append(_pt)
+
+print("\nConvergence-ladder sweep (measured p_top_max vs N_Fock):")
+for _nf, _pt in zip(_sweep_nfock, _measured_ptop):
+    _label = ("Level 3" if _pt >= 10 * EPSILON else
+              "Level 2" if _pt >= EPSILON else
+              "Level 1" if _pt >= EPSILON / 10 else "OK")
+    print(f"  N_Fock={_nf:2d}: p_top_max = {_pt:.3e}  →  {_label}")
+
+_theory_sweep = np.array([(N_BAR / (1 + N_BAR)) ** (nf - 1) / (1 + N_BAR) for nf in _sweep_nfock])
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.semilogy(_sweep_nfock, _theory_sweep, color=GREY, linestyle="--", linewidth=1.0, label="theory")
+ax.scatter(_sweep_nfock, [max(pt, 1e-10) for pt in _measured_ptop], color=BLUE, zorder=3, label="measured $p_{\\mathrm{top}}$")
+ax.axhline(10 * EPSILON, color=RED,    linestyle=":", linewidth=1.2, label=r"$10\varepsilon$ raise")
+ax.axhline(EPSILON,      color=PURPLE, linestyle=":", linewidth=1.2, label=r"$\varepsilon$ Lv 2")
+ax.axhline(EPSILON / 10, color=GREEN,  linestyle=":", linewidth=1.2, label=r"$\varepsilon/10$ Lv 1")
+ax.set_xlabel(r"$N_\mathrm{Fock}$")
+ax.set_ylabel(r"$p_\mathrm{top}$")
+ax.set_title("Convergence ladder: measured vs threshold")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 The `diagnostics` dict is the preferred hook for automated CI
@@ -262,7 +341,7 @@ the dict is stable.
     `TrajectoryResult` objects, each with its own `.warnings`
     tuple. A one-liner that flattens the lot and returns the
     worst-case `p_top_max` across every trial:
-    ```python
+    ```text
     worst = max(
         (w.diagnostics["p_top_max"]
          for r in ensemble_results
@@ -291,6 +370,8 @@ a "looks fine" answer into a diagnosed one:
 ```python
 hilbert, hamiltonian, rho_0 = build_scenario(n_fock=13)
 # p_top ≈ 1.25e-6. Default ε=1e-4: silent. Tightened ε=1e-6: Level 2.
+_p_top_tight = (N_BAR / (1 + N_BAR)) ** (13 - 1) / (1 + N_BAR)
+print(f"Tightened-ε — N_Fock=13: p_top ≈ {_p_top_tight:.3e};  default ε=1e-4 → silent,  tightened ε=1e-6 → Level 2/3")
 try:
     result = solve(
         hilbert=hilbert,

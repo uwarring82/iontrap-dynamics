@@ -1,5 +1,7 @@
 # Tutorial 16 — Two-mode SU(1,1) squeezing
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/16_two_mode_squeezing.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Couple two motional modes parametrically and grow entangled,
 photon-number-correlated squeezing. By the end you will have built a
 two-mode squeezed vacuum from the state factory, reproduced it dynamically
@@ -46,15 +48,24 @@ per-mode occupation is `⟨n̂⟩ = sinh²|z|` (CONVENTIONS §23 — note this i
 diagonal: only `|n, n⟩` terms appear, the photon-number correlation.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 from iontrap_dynamics.states import two_mode_squeezed_vacuum
 
+# House colours — match the reference figure style.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
+
 fock = 40
-for r in [0.3, 0.6, 1.0]:
+factory_r = [0.3, 0.6, 1.0]
+factory_nbar = []
+for r in factory_r:
     tmsv = two_mode_squeezed_vacuum(fock, r)
     n_a = qutip.tensor(qutip.num(fock), qutip.qeye(fock))
-    assert abs(qutip.expect(n_a, tmsv) - np.sinh(r) ** 2) < 1e-3   # ⟨n̂⟩ = sinh²|z|
+    nbar = float(qutip.expect(n_a, tmsv))
+    factory_nbar.append(nbar)
+    print(f"Step 1 — r = {r:.1f}:  ⟨n̂⟩ (factory) = {nbar:.4f},  sinh²(r) = {np.sinh(r)**2:.4f}")
+    assert abs(nbar - np.sinh(r) ** 2) < 1e-3   # ⟨n̂⟩ = sinh²|z|
 # the reduced single-mode state is thermal with this n̄ — squeezing you can only see in the pair
 ```
 
@@ -101,8 +112,34 @@ res = solve(hilbert=h, hamiltonian=H, initial_state=vacuum, times=times,
 
 n_a = np.asarray(res.expectations["n_a"]); n_b = np.asarray(res.expectations["n_b"])
 r_t = g * times
-assert np.max(np.abs(n_a - np.sinh(r_t) ** 2)) < 1e-4   # ⟨n̂_a⟩ = sinh²(gτ)
-assert np.max(np.abs(n_a - n_b)) < 1e-9                 # difference number ≡ 0 (the su(1,1) Casimir)
+nbar_analytic = np.sinh(r_t) ** 2
+max_err_occ = float(np.max(np.abs(n_a - nbar_analytic)))
+max_diff = float(np.max(np.abs(n_a - n_b)))
+print(f"Step 2 — max |⟨n̂_a⟩ − sinh²(gτ)| = {max_err_occ:.2e}  (oracle < 1e-4)")
+print(f"Step 2 — max |⟨n̂_a⟩ − ⟨n̂_b⟩|    = {max_diff:.2e}  (oracle < 1e-9, SU(1,1) Casimir)")
+print(f"Step 2 — final n̄ at r = {r_t[-1]:.2f}:  ⟨n̂_a⟩ = {n_a[-1]:.4f},  sinh²(r) = {nbar_analytic[-1]:.4f}")
+assert np.max(np.abs(n_a - nbar_analytic)) < 1e-4   # ⟨n̂_a⟩ = sinh²(gτ)
+assert np.max(np.abs(n_a - n_b)) < 1e-9             # difference number ≡ 0 (the su(1,1) Casimir)
+
+# Plot 1 — parametric growth: dynamics, factory anchors, analytic curve.
+fig, axes = plt.subplots(1, 2, figsize=(10.0, 3.2))
+ax = axes[0]
+ax.plot(r_t, nbar_analytic, color=GREY, linewidth=1.0, label=r"$\sinh^2(g\tau)$")
+ax.plot(r_t, n_a, color=BLUE, marker="o", markersize=3, label=r"$\langle\hat{n}_a\rangle$ (dynamics)")
+ax.plot(r_t, n_b, color=RED, marker="s", markersize=3, linestyle="--", label=r"$\langle\hat{n}_b\rangle$ (dynamics)")
+ax.scatter(factory_r, factory_nbar, color=GREEN, zorder=5, s=40, marker="^", label="factory anchors")
+ax.set_xlabel(r"squeezing parameter $r = g\tau$")
+ax.set_ylabel(r"mean phonon number $\langle\hat{n}\rangle$")
+ax.set_title("Two-mode squeezing: parametric growth")
+ax.legend(frameon=False)
+# Plot 2 — conserved difference number.
+ax2 = axes[1]
+ax2.plot(r_t, n_a - n_b, color=PURPLE, marker="o", markersize=3)
+ax2.set_xlabel(r"squeezing parameter $r = g\tau$")
+ax2.set_ylabel(r"$\langle\hat{n}_a - \hat{n}_b\rangle$")
+ax2.set_title(r"SU(1,1) Casimir: difference number $\equiv 0$")
+plt.tight_layout()
+plt.show()
 ```
 
 ![Per-mode occupation growing as sinh squared of the squeezing while the difference number stays flat at zero](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/two_mode_squeezing/plot.png)
@@ -142,8 +179,26 @@ res_bs = solve(hilbert=h, hamiltonian=H_bs, initial_state=one_a, times=times_bs,
                observables=(Observable(label="n_a", operator=h.number_for_mode("a")),
                             Observable(label="n_b", operator=h.number_for_mode("b"))))
 na = np.asarray(res_bs.expectations["n_a"]); nb = np.asarray(res_bs.expectations["n_b"])
+max_sum_err = float(np.max(np.abs((na + nb) - 1.0)))
+print(f"Step 3 — max |⟨n̂_a + n̂_b⟩ − 1| = {max_sum_err:.2e}  (oracle < 1e-6, SU(2) total conserved)")
+print(f"Step 3 — at t = π/(2J):  ⟨n̂_a⟩ = {na[-1]:.2e} (→ 0),  ⟨n̂_b⟩ = {nb[-1]:.4f} (→ 1)  [full swap]")
 assert np.max(np.abs((na + nb) - 1.0)) < 1e-6           # n̂_a + n̂_b conserved (SU(2))
 assert abs(na[-1]) < 1e-6 and abs(nb[-1] - 1.0) < 1e-6  # a full swap a → b at t = π/(2J)
+
+# Plot — SU(2) beamsplitter: phonon hopping between the two modes.
+tau_bs = times_bs * J / np.pi  # phase in units of π/(2J) swap period
+analytic_na = np.cos(J * times_bs) ** 2
+analytic_nb = np.sin(J * times_bs) ** 2
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(tau_bs, analytic_na, color=GREY, linewidth=1.0, label=r"$\cos^2(J t)$")
+ax.plot(tau_bs, analytic_nb, color=GREY, linewidth=1.0, linestyle="--")
+ax.scatter(tau_bs, na, color=BLUE, s=14, zorder=3, label=r"$\langle\hat{n}_a\rangle$")
+ax.scatter(tau_bs, nb, color=RED, marker="s", s=14, zorder=3, label=r"$\langle\hat{n}_b\rangle$")
+ax.set_xlabel(r"normalised time $J t / \pi$")
+ax.set_ylabel(r"phonon number")
+ax.set_title(r"SU(2) beamsplitter: $|1\rangle_a|0\rangle_b \to |0\rangle_a|1\rangle_b$")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 The contrast is the whole point: the **squeezer** conserves the difference

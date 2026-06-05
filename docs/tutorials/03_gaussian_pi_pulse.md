@@ -1,5 +1,7 @@
 # Tutorial 3 — Gaussian π-pulse with `modulated_carrier_hamiltonian`
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/03_gaussian_pi_pulse.ipynb) — run every step live in your browser, no install needed. The notebook is generated from this page by [`tools/build_tutorial_notebooks.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/build_tutorial_notebooks.py).
+
 **Goal.** Keep the four-step skeleton from
 [Tutorial 1](01_first_rabi_readout.md) and
 [Tutorial 2](02_red_sideband_fock1.md) — configure → build → solve
@@ -83,12 +85,16 @@ the *Hamiltonian builder*, not of the `DriveConfig`. The
 Rabi frequency Ω; the envelope scales it from there.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 
 from iontrap_dynamics.drives import DriveConfig
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
+
+# House colours — match the reference figure above.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 mode = ModeConfig(
     label="axial",
@@ -130,10 +136,28 @@ pulse_sigma_s = pulse_duration_s / 10.0  # = 0.5 μs
 rabi_rad_s = drive.carrier_rabi_frequency_rad_s
 envelope_amplitude = np.pi / (rabi_rad_s * pulse_sigma_s * np.sqrt(2 * np.pi))
 
+print(f"Step 2 — Ω/2π = {rabi_rad_s / (2 * np.pi) / 1e6:.1f} MHz,  "
+      f"σ = {pulse_sigma_s * 1e6:.1f} μs,  T = {pulse_duration_s * 1e6:.1f} μs")
+print(f"Step 2 — envelope amplitude A = {envelope_amplitude:.4f}  "
+      f"(area = A·Ω·σ·√2π = π ✓)")
+
 def gaussian_envelope(t: float) -> float:
     return envelope_amplitude * math.exp(
         -((t - pulse_centre_s) ** 2) / (2 * pulse_sigma_s**2)
     )
+
+# Plot the envelope shape so readers see the Gaussian gate before the dynamics.
+t_env = np.linspace(0.0, pulse_duration_s, 400)
+f_env = np.array([gaussian_envelope(t) for t in t_env])
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_env * 1e6, f_env, color=BLUE)
+ax.axhline(envelope_amplitude, color=GREY, linewidth=0.8, linestyle="--", label=f"peak A = {envelope_amplitude:.4f}")
+ax.set_xlabel("time  (μs)")
+ax.set_ylabel("envelope  f(t) = A · exp(…)")
+ax.set_title("Gaussian pulse envelope")
+ax.legend(frameon=False)
+plt.show()
 
 hamiltonian = modulated_carrier_hamiltonian(
     hilbert, drive, ion_index=0, envelope=gaussian_envelope
@@ -212,9 +236,30 @@ max_error = max(
     np.max(np.abs(sigma_y - np.sin(theta))),
     np.max(np.abs(sigma_z + np.cos(theta))),
 )
+print(f"Step 3 — final pulse area θ(T) = {theta[-1]:.7f} rad  (target π = {np.pi:.7f})")
+print(f"Step 3 — max |⟨σᵢ⟩_numeric − analytic| = {max_error:.2e}")
+print(f"Step 3 — final ⟨σ_z⟩ = {float(sigma_z[-1]):.8f}  (target +1)")
 assert max_error < 1e-5
 assert abs(theta[-1] - np.pi) < 1e-5   # total pulse area = π
 assert sigma_z[-1] > 0.9999             # ended at the north pole
+
+# Plot the Bloch-vector trajectory against the analytic prediction.
+t_us = times * 1e6
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_us, np.sin(theta),    color=GREY,   linewidth=1.0, label=r"analytic $\sin\theta$")
+ax.plot(t_us, -np.cos(theta),   color=GREY,   linewidth=1.0, linestyle="--",
+        label=r"analytic $-\cos\theta$")
+ax.scatter(t_us[::5], np.array(sigma_y)[::5], color=GREEN,  s=12, zorder=3,
+           label=r"numeric $\langle\sigma_y\rangle$")
+ax.scatter(t_us[::5], np.array(sigma_z)[::5], color=BLUE,   s=12, zorder=3,
+           label=r"numeric $\langle\sigma_z\rangle$")
+ax.scatter(t_us[::5], np.array(sigma_x)[::5], color=RED,    s=10, marker="s", zorder=3,
+           label=r"numeric $\langle\sigma_x\rangle \approx 0$")
+ax.set_xlabel("time  (μs)")
+ax.set_ylabel("Bloch component")
+ax.set_title("Bloch trajectory — Gaussian π-pulse")
+ax.legend(frameon=False, fontsize=7)
+plt.show()
 ```
 
 Three independent assertions: the numerical Bloch trajectory
@@ -237,6 +282,18 @@ readout = SpinReadout(
 )
 measurement = readout.run(result, shots=500, seed=20260421)
 bright_fraction = measurement.sampled_outcome["spin_readout_bright_fraction"]
+print(f"Step 4 — final bright fraction = {float(bright_fraction[-1]):.4f}  "
+      f"(500 shots, efficiency 0.5, dark-count rate 0.3)")
+
+# Plot the sampled bright fraction across all time steps, mirroring the
+# spin-up population that rises from 0 to ~1 during the π-pulse.
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(times * 1e6, bright_fraction, color=BLUE, linewidth=1.0, label="sampled bright fraction")
+ax.set_xlabel("time  (μs)")
+ax.set_ylabel("bright fraction  (500 shots)")
+ax.set_title("Step 4 — detector readout trajectory")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 At the final time step the bright fraction should land near the
@@ -295,6 +352,22 @@ def blackman_envelope(t: float) -> float:
 from scipy.integrate import quad
 unscaled_area, _ = quad(blackman_envelope, 0.0, pulse_duration_s)
 blackman_amplitude = np.pi / (rabi_rad_s * unscaled_area)
+print(f"Blackman — unscaled area = {unscaled_area * 1e6:.4f} μs,  "
+      f"π-pulse amplitude = {blackman_amplitude:.4f}")
+
+# Compare the two envelope shapes side by side.
+t_cmp = np.linspace(0.0, pulse_duration_s, 400)
+f_gaussian = np.array([gaussian_envelope(t) for t in t_cmp])
+f_blackman  = np.array([blackman_amplitude * blackman_envelope(t) for t in t_cmp])
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(t_cmp * 1e6, f_gaussian, color=BLUE,  label="Gaussian  (σ = T/10)")
+ax.plot(t_cmp * 1e6, f_blackman, color=GREEN, label="Blackman  (compact support)")
+ax.set_xlabel("time  (μs)")
+ax.set_ylabel("scaled envelope  f(t)")
+ax.set_title("Gaussian vs Blackman π-pulse envelope")
+ax.legend(frameon=False)
+plt.show()
 # wrap in a final envelope that multiplies in blackman_amplitude
 ```
 
