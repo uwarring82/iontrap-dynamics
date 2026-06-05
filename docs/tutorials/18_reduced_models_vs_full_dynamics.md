@@ -18,11 +18,14 @@ A reduced light–matter model is a piece of *physics* — what a trapped ion ap
 
 ![Four panels. Panel A: the Jaynes-Cummings spectrum at minus omega-zero and the anti-Jaynes-Cummings spectrum at plus omega-zero lie exactly on top of each other. Panel B: from spin-down with no phonons, the spin-up population stays flat at zero under the red sideband but oscillates fully between zero and one under the blue sideband. Panel C: as the coupling g over omega-zero grows, the Jaynes-Cummings to quantum Rabi ground-energy deviation and the quantum Rabi ground-state phonon number both rise from near zero. Panel D: the relative deviation between the full-Lamb-Dicke and leading-order red-sideband rate rises with the confinement parameter eta squared times two n plus one, crossing the deep, intermediate, and beyond bands.](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/reduced_models_comparison/plot.png)
 
+Each step below **prints its key numbers and redraws its panel of this figure live**: in the [Colab notebook](https://colab.research.google.com/github/uwarring82/iontrap-dynamics/blob/main/docs/tutorials/notebooks/18_reduced_models_vs_full_dynamics.ipynb) you watch the calculation produce the result instead of trusting a static image. The `assert`s stay the oracle — a step that runs and renders without error is a step that passed.
+
 ## Step 1 — Case A: "only a label" is true (LOCK-3)
 
 In isolation the anti-Jaynes–Cummings model is the Jaynes–Cummings model conjugated by `σ_x` with the qubit splitting flipped — the LOCK-3 identity `H_AJC(ω₀) = σ_x H_JC(−ω₀) σ_x` (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`). A unitary conjugation cannot move eigenvalues, so the two spectra coincide. This is the [model-hierarchy note](../models-hierarchy.md)'s §6 (LOCK-3) / §8 regime 1.
 
 ```python
+import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 from iontrap_dynamics.hilbert import HilbertSpace
@@ -40,6 +43,9 @@ from iontrap_dynamics.spectrum import solve_spectrum
 OMEGA = 2 * np.pi * 1.0e6  # ω₀ = ω_f, the resonant model scale (rad·s⁻¹)
 FOCK = 30
 
+# House colours — match the four-panel reference figure above.
+BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
+
 
 def single_mode(fock_dim: int) -> HilbertSpace:
     """One ion (the qubit) plus one axial motional mode ``m``."""
@@ -53,9 +59,22 @@ g = 0.4 * OMEGA
 ajc = anti_jaynes_cummings_hamiltonian(h, "m", ion_index=0, omega_0=OMEGA, omega_f=OMEGA, g=g)
 jc_negative = jaynes_cummings_hamiltonian(h, "m", ion_index=0, omega_0=-OMEGA, omega_f=OMEGA, g=g)
 
-assert np.allclose(
-    solve_spectrum(ajc).eigenvalues, solve_spectrum(jc_negative).eigenvalues, atol=1e-6
-)  # spec(H_AJC(ω₀)) = spec(H_JC(−ω₀)) — the σ_x conjugation is unitary
+# The σ_x conjugation is unitary, so the two spectra coincide (LOCK-3).
+eig_ajc = solve_spectrum(ajc).eigenvalues[:24] / OMEGA  # lowest 24, in units of ω₀
+eig_jc = solve_spectrum(jc_negative).eigenvalues[:24] / OMEGA
+max_gap = float(np.max(np.abs(eig_ajc - eig_jc)))
+print(f"Case A — largest |E_AJC(+ω₀) − E_JC(−ω₀)| / ω₀ = {max_gap:.2e}")
+assert max_gap < 1e-6  # spec(H_AJC(ω₀)) = spec(H_JC(−ω₀))
+
+idx = np.arange(eig_jc.size)
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(idx, eig_jc, color=GREY, linewidth=1.0, label=r"JC$(-\omega_0)$")
+ax.scatter(idx, eig_ajc, color=RED, s=18, zorder=3, label=r"AJC$(+\omega_0)$")
+ax.set_xlabel("eigenvalue index")
+ax.set_ylabel(r"$E / \omega_0$")
+ax.set_title("A · LOCK-3: spectra coincide")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! note "The −ω₀ is a model sign, not a negative ion"
@@ -84,15 +103,35 @@ eta = lamb_dicke_parameter(
 blue_rate = blue_sideband_rabi_frequency(carrier_rabi_frequency=rabi, lamb_dicke_parameter=eta, n_initial=0)
 
 psi0 = qutip.tensor(spin_down(), qutip.basis(12, 0))
-times = np.linspace(0.0, 2 * np.pi / blue_rate, 60)
+times = np.linspace(0.0, 2 * np.pi / blue_rate, 80)
 p_up = Observable(label="p_up", operator=hb.spin_op_for_ion(spin_up() * spin_up().dag(), 0))
-pop_red = solve(hilbert=hb, hamiltonian=red_sideband_hamiltonian(hb, drive, "m", ion_index=0),
-                initial_state=psi0, times=times, observables=(p_up,)).expectations["p_up"]
-pop_blue = solve(hilbert=hb, hamiltonian=blue_sideband_hamiltonian(hb, drive, "m", ion_index=0),
-                 initial_state=psi0, times=times, observables=(p_up,)).expectations["p_up"]
+pop_red = np.asarray(
+    solve(hilbert=hb, hamiltonian=red_sideband_hamiltonian(hb, drive, "m", ion_index=0),
+          initial_state=psi0, times=times, observables=(p_up,)).expectations["p_up"],
+    dtype=float,
+)
+pop_blue = np.asarray(
+    solve(hilbert=hb, hamiltonian=blue_sideband_hamiltonian(hb, drive, "m", ion_index=0),
+          initial_state=psi0, times=times, observables=(p_up,)).expectations["p_up"],
+    dtype=float,
+)
+analytic_blue = np.sin(blue_rate * times / 2.0) ** 2  # ideal two-level flop at Ω_b
 
+print(f"Case B — η = {eta:.3f};  blue max ⟨P↑⟩ = {pop_blue.max():.3f} (bright),  "
+      f"red max ⟨P↑⟩ = {pop_red.max():.1e} (dark)")
 assert np.max(pop_red) < 1e-4   # |↓,0⟩ is DARK under the red sideband (→ JC, a|0⟩ = 0)
 assert np.max(pop_blue) > 0.99  # |↓,0⟩ is BRIGHT under the blue sideband (→ AJC, |↓,0⟩↔|↑,1⟩)
+
+tau = times * blue_rate / (2.0 * np.pi)  # phase in units of the blue flop period
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(tau, analytic_blue, color=GREY, linewidth=1.0, label=r"$\sin^2(\Omega_b t/2)$")
+ax.scatter(tau, pop_blue, color=BLUE, s=14, zorder=3, label="blue → AJC (bright)")
+ax.scatter(tau, pop_red, color=RED, marker="s", s=14, zorder=3, label="red → JC (dark)")
+ax.set_xlabel(r"blue flop phase $\Omega_b t / 2\pi$")
+ax.set_ylabel(r"spin-up population $\langle P_\uparrow\rangle$")
+ax.set_title(r"B · $|{\downarrow},0\rangle$ dark vs bright")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! tip "Dark is not the same as decoupled"
@@ -133,6 +172,35 @@ strong = model_deviation(trajectory(jaynes_cummings_hamiltonian, 0.5 * OMEGA),
 assert weak.method == "state_fidelity"  # materialised states → 1 − qutip.fidelity per step
 assert weak.value < 1e-2                # common regime: JC ≈ QRM
 assert strong.value > 10 * weak.value   # breakdown: the counter-rotating terms separate them
+
+# Sweep the dimensionless coupling g/ω₀ from weak to ultra-strong, tracking two
+# probes: the JC↔QRM ground-energy gap, and the QRM virtual-phonon number.
+g_over_w0 = np.array([0.02, 0.05, 0.1, 0.2, 0.4, 0.7, 1.0, 1.5])
+e0_jc, e0_qrm, n_qrm = [], [], []
+for ratio in g_over_w0:
+    coupling = ratio * OMEGA
+    jc = jaynes_cummings_hamiltonian(h, "m", ion_index=0, omega_0=OMEGA, omega_f=OMEGA, g=coupling)
+    qrm = quantum_rabi_hamiltonian(h, "m", ion_index=0, omega_0=OMEGA, omega_f=OMEGA, g=coupling)
+    e0_jc.append(solve_spectrum(jc).eigenvalues[0] / OMEGA)
+    e0_qrm.append(solve_spectrum(qrm).eigenvalues[0] / OMEGA)
+    n_qrm.append(qrm_ground_phonons(coupling))
+deviation = np.abs(np.array(e0_jc) - np.array(e0_qrm))
+n_qrm = np.array(n_qrm)
+
+print(f"Case C — trajectory infidelity: weak {weak.value:.2e}  →  strong {strong.value:.2e}")
+print(f"Case C — at g/ω₀ = 1.5: energy gap {deviation[-1]:.3f} ω₀,  QRM ⟨a†a⟩ = {n_qrm[-1]:.3f}")
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.plot(g_over_w0, deviation, color=PURPLE, marker="o", markersize=4,
+        label=r"$|E_0^{\mathrm{JC}}-E_0^{\mathrm{QRM}}| / \omega_0$")
+ax.plot(g_over_w0, n_qrm, color=GREEN, marker="s", markersize=4,
+        label=r"QRM $\langle a^\dagger a\rangle$")
+ax.set_xscale("log")
+ax.set_xlabel(r"$g / \omega_0$")
+ax.set_ylabel(r"deviation,  $\langle a^\dagger a\rangle$")
+ax.set_title("C · RWA breakdown")
+ax.legend(frameon=False)
+plt.show()
 ```
 
 !!! warning "Fock truncation is the trap in the strong-coupling panel"
@@ -163,6 +231,31 @@ assert lamb_dicke_confinement(lamb_dicke_parameter=0.05, mean_phonon_number=1) <
 full = red_sideband_rabi_frequency_full_ld(carrier_rabi_frequency=drive_rabi, lamb_dicke_parameter=0.05, n_initial=1)
 leading = red_sideband_rabi_frequency(carrier_rabi_frequency=drive_rabi, lamb_dicke_parameter=0.05, n_initial=1)
 assert abs(full - leading) / leading < 1e-2  # full-LD ≈ leading order deep in the regime
+
+# Sweep η at n = 1, so the confinement η²(2n+1) = 3η² runs deep → beyond. The
+# all-orders full-LD rate bends away from the leading-order 2g√n line as it grows.
+eta_grid = np.array([0.02, 0.06, 0.12, 0.2, 0.35, 0.6, 1.0])
+confinement = np.array([lamb_dicke_confinement(lamb_dicke_parameter=e, mean_phonon_number=1) for e in eta_grid])
+leading_d = np.array([red_sideband_rabi_frequency(carrier_rabi_frequency=drive_rabi, lamb_dicke_parameter=e, n_initial=1) for e in eta_grid])
+full_d = np.array([red_sideband_rabi_frequency_full_ld(carrier_rabi_frequency=drive_rabi, lamb_dicke_parameter=e, n_initial=1) for e in eta_grid])
+rel_dev = np.abs(full_d - leading_d) / leading_d
+regimes = [lamb_dicke_regime(lamb_dicke_parameter=e, mean_phonon_number=1) for e in eta_grid]
+
+print("Case D —   η    η²(2n+1)   regime        full-LD vs leading")
+for e, c, r, d in zip(eta_grid, confinement, regimes, rel_dev):
+    print(f"          {e:4.2f}   {c:7.3f}   {r:<12s}  {d:.2e}")
+
+fig, ax = plt.subplots(figsize=(5.0, 3.2))
+ax.axvspan(1e-4, 0.1, color=GREEN, alpha=0.08)
+ax.axvspan(0.1, 1.0, color=BLUE, alpha=0.08)
+ax.axvspan(1.0, 1e2, color=RED, alpha=0.08)
+ax.plot(confinement, rel_dev, color=GREY, marker="o", markersize=4)
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_xlabel(r"$\eta^2(2n+1)$")
+ax.set_ylabel("full-LD vs leading rel. dev.")
+ax.set_title("D · deep → intermediate → beyond")
+plt.show()
 ```
 
 !!! note "Signed matrix element vs the helper magnitude"
