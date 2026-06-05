@@ -161,7 +161,13 @@ include = [
 target-version = "py311"
 line-length = 100
 src = ["src", "tests"]
-extend-exclude = ["archive", "legacy"]
+# `docs/tutorials/notebooks/` holds GENERATED notebooks (built from the
+# Markdown tutorials by tools/build_tutorial_notebooks.py). Ruff lints .ipynb
+# by default, but these carry pedagogical physics notation (η, −, ×, …) and
+# generator-controlled formatting; linting/formatting them is neither correct
+# nor in our control. The Markdown source is not Python and is not linted
+# either, so excluding the derived notebooks keeps the two consistent.
+extend-exclude = ["archive", "legacy", "docs/tutorials/notebooks"]
 
 [tool.ruff.lint]
 select = [
