@@ -34,7 +34,6 @@ import json
 import posixpath
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -42,10 +41,18 @@ TUTORIALS_DIR = REPO_ROOT / "docs" / "tutorials"
 NOTEBOOKS_DIR = TUTORIALS_DIR / "notebooks"
 
 # Repository coordinates. ``OPEN_REF`` is the branch the *notebook file* lives
-# on (what the Colab badge opens); ``INSTALL_REF`` is the *package* version the
-# Setup cell installs (a release tag, derived from pyproject so it auto-bumps).
+# on (what the Colab badge opens). ``INSTALL_REF`` is the git ref the Setup cell
+# installs the *package* from.
+#
+# INSTALL_REF tracks ``main`` (not a release tag) so the live Colab notebooks
+# always pick up the newest fixes — a tag lags behind every post-tag fix, which
+# silently served stale code on Colab. ``main`` is guarded by the ``tutorials``
+# (execute) and ``wheel-smoke`` (packaging) CI jobs. To return to reproducible
+# tag-pinning after cutting a release, set ``INSTALL_REF = "v0.6.1"`` (etc.) and
+# regenerate *after* the tag is pushed, or the git install URL will not resolve.
 GITHUB_SLUG = "uwarring82/iontrap-dynamics"
 OPEN_REF = "main"
+INSTALL_REF = "main"
 SITE_URL = "https://uwarring82.github.io/iontrap-dynamics/"
 
 # Only note/tip/warning appear in the tutorials today; any other kind falls
@@ -56,17 +63,6 @@ ADMONITION_LABELS = {
     "warning": "⚠️ **Warning**",
     "example": "🔬 **Example**",
 }
-
-
-def install_ref() -> str:
-    """Release tag to pin the Setup-cell install to, e.g. ``v0.6.0``.
-
-    Derived from ``pyproject.toml`` so a version bump + regenerate keeps the
-    notebooks pinned to the matching release. Regenerate *after* the tag is
-    pushed, or the git install URL will not resolve.
-    """
-    data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    return f"v{data['project']['version']}"
 
 
 # -----------------------------------------------------------------------------
@@ -224,7 +220,7 @@ def build_notebook(md_path: Path) -> str:
         "# Setup — install iontrap-dynamics and its dependencies (qutip, numpy, scipy).\n"
         "# First run on Colab takes ~1-2 min; safe to re-run (a no-op once installed).\n"
         f'%pip install -q "iontrap-dynamics[plot] @ '
-        f'git+https://github.com/{GITHUB_SLUG}.git@{install_ref()}"'
+        f'git+https://github.com/{GITHUB_SLUG}.git@{INSTALL_REF}"'
     )
 
     cells: list[dict[str, object]] = [_md_cell(header), _code_cell(setup)]
