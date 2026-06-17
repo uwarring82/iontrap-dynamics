@@ -131,8 +131,9 @@ def non_markovianity_qpn_bias(
     ------
     ValueError
         If the trajectories are not equal-shape ``(T ≥ 2, 3)``, carry non-finite
-        or non-physical (``|⟨σ_a⟩| > 1``) entries, or ``shots``/``repeats`` are
-        ``< 1`` or ``sampling_stride < 1`` (§15 ladder — surfaced, not masked).
+        entries or a non-physical Bloch vector (``‖r⃗‖ > 1``), or ``shots`` /
+        ``repeats`` are ``< 1`` or ``sampling_stride < 1`` (§15 ladder — surfaced,
+        not masked).
     """
     b1 = np.asarray(bloch_1, dtype=np.float64)
     b2 = np.asarray(bloch_2, dtype=np.float64)
@@ -144,10 +145,13 @@ def non_markovianity_qpn_bias(
         raise ValueError("non_markovianity_qpn_bias: need at least two time samples")
     if not (np.all(np.isfinite(b1)) and np.all(np.isfinite(b2))):
         raise ValueError("non_markovianity_qpn_bias: Bloch trajectories contain non-finite entries")
-    if np.max(np.abs(b1)) > 1.0 + _BLOCH_TOLERANCE or np.max(np.abs(b2)) > 1.0 + _BLOCH_TOLERANCE:
+    norm_1 = float(np.max(np.linalg.norm(b1, axis=1)))
+    norm_2 = float(np.max(np.linalg.norm(b2, axis=1)))
+    if norm_1 > 1.0 + _BLOCH_TOLERANCE or norm_2 > 1.0 + _BLOCH_TOLERANCE:
         raise ValueError(
-            "non_markovianity_qpn_bias: Bloch components must be physical (|⟨σ_a⟩| ≤ 1); "
-            "got a value outside [-1, 1]"
+            "non_markovianity_qpn_bias: Bloch vectors must be physical (‖r⃗‖ ≤ 1); "
+            f"got max norms {norm_1:.6g}, {norm_2:.6g} — a component-wise bound is not "
+            "enough (e.g. ⟨σ⟩=(0.8,0.8,0) has ‖r⃗‖>1)"
         )
     if shots < 1:
         raise ValueError(f"non_markovianity_qpn_bias: shots must be >= 1; got {shots}")

@@ -89,3 +89,12 @@ def test_nonphysical_or_misshaped_bloch_raise() -> None:
     bad[0, 0] = 1.5  # |⟨σ_x⟩| > 1 — non-physical Bloch component
     with pytest.raises(ValueError, match="physical"):
         non_markovianity_qpn_bias(bad, b2, shots=100)
+
+
+def test_overlong_bloch_norm_raises() -> None:
+    # Each component is in [-1, 1] but ‖r⃗‖ = √1.28 > 1 — an impossible qubit state.
+    b1, b2 = _revival(n_t=10)
+    bad = b1.copy()
+    bad[0] = [0.8, 0.8, 0.0]
+    with pytest.raises(ValueError, match="physical"):
+        non_markovianity_qpn_bias(bad, b2, shots=100)
