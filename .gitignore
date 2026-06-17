@@ -42,3 +42,6 @@ legacy/**/sbpaper/
 # tokens.css) are intentionally NOT ignored. Under Model B (CD 0.10), they
 # are vendored at a pinned upstream commit and integrity-checked against
 # assets/SOURCE.md. Fetch via `tools/fetch_assets.sh`, then commit.
+
+# Local source PDFs for extraction/rooting — publisher copies, never committed
+sources/**/*.pdf
