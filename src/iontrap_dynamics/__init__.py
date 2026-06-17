@@ -36,6 +36,7 @@ from .exceptions import (
     IonTrapWarning,
 )
 from .information import (
+    blp_non_markovianity,
     classical_fisher_information,
     cramer_rao_bound,
     fragment_mutual_information,
@@ -44,6 +45,8 @@ from .information import (
     quantum_fisher_information_trajectory,
     recoverability,
     redundancy,
+    trace_distance,
+    trace_distance_trajectory,
 )
 from .measurement import (
     BernoulliChannel,
@@ -166,6 +169,7 @@ __all__ = [
     "apply_phase_drift",
     "apply_rabi_drift",
     "binomial_summary",
+    "blp_non_markovianity",
     "cat_mode",
     "classical_fisher_information",
     "clopper_pearson_interval",
@@ -206,6 +210,8 @@ __all__ = [
     "solve_spectrum",
     "squeezed_coherent_mode",
     "squeezed_vacuum_mode",
+    "trace_distance",
+    "trace_distance_trajectory",
     "two_mode_squeezed_vacuum",
     "wilson_interval",
 ]

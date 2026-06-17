@@ -8,6 +8,11 @@ layer in ``_common`` (``_ensure_density``, ``_von_neumann_entropy_bits``,
 ``_validate_indices`` / ``_validate_state_dim``).
 """
 
+from .distinguishability import (
+    blp_non_markovianity,
+    trace_distance,
+    trace_distance_trajectory,
+)
 from .fisher import (
     classical_fisher_information,
     cramer_rao_bound,
@@ -22,6 +27,7 @@ from .redundancy import (
 )
 
 __all__ = [
+    "blp_non_markovianity",
     "classical_fisher_information",
     "cramer_rao_bound",
     "fragment_mutual_information",
@@ -30,4 +36,6 @@ __all__ = [
     "quantum_fisher_information_trajectory",
     "recoverability",
     "redundancy",
+    "trace_distance",
+    "trace_distance_trajectory",
 ]
