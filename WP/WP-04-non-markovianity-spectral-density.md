@@ -4,7 +4,7 @@
 
 Version 0.1 · Drafted 2026-06-17 · **Ratified 2026-06-17** · Status: **In-flight** (ND1, ND3 landed on `main`; ND4, ND5 remaining)
 
-**Origin / rooting:** the frozen deliberation & survey record `task cards/TC-non-markovianity-spectral-density.md` (v0.5+, **not** duplicated here) — it carries the verdict, the codebase/conventions analysis, the two-phase scope, the rooting sources (PRA 97 020102 + BLP 2009 + Porras 2008 + Clos–Breuer 2012, staged under `sources/pdf/`), and the §9 open decisions. This WP is the **execution layer** for Phase A only.
+**Origin / rooting:** the deliberation & survey record `task cards/TC-non-markovianity-spectral-density.md` (committed at `4e42c4f`; **not** duplicated here) — it carries the verdict, the codebase/conventions analysis, the two-phase scope, the rooting sources (PRA 97 020102 + BLP 2009 + Porras 2008 + Clos–Breuer 2012, staged under `sources/pdf/`), and the §9 open decisions. This WP is the **execution layer** for Phase A only.
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code is MIT (`src/`, `tests/`); authored tutorials are Sail / CC BY-NC-SA 4.0. See root `LICENCE`.
@@ -53,5 +53,5 @@ A single spin coherently coupled to **one** motional mode (the PRA 97 020102 rea
 ## 4. Governance notes
 
 - Phase A adds **no convention symbol** and **no dispatch-family collision** (R2/R3). `CONVENTION_VERSION` stays `0.4`.
-- **WORKPLAN §5.7 dispatch-track stub: pending** — to be added as a governed append-only amendment (header/footer version bump in lock-step) on the maintainer's go-ahead; flagged, not silently applied.
+- **WORKPLAN §5.7 dispatch-track stub: added** — `WORKPLAN_v0.3.md` bumped to **v0.3.9** with an append-only §5.7 amendment recording WP-04 as a v0.3.x follow-up, in lock-step with the header and footer version lines.
 - Phase B (R8) requires its own card→WP and, if `J(ω)` becomes public, a sealed convention — out of scope here.

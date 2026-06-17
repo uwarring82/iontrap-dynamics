@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3.8 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional · **§5.6 reduced light–matter models**) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 reduced models seal CONVENTIONS §25 + §5 scope and bump `CONVENTION_VERSION` 0.3 → 0.4 (§5.6), staged for `v0.6.0`**; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
+Version 0.3.9 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional · §5.6 reduced light–matter models · **§5.7 non-Markovianity & spectral density**) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 reduced models seal CONVENTIONS §25 + §5 scope and bump `CONVENTION_VERSION` 0.3 → 0.4 (§5.6), staged for `v0.6.0`**; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -538,6 +538,44 @@ the same `[Unreleased]` block. The `v0.6.0` tag is a maintainer release act (ff-
 
 ---
 
+### 5.7 — Non-Markovianity & spectral density as v0.3.x follow-up (2026-06-17) *(Coastline, new in v0.3.9)*
+
+Added as the non-Markovianity & spectral-density service surface (card: trace-distance +
+BLP non-Markovianity observable-only primitives, QPN-bias estimator, a single-mode
+Wittemer-2018 reproduction benchmark, and two tutorials; Phase B `J(ω)` + structured-bath
+non-Markovian solver held out of scope). Ratified and executed via
+`WP/WP-04-non-markovianity-spectral-density.md`.
+
+**Scope.** Phase A is **observable-only** and requires no new convention symbol and no
+frozen-section edit. It comprises:
+- `information/distinguishability.py` (`trace_distance`, `trace_distance_trajectory`,
+  `blp_non_markovianity`) — Dispatch **ND1**, landed;
+- `information/qpn_bias.py` (`non_markovianity_qpn_bias`, `QpnBiasResult`) — Dispatch **ND3**,
+  landed;
+- a compute-only benchmark reproducing Wittemer et al., PRA 97, 020102(R) (2018), Fig 2/3
+  (single-mode spin-boson dynamics, fixed orthogonal pair, benchmark-local spin `Γ_dec`
+  collapse operators) — Dispatch **ND4**, next;
+- Tutorials A & B — Dispatch **ND5**, after ND4.
+
+Phase B (spectral density `J(ω)`, continuum/structured baths, and a genuine non-Markovian
+solver such as HEOM, Bloch–Redfield, or TCL2) is **held out of Phase A** under the R8 boundary
+in the task card. It would require a new CONVENTIONS section (likely §26) and a deliberate
+solver backend decision; it is not part of this amendment.
+
+**Rationale.** Additive — every Phase-A symbol is a generic functional of quantum states or
+Bloch trajectories, with no consuming-application framing. Existing callers observe no
+behaviour change. No `CONVENTION_VERSION` bump is needed because the work stays inside frozen
+§15 (failure-surface ladder) and §17 (finite-shot binomial semantics) and does not alter
+§19–24.
+
+**On `main` (as ratified).** Dispatches **ND1** and **ND3** landed; **ND4** and **ND5** are the
+remaining Phase-A WIs. The ND dispatch family is recorded in `WP/LOGBOOK.md`.
+
+**Consequence for §5 above.** No re-scoping of Phase 2's target or of the WP-02/WP-03 surfaces;
+lands additively toward a future minor release. The `v0.6.0` release act (§5.6) is unaffected.
+
+---
+
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
 
 **Deliverable:** repository skeleton with conventions, regression harness, canonical result schema, corporate-design bootstrap, one end-to-end example.
@@ -809,4 +847,4 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Convention version:** references `CONVENTIONS.md` **v0.4** (the v0.2 freeze 2026-04-21 closed §17 measurement layer and §18 systematics layer; the **v0.3 freeze 2026-06-03** closes §19–22 estimation/Darwinism and §23–24 two-mode/motional, per §5.4/§5.5; **WP-03 seals §25 reduced light–matter models + the §5 scope note 2026-06-04, bumping `CONVENTION_VERSION` 0.3 → 0.4 per §5.6**; §1–16 carry through unchanged from the v0.1 draft).
 **Corporate design version:** `cd-v1.7.1` (decision D2 closed 2026-04-23). Upstream `threehouse-plus-ec/cd-rules` cut `cd-v1.7.0` (at commit `8671c933`) and `cd-v1.7.1` (at commit `ee01c803`) on 2026-04-23, executing the "Tag repo" step of the upstream §15.4 deprecation protocol retroactively against the Version History entries in `blueprint-threehouse-CD.md` §16. `assets/SOURCE.md` now pins to `cd-v1.7.1`; the checksum table carries over unchanged from the provisional pin because the six asset files are byte-identical between 1.7.0 and 1.7.1. The CI hash-drift check (`cd-local-integrity`) is a permanent gate. References to `cd-v1.7.0` elsewhere in this document predate the tag-cutting action and remain the literal target-version language of the plan; the operational pin is one minor version ahead.
-**Workplan version:** 0.3.8 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03, **§5.6 reduced light–matter models 2026-06-04**) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 seals §25 + §5 scope, bumping `CONVENTION_VERSION` 0.3 → 0.4, staged for `v0.6.0` (§5.6)**; Phase 2 JAX-backend time-independent surface and tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
+**Workplan version:** 0.3.9 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03, §5.6 reduced light–matter models 2026-06-04, **§5.7 non-Markovianity & spectral density 2026-06-17**) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 seals §25 + §5 scope, bumping `CONVENTION_VERSION` 0.3 → 0.4, staged for `v0.6.0` (§5.6)**; Phase 2 JAX-backend time-independent surface and tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
