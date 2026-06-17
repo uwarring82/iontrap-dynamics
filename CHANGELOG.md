@@ -10,7 +10,7 @@ placeholder-only and did not follow semver.
 
 ### Added
 
-- **Phase A / WI-1 — trace distance + BLP non-Markovianity (observable-only).**
+- **Phase A / WI-1 (dispatch ND1) — trace distance + BLP non-Markovianity (observable-only).**
   New application-agnostic primitives in `information/distinguishability.py`:
   `trace_distance`, `trace_distance_trajectory` (with optional subsystem partial
   trace), and `blp_non_markovianity` (the fixed-pair, positive-increment form of
@@ -22,7 +22,7 @@ placeholder-only and did not follow semver.
   (`tests/regression/analytic/test_non_markovianity.py`) validates against the
   BLP-2009 pure-dephasing closed form and the Markovian-zero / revival-positive
   signatures.
-- **Phase A / WI-3 — QPN-bias estimator (observable-only).** New
+- **Phase A / WI-3 (dispatch ND3) — QPN-bias estimator (observable-only).** New
   `information/qpn_bias.py`: `non_markovianity_qpn_bias` + `QpnBiasResult`
   simulate per-axis finite-shot projective spin tomography and report the
   projection-noise bias of the BLP measure, decomposed as `ℬ = ℬ_QPN +
