@@ -467,6 +467,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 
 ---
 
+### 2026-06-17 — Correction: the post-v0.6.0 `Fixed` bullet is the clos2016 loader, not the qutip-5.3 test fix
+
+- **Refs:** corrects the preceding 2026-06-17 retrospective entry (committed `d2ffe3b`) · CHANGELOG `[Unreleased]` · commit `17766a6` · append-only (the earlier entry is left intact, never deleted)
+- **What:** The retrospective entry above predicted "the qutip-5.3 compatibility fix warrants a `Fixed` bullet at the next cut." On inspection that is wrong: `6f72c40` touched only `tests/` — `src/sequences.py` already calls `mesolve` with `c_ops=`/`e_ops=` keywords, so the library was already qutip-5.3-safe and nothing shipped changed; it warrants **no** CHANGELOG bullet. The post-v0.6.0 `Fixed` bullet that actually landed (`17766a6`) is the **clos2016 loader** `FileNotFoundError`-on-install fix (`7caf460` — the reference tables shipped in neither wheel nor sdist and are now vendored as package data); the executable-notebook track is the matching `Added` bullet.
+- **Why (worth recording):** caught while executing the CHANGELOG catch-up the prior entry pointed to — a reminder that "library-touching" must be checked against the diff (src vs tests), not the commit subject. Logged as a new entry rather than editing the original, per the framework's honesty discipline.
+- **Links:** `6f72c40` (tests-only) · `7caf460` (clos2016 loader fix) · CHANGELOG `[Unreleased]` · commit `17766a6` · preceding retrospective entry (2026-06-17).
+
+---
+
 ## Dispatch-code registry *(Sail)*
 
 The **forward** registry of dispatch codes minted under this framework (from 2026-06-02), so codes never collide and "what shipped when" is answerable in one place. A code is minted when its WP reaches **Ratified**, recorded here, and carried into a `CHANGELOG.md` `[Unreleased]` bullet at landing (the CHANGELOG remains the binding shipped record; this table is the forward index).
