@@ -193,6 +193,7 @@ ignore = [
 "examples/**" = ["N802", "N803", "N806"]
 "tests/unit/test_distinguishability.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/regression/analytic/test_non_markovianity.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/regression/analytic/test_qpn_bias.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/analytic.py" = ["RUF002", "RUF003"]
 "src/iontrap_dynamics/channels.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/conventions.py" = ["RUF001", "RUF002", "RUF003"]

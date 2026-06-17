@@ -19,6 +19,7 @@ from .fisher import (
     linear_gaussian_fisher,
     quantum_fisher_information_trajectory,
 )
+from .qpn_bias import QpnBiasResult, non_markovianity_qpn_bias
 from .recoverability import recoverability
 from .redundancy import (
     fragment_mutual_information,
@@ -27,11 +28,13 @@ from .redundancy import (
 )
 
 __all__ = [
+    "QpnBiasResult",
     "blp_non_markovianity",
     "classical_fisher_information",
     "cramer_rao_bound",
     "fragment_mutual_information",
     "linear_gaussian_fisher",
+    "non_markovianity_qpn_bias",
     "partial_information_plot",
     "quantum_fisher_information_trajectory",
     "recoverability",
