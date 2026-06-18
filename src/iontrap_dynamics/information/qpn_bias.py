@@ -81,7 +81,9 @@ class QpnBiasResult:
     """95% percentile interval of ``𝒩(γ, r) − 𝒩_true`` across realisations."""
 
 
-def _qubit_trace_distance(bloch_1: NDArray[np.float64], bloch_2: NDArray[np.float64]) -> NDArray[np.float64]:
+def _qubit_trace_distance(
+    bloch_1: NDArray[np.float64], bloch_2: NDArray[np.float64]
+) -> NDArray[np.float64]:
     """Half-Euclidean Bloch distance ``D = ½‖r⃗₁ − r⃗₂‖`` per time index."""
     return np.asarray(0.5 * np.linalg.norm(bloch_1 - bloch_2, axis=-1), dtype=np.float64)
 
@@ -89,7 +91,9 @@ def _qubit_trace_distance(bloch_1: NDArray[np.float64], bloch_2: NDArray[np.floa
 def _positive_increment_sum(distances: NDArray[np.float64]) -> NDArray[np.float64]:
     """Guard-free ``Σ [Dᵢ − Dᵢ₋₁]_{>0}`` along the last axis (the noisy estimator)."""
     increments = np.diff(distances, axis=-1)
-    return np.asarray(np.sum(np.where(increments > 0.0, increments, 0.0), axis=-1), dtype=np.float64)
+    return np.asarray(
+        np.sum(np.where(increments > 0.0, increments, 0.0), axis=-1), dtype=np.float64
+    )
 
 
 def non_markovianity_qpn_bias(
@@ -138,7 +142,9 @@ def non_markovianity_qpn_bias(
     b1 = np.asarray(bloch_1, dtype=np.float64)
     b2 = np.asarray(bloch_2, dtype=np.float64)
     if b1.shape != b2.shape:
-        raise ValueError(f"non_markovianity_qpn_bias: trajectories differ in shape {b1.shape} vs {b2.shape}")
+        raise ValueError(
+            f"non_markovianity_qpn_bias: trajectories differ in shape {b1.shape} vs {b2.shape}"
+        )
     if b1.ndim != 2 or b1.shape[1] != 3:
         raise ValueError(f"non_markovianity_qpn_bias: trajectories must be (T, 3); got {b1.shape}")
     if b1.shape[0] < 2:
@@ -158,7 +164,9 @@ def non_markovianity_qpn_bias(
     if repeats < 1:
         raise ValueError(f"non_markovianity_qpn_bias: repeats must be >= 1; got {repeats}")
     if sampling_stride < 1:
-        raise ValueError(f"non_markovianity_qpn_bias: sampling_stride must be >= 1; got {sampling_stride}")
+        raise ValueError(
+            f"non_markovianity_qpn_bias: sampling_stride must be >= 1; got {sampling_stride}"
+        )
 
     # Noise-free references: physical trace distances → the guarded BLP measure.
     measure_true = blp_non_markovianity(_qubit_trace_distance(b1, b2))
@@ -174,7 +182,9 @@ def non_markovianity_qpn_bias(
     shape = (repeats, *strided_1.shape)
     est_1 = 2.0 * rng.binomial(shots, np.broadcast_to(p1, shape)) / shots - 1.0
     est_2 = 2.0 * rng.binomial(shots, np.broadcast_to(p2, shape)) / shots - 1.0
-    sampled_distance = 0.5 * np.linalg.norm(est_1 - est_2, axis=-1)  # (repeats, T_strided); may exceed 1
+    sampled_distance = 0.5 * np.linalg.norm(
+        est_1 - est_2, axis=-1
+    )  # (repeats, T_strided); may exceed 1
     sampled_measures = _positive_increment_sum(sampled_distance)  # (repeats,)
 
     mean = float(np.mean(sampled_measures))

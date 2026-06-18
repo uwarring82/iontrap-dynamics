@@ -2,7 +2,7 @@
 
 **Executes Phase A of the non-Markovianity + spectral-density task card: trace-distance + BLP non-Markovianity primitives, the quantum-projection-noise (QPN) bias estimator, a single-mode Wittemer-2018 reproduction benchmark, and two tutorials — all observable-only.**
 
-Version 0.1 · Drafted 2026-06-17 · **Ratified 2026-06-17** · Status: **In-flight** (ND1, ND3 landed on `main`; ND4, ND5 remaining)
+Version 0.1 · Drafted 2026-06-17 · **Ratified 2026-06-17** · Status: **In-flight** (ND1, ND3, ND4 landed on `main`; ND5 remaining)
 
 **Origin / rooting:** the deliberation & survey record `task cards/TC-non-markovianity-spectral-density.md` (committed at `4e42c4f`; **not** duplicated here) — it carries the verdict, the codebase/conventions analysis, the two-phase scope, the rooting sources (PRA 97 020102 + BLP 2009 + Porras 2008 + Clos–Breuer 2012, staged under `sources/pdf/`), and the §9 open decisions. This WP is the **execution layer** for Phase A only.
 
@@ -38,7 +38,7 @@ A single spin coherently coupled to **one** motional mode (the PRA 97 020102 rea
 |---|---|---|---|
 | **ND1** | WI-1 — trace distance + BLP `𝒩` | `information/distinguishability.py` (`trace_distance`, `trace_distance_trajectory`, `blp_non_markovianity`) + BLP-2009 Eq. 14 oracle + contract tests | **landed** `996e428` |
 | **ND3** | WI-3 — QPN-bias estimator | `information/qpn_bias.py` (`non_markovianity_qpn_bias`, `QpnBiasResult`) + decomposition oracle | **landed** `60265d2` (+ Bloch-norm fix `38c4293`) |
-| **ND4** | WI-4 (+ WI-2) — single-mode benchmark | compute-only reproduction of Wittemer Fig 2/3: `clos2016_spin_boson_hamiltonian` (`dimensionless_mode_frequencies=[1]`) → `solve()` with `⟨σ_{x,y,z}⟩` e_ops on `|↑⟩`,`|↓⟩` → reduced-spin Bloch → ND1/ND3 primitives; spin `Γ_dec` as **benchmark-local `c_ops`** (R5). Report + arrays + plot; analytic-limit oracle. | **next** |
+| **ND4** | WI-4 (+ WI-2) — single-mode benchmark | compute-only reproduction of Wittemer Fig 2/3: `clos2016_spin_boson_hamiltonian` (`dimensionless_mode_frequencies=[1]`) → `solve()` with `⟨σ_{x,y,z}⟩` e_ops on `|↑⟩`,`|↓⟩` → reduced-spin Bloch → ND1/ND3 primitives; spin `Γ_dec` as **benchmark-local `c_ops`** (R5). Report + arrays + plot; analytic-limit oracle. | **landed 2026-06-18** |
 | **ND5** | WI-5 — tutorials | Tutorial A (effective coupling `Ω′` + spectral-density concept under added decoherence) + Tutorial B (`𝒩` + QPN bias, local probing), print+plot + Colab | reserved |
 
 *WI-2 (spin `Γ_dec`) ships no public symbol (R5) and is folded into ND4's benchmark rather than carrying its own dispatch code.*
@@ -47,7 +47,7 @@ A single spin coherently coupled to **one** motional mode (the PRA 97 020102 rea
 
 - **ND1:** `D = ½‖ρ₁−ρ₂‖₁` matches BLP-2009 Eq. 14 (`√(a²+f²|b|²)`); `𝒩=0` for monotone (Markovian) `D`, `𝒩>0` for revivals; §15 raises. ✅
 - **ND3:** `ℬ_QPN > 0` and **→ 0 as `r → ∞`**; coarse-`γ` sampling bias `< 0`; `ℬ_QPN + ℬ_sampling = ℬ_total`. ✅
-- **ND4:** qualitative reproduction of Fig 2/3 features (the resonance `𝒩(ω_z)`, the QPN-bias sign/`r`-trend) + an analytic dephasing-limit cross-check.
+- **ND4:** qualitative reproduction of Fig 2/3 features (the resonance `𝒩(ω_z)`, the QPN-bias sign/`r`-trend) + an analytic dephasing-limit cross-check. ✅ (`D_min(δ=0)=0.83` resonance, `ℬ_QPN` 12.0→0.26 over `r=50…50000`, `𝒩` 0.148→0 with `Γ_dec`; committed artifact `n̄=0.1`/`maxn=12`, fine 9τ sampling — the oracle reproduces the same features at the faster `maxn=8`; see LOGBOOK 2026-06-18 for the calibration findings + the spin-dephasing rate convention)
 - **ND5:** notebooks execute under the `pytest -m tutorial` guard.
 
 ## 4. Governance notes

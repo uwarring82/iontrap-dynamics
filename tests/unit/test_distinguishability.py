@@ -120,7 +120,9 @@ def test_trajectory_dim_mismatch_raises() -> None:
 def test_trajectory_bad_subsystem_index_raises() -> None:
     hilbert = _spin_hilbert(1)
     with pytest.raises(ValueError, match="out of range"):
-        trace_distance_trajectory([spin_up()], [spin_down()], hilbert=hilbert, subsystem_indices=[5])
+        trace_distance_trajectory(
+            [spin_up()], [spin_down()], hilbert=hilbert, subsystem_indices=[5]
+        )
 
 
 # --------------------------------------------------------------------------

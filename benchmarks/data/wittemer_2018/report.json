@@ -1,0 +1,168 @@
+{
+  "backend_name": "qutip",
+  "backend_version": "5.2.3",
+  "canonical_request_hash": null,
+  "convention_version": "0.4",
+  "environment": {
+    "machine": "arm64",
+    "numpy": "2.4.4",
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.7",
+    "qutip": "5.2.3",
+    "scipy": "1.17.1"
+  },
+  "generated_at": "2026-06-18T06:18:51.873821+00:00",
+  "measure_vs_detuning": [
+    {
+      "detuning_over_omega": -2.0,
+      "measure": 0.06044473667141581
+    },
+    {
+      "detuning_over_omega": -1.75,
+      "measure": 0.0639971446881209
+    },
+    {
+      "detuning_over_omega": -1.5,
+      "measure": 0.06717164159687594
+    },
+    {
+      "detuning_over_omega": -1.25,
+      "measure": 0.06728245870806127
+    },
+    {
+      "detuning_over_omega": -1.0,
+      "measure": 0.06534427115722508
+    },
+    {
+      "detuning_over_omega": -0.75,
+      "measure": 0.06753536119962145
+    },
+    {
+      "detuning_over_omega": -0.5,
+      "measure": 0.07986391523491387
+    },
+    {
+      "detuning_over_omega": -0.25,
+      "measure": 0.12401608620379645
+    },
+    {
+      "detuning_over_omega": 0.0,
+      "measure": 0.1481015123581002
+    },
+    {
+      "detuning_over_omega": 0.25,
+      "measure": 0.12401608620387239
+    },
+    {
+      "detuning_over_omega": 0.5,
+      "measure": 0.07986391523567082
+    },
+    {
+      "detuning_over_omega": 0.75,
+      "measure": 0.06753536119973003
+    },
+    {
+      "detuning_over_omega": 1.0,
+      "measure": 0.06534427115717201
+    },
+    {
+      "detuning_over_omega": 1.25,
+      "measure": 0.06728245877288241
+    },
+    {
+      "detuning_over_omega": 1.5,
+      "measure": 0.06717164159679812
+    },
+    {
+      "detuning_over_omega": 1.75,
+      "measure": 0.06399714468781603
+    },
+    {
+      "detuning_over_omega": 2.0,
+      "measure": 0.06044473667163064
+    }
+  ],
+  "measure_vs_gamma_dec": [
+    {
+      "gamma_dec_over_omega": 0.0,
+      "measure": 0.1481015123581002
+    },
+    {
+      "gamma_dec_over_omega": 0.1,
+      "measure": 0.0019531011629071032
+    },
+    {
+      "gamma_dec_over_omega": 0.25,
+      "measure": 0.00018536930521468578
+    },
+    {
+      "gamma_dec_over_omega": 0.5,
+      "measure": 0.00012112920832464726
+    },
+    {
+      "gamma_dec_over_omega": 1.0,
+      "measure": 2.8048256992195926e-05
+    }
+  ],
+  "notes": {
+    "calibration": "𝒩 is sensitive to the time-sampling rate γ (the paper's own effect): undersampling (e.g. 150 pts / 6τ) collapses 𝒩 toward 0, so this benchmark uses fine sampling over t_max=9τ. It is also sensitive to n̄: large n̄≈1 washes out the detuning resonance and raises Fock occupation (a §15 Fock-quality warning at maxn=12, n̄=1), so the resonance uses small n̄≈0.1 (the Fig. 4a regime). The robust resonance signature is the trace-distance dip depth D_min(δω_z), deepest on resonance.",
+    "eta": "Lamb-Dicke η is derived by the clos2016 builder from wavelength/mass/ω_E.",
+    "gamma_dec": "benchmark-local spin-dephasing c_op via qutip.mesolve (WP-04 R5). Collapse operator √(Γ_dec/2)·σ_z, so Γ_dec is the physical pure-dephasing rate (coherence ∝ exp(−Γ_dec·t), i.e. Γ_dec = 1/T2), not the bare Lindblad coefficient; the gamma_dec_over_omega axis is therefore Γ_dec/Ω in rate units.",
+    "generator": "clos2016 e^{η(a−a†)} ≡ paper e^{iη(a†+a)} via a→ia (same reduced D(t)/𝒩).",
+    "supplemental": "PRA 97 020102 Supplemental Material is APS-gated; qualitative oracle only."
+  },
+  "parameters": {
+    "Omega_rad_s": 628318.5307179586,
+    "ion_mass_kg": 4.1513476664999997e-26,
+    "max_phonons": 12,
+    "n_bar": 0.1,
+    "n_times": 360,
+    "omega_E_rad_s": 12063715.789784806,
+    "qpn_detuning_over_omega": 0.0,
+    "qpn_repeats": 400,
+    "t_max_over_tau": 9.0
+  },
+  "plot_alt_text": "Four panels reproducing qualitative features of Wittemer 2018. Top-left: the trace distance D(t) revives, signalling information back-flow. Top-right: the non-Markovianity N versus spin-mode detuning shows a resonance structure. Bottom-left: the QPN bias decomposition versus shots r, with the QPN part vanishing as r grows. Bottom-right: N decreases as added spin decoherence Gamma_dec increases.",
+  "purpose": "Qualitative single-mode reproduction of Wittemer et al. PRA 97 020102 (2018) from the Phase-A non-Markovianity primitives (ND1 trace distance + BLP measure, ND3 QPN-bias estimator) on the clos2016 spin-boson Hamiltonian: trace-distance revivals, the non-Markovianity resonance vs detuning, the QPN bias decomposition vs shots, and the suppression of non-Markovianity by added spin decoherence. Application-agnostic; the binding oracle is the regression test.",
+  "qpn_bias_vs_shots": [
+    {
+      "qpn_bias": 12.02111786430501,
+      "sampling_bias": 0.0,
+      "shots": 50,
+      "total_bias": 12.02111786430501
+    },
+    {
+      "qpn_bias": 5.952700161095882,
+      "sampling_bias": 0.0,
+      "shots": 200,
+      "total_bias": 5.952700161095882
+    },
+    {
+      "qpn_bias": 2.5770235871634357,
+      "sampling_bias": 0.0,
+      "shots": 1000,
+      "total_bias": 2.5770235871634357
+    },
+    {
+      "qpn_bias": 1.074751255456578,
+      "sampling_bias": 0.0,
+      "shots": 5000,
+      "total_bias": 1.074751255456578
+    },
+    {
+      "qpn_bias": 0.25591638344125445,
+      "sampling_bias": 0.0,
+      "shots": 50000,
+      "total_bias": 0.25591638344125445
+    }
+  ],
+  "scenario": "wittemer_2018",
+  "schema_version": 2,
+  "working_point": {
+    "detuning_over_omega": 0.0,
+    "measure": 0.1481015123581002,
+    "trace_distance_min": 0.8332143500453569,
+    "trace_distance_t0": 1.0
+  },
+  "workplan_reference": "WP/WP-04-non-markovianity-spectral-density.md (WI-4, dispatch ND4)"
+}
