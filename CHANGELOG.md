@@ -48,6 +48,15 @@ placeholder-only and did not follow semver.
   `tools/build_tutorial_notebooks.py`, plus a `pytest -m tutorial` CI guard that
   executes each notebook so its inline asserts run.
 
+### Changed
+
+- **Conventions — WP-05 Phase A ratified; `CONVENTION_VERSION` 0.4 → 0.5; new §26 sealed.**
+  `CONVENTIONS.md` gains §26 (non-adiabatic squeezing: time-dependent-frequency
+  generator `H_sq/ℏ = −(i/4)(d ln ω/dt)(â†²−â²)` in a fixed `ω(0)` basis,
+  vacuum-variance-1 quadrature normalisation `x̂=â+â†`, Wigner `g`-pin).
+  `WORKPLAN_v0.3.md` gains §5.8 dispatch-track stub; dispatch family `SQ` minted.
+  No code shipped yet; conventions-before-code gate for SQ1.
+
 ### Fixed
 
 - `load_clos2016_*` raised `FileNotFoundError` on any installed copy (including

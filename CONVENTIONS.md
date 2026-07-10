@@ -2,11 +2,11 @@
 
 **Physical, numerical, and notational conventions for `iontrap-dynamics`**
 
-Version 0.4 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · v0.4 frozen 2026-06-04 · Status: v0.4 Convention amendment (§25 + §5 scope)
+Version 0.5 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · v0.4 frozen 2026-06-04 · v0.5 frozen 2026-07-10 · Status: v0.5 Convention amendment (§26 non-adiabatic squeezing)
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
 **Licence:** CC BY-SA 4.0.
-**Scope:** Conventions covering §1–25. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC); the **v0.4 amendment** adds §25 (reduced light–matter models, dispatches RLA–RLB) and re-scopes §5 (the interaction-picture mandate now names builders derived from an atomic transition, so the pure-motional §23/§24 objects and the Schrödinger-picture §25 models fall outside it). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
+**Scope:** Conventions covering §1–26. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC); the **v0.4 amendment** adds §25 (reduced light–matter models, dispatches RLA–RLB) and re-scopes §5 (the interaction-picture mandate now names builders derived from an atomic transition, so the pure-motional §23/§24 objects and the Schrödinger-picture §25 models fall outside it); the **v0.5 amendment** adds §26 (non-adiabatic squeezing, dispatch SQ1). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
 **Endorsement Marker:** Local candidate framework. No external endorsement implied.
 
 This document is authoritative. Every `IonSystem` records the `CONVENTIONS.md` version it was built against; every `TrajectoryResult` carries that version in its metadata. When code and this document disagree, this document wins and the code is the bug.
@@ -760,9 +760,49 @@ Holds exactly under §3 (`σ_x σ_z σ_x = −σ_z`, `σ_x σ_± σ_x = σ_∓`;
 
 ---
 
+## 26. Non-adiabatic squeezing: time-dependent-frequency generator, quadrature normalisation, Wigner scaling
+
+**Status:** sealed at Dispatch SQ1 (WP-05). Definitions below anchor the behaviour of `nonadiabatic_squeezing_hamiltonian` and the phase-space readout that consumes it (Dispatches SQ1–SQ4). Sealed under the v0.5 convention gate.
+
+Non-adiabatic squeezing objects are **pure-motional** (Schrödinger-picture, mode-only): a single harmonic oscillator whose trap frequency `ω(t)` is varied in time, generating squeezing. Returned as time-dependent Hermitian `H/ℏ` in **rad·s⁻¹** on a single-mode embedding (§2 order), outside the §5 interaction picture (see the §5 scope note).
+
+### 26.1 Time-dependent-frequency squeezing generator
+
+For a mode of instantaneous frequency `ω(t)`, with **time-independent** ladder operators `â, â†` defined at the **initial** frequency `ω_ini = ω(0)` (a **fixed** basis, not the instantaneous one), the generator is (Silveri, Tuorila, Thuneberg, Paraoanu, *Rep. Prog. Phys.* **80**, 056002 (2015)):
+
+    H(t)/ℏ = ω(t)(â†â + ½) − (i/4)·(d ln ω/dt)·(â†² − â²)
+
+- The **squeezing term coefficient is `−(i/4)·d ln ω/dt`** (imaginary; the `i` is mandatory). Because `â†² − â²` is **anti-Hermitian**, `−i(â†² − â²)` **is Hermitian**, so in a time-dependent-list decomposition the Hermitian basis operator is `H_sq = −i(â†² − â²)` carried with the **real** coefficient `¼·d ln ω/dt`: `H(t) = [[H_free = â†â + ½, ω(t)], [H_sq = −i(â†² − â²), ¼·d ln ω/dt]]`.
+- **Fixed `ω(0)` basis.** Operator strings are the lab-fixed ladder operators at `ω(0)`. An instantaneous-basis picture is the user's Bogoliubov transform (the generator sign/coefficient change there); the convention is the **fixed** basis.
+- **Limits (conventions-test gates).** *Sudden* (analytic squeeze kick / narrowing smooth ramp — **not** a literal step, whose `d ln ω/dt` is a δ-function): squeezing `r = ½|ln(ω_f/ω_i)|`. *Adiabatic* (`ω̇/ω² ≪ 1`): `r → 0` **for a cyclic waveform** returning to `ω_ini` (or `r` defined relative to the instantaneous vacuum).
+
+### 26.2 Quadrature normalisation (vacuum variance 1)
+
+Dimensionless quadratures are
+
+    x̂ = â + â†,     p̂ = i(â† − â),
+
+so the **vacuum quadrature variance is 1** and `[x̂, p̂] = 2i`. This is **not** the quantum-optics `x = (a + a†)/√2` convention (vacuum variance ½, `[x, p] = i`); it is fixed here because the downstream squeezing readout (§26.4) depends on it. The single-mode covariance is `V_ij = ½⟨{ΔR_i, ΔR_j}⟩`, `R = (x̂, p̂)`; **vacuum `V = 𝟙₂`**.
+
+### 26.3 Wigner scaling
+
+Any Wigner-function helper pins its scaling to §26.2 so the **vacuum Wigner has variance 1** (consistent with `x̂ = â + â†`). QuTiP's `qutip.wigner(…, g=…)` defaults to `g = √2` (vacuum variance ½); the wrapper sets `g` to the value giving vacuum variance 1 (`g = 1` for `x̂ = â + â†`) and **documents it**. The scaling is part of the sealed convention, not a free display parameter.
+
+### 26.4 Readout functionals are observable-only (no new symbol)
+
+The squeezing/displacement readout derived from the covariance matrix — the symplectic eigenvalue `ν = √(det V)`, the squeezing `r = ¼·ln(λ_max/λ_min)` (eigenvalues of `V`; **not** `tr V`, which conflates squeezing with thermal width), `n̄_sq = sinh²r`, the coherent displacement `α = (⟨x̂⟩ + i⟨p̂⟩)/2` with `|α| = ½√(⟨x̂⟩² + ⟨p̂⟩²)` (§7-consistent), and the direct phonon diagonals `Pₙ = ⟨n|ρ|n⟩` — are **standard derived functionals**, not new convention symbols (the MCF probe-QFI / ND `𝒩`,`ℬ` precedent). They **compose** §26.2 and are shipped compute-only with closed-form oracles; §26 seals only the generator (26.1), the quadrature normalisation (26.2), and the Wigner scaling (26.3).
+
+**Convention.** Non-adiabatic-squeezing builders return time-dependent Hermitian `Qobj` lists per 26.1 (fixed `ω(0)` basis, real `¼·d ln ω/dt` on the Hermitian `−i(â†²−â²)`); quadratures per 26.2 (vacuum variance 1); Wigner scaling per 26.3; readout functionals per 26.4 are observable-only.
+**Cross-refs.** §2 (tensor order), §6 (the squeeze *parameter/ellipse* — a distinct, static object), §7 (displacement `α`), §10 (Lamb–Dicke — an apparatus realisation), §23/§24 (other pure-motional physics-layer conventions; the §5-exemption precedent), §25 §5-scope note (why pure-motional objects are exempt from the interaction-picture default), **§27** (the multimode Gaussian ordering / `Ω` / partial-transpose extension — reserved for the Gaussian-toolbox card, **not** claimed here).
+**Test.** `tests/conventions/test_squeezing_conventions.py` — sudden-quench `r = ½|ln(ω_f/ω_i)|`; cyclic-adiabatic `r → 0`; vacuum `V = 𝟙`; squeezed-vacuum principal variances `e^{∓2r}`; thermal-squeezed `r` invariant under `n̄_th` (the covariance-eigenvalue vs `tr V` regression); `FrequencyWaveform` rejects non-positive/non-finite `ω` and non-finite `d ln ω/dt`.
+
+**§26 freeze.** Sections 26.1–26.4 received a complete read-through for the v0.5 convention gate. Post-v0.5 additions require a further version bump.
+
+---
+
 ## Endorsement Marker
 
-**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §19–22 (estimation / Darwinism: Fisher information, redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24 (two-mode squeezing / SU(1,1); motional CPTP channels) are closed under the v0.3 Convention Freeze; §25 (reduced light–matter models) is added under the **v0.4 amendment** (2026-06-04, dispatches RLA–RLB), which also re-scopes §5 (the only change to a §1–16 section); §1–16 otherwise carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
+**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §19–22 (estimation / Darwinism: Fisher information, redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24 (two-mode squeezing / SU(1,1); motional CPTP channels) are closed under the v0.3 Convention Freeze; §25 (reduced light–matter models) is added under the **v0.4 amendment** (2026-06-04, dispatches RLA–RLB), which also re-scopes §5 (the only change to a §1–16 section); §26 (non-adiabatic squeezing) is added under the **v0.5 amendment** (2026-07-10, dispatch SQ1); §1–16 otherwise carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
 
-**Convention version:** 0.4 · 2026-06-04 · v0.4 amendment (§25 reduced light–matter models + §5 scope note).
-**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional); WP-03 reduced-models track to land as the next §5.x stub.
+**Convention version:** 0.5 · 2026-07-10 · v0.5 amendment (§26 non-adiabatic squeezing).
+**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional), §5.6 (reduced light–matter models), §5.7 (non-Markovianity), §5.8 (non-adiabatic squeezing).
