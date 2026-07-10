@@ -89,6 +89,8 @@ nav:
       - "16. Two-mode SU(1,1) squeezing": tutorials/16_two_mode_squeezing.md
       - "17. Motional decoherence and the Lamb–Dicke regime": tutorials/17_motional_decoherence_and_lamb_dicke.md
       - "18. Reduced models vs full dynamics": tutorials/18_reduced_models_vs_full_dynamics.md
+      - "19. Squeezing by quenching the trap frequency": tutorials/19_squeezing_by_quenching.md
+      - "20. Phonon-pair creation and readout": tutorials/20_phonon_pair_creation.md
   - Boundary Decision Tree: boundary-decision-tree.md
 
 extra_css:
