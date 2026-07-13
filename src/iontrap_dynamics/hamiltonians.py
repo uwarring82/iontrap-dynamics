@@ -89,6 +89,7 @@ from .drives import DriveConfig
 from .exceptions import ConventionError
 from .hilbert import HilbertSpace
 from .operators import sigma_minus_ion, sigma_plus_ion, sigma_x_ion, sigma_y_ion
+from .waveforms import FrequencyWaveform
 
 if TYPE_CHECKING:
     # ``TimeQArray`` is only importable with the [jax] extras. The β.4
@@ -1701,6 +1702,117 @@ def beamsplitter_hamiltonian(
     return coupling * (phase_factor * hop + phase_factor.conjugate() * hop.dag())
 
 
+def nonadiabatic_squeezing_hamiltonian(
+    hilbert: HilbertSpace,
+    mode_label: str,
+    waveform: FrequencyWaveform,
+    *,
+    validate_at: tuple[float, ...] = (0.0,),
+    backend: str = "qutip",
+) -> list[object] | TimeQArray:
+    r"""Return the non-adiabatic time-dependent-frequency squeezing Hamiltonian.
+
+    CONVENTIONS.md §26.1 — a single mode whose trap frequency :math:`\omega(t)`
+    is varied in time, in the **fixed** :math:`\omega(0)` operator basis:
+
+    .. math::
+        H(t)/\hbar = \omega(t)\,(\hat a^\dagger \hat a + \tfrac12)
+                     - \frac{i}{4}\,\frac{d\ln\omega}{dt}\,
+                       (\hat a^{\dagger 2} - \hat a^2).
+
+    Because :math:`\hat a^{\dagger 2} - \hat a^2` is anti-Hermitian,
+    :math:`-i(\hat a^{\dagger 2} - \hat a^2)` is **Hermitian**, so the builder
+    emits the time-dependent-list form
+    ``[[â†â + ½, ω(t)], [−i(â†²−â²), ¼·d ln ω/dt]]`` — both pieces Hermitian with
+    **real** coefficients — ready for
+    :func:`iontrap_dynamics.sequences.solve` (or, with ``backend="jax"``, a
+    Dynamiqs :class:`TimeQArray`).
+
+    The generator is **pure-motional** (§26): it acts on ``mode_label`` only and
+    is the identity on every spin, outside the §5 interaction picture. The
+    squeezing readout that consumes the evolved state lives in
+    :mod:`iontrap_dynamics.gaussian` (§26.4, observable-only).
+
+    Parameters
+    ----------
+    hilbert
+        The full tensor-product Hilbert space; must contain ``mode_label``.
+    mode_label
+        The motional mode whose frequency is modulated.
+    waveform
+        A :class:`~iontrap_dynamics.waveforms.FrequencyWaveform` supplying both
+        ``ω(t)`` and the **analytic** ``d ln ω/dt`` (+ JAX mirrors for
+        ``backend="jax"``). A bare callable is deliberately **not** accepted —
+        the coefficient is the analytic log-derivative and must not be obtained
+        by runtime numerical differentiation (WP-05 R5).
+    validate_at
+        Sample times (SI seconds) at which the waveform is spot-checked (finite,
+        strictly-positive ``ω``; finite ``d ln ω/dt``) at build time. Defaults to
+        ``(0.0,)``; pass the solver ``times`` (or a subsample) for a stronger
+        check across the actual evaluation grid.
+    backend
+        ``"qutip"`` (default) → QuTiP time-dependent list; ``"jax"`` → Dynamiqs
+        :class:`TimeQArray` (requires the ``[jax]`` extras and the waveform's
+        JAX mirrors).
+
+    Returns
+    -------
+    list[object] | TimeQArray
+        Time-dependent ``H/ℏ`` in rad·s⁻¹ on :meth:`HilbertSpace.qutip_dims`.
+
+    Raises
+    ------
+    ConventionError
+        If ``backend`` is unknown; if ``backend="jax"`` but the waveform lacks
+        JAX mirrors; or (via :meth:`FrequencyWaveform.validate_at`) if ``ω`` is
+        non-positive/non-finite or ``d ln ω/dt`` is non-finite at a sample time.
+    BackendError
+        If ``backend="jax"`` but the ``[jax]`` optional dependencies are missing.
+    """
+    if backend not in {"qutip", "jax"}:
+        raise ConventionError(
+            f"nonadiabatic_squeezing_hamiltonian(backend={backend!r}): unknown "
+            "backend; expected one of ['qutip', 'jax']."
+        )
+
+    waveform.validate_at(validate_at)
+
+    a = hilbert.annihilation_for_mode(mode_label)
+    a_dag = hilbert.creation_for_mode(mode_label)
+    h_free = hilbert.number_for_mode(mode_label) + 0.5 * hilbert.identity()
+    h_sq = -1j * (a_dag * a_dag - a * a)  # −i(â†²−â²), Hermitian
+
+    if backend == "jax":
+        if waveform.omega_jax is None or waveform.d_ln_omega_dt_jax is None:
+            raise ConventionError(
+                "nonadiabatic_squeezing_hamiltonian(backend='jax') requires the "
+                "FrequencyWaveform to carry omega_jax and d_ln_omega_dt_jax — "
+                "JAX-traceable mirrors of omega and d_ln_omega_dt. The named-shape "
+                "factories (gaussian_quench / sinusoidal_modulation / smooth_ramp) "
+                "supply them automatically when the [jax] extras are installed."
+            )
+        from .backends.jax._core import _require_jax
+
+        _require_jax()
+        import dynamiqs as dq
+
+        omega_jax = waveform.omega_jax
+        d_ln_jax = waveform.d_ln_omega_dt_jax
+
+        def _sq_coeff_jax(t: float) -> object:
+            return 0.25 * d_ln_jax(t)
+
+        return dq.modulated(omega_jax, h_free) + dq.modulated(_sq_coeff_jax, h_sq)
+
+    def _omega_coeff(t: float, args: Any) -> float:
+        return float(waveform.omega(t))
+
+    def _sq_coeff(t: float, args: Any) -> float:
+        return 0.25 * float(waveform.d_ln_omega_dt(t))
+
+    return [[h_free, _omega_coeff], [h_sq, _sq_coeff]]
+
+
 __all__ = [
     "beamsplitter_hamiltonian",
     "blue_sideband_hamiltonian",
@@ -1712,6 +1824,7 @@ __all__ = [
     "detuned_red_sideband_hamiltonian",
     "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",
+    "nonadiabatic_squeezing_hamiltonian",
     "red_sideband_hamiltonian",
     "two_ion_blue_sideband_hamiltonian",
     "two_ion_red_sideband_hamiltonian",

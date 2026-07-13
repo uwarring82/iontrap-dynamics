@@ -798,11 +798,39 @@ def coherent_state_mean_n(alpha: complex) -> float:
     return float(abs(alpha) ** 2)
 
 
+def adiabaticity_parameter(omega_rad_s: float, omega_dot_rad_s2: float) -> float:
+    r"""Return the non-adiabaticity figure of merit ``ω̇ / ω²`` (dimensionless).
+
+    CONVENTIONS.md §26.1 / Wittemer 2020. The dynamics is **adiabatic** when
+    ``|ω̇/ω²| ≪ 1`` (the state tracks the instantaneous ground state) and
+    **non-adiabatic** (squeezing-generating) when ``|ω̇/ω²| ≳ 1``; the 2020
+    single-ion quench reaches ``ω̇/ω² ≈ 5``.
+
+    Parameters
+    ----------
+    omega_rad_s
+        Instantaneous mode frequency ``ω`` (rad·s⁻¹); must be non-zero.
+    omega_dot_rad_s2
+        Its time derivative ``ω̇`` (rad·s⁻²). For a
+        :class:`~iontrap_dynamics.waveforms.FrequencyWaveform` at time ``t``,
+        ``ω̇ = ω(t)·(d ln ω/dt)(t)``.
+
+    Returns
+    -------
+    float
+        ``ω̇ / ω²``.
+    """
+    if omega_rad_s == 0.0:
+        raise ValueError("adiabaticity_parameter: omega_rad_s must be non-zero.")
+    return float(omega_dot_rad_s2 / (omega_rad_s * omega_rad_s))
+
+
 __all__ = [
     "HBAR",
     "LAMB_DICKE_DEEP_MAX",
     "LAMB_DICKE_INTERMEDIATE_MAX",
     "LambDickeRegime",
+    "adiabaticity_parameter",
     "blue_sideband_rabi_frequency",
     "blue_sideband_rabi_frequency_full_ld",
     "carrier_rabi_excited_population",

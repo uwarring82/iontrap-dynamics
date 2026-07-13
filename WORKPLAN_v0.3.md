@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3.9 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional · §5.6 reduced light–matter models · **§5.7 non-Markovianity & spectral density**) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 reduced models seal CONVENTIONS §25 + §5 scope and bump `CONVENTION_VERSION` 0.3 → 0.4 (§5.6), staged for `v0.6.0`**; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
+Version 0.3.10 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional · §5.6 reduced light–matter models · §5.7 non-Markovianity & spectral density · **§5.8 non-adiabatic squeezing**) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 reduced models seal CONVENTIONS §25 + §5 scope and bump `CONVENTION_VERSION` 0.3 → 0.4 (§5.6), staged for `v0.6.0`**; **WP-05 non-adiabatic squeezing seals CONVENTIONS §26 + `CONVENTION_VERSION` 0.4 → 0.5 (§5.8), 2026-07-10**; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -576,6 +576,56 @@ lands additively toward a future minor release. The `v0.6.0` release act (§5.6)
 
 ---
 
+### 5.8 — Non-adiabatic squeezing dynamics as v0.3.x follow-up (2026-07-10) *(Coastline, new in v0.3.10)*
+
+Added as the non-adiabatic-squeezing service surface (card: a centred time-dependent-frequency
+squeezing Hamiltonian — `ω(t)` quench + parametric modulation — a phase-space / Gaussian readout
+(quadratures, covariance, Wigner, `r`, `ν`, `α`, direct `Pₙ`), a compute-only Wittemer-2020
+single-ion reproduction benchmark, and two tutorials; the forced-displacement + echo extension an
+optional Phase-A tail, the two-ion entanglement / Hawking analog (Phase B) held out of scope).
+Proposed for ratification and execution via `WP/WP-05-nonadiabatic-squeezing.md`; dispatch family `SQ`.
+
+**Scope.** Phase A splits into A1 (centred quadratic `ω(t)` squeezing Hamiltonian), A2
+(observable-only phase-space / Gaussian readout), A3 (optional forced-displacement + echo), across
+WIs SQ1–SQ7:
+- `hamiltonians.py` `nonadiabatic_squeezing_hamiltonian` + `waveforms.py` `FrequencyWaveform` +
+  `analytic.py` `ω̇/ω²` diagnostic — Dispatch **SQ1** (A1);
+- `gaussian.py` `N=1` covariance/symplectic core + `phase_space.py` Wigner/readout façades
+  (quadratures, covariance `V`, `ν`, `r`, `n̄_sq`, `α`, Wigner `g`-pin, direct `Pₙ`) — Dispatches
+  **SQ2–SQ4** (A2);
+- a compute-only benchmark reproducing Wittemer et al., Phil. Trans. R. Soc. A 378, 20190230 (2020),
+  single-ion Fig 2/3 (parametric `sinh²(2π g T_mod)` arm displacement-free; quench arm) — Dispatch
+  **SQ5**;
+- forced-displacement `f(t)(â+â†)` + echo (`δp`) — Dispatch **SQ6** (A3, **optional tail**; A1 is
+  parity-preserving and cannot produce the displacement);
+- Tutorials A & B — Dispatch **SQ7**.
+
+**Convention bump.** Unlike §5.7 (observable-only, no bump), A1 **seals a new CONVENTIONS §26** —
+the time-dependent-frequency squeezing generator `H_sq/ℏ = −(i/4)(d ln ω/dt)(â†²−â²)` (fixed `ω(0)`
+basis, Hermitian time-list basis `−i(â†²−â²)` with real coefficient `¼·d ln ω/dt`; Silveri 2015),
+the vacuum-variance-1 quadrature normalisation (`x̂ = â+â†`), and the Wigner `g`-pin — **bumping
+`CONVENTION_VERSION` 0.4 → 0.5** via the side-car `WP/SQ-conventions-proposal.md` (propose-don't-apply;
+maintainer seals after a green `tests/conventions/test_squeezing_conventions.py`; frozen §6/§7
+untouched). The readout functionals (`ν`, `r`, `n̄_sq`, `α`, direct `Pₙ`) stay observable-only
+(§26.4; the MCF/ND precedent).
+
+**Section numbering.** §26 is pure-motional and additive (the §23/§24 pattern), outside the §5
+interaction-picture mandate by construction — **no frozen-§5 edit**. It **supersedes** the §5.7
+non-binding forward-guess that "likely §26" would serve the deferred (WP-less) non-Markovianity
+Phase B `J(ω)` (there explicitly "not pre-claimed"): WP-05 is the first to actively seal, so it
+takes §26; the Gaussian-toolbox card (`TC-gaussian-entanglement-toolbox.md`) holds **§27**; a future
+non-Markovianity Phase B convention takes the next free section (§28+).
+
+**Seal posture.** Ratified / sealed 2026-07-10; no dispatch landed yet. The `SQ`
+dispatch family is collision-clear under the pre-ratification `\bSQ[0-9]+\b` grep (zero
+pre-existing dispatch-ID hits before adding this §5.8 stub) and is recorded in `WP/LOGBOOK.md` at
+ratification.
+
+**Consequence for §5 above.** No re-scoping of Phase 2's target or of the WP-02/WP-03/WP-04
+surfaces; lands additively toward a future minor release.
+
+---
+
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
 
 **Deliverable:** repository skeleton with conventions, regression harness, canonical result schema, corporate-design bootstrap, one end-to-end example.
@@ -847,4 +897,4 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Convention version:** references `CONVENTIONS.md` **v0.4** (the v0.2 freeze 2026-04-21 closed §17 measurement layer and §18 systematics layer; the **v0.3 freeze 2026-06-03** closes §19–22 estimation/Darwinism and §23–24 two-mode/motional, per §5.4/§5.5; **WP-03 seals §25 reduced light–matter models + the §5 scope note 2026-06-04, bumping `CONVENTION_VERSION` 0.3 → 0.4 per §5.6**; §1–16 carry through unchanged from the v0.1 draft).
 **Corporate design version:** `cd-v1.7.1` (decision D2 closed 2026-04-23). Upstream `threehouse-plus-ec/cd-rules` cut `cd-v1.7.0` (at commit `8671c933`) and `cd-v1.7.1` (at commit `ee01c803`) on 2026-04-23, executing the "Tag repo" step of the upstream §15.4 deprecation protocol retroactively against the Version History entries in `blueprint-threehouse-CD.md` §16. `assets/SOURCE.md` now pins to `cd-v1.7.1`; the checksum table carries over unchanged from the provisional pin because the six asset files are byte-identical between 1.7.0 and 1.7.1. The CI hash-drift check (`cd-local-integrity`) is a permanent gate. References to `cd-v1.7.0` elsewhere in this document predate the tag-cutting action and remain the literal target-version language of the plan; the operational pin is one minor version ahead.
-**Workplan version:** 0.3.9 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03, §5.6 reduced light–matter models 2026-06-04, **§5.7 non-Markovianity & spectral density 2026-06-17**) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 seals §25 + §5 scope, bumping `CONVENTION_VERSION` 0.3 → 0.4, staged for `v0.6.0` (§5.6)**; Phase 2 JAX-backend time-independent surface and tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
+**Workplan version:** 0.3.10 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03, §5.6 reduced light–matter models 2026-06-04, §5.7 non-Markovianity & spectral density 2026-06-17, **§5.8 non-adiabatic squeezing 2026-07-10**) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 seals §25 + §5 scope, bumping `CONVENTION_VERSION` 0.3 → 0.4, staged for `v0.6.0` (§5.6)**; **WP-05 seals §26 + `CONVENTION_VERSION` 0.4 → 0.5 (§5.8), 2026-07-10**; Phase 2 JAX-backend time-independent surface and tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
