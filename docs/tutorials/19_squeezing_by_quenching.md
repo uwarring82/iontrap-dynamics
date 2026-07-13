@@ -6,15 +6,16 @@
 in time — no laser, just a fast change of the confinement. By the end you will
 have built the time-dependent-frequency squeezing Hamiltonian, read the squeezing
 back from the phase-space **covariance matrix**, seen the **sudden vs adiabatic**
-crossover, watched the Wigner ellipse squeeze, and grown squeezing linearly by
-**parametric modulation**. This reproduces the single-ion physics of Wittemer et
-al., *Phil. Trans. R. Soc. A* **378**, 20190230 (2020).
+crossover, watched the Wigner ellipse squeeze, grown squeezing linearly by
+**parametric modulation**, and **optimised a single down/up pulse** for maximal
+squeezing. This reproduces the single-ion physics of Wittemer et al., *Phil.
+Trans. R. Soc. A* **378**, 20190230 (2020).
 
 **Reference implementation.** `tools/run_benchmark_nonadiabatic_squeezing.py`,
 with the committed plot under
 [`benchmarks/data/nonadiabatic_squeezing/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data/nonadiabatic_squeezing).
 
-**Expected time.** ~14 min reading; ~3 s runtime.
+**Expected time.** ~16 min reading; ~4 s runtime.
 
 **Prerequisites.** [Tutorial 9](09_squeezed_coherent_prep.md) (single-mode
 squeezed-state factory) and [Tutorial 6](06_fock_truncation.md) (Fock-truncation
@@ -286,12 +287,69 @@ ax.legend()
 fig.tight_layout()
 ```
 
+## Step 6 — Optimise a single pulse: the hold knob
+
+Step 3 ramped `ω` down and back up **slowly** and got `r → 0`. But a down/up
+**pulse** with *fast* ramps is a different animal: the down-ramp and the up-ramp
+each deliver a sudden squeeze kick, and whether they **add or cancel** depends on
+the phase the state accumulates during the hold in between (`∫ω dt`). At zero hold
+the two ramps coincide — no net frequency excursion, no squeezing. Open the hold
+and the two kicks interfere: constructively when the phase accumulated during the
+hold reaches `∫ω dt = π/2` — which, because the hold sits at `ω_min = ½ω_i`, lands
+at **half a trap period** — where the squeezing reaches ≈ **twice** a one-way ramp
+of the same depth. Scanning the hold to find that maximum reproduces the `δτ` half
+of the paper's joint *"iteratively adjust δτ and Δω to find maximal |r|"*
+optimisation (the depth `Δω` is fixed here; it could be a second scan axis). We
+drive it with the named [`down_up_pulse`](https://github.com/uwarring82/iontrap-dynamics/blob/main/src/iontrap_dynamics/waveforms.py)
+shape (`ω_ini → ω_min → ω_ini`, carrying its analytic `d ln ω/dt`).
+
+```python
+ramp = 0.02 * period  # fast ramps → each transition is a sudden squeeze kick
+holds = np.linspace(0.0, 1.0, 11) * period
+r_of_hold = []
+for hold in holds:
+    center = 10.0 * ramp + 0.5 * hold
+    pulse = waveforms.down_up_pulse(
+        omega_ini=TWOPI * w_i, omega_min=0.5 * TWOPI * w_i,  # same depth as the one-way ramp
+        ramp_width_s=ramp, hold_s=float(hold), center_s=center,
+    )
+    tmax = center + 0.5 * hold + 15.0 * ramp
+    hil = single_mode(40, w_i)
+    st = gaussian.reduced_single_mode(evolve(hil, pulse, tmax, 1500).states[-1], hil, "m")
+    r_of_hold.append(gaussian.squeezing_parameter(gaussian.covariance_matrix(st)[0]))
+r_of_hold = np.array(r_of_hold)
+best = int(np.argmax(r_of_hold))
+print("hold/T :", np.round(holds / period, 2))
+print("r      :", np.round(r_of_hold, 4))
+print(f"optimum: r = {r_of_hold[best]:.4f} at hold = {holds[best] / period:.2f}·T "
+      f"= {r_of_hold[best] / r_oracle:.2f}× the one-way ramp")
+
+# Zero hold cancels (r → 0); the constructive optimum near ½ trap period ≈ doubles
+# a one-way ramp of the same depth.
+assert r_of_hold[0] < 1e-2
+assert abs(best - 5) <= 1  # optimum at the hold = 0.5·T grid point (± one grid step)
+assert r_of_hold[best] > 1.5 * r_oracle
+assert abs(r_of_hold[best] - 2.0 * r_oracle) < 0.15 * (2.0 * r_oracle)
+
+fig, ax = plt.subplots(figsize=(6.5, 4.0))
+ax.plot(holds / period, r_of_hold, "o-", color=BLUE, label="down/up pulse")
+ax.axhline(r_oracle, color=RED, ls="--", label=r"one-way ramp $\frac{1}{2}|\ln(\omega_f/\omega_i)|$")
+ax.axhline(2.0 * r_oracle, color=GREEN, ls=":", label="2× one-way")
+ax.set_xlabel("hold time / trap period")
+ax.set_ylabel("squeezing r")
+ax.set_title("single-pulse optimisation: r oscillates with the hold")
+ax.legend()
+fig.tight_layout()
+```
+
 ## What you built
 
 You generated squeezing with nothing but a time-dependent trap frequency, read it
 back from the covariance matrix (the eigenvalue-ratio `r`, the purity `ν`, the
 occupation `n̄_sq`), checked the sudden kick and cyclic adiabatic limits, visualised
-the squeezed Wigner ellipse on the vacuum-variance-1 grid, and grew squeezing
-linearly by parametric modulation. [Tutorial 20](20_phonon_pair_creation.md) reads the same
-states out as a **phonon-number distribution** and shows the even-only
-phonon-**pair** signature.
+the squeezed Wigner ellipse on the vacuum-variance-1 grid, grew squeezing
+linearly by parametric modulation, and optimised a single down/up pulse — whose
+squeezing oscillates with the hold time and peaks at ≈ twice a one-way ramp.
+[Tutorial 20](20_phonon_pair_creation.md) reads the same states out as a
+**phonon-number distribution**, shows the even-only phonon-**pair** signature, and
+removes a parasitic displacement with a **purifying echo**.

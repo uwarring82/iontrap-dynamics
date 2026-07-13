@@ -5,16 +5,17 @@
 **Goal.** Read a squeezed motional state out as a **phonon-number distribution**
 `Pₙ` and see the fingerprint of squeezing: population in **even `n` only** — phonons
 are created in **pairs**. By the end you will have compared the numerical `Pₙ`
-against its analytic closed form, grown the pairs by parametric modulation, and met
-the parity-aware Fock-truncation guard that keeps the readout honest. This is the
-single-ion readout physics of Wittemer et al., *Phil. Trans. R. Soc. A* **378**,
-20190230 (2020), whose two-ion version is an analogue of cosmological particle
-creation.
+against its analytic closed form, grown the pairs by parametric modulation, met the
+parity-aware Fock-truncation guard that keeps the readout honest, and seen how a
+parasitic **displacement** spoils the even-only signature — then removed it with a
+**purifying echo**. This is the single-ion readout physics of Wittemer et al.,
+*Phil. Trans. R. Soc. A* **378**, 20190230 (2020), whose two-ion version is an
+analogue of cosmological particle creation.
 
 **Reference implementation.** `tools/run_benchmark_nonadiabatic_squeezing.py`
 ([`benchmarks/data/nonadiabatic_squeezing/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data/nonadiabatic_squeezing)).
 
-**Expected time.** ~11 min reading; ~2 s runtime.
+**Expected time.** ~13 min reading; ~2 s runtime.
 
 **Prerequisites.** [Tutorial 19](19_squeezing_by_quenching.md) (the `ω(t)`
 squeezing engine and the covariance readout). CONVENTIONS.md **§26.4** (the
@@ -44,7 +45,10 @@ import qutip
 
 from iontrap_dynamics import gaussian, waveforms
 from iontrap_dynamics.exceptions import ConvergenceError
-from iontrap_dynamics.hamiltonians import nonadiabatic_squeezing_hamiltonian
+from iontrap_dynamics.hamiltonians import (
+    displacement_force_hamiltonian,
+    nonadiabatic_squeezing_hamiltonian,
+)
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.results import StorageMode
@@ -193,7 +197,96 @@ assert p_tail[0] > 10 * EPS
 assert p_tail[-1] < EPS / 10
 ```
 
-## Step 4 — The bigger picture: pairs out of the vacuum
+## Step 4 — The parasitic displacement and the purifying echo
+
+The even-only comb assumes a perfectly **centred** quench (`⟨â⟩ = 0`, parity
+preserved). A real pulse is never perfectly symmetric about the RF null: it also
+imparts a small **linear force** `f(t)` on the ion,
+`H_force/ℏ = f(t)·x̂` — the §26.4/§7 displacement term
+([`displacement_force_hamiltonian`](https://github.com/uwarring82/iontrap-dynamics/blob/main/src/iontrap_dynamics/hamiltonians.py)).
+Unlike the squeezing generator, a force **displaces** the state (`dα/dt = −i f`),
+and a displacement **populates the odd `n`** — spoiling the even-only pair
+signature. The fix is a **purifying echo**: fire the quench *twice*, separated by a
+free evolution `t_free`. Under free evolution the displacement returns to itself
+only after a full trap period `T`, while the squeezing ellipse — being
+`π`-symmetric — returns after `T/2`. So near `t_free ≈ ½T` the displacement has
+flipped sign (cancelling on the second pulse) while the ellipse is back to itself
+(the squeezes **add**) — the parasitic displacement is suppressed by
+`δp = n_dsp⁽¹⁾/n_dsp⁽²⁾ ≫ 1` and the even-only comb is restored. (The full `t_free` scan is
+[`tools/run_benchmark_squeezing_echo.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/run_benchmark_squeezing_echo.py).)
+
+```python
+period = 1.0 / w_ini
+amp, width, force_amp = -0.4, 0.02 / w_ini, 2.0e7  # a down-quench with a parasitic force
+c1 = 20.0 * width
+
+
+def run_pulse(centers, tmax):
+    """Evolve one or two Gaussian down-quench pulses, each carrying the linear force."""
+    def bump(t):
+        return sum(np.exp(-0.5 * ((t - c) / width) ** 2) for c in centers)
+
+    def bump_prime(t):
+        return sum(-(t - c) / width**2 * np.exp(-0.5 * ((t - c) / width) ** 2) for c in centers)
+
+    wave = waveforms.FrequencyWaveform(
+        omega=lambda t: TWOPI * w_ini * (1.0 + amp * bump(t)),
+        d_ln_omega_dt=lambda t: amp * bump_prime(t) / (1.0 + amp * bump(t)),
+    )
+    hil = single_mode(fock=40, freq_hz=w_ini)
+    ham = nonadiabatic_squeezing_hamiltonian(
+        hil, "m", wave, validate_at=(0.0, tmax)
+    ) + displacement_force_hamiltonian(hil, "m", lambda t: force_amp * bump(t))
+    psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(40, 0))
+    res = solve(hilbert=hil, hamiltonian=ham, initial_state=psi0,
+                times=np.linspace(0.0, tmax, 1500), storage_mode=StorageMode.EAGER)
+    return gaussian.reduced_single_mode(res.states[-1], hil, "m")
+
+
+one = run_pulse([c1], c1 + 20.0 * width)
+read_one = gaussian.gaussian_readout(one)
+p_one = gaussian.phonon_number_distribution(one)
+n_dsp_one = abs(read_one.coherent_amplitude) ** 2
+print(f"one pulse: |α| = {abs(read_one.coherent_amplitude):.3f}  r = {read_one.squeezing_parameter:.3f}"
+      f"  odd-n weight = {p_one[1::2].sum():.3f}")
+
+t_free = np.linspace(0.50, 0.56, 5) * period
+echo_states = [run_pulse([c1, c1 + tf], c1 + tf + 20.0 * width) for tf in t_free]
+delta_p = np.array([n_dsp_one / abs(gaussian.gaussian_readout(s).coherent_amplitude) ** 2
+                    for s in echo_states])
+best = int(np.argmax(delta_p))
+read_echo = gaussian.gaussian_readout(echo_states[best])
+p_echo = gaussian.phonon_number_distribution(echo_states[best])
+print(f"echo:      t_free = {t_free[best] / period:.3f}·T  δp = {delta_p[best]:.0f}"
+      f"  |α| = {abs(read_echo.coherent_amplitude):.3f}  r = {read_echo.squeezing_parameter:.3f}"
+      f"  odd-n weight = {p_echo[1::2].sum():.2e}")
+
+# The force lifts the parity (odd n populated); the echo removes the displacement
+# (δp ≫ 1) while the squeezing *adds* — so the even-only comb is restored.
+assert p_one[1::2].sum() > 1e-2
+assert delta_p[best] > 20.0
+assert abs(read_echo.coherent_amplitude) < abs(read_one.coherent_amplitude)
+assert read_echo.squeezing_parameter > read_one.squeezing_parameter
+assert p_echo[1::2].sum() < 5e-3
+
+fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10.0, 4.0))
+n = np.arange(13)
+ax0.bar(n - 0.18, p_one[:13], width=0.36, color=RED, label=f"1 pulse (odd-n = {p_one[1::2].sum():.2f})")
+ax0.bar(n + 0.18, p_echo[:13], width=0.36, color=BLUE, label="echo (even-only restored)")
+ax0.set_xlabel("phonon number $n$")
+ax0.set_ylabel(r"$P_n$")
+ax0.set_title("the echo restores the even-only comb")
+ax0.legend(fontsize=8)
+ax1.semilogy(t_free / period, delta_p, "o-", color=GREEN)
+ax1.axhline(1.0, color="#444444", ls=":", label="no suppression")
+ax1.set_xlabel("free evolution / trap period")
+ax1.set_ylabel(r"$\delta_p = n_{dsp}^{(1)}/n_{dsp}^{(2)}$")
+ax1.set_title("displacement cancels near ½ trap period")
+ax1.legend(fontsize=8)
+fig.tight_layout()
+```
+
+## Step 5 — The bigger picture: pairs out of the vacuum
 
 The even-only distribution you just measured is not a curiosity. In Wittemer 2020 a
 **single** ion demonstrates the mechanism; in Wittemer 2019 (*PRL* **123**, 180502)
@@ -211,8 +304,10 @@ foundation.
 
 You read squeezing out as a phonon-number distribution and saw the even-only
 phonon-**pair** signature, matched it to the analytic closed form, grew the pairs
-dynamically with parametric modulation, and let the parity-aware truncation guard
-protect you from a silently-biased readout. Together with
+dynamically with parametric modulation, let the parity-aware truncation guard
+protect you from a silently-biased readout, and watched a parasitic displacement
+lift the parity — then removed it with a two-pulse purifying echo that suppresses
+the displacement while amplifying the squeezing. Together with
 [Tutorial 19](19_squeezing_by_quenching.md) you now have the full single-ion
-non-adiabatic-squeezing toolkit — engine, phase-space readout, and number-basis
-readout.
+non-adiabatic-squeezing toolkit — engine, single-pulse optimisation, phase-space
+readout, number-basis readout, and displacement purification.

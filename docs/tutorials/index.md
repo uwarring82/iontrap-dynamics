@@ -216,16 +216,20 @@ cover the same ground for users who prefer reading code to prose.
   (CONVENTIONS §26): builds `nonadiabatic_squeezing_hamiltonian` from a
   `FrequencyWaveform`, reads squeezing back from the covariance matrix
   (`gaussian.squeezing_parameter` — the eigenvalue ratio `r = ¼ln(λ_max/λ_min)`, the
-  purity `ν`, `n̄_sq`), checks the sudden kick and cyclic adiabatic limits, and
-  shows the Wigner ellipse on the vacuum-variance-1 grid (`phase_space.wigner`, `g = 1`). Embeds
+  purity `ν`, `n̄_sq`), checks the sudden kick and cyclic adiabatic limits, shows
+  the Wigner ellipse on the vacuum-variance-1 grid (`phase_space.wigner`, `g = 1`),
+  and optimises a single down/up pulse (`down_up_pulse`) whose squeezing oscillates
+  with the hold time and peaks at ≈ twice a one-way ramp. Embeds
   `nonadiabatic_squeezing`.
 - [**Tutorial 20 — Phonon-pair creation and readout**](20_phonon_pair_creation.md).
   Reads a squeezed state out as a phonon-number distribution
   (`phonon_number_distribution`) and shows the even-`n`-only pair signature against
   the analytic `pure_squeezed_vacuum_pn`, grows the pairs by parametric modulation,
   and exercises the parity-aware Fock-truncation guard (`check_fock_truncation`,
-  §13/§15) that keeps the readout honest. Sketches the two-ion cosmology / Hawking
-  analogue as an outlook.
+  §13/§15) that keeps the readout honest. Shows how a parasitic displacement
+  (`displacement_force_hamiltonian`) lifts the parity and how a two-pulse purifying
+  echo removes it while amplifying the squeezing. Sketches the two-ion cosmology /
+  Hawking analogue as an outlook.
 
 ## Scope and licensing
 
