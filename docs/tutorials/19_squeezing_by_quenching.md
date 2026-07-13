@@ -22,6 +22,24 @@ squeezed-state factory) and [Tutorial 6](06_fock_truncation.md) (Fock-truncation
 diagnosis). CONVENTIONS.md **§26** fixes the squeezing generator, the
 vacuum-variance-1 quadrature normalisation, and the Wigner scaling used here.
 
+!!! note "New here? Read this first"
+    - A **motional mode** is just a quantum harmonic oscillator — the ion sloshing back and forth in its trap.
+    - `fock=40` keeps phonon states `|0⟩ … |39⟩`: the truncated ladder we actually compute on.
+    - `ω(t)` is the **trap frequency**, the one knob we vary in time.
+    - Changing `ω(t)` **quickly** creates **squeezing**; changing it slowly and steadily (adiabatically) does not.
+    - `r` measures **how squeezed** the state is (`r = 0` → not squeezed at all); `ν ≈ 1` means it is still **pure** (no heating).
+    - **In a hurry?** Run Steps 1, 2, and 5 for the core story; the rest cover the sudden/adiabatic limits, the Wigner picture, and single-pulse optimisation.
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|---|---|
+| `ω(t)` | trap frequency — the control knob |
+| `r` | squeezing strength (`r = 0` → none) |
+| `ν` | symplectic eigenvalue (`ν = 1` → pure, `ν > 1` → mixed) |
+| `n̄_sq` | mean phonons created by squeezing (`= sinh²r`) |
+| `α` | coherent displacement — the state's centre (`0` here) |
+
 ---
 
 ## The scenario
@@ -67,6 +85,8 @@ BLUE, RED, GREEN, GREY = "#1f77b4", "#d62728", "#2ca02c", "#444444"
 TWOPI = 2.0 * np.pi
 
 
+# Boilerplate: build a one-ion, one-mode Hilbert space. The spin is an inert
+# spectator here — all the physics lives in the motional mode.
 def single_mode(fock, freq_hz=2.0e6):
     mode = ModeConfig(
         label="m",
@@ -77,6 +97,7 @@ def single_mode(fock, freq_hz=2.0e6):
     return HilbertSpace(system=system, fock_truncations={"m": fock})
 
 
+# The one function to focus on: waveform → Hamiltonian → solve → final motional state.
 def evolve(hilbert, wave, tmax, n_times):
     fock = hilbert.fock_truncations["m"]
     psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(fock, 0))
@@ -140,6 +161,9 @@ fig.tight_layout()
 assert abs(r_of_t[-1] - r_oracle) / r_oracle < 0.05
 ```
 
+**Takeaway.** Squeezing only grows *while* `ω(t)` is changing; once the ramp
+finishes, `r` plateaus and stays put.
+
 ## Step 2 — Read the squeezing back from the covariance matrix
 
 The readout lives in [`iontrap_dynamics.gaussian`](https://github.com/uwarring82/iontrap-dynamics/blob/main/src/iontrap_dynamics/gaussian.py).
@@ -155,8 +179,8 @@ print(f"r = {readout.squeezing_parameter:.4f}   ν = {readout.symplectic_eigenva
 
 # The state stayed pure (ν = 1) and displacement-free (the centred generator
 # preserves parity: ⟨â⟩ = 0 from vacuum).
-assert abs(readout.symplectic_eigenvalue - 1.0) < 1e-3
-assert abs(readout.coherent_amplitude) < 1e-6
+assert abs(readout.symplectic_eigenvalue - 1.0) < 1e-3, "ν ≈ 1: the squeezing is unitary — no heating. If ν > 1, the Fock cutoff is likely too small."
+assert abs(readout.coherent_amplitude) < 1e-6, "Squeezing must not move the state's centre (α ≈ 0)."
 assert abs(readout.mean_squeezed_occupation - np.sinh(r_oracle) ** 2) / np.sinh(r_oracle) ** 2 < 0.1
 ```
 
@@ -168,6 +192,12 @@ cyclic: ramp down slowly and then back up to the original frequency. In that
 case the state returns to the original oscillator and the residual squeezing
 goes to zero (`r → 0`). Do not use a one-way frequency change as the `r → 0`
 regression; the convention gate is the cyclic waveform.
+
+!!! warning "Common confusion — one-way ≠ cyclic"
+    A slow **one-way** ramp leaves the oscillator at a *different* frequency, so the
+    readout basis is no longer the instantaneous ground state — it is not the same as
+    the **cyclic** adiabatic test. The `r → 0` oracle applies only when the trap
+    returns to its original frequency.
 
 ```python
 def cyclic_down_up(width_s):
@@ -326,10 +356,10 @@ print(f"optimum: r = {r_of_hold[best]:.4f} at hold = {holds[best] / period:.2f}�
 
 # Zero hold cancels (r → 0); the constructive optimum near ½ trap period ≈ doubles
 # a one-way ramp of the same depth.
-assert r_of_hold[0] < 1e-2
+assert r_of_hold[0] < 1e-2, "Zero hold = no frequency excursion = no squeezing."
 assert abs(best - 5) <= 1  # optimum at the hold = 0.5·T grid point (± one grid step)
 assert r_of_hold[best] > 1.5 * r_oracle
-assert abs(r_of_hold[best] - 2.0 * r_oracle) < 0.15 * (2.0 * r_oracle)
+assert abs(r_of_hold[best] - 2.0 * r_oracle) < 0.15 * (2.0 * r_oracle), "The tuned pulse ≈ doubles a one-way ramp of the same depth."
 
 fig, ax = plt.subplots(figsize=(6.5, 4.0))
 ax.plot(holds / period, r_of_hold, "o-", color=BLUE, label="down/up pulse")
@@ -341,6 +371,10 @@ ax.set_title("single-pulse optimisation: r oscillates with the hold")
 ax.legend()
 fig.tight_layout()
 ```
+
+**Takeaway.** The *same* down/up shape gives anything from zero squeezing to twice
+a one-way ramp — the hold time is a free knob, so tune it (not just the depth) for
+maximal `r`.
 
 ## What you built
 

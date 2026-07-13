@@ -22,6 +22,24 @@ squeezing engine and the covariance readout). CONVENTIONS.md **§26.4** (the
 observable-only readout) and **§13/§15** (the Fock-truncation failure ladder)
 govern this page.
 
+!!! note "New here? Read this first"
+    - `Pₙ` is the **probability of finding exactly `n` phonons** in the mode.
+    - A **squeezed vacuum** creates phonons in **pairs**, so `Pₙ` sits on **even `n` only** — the odd levels are empty.
+    - A **displacement** is a coherent shove that moves the state's centre; it **fills the odd `n`** and spoils the pair signature.
+    - The **echo** cancels that shove while keeping the squeezing, so the even-only comb comes back.
+    - **In a hurry?** Run Steps 1, 2, and 4; Steps 3 and 5 cover the truncation guard and the cosmology outlook.
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|---|---|
+| `Pₙ` | probability of finding `n` phonons |
+| `r` | squeezing strength (`r = 0` → none) |
+| `α` | coherent displacement — the state's centre |
+| `f(t)` | linear force that causes the displacement |
+| `δp` | how much the echo suppresses the displacement (larger = better) |
+| `n̄_sq` | mean phonons created by squeezing (`= sinh²r`) |
+
 ---
 
 ## The scenario
@@ -69,7 +87,7 @@ print(f"P_0 = {p_n[0]:.4f}   P_1 = {p_n[1]:.2e}   P_2 = {p_n[2]:.4f}   P_3 = {p_
 print(f"Σ Pₙ = {p_n.sum():.6f}   ⟨n⟩ = {(np.arange(fock) * p_n).sum():.4f}   sinh²r = {np.sinh(r0) ** 2:.4f}")
 
 # Odd n are identically empty; the numerics match the closed form; ⟨n⟩ = sinh²r.
-assert np.max(p_n[1::2]) < 1e-12
+assert np.max(p_n[1::2]) < 1e-12, "A squeezed vacuum has no odd-n population — phonons come in pairs."
 assert np.max(np.abs(p_n - p_oracle)) < 1e-12
 assert abs((np.arange(fock) * p_n).sum() - np.sinh(r0) ** 2) < 1e-3
 
@@ -81,6 +99,9 @@ ax.set_ylabel(r"$P_n$")
 ax.set_title(f"squeezed vacuum (r = {r0}) — even-only pair signature")
 fig.tight_layout()
 ```
+
+**Takeaway.** Blue bars (even `n`) carry all the population; red bars (odd `n`) are
+empty — the number-basis fingerprint that phonons are created two at a time.
 
 ## Step 2 — Grow the pairs dynamically (parametric modulation)
 
@@ -144,6 +165,11 @@ the covariance readout is silently **biased** — `r` reads low, `ν` reads as i
 thermal — while the state norm stays 1. Worse, a naïve "is the top Fock level
 populated?" check is fooled: in an even-dimensional space the top level is *odd*,
 so it is empty for a squeezed vacuum even when the even tail is saturated.
+
+!!! warning "Common confusion — the top Fock level lies"
+    An even-dimensional Fock space has an **odd** top level, which is empty for a
+    squeezed vacuum. A "is the top level populated?" check therefore falsely reports
+    convergence — use the **parity-aware** guard instead.
 
 `check_fock_truncation` closes that hole with a parity-aware edge metric and the
 §13/§15 ladder — it **raises** on a badly under-resolved state instead of returning
@@ -215,6 +241,12 @@ flipped sign (cancelling on the second pulse) while the ellipse is back to itsel
 `δp = n_dsp⁽¹⁾/n_dsp⁽²⁾ ≫ 1` and the even-only comb is restored. (The full `t_free` scan is
 [`tools/run_benchmark_squeezing_echo.py`](https://github.com/uwarring82/iontrap-dynamics/blob/main/tools/run_benchmark_squeezing_echo.py).)
 
+!!! warning "Common confusion — squeezing ≠ displacement"
+    **Squeezing** changes the *width and shape* of the state (and creates phonon
+    *pairs*); **displacement** just *moves its centre* (and fills the odd `n`). The
+    echo targets the displacement only — it leaves the squeezing intact; in fact the
+    two kicks add, so `r` grows.
+
 ```python
 period = 1.0 / w_ini
 amp, width, force_amp = -0.4, 0.02 / w_ini, 2.0e7  # a down-quench with a parasitic force
@@ -263,11 +295,13 @@ print(f"echo:      t_free = {t_free[best] / period:.3f}·T  δp = {delta_p[best]
 
 # The force lifts the parity (odd n populated); the echo removes the displacement
 # (δp ≫ 1) while the squeezing *adds* — so the even-only comb is restored.
-assert p_one[1::2].sum() > 1e-2
-assert delta_p[best] > 20.0
-assert abs(read_echo.coherent_amplitude) < abs(read_one.coherent_amplitude)
-assert read_echo.squeezing_parameter > read_one.squeezing_parameter
-assert p_echo[1::2].sum() < 5e-3
+odd_weight_one = p_one[1::2].sum()
+odd_weight_echo = p_echo[1::2].sum()
+assert odd_weight_one > 1e-2, "The force lifts the parity: one pulse populates the odd n."
+assert delta_p[best] > 20.0, "The echo strongly suppresses the displacement (δp ≫ 1)."
+assert abs(read_echo.coherent_amplitude) < abs(read_one.coherent_amplitude), "The echo shrinks the displacement |α|."
+assert read_echo.squeezing_parameter > read_one.squeezing_parameter, "The squeezing adds across the two pulses."
+assert odd_weight_echo < 5e-3, "Echo should restore the even-only pair signature (odd n back to ~0)."
 
 fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10.0, 4.0))
 n = np.arange(13)
@@ -285,6 +319,9 @@ ax1.set_title("displacement cancels near ½ trap period")
 ax1.legend(fontsize=8)
 fig.tight_layout()
 ```
+
+**Takeaway.** The echo does *not* remove squeezing — it removes the **displacement**,
+so the even-only pair comb comes back (and `r` even grows).
 
 ## Step 5 — The bigger picture: pairs out of the vacuum
 
