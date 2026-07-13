@@ -80,30 +80,63 @@ def evolve(hilbert, wave, tmax, n_times):
     fock = hilbert.fock_truncations["m"]
     psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(fock, 0))
     hamiltonian = nonadiabatic_squeezing_hamiltonian(hilbert, "m", wave, validate_at=(0.0, tmax))
-    result = solve(
+    return solve(
         hilbert=hilbert,
         hamiltonian=hamiltonian,
         initial_state=psi0,
         times=np.linspace(0.0, tmax, n_times),
         storage_mode=StorageMode.EAGER,
     )
-    return result.states[-1]
 
 
 w_i, w_f = 2.0e6, 1.0e6
 hilbert = single_mode(fock=40, freq_hz=w_i)
 period = 1.0 / w_i
 width = 0.01 * period  # narrow → sudden
+tmax = 55.0 * width
+n_times = 1500
 ramp = waveforms.smooth_ramp(
     omega_i=TWOPI * w_i, omega_f=TWOPI * w_f, center_s=25.0 * width, width_s=width
 )
-final = evolve(hilbert, ramp, tmax=55.0 * width, n_times=1500)
-mode_state = gaussian.reduced_single_mode(final, hilbert, "m")
+result = evolve(hilbert, ramp, tmax, n_times)
+mode_state = gaussian.reduced_single_mode(result.states[-1], hilbert, "m")
 
 r_sudden = gaussian.squeezing_parameter(gaussian.covariance_matrix(mode_state)[0])
 r_oracle = 0.5 * abs(np.log(w_f / w_i))
 print(f"sudden ramp: r = {r_sudden:.4f}   oracle ½|ln(ω_f/ω_i)| = {r_oracle:.4f}")
 assert abs(r_sudden - r_oracle) / r_oracle < 0.05
+```
+
+The squeezing appears **exactly while `ω(t) is changing`**, then stays put. Reading
+the covariance along the trajectory (the eigenvalue-ratio `r` is rotation-invariant,
+so it plateaus after the quench) tells the whole story in one figure:
+
+```python
+t_grid = np.linspace(0.0, tmax, n_times)
+sample = np.arange(0, n_times, 20)
+omega_profile = np.array([ramp.omega(t) for t in t_grid[sample]]) / (TWOPI * w_i)
+r_of_t = np.array([
+    gaussian.squeezing_parameter(
+        gaussian.covariance_matrix(gaussian.reduced_single_mode(result.states[k], hilbert, "m"))[0]
+    )
+    for k in sample
+])
+
+fig, ax = plt.subplots(figsize=(6.5, 4.0))
+t_us = t_grid[sample] * 1e6
+ax.plot(t_us, r_of_t, color=BLUE, lw=2, label="squeezing r(t)")
+ax.axhline(r_oracle, color=RED, ls="--", label="sudden oracle")
+ax.set_xlabel("time [µs]")
+ax.set_ylabel("squeezing r", color=BLUE)
+ax.set_title("squeezing appears exactly when the trap is quenched")
+ax.legend(loc="center right")
+ax2 = ax.twinx()
+ax2.plot(t_us, omega_profile, color=GREEN, ls="--")
+ax2.set_ylabel("trap frequency ω(t)/ω_i", color=GREEN)
+fig.tight_layout()
+
+# r is rotation-invariant, so its final value is the sudden oracle.
+assert abs(r_of_t[-1] - r_oracle) / r_oracle < 0.05
 ```
 
 ## Step 2 — Read the squeezing back from the covariance matrix
@@ -160,7 +193,7 @@ widths = np.array([0.1, 0.3, 1.0, 3.0]) * period
 r_cyclic = []
 for w in widths:
     hil_c = single_mode(50, w_i)
-    state = gaussian.reduced_single_mode(evolve(hil_c, cyclic_down_up(w), 20.0 * w, 2500), hil_c, "m")
+    state = gaussian.reduced_single_mode(evolve(hil_c, cyclic_down_up(w), 20.0 * w, 2500).states[-1], hil_c, "m")
     r_cyclic.append(gaussian.squeezing_parameter(gaussian.covariance_matrix(state)[0]))
 r_cyclic = np.array(r_cyclic)
 print("width/T_i :", widths / period)
@@ -229,7 +262,7 @@ for tmax in t_list:
     wave = waveforms.sinusoidal_modulation(
         omega_ini=TWOPI * w_ini, mod_amplitude=dw_mod, mod_frequency=2.0 * TWOPI * w_ini
     )
-    st = gaussian.reduced_single_mode(evolve(hil_p, wave, float(tmax), 2200), hil_p, "m")
+    st = gaussian.reduced_single_mode(evolve(hil_p, wave, float(tmax), 2200).states[-1], hil_p, "m")
     r_param.append(gaussian.squeezing_parameter(gaussian.covariance_matrix(st)[0]))
 r_param = np.array(r_param)
 r_pred = 0.5 * dw_mod * t_list
@@ -239,6 +272,18 @@ print("r = ½δω·T :", np.round(r_pred, 4))
 
 # Linear growth in the modulation duration.
 assert np.allclose(r_param, r_pred, rtol=0.03)
+
+# The pairs pile up: n̄_sq = sinh²r grows as sinh²(½δω·T_mod).
+t_fine = np.linspace(0.0, t_list[-1], 100)
+fig, ax = plt.subplots(figsize=(6.5, 4.0))
+ax.plot(t_fine * 1e6, np.sinh(0.5 * dw_mod * t_fine) ** 2, color=BLUE,
+        label=r"$\sinh^2(\frac{1}{2}\delta\omega\,T_{mod})$")
+ax.plot(t_list * 1e6, np.sinh(r_param) ** 2, "o", color=RED, ms=8, label="simulation")
+ax.set_xlabel("modulation duration [µs]")
+ax.set_ylabel(r"mean squeezed phonons $\bar n_{sq}$")
+ax.set_title("parametric amplification: squeezing grows with duration")
+ax.legend()
+fig.tight_layout()
 ```
 
 ## What you built

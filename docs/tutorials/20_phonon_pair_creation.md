@@ -116,6 +116,21 @@ print(f"r = {readout.squeezing_parameter:.4f} (½δω·T = {r_pred:.4f})   "
 assert p_dyn[1::2].sum() < 1e-6
 assert abs(readout.coherent_amplitude) < 1e-6
 assert abs(readout.squeezing_parameter - r_pred) / r_pred < 0.05
+
+# The dynamically-pumped distribution is the same even-only pair comb as the
+# closed form for the squeezing r it reached — pairs created, not single phonons.
+p_closed = gaussian.pure_squeezed_vacuum_pn(readout.squeezing_parameter, 49)
+fig, ax = plt.subplots(figsize=(6.5, 4.0))
+idx = np.arange(16)
+ax.bar(idx - 0.18, p_dyn[:16], width=0.36, color=BLUE, label="parametric (dynamical)")
+ax.bar(idx + 0.18, p_closed[:16], width=0.36, color=GREEN, label="closed form")
+ax.set_xlabel("phonon number $n$")
+ax.set_ylabel(r"$P_n$")
+ax.set_title(f"pairs created dynamically (r = {readout.squeezing_parameter:.2f}) — still even-only")
+ax.legend()
+fig.tight_layout()
+
+assert np.max(np.abs(p_dyn - p_closed)) < 5e-3  # dynamical generation matches the oracle
 ```
 
 ## Step 3 — Keep the readout honest: the parity-aware truncation guard
@@ -146,6 +161,36 @@ assert raised  # the parity-aware guard catches what the top-level metric misses
 
 # A generous cutoff is silent (well-resolved), and the guard has a documented escape hatch.
 assert gaussian.check_fock_truncation(squeezed_vacuum_mode(60, 0.8)) == ()
+```
+
+The guard's metric makes the honesty visible: for a fixed squeezing, sweep the Fock
+cutoff and watch the parity-aware tail population fall through the §13/§15 bands —
+from the **raise** zone (too small) down to **silent** (generous enough).
+
+```python
+from iontrap_dynamics.conventions import FOCK_CONVERGENCE_TOLERANCE as EPS
+
+r_demo = 1.0
+focks = np.arange(14, 61, 2)
+p_tail = np.array([
+    gaussian.phonon_number_distribution(squeezed_vacuum_mode(int(nf), r_demo))[-2:].sum()
+    for nf in focks
+])
+
+fig, ax = plt.subplots(figsize=(6.5, 4.0))
+ax.semilogy(focks, p_tail, "o-", color=BLUE, label="p_tail (edge window)")
+ax.axhline(10 * EPS, color=RED, ls="-", label="10ε — raise above")
+ax.axhline(EPS, color="#ff7f0e", ls="--", label="ε — quality warning")
+ax.axhline(EPS / 10, color=GREEN, ls=":", label="ε/10 — silent below")
+ax.set_xlabel("Fock dimension")
+ax.set_ylabel("parity-aware tail population")
+ax.set_title(f"the truncation guard's metric (squeezed vacuum, r = {r_demo})")
+ax.legend(loc="upper right", fontsize=8)
+fig.tight_layout()
+
+# Too-small cutoffs sit in the raise band; a generous cutoff is silent.
+assert p_tail[0] > 10 * EPS
+assert p_tail[-1] < EPS / 10
 ```
 
 ## Step 4 — The bigger picture: pairs out of the vacuum
