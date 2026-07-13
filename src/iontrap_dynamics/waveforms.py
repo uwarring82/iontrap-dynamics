@@ -12,7 +12,8 @@ finite ``d ln ω/dt`` at supplied sample times (build-time spot-checks);
 paired-callable mutual consistency is the caller's responsibility.
 
 Named shapes (:func:`gaussian_quench`, :func:`sinusoidal_modulation`,
-:func:`smooth_ramp`) supply their derivatives **analytically**.
+:func:`smooth_ramp`, :func:`down_up_pulse`) supply their derivatives
+**analytically**.
 """
 
 from __future__ import annotations
@@ -198,8 +199,69 @@ def smooth_ramp(
     return FrequencyWaveform(omega, d_ln_omega_dt, omega_jax, d_ln_jax)
 
 
+def down_up_pulse(
+    *,
+    omega_ini: float,
+    omega_min: float,
+    ramp_width_s: float,
+    hold_s: float,
+    center_s: float,
+) -> FrequencyWaveform:
+    """A down-then-up trap-frequency squeezing **pulse** (Wittemer-2020 quench regime).
+
+    ω ramps down ``ω_ini → ω_min``, holds at ``ω_min`` for ``hold_s``, then ramps back to
+    ``ω_ini`` — so the trap (and hence the readout basis) returns to its initial value.
+    Two ``tanh`` transitions ``hold_s`` apart, centred at ``center_s``, each of width
+    ``ramp_width_s``, with the **analytic** ``d ln ω/dt`` (a difference of ``sech²`` terms).
+    Strictly positive by construction (it interpolates ``ln ω``).
+
+    The generated squeezing **oscillates with ``hold_s``** (the WKB phase ``∫ω dt'``): the
+    down-ramp and up-ramp contributions add constructively at the right hold time and
+    partly cancel at others (the slow/adiabatic-cyclic limit → ``r → 0``). Tuning
+    ``hold_s`` (and ``ramp_width_s``) to maximise ``|r|`` is the paper's single-pulse
+    optimisation — a fast pulse at the constructive hold roughly **doubles** the squeezing
+    of a one-way ramp of the same depth.
+    """
+    if omega_ini <= 0.0 or omega_min <= 0.0:
+        raise ConventionError(
+            f"down_up_pulse: omega_ini ({omega_ini}), omega_min ({omega_min}) must be > 0."
+        )
+    if ramp_width_s <= 0.0:
+        raise ConventionError(f"down_up_pulse: ramp_width_s ({ramp_width_s}) must be > 0.")
+    if hold_s < 0.0:
+        raise ConventionError(f"down_up_pulse: hold_s ({hold_s}) must be >= 0.")
+    c1 = center_s - 0.5 * hold_s  # down transition
+    c2 = center_s + 0.5 * hold_s  # up transition
+    ln_half = 0.5 * math.log(omega_min / omega_ini)
+
+    def omega(t: float) -> float:
+        swing = math.tanh((t - c1) / ramp_width_s) - math.tanh((t - c2) / ramp_width_s)
+        return omega_ini * math.exp(ln_half * swing)
+
+    def d_ln_omega_dt(t: float) -> float:
+        s1 = 1.0 / math.cosh((t - c1) / ramp_width_s) ** 2
+        s2 = 1.0 / math.cosh((t - c2) / ramp_width_s) ** 2
+        return ln_half * (s1 - s2) / ramp_width_s
+
+    jnp = _maybe_jnp()
+    if jnp is None:
+        return FrequencyWaveform(omega, d_ln_omega_dt)
+
+    def omega_jax(t: float) -> Any:
+        swing = jnp.tanh((t - c1) / ramp_width_s) - jnp.tanh((t - c2) / ramp_width_s)
+        return omega_ini * jnp.exp(ln_half * swing)
+
+    def d_ln_jax(t: float) -> Any:
+        s1 = 1.0 / jnp.cosh((t - c1) / ramp_width_s) ** 2
+        s2 = 1.0 / jnp.cosh((t - c2) / ramp_width_s) ** 2
+        return ln_half * (s1 - s2) / ramp_width_s
+
+    return FrequencyWaveform(omega, d_ln_omega_dt, omega_jax, d_ln_jax)
+
+
 __all__ = [
     "FrequencyWaveform",
+    "down_up_pulse",
     "gaussian_quench",
     "sinusoidal_modulation",
     "smooth_ramp",

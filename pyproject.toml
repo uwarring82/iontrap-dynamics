@@ -197,6 +197,7 @@ ignore = [
 "tests/regression/analytic/test_wittemer_2018_benchmark.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_wittemer_2018_benchmark.py" = ["RUF001", "RUF002", "RUF003"]
 "tools/run_benchmark_nonadiabatic_squeezing.py" = ["RUF001", "RUF002", "RUF003"]
+"tools/run_benchmark_squeezing_echo.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/analytic.py" = ["RUF002", "RUF003"]
 "src/iontrap_dynamics/channels.py" = ["RUF001", "RUF002", "RUF003"]
 "src/iontrap_dynamics/conventions.py" = ["RUF001", "RUF002", "RUF003"]

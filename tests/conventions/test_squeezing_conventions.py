@@ -42,7 +42,10 @@ from iontrap_dynamics.exceptions import (
     FockConvergenceWarning,
     FockQualityWarning,
 )
-from iontrap_dynamics.hamiltonians import nonadiabatic_squeezing_hamiltonian
+from iontrap_dynamics.hamiltonians import (
+    displacement_force_hamiltonian,
+    nonadiabatic_squeezing_hamiltonian,
+)
 from iontrap_dynamics.hilbert import HilbertSpace
 from iontrap_dynamics.modes import ModeConfig
 from iontrap_dynamics.results import StorageMode, WarningSeverity
@@ -454,3 +457,101 @@ class TestFockTruncationGuard:
             qutip.basis(4, 0),
         ):
             assert gaussian.check_fock_truncation(state) == ()
+
+
+class TestForcedDisplacement:
+    """§26.4 / §7 — the SQ6 linear force seeds a convention-consistent displacement (additive)."""
+
+    @staticmethod
+    def _evolve_force(force_fn, tmax: float, fock: int = 40) -> qutip.Qobj:
+        hilbert = _single_mode(fock, 2.0e6)
+        const = waveforms.FrequencyWaveform(
+            omega=lambda t: TWOPI * 2.0e6, d_ln_omega_dt=lambda t: 0.0
+        )
+        hamiltonian = nonadiabatic_squeezing_hamiltonian(
+            hilbert, "m", const, validate_at=(0.0, tmax)
+        ) + displacement_force_hamiltonian(hilbert, "m", force_fn)
+        psi0 = qutip.tensor(qutip.basis(2, 0), qutip.basis(fock, 0))
+        result = solve(
+            hilbert=hilbert,
+            hamiltonian=hamiltonian,
+            initial_state=psi0,
+            times=np.linspace(0.0, tmax, 600),
+            storage_mode=StorageMode.EAGER,
+        )
+        return gaussian.reduced_single_mode(result.states[-1], hilbert, "m")
+
+    def test_force_seeds_displacement_along_minus_p(self) -> None:
+        # Leading order α = −i f·t (§26.4/§7): a positive force displaces along −p̂
+        # (negative imaginary part), with |α| ≈ f·t at short time.
+        tmax = 0.02 * (1.0 / 2.0e6)  # ≪ trap period → free rotation negligible
+        force = 1.0e7
+        alpha = gaussian.gaussian_readout(
+            self._evolve_force(lambda t: force, tmax)
+        ).coherent_amplitude
+        assert alpha.imag < 0.0
+        assert abs(alpha.real) < 0.1 * abs(alpha.imag)  # essentially pure −p at short time
+        assert abs(alpha) == pytest.approx(force * tmax, rel=0.05)
+
+    @pytest.mark.parametrize("scale", [2.0, 4.0])
+    def test_displacement_linear_in_force(self, scale: float) -> None:
+        tmax = 0.02 * (1.0 / 2.0e6)
+        base = 5.0e6
+        a1 = abs(
+            gaussian.gaussian_readout(self._evolve_force(lambda t: base, tmax)).coherent_amplitude
+        )
+        a2 = abs(
+            gaussian.gaussian_readout(
+                self._evolve_force(lambda t, s=scale: s * base, tmax)
+            ).coherent_amplitude
+        )
+        assert a2 == pytest.approx(scale * a1, rel=1e-3)
+
+    def test_displacement_lifts_parity(self) -> None:
+        # The centred squeezing generator keeps P_odd = 0; the force fills the odd n.
+        tmax = 6.0 * 0.02 * (1.0 / 2.0e6)
+        pn = gaussian.phonon_number_distribution(self._evolve_force(lambda t: 2.0e7, tmax, fock=50))
+        assert pn[1::2].sum() > 1e-2
+
+    def test_backend_guard(self) -> None:
+        hilbert = _single_mode(10, 2.0e6)
+        with pytest.raises(ConventionError):
+            displacement_force_hamiltonian(hilbert, "m", lambda t: 1.0e7, backend="jax")
+
+
+class TestDownUpPulse:
+    """§26.1 — the down/up pulse waveform (SQ6 single-pulse optimisation knob)."""
+
+    def test_dips_and_returns_to_omega_ini(self) -> None:
+        wave = waveforms.down_up_pulse(
+            omega_ini=TWOPI * 2.0e6,
+            omega_min=TWOPI * 1.0e6,
+            ramp_width_s=1.0e-8,
+            hold_s=2.0e-7,
+            center_s=5.0e-7,
+        )
+        assert wave.omega(0.0) == pytest.approx(TWOPI * 2.0e6, rel=1e-6)  # starts at ω_ini
+        assert wave.omega(1.0e-6) == pytest.approx(TWOPI * 2.0e6, rel=1e-6)  # returns to ω_ini
+        assert wave.omega(5.0e-7) == pytest.approx(TWOPI * 1.0e6, rel=1e-3)  # dips to ω_min
+
+    def test_analytic_derivative(self) -> None:
+        wave = waveforms.down_up_pulse(
+            omega_ini=TWOPI * 2.0e6,
+            omega_min=TWOPI * 1.0e6,
+            ramp_width_s=2.0e-8,
+            hold_s=1.0e-7,
+            center_s=5.0e-7,
+        )
+        t, h = 4.7e-7, 1.0e-12
+        fd = (np.log(wave.omega(t + h)) - np.log(wave.omega(t - h))) / (2.0 * h)
+        assert wave.d_ln_omega_dt(t) == pytest.approx(fd, rel=1e-4)
+
+    def test_guards(self) -> None:
+        with pytest.raises(ConventionError):
+            waveforms.down_up_pulse(
+                omega_ini=-1.0, omega_min=1.0e6, ramp_width_s=1e-8, hold_s=1e-7, center_s=5e-7
+            )
+        with pytest.raises(ConventionError):
+            waveforms.down_up_pulse(
+                omega_ini=2.0e6, omega_min=1.0e6, ramp_width_s=-1e-8, hold_s=1e-7, center_s=5e-7
+            )
