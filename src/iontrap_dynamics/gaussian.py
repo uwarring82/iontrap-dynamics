@@ -160,6 +160,126 @@ def symplectic_eigenvalues(cov: np.ndarray) -> np.ndarray:
     return np.asarray(ordered[n_modes:], dtype=float)
 
 
+#: Float-noise tolerance for the structural covariance checks (realness, symmetry, the
+#: ``V ⪰ 0`` positive-semidefiniteness that rejects an indefinite ``V``) and the ``ν ≈ 1``
+#: pure-state clamp. Tight: covariance eigenvalues are variances, so a materially negative
+#: one is a genuine violation, not noise.
+_COVARIANCE_TOL = 1e-9
+
+#: Tolerance for the squeezing-invariant physicality test ``ν_i ≥ 1``. Looser than
+#: :data:`_COVARIANCE_TOL` because finite Fock truncation of a *displaced* state populates
+#: the top level and pushes a symplectic eigenvalue below 1 by up to ~1e-6, while a genuine
+#: uncertainty violation sits ≥ 1e-2 below 1 — a ~4-order gap this value splits. An absolute
+#: tolerance on ``min eig(V + iΩ)`` is **not** squeezing-invariant and is defeatable (a
+#: scale-asymmetric squeeze hides a ν = 0.5 violation inside 1e-9), so the guard tests the
+#: invariant Williamson spectrum instead.
+_SYMPLECTIC_UNIT_TOL = 1e-4
+
+
+def _require_physical_covariance(cov: np.ndarray, name: str) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(V, ν)`` for a validated real physical covariance, or raise ``ValueError``.
+
+    The GT2+ derived functionals (:func:`purity`, :func:`gaussian_entropy_bits`) are
+    physically meaningful only on a bona-fide covariance: a **real, finite, symmetric**
+    ``2N×2N`` matrix with ``V + iΩ ≥ 0``. Silently returning e.g. ``purity > 1`` (from
+    ``0.5·𝟙``) or ``entropy = 0`` (the ``ν ≤ 1`` branch mistaking a gross violation for
+    pure-state noise) would mask a malformed input — the §15 honesty rule, mirroring the
+    ``information._common._von_neumann_entropy_bits`` non-finite guard.
+
+    Physicality is tested in the **squeezing-invariant** Williamson form (§27.2: *"for a
+    real, symmetric, positive-semidefinite covariance candidate, physicality is equivalent
+    to ν_i ≥ 1"*): ``V`` must be PSD — rejecting an indefinite ``V`` such as
+    ``diag(3,3,−3,−3)`` — **and** every ``ν_i ≥ 1``, rejecting a sub-uncertainty ``V`` such
+    as ``0.5·𝟙`` or a scale-asymmetric squeeze that an absolute ``min eig(V + iΩ)`` tol
+    would miss. Returns the symplectic spectrum so the caller need not recompute it. The
+    low-level GT1 primitives (:func:`symplectic_eigenvalues`, :func:`is_physical`,
+    :func:`partial_transpose`) stay deliberately **unguarded** — ``is_physical`` must
+    accept an unphysical ``V`` to return ``False``.
+    """
+    _check_square_even(cov, name)
+    arr = np.asarray(cov)
+    if np.iscomplexobj(arr):
+        if np.any(np.abs(arr.imag) > _COVARIANCE_TOL):
+            raise ValueError(f"{name}: covariance matrix must be real; got complex entries.")
+        arr = arr.real
+    arr = np.asarray(arr, dtype=float)
+    if not np.all(np.isfinite(arr)):
+        raise ValueError(f"{name}: covariance matrix has non-finite entries (NaN/inf).")
+    if not np.allclose(arr, arr.T, atol=_COVARIANCE_TOL):
+        raise ValueError(f"{name}: covariance matrix must be symmetric.")
+    if float(np.min(np.linalg.eigvalsh(arr))) < -_COVARIANCE_TOL:
+        raise ValueError(f"{name}: unphysical covariance matrix (V is not positive semidefinite).")
+    nus = symplectic_eigenvalues(arr)
+    # ``eig(iΩV)`` loses precision for an extremely ill-conditioned ``V`` (cond ≳ 1e15,
+    # ~150 dB of quadrature dynamic range — unreachable by any physical state or by
+    # :func:`covariance_matrix`), returning a spurious spectrum. Cross-check the invariant
+    # ``det V = ∏ν_i²``: they diverge exactly when the eigensolve is corrupted, so a
+    # mismatch means the spectrum cannot be certified — refuse (§15) rather than return a
+    # silently-wrong value. Physical ``V`` has ``det V = ∏ν_i² ≥ 1``, so this never fires
+    # on a well-conditioned state.
+    if not math.isclose(
+        float(np.prod(nus)) ** 2, float(np.linalg.det(arr)), rel_tol=1e-6, abs_tol=1e-9
+    ):
+        raise ValueError(
+            f"{name}: covariance matrix is too ill-conditioned to certify — the symplectic "
+            "spectrum (∏ν²) disagrees with det V; supply a better-conditioned covariance."
+        )
+    if float(np.min(nus)) < 1.0 - _SYMPLECTIC_UNIT_TOL:
+        raise ValueError(
+            f"{name}: unphysical covariance matrix (symplectic eigenvalue ν < 1, i.e. "
+            "V + iΩ ≱ 0); purity/entropy are defined only for a bona-fide physical covariance."
+        )
+    return arr, nus
+
+
+def purity(cov: np.ndarray) -> float:
+    """Gaussian purity ``μ = Tr(ρ²) = ∏_i 1/ν_i = 1/√det V`` (Dispatch GT2; §27.4).
+
+    The product of the reciprocal Williamson symplectic eigenvalues (equivalently
+    ``1/√det V``): ``μ = 1`` for a pure Gaussian state (vacuum, coherent, squeezed —
+    squeezing is symplectic and leaves ``μ`` unchanged), ``μ < 1`` for a mixed one.
+    Raises ``ValueError`` on a non-real / non-finite / non-symmetric / unphysical ``V``
+    (an unphysical ``V`` would give the nonsensical ``μ > 1``). Each ``ν_i`` is clamped to
+    ``≥ 1`` within :data:`_SYMPLECTIC_UNIT_TOL` so a truncation artifact cannot yield
+    ``μ > 1``. **Gaussianity precondition (§27.4):** this equals the true state purity only
+    for a Gaussian state; for a non-Gaussian state it is the purity of the Gaussian state
+    with the same second moments. Consumes :func:`symplectic_eigenvalues`.
+    """
+    _, nus = _require_physical_covariance(cov, "purity")
+    return float(1.0 / np.prod(np.maximum(nus, 1.0)))
+
+
+def _entropy_g_bits(nu: float) -> float:
+    """Bosonic entropy term ``g(ν)`` in bits (§27.4); ``g(ν) = 0`` within tol of ``ν = 1``.
+
+    ``g(ν) = (ν+1)/2·log₂((ν+1)/2) − (ν−1)/2·log₂((ν−1)/2)`` for ``ν > 1``. The
+    ``ν ≤ 1 + tol`` branch folds in the exact pure-state value ``g(1) = 0``, avoiding
+    ``log₂`` of a non-positive ``(ν−1)/2``. :func:`gaussian_entropy_bits` validates
+    physicality and clamps ``ν`` to ``≥ 1`` **first**, so this only ever sees ``ν ≥ 1``.
+    """
+    if nu <= 1.0 + _COVARIANCE_TOL:
+        return 0.0
+    nu_p = (nu + 1.0) / 2.0
+    nu_m = (nu - 1.0) / 2.0
+    return float(nu_p * math.log2(nu_p) - nu_m * math.log2(nu_m))
+
+
+def gaussian_entropy_bits(cov: np.ndarray) -> float:
+    """Gaussian (bosonic von Neumann) entropy ``S = Σ_i g(ν_i)`` in bits (GT2; §27.4).
+
+    ``g(ν) = (ν+1)/2·log₂((ν+1)/2) − (ν−1)/2·log₂((ν−1)/2)`` for ``ν ≥ 1``, ``g(1) = 0``;
+    summed over the Williamson symplectic eigenvalues. Vacuum / any pure Gaussian state
+    → 0; a thermal mode ``ν = 2n̄+1`` → ``(n̄+1)log₂(n̄+1) − n̄ log₂ n̄``, matching
+    :func:`iontrap_dynamics.information._common._von_neumann_entropy_bits` on the
+    truncated density matrix. Raises ``ValueError`` on a non-real / non-finite /
+    non-symmetric / unphysical ``V`` (a gross violation must not be silently read as a
+    pure state). **Gaussianity precondition (§27.4)** as for :func:`purity`. Consumes
+    :func:`symplectic_eigenvalues`.
+    """
+    _, nus = _require_physical_covariance(cov, "gaussian_entropy_bits")
+    return float(sum(_entropy_g_bits(float(nu)) for nu in np.maximum(nus, 1.0)))
+
+
 def is_physical(cov: np.ndarray, *, tol: float = 1e-9) -> bool:
     """Bona-fide covariance test: ``V + iΩ ≥ 0`` (Robertson–Schrödinger; §27.2).
 
@@ -414,6 +534,7 @@ __all__ = [
     "check_fock_truncation",
     "coherent_amplitude",
     "covariance_matrix",
+    "gaussian_entropy_bits",
     "gaussian_readout",
     "is_physical",
     "mean_occupation",
@@ -421,6 +542,7 @@ __all__ = [
     "partial_transpose",
     "phonon_number_distribution",
     "pure_squeezed_vacuum_pn",
+    "purity",
     "quadrature_operators",
     "reduced_single_mode",
     "squeezing_parameter",

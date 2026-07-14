@@ -2,7 +2,7 @@
 
 **Build the application-independent Gaussian covariance/symplectic layer — covariance `V`, Williamson spectrum, symplectic congruence, arbitrary-cut log-negativity, effective temperature — behind a single sealed multimode convention (§27), reusing WP-05's §26.2 quadrature normalisation.**
 
-Version 0.1 · Drafted 2026-07-14 · Ratified and sealed 2026-07-14 · Status: **Ratified** (GT1 landed; §27 sealed; `CONVENTION_VERSION` 0.5 → 0.6)
+Version 0.1 · Drafted 2026-07-14 · Ratified and sealed 2026-07-14 · Status: **Ratified** (GT1 landed + §27 sealed at `CONVENTION_VERSION` 0.6, 2026-07-14; GT2 purity/entropy landed 2026-07-15)
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document itself is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: code = MIT (`src/`, `tests/`, `tools/`); the §27 CONVENTIONS edit = Coastline / CC BY-SA 4.0 (staged in `WP/GT-conventions-proposal.md`, maintainer-sealed).
@@ -48,7 +48,7 @@ This WP feeds a new dispatch track to be recorded in `WORKPLAN_v0.3.md` as the n
 | WI | Module (proposed) | Key contents | Reuse | Acceptance | Dispatch | Status |
 |---|---|---|---|---|---|---|
 | **GT1** | `gaussian.py` + `WP/GT-conventions-proposal.md` | **§27 conventions gate + the low-level convention primitives:** `symplectic_form(N)=⊕J`; multimode `covariance_matrix(state)` → `V` (2N×2N) + first moments `d` (per-mode ordering; `N` inferred from `state.dims`; **the existing N=1 call/return contract preserved**); `is_physical(V)` (the `V+iΩ≥0` Hermitian-PSD guard via `eigvalsh`); `symplectic_eigenvalues(V)` = `|eig(iΩV)|`, one per mode (positive half; **no tolerance-dedup that could merge degenerate modes**); `partial_transpose(V, mode_indices)` (flips `p̂_B`) | extends the `N=1` `gaussian.py` core; may wrap `qutip.continuous_variables.covariance_matrix` with §26.2 basis ops | vacuum `V=𝟙_{2N}` and `V+iΩ≥0`; thermal `ν=2n̄+1`; TMSV PT `ν̃₋=e^{−2r}`; the indefinite `\|eig(iΩV)\|≥1` counterexample is rejected by the PSD guard; **conventions test green** (the §27 seal follows) | `GT1` | **landed 2026-07-14** |
-| **GT2** | `gaussian.py` | `purity` = `∏ 1/ν_i` = `1/√det V`; `gaussian_entropy_bits` = `Σ g(ν_i)` — **consumes GT1's `symplectic_eigenvalues`** | `information/_common._von_neumann_entropy_bits` (bits convention) | vacuum purity 1 / entropy 0; thermal entropy agrees with `_von_neumann_entropy_bits` on truncated states; `g(1)=0` | `GT2` | open |
+| **GT2** | `gaussian.py` | `purity(V)` = `∏ 1/ν_i` = `1/√det V`; `gaussian_entropy_bits(V)` = `Σ g(ν_i)`, `g(ν)=(ν+1)/2·log₂((ν+1)/2) − (ν−1)/2·log₂((ν−1)/2)`, `g(1)=0` — **consumes GT1's `symplectic_eigenvalues`** (multiplicity preserved) | `information/_common._von_neumann_entropy_bits` (bits convention) | vacuum purity 1 / entropy 0; thermal entropy agrees with `_von_neumann_entropy_bits` on truncated ρ; squeezing/displacement leave `μ`,`S` invariant; degenerate ν kept; **unphysical/malformed `V` rejected** (`V+iΩ≱0`, non-real/finite/symmetric) | `GT2` | **landed 2026-07-15** |
 | **GT3** | `gaussian.py` + ion `S`-adapter (separate) | generic `congruence(S, V)` with `SΩSᵀ=Ω` guard; **ion-specific `S`** (normal→local from a complete basis + cross-mode orthogonality + masses + local frequencies) in a separate adapter near `iontrap-structure` | `ModeConfig.eigenvector_per_ion` (necessary-not-sufficient) | **squeezed** normal-mode product → correct ion-cut `E_N`; `S⁻¹` round-trip; non-orthogonal (COM vs stretch) case; `SΩSᵀ=Ω` verified | `GT3` | open |
 | **GT4** | `gaussian.py` | `log_negativity(V, cut)` = `Σ_k max(0,−log₂ ν̃_k)` + the arbitrary-bipartition **cut semantics** — **consumes GT1's `partial_transpose` + `symplectic_eigenvalues`** | QuTiP two-mode `logarithmic_negativity` (cross-check, nats/½-conv); Fock `log_negativity_trajectory` (truncation cross-check) | TMSV → `E_N=2r/ln2`; separable/thermal → 0; **`1×N` separability certified**, `M×N (≥2)` → NPT witness + PPT-bound-entangled caveat surfaced | `GT4` | open |
 | **GT5** | `gaussian.py` | `effective_temperature(nbar, omega_loc)` with `n̄=(tr V_red + dᵀd − 2)/4` (first-moment-aware); explicit `ω_loc`; `T_eff(0)=0`, reject `n̄<0`; neutral symbol | `qutip.thermal_dm` (round-trip oracle) | thermal round-trip `n̄→T_eff→n̄`; a **squeezed and/or displaced** marginal does **not** give `T_eff=0`; energy-equivalent framing documented | `GT5` | open |
@@ -56,13 +56,13 @@ This WP feeds a new dispatch track to be recorded in `WORKPLAN_v0.3.md` as the n
 
 ## 5. Sequencing and gates *(Coastline gate)*
 
-**Order:** ratify → mint `GT`, stage §27 seal → **GT1** (§27 seal + the convention primitives: covariance, symplectic form, physicality, symplectic spectrum, PT — conventions-before-code, nothing consumes `V` before the seal) → GT2 (purity/entropy) → GT4 (log-negativity, the headline consumer functional) → GT5 (`T_eff`) → GT3 (congruence + ion `S`-adapter — the two-ion Phase B dependency) → GT6 (optional `E_F`). GT2/GT4/GT5 are pure `gaussian.py` linear algebra over GT1's spectrum + PT and can parallelise once GT1 lands. **GT1 landed and §27 sealed 2026-07-14** (conventions test green; `CONVENTION_VERSION` 0.5 → 0.6).
+**Order:** ratify → mint `GT`, stage §27 seal → **GT1** (§27 seal + the convention primitives: covariance, symplectic form, physicality, symplectic spectrum, PT — conventions-before-code, nothing consumes `V` before the seal) → GT2 (purity/entropy) → GT4 (log-negativity, the headline consumer functional) → GT5 (`T_eff`) → GT3 (congruence + ion `S`-adapter — the two-ion Phase B dependency) → GT6 (optional `E_F`). GT2/GT4/GT5 are pure `gaussian.py` linear algebra over GT1's spectrum + PT and can parallelise once GT1 lands. **GT1 landed and §27 sealed 2026-07-14** (conventions test green; `CONVENTION_VERSION` 0.5 → 0.6); **GT2 (purity/entropy) landed 2026-07-15** (§27.4 pins + `tests/unit/test_gaussian_toolbox.py`); GT4/GT5 remain open.
 
 **Blockers:** the §27 seal gates GT1's covenant (conventions-before-code — Design Principle 1). Generic `E_F` is blocked on the 2019 PRL Supplemental (deferred, not in this WP). The ion `S`-adapter (GT3) couples to `iontrap-structure`'s `ModeConfig` — the first cross-repo dynamics consumer.
 
 **Coastline gates every WI must clear before it counts as landed:**
 
-- [ ] **Conventions-before-code** — §27 sealed (via `WP/GT-conventions-proposal.md`) with a green `tests/conventions/test_gaussian_conventions.py` **before** GT2+ consume `V`.
+- [x] **Conventions-before-code** — §27 sealed (via `WP/GT-conventions-proposal.md`) with a green `tests/conventions/test_gaussian_conventions.py` **before** GT2+ consume `V`. *(Satisfied 2026-07-14: §27 sealed at `CONVENTION_VERSION` 0.6; GT2 landed 2026-07-15 over the sealed spectrum.)*
 - [ ] **Application-agnostic** — the decoupling grep finds no consuming-application framing (no "Wittemer"/"Hawking"/"cosmology"/"T_H") in any `gaussian.py` symbol or docstring.
 - [ ] **Oracle-first** — every functional reproduces a closed-form oracle (vacuum `V=𝟙`; thermal `ν=2n̄+1`; TMSV `E_N=2r/ln2`), not a plot.
 - [ ] **Gaussianity precondition guarded** and the `1×N` vs `M×N` separability scoping surfaced.
@@ -75,8 +75,8 @@ Family **`GT`** (Gaussian Toolbox) — collision-checked clear against `WP/LOGBO
 
 | Dispatch | Maps to | CHANGELOG bullet | Status |
 |---|---|---|---|
-| `GT1` | WI-GT1 | `- **Dispatch GT1 — §27 convention primitives: symplectic form, multimode covariance, physicality guard, symplectic spectrum, partial transpose.**` | **landed 2026-07-14** (conventions test green; §27 seal pending) |
-| `GT2` | WI-GT2 | `- **Dispatch GT2 — purity + von-Neumann entropy from the symplectic spectrum.**` | minted, open |
+| `GT1` | WI-GT1 | `- **Dispatch GT1 — §27 convention primitives: symplectic form, multimode covariance, physicality guard, symplectic spectrum, partial transpose.**` | **landed + sealed 2026-07-14** (conventions test green; §27 sealed, `CONVENTION_VERSION` 0.6) |
+| `GT2` | WI-GT2 | `- **Dispatch GT2 — purity + von-Neumann entropy from the symplectic spectrum.**` | **landed 2026-07-15** |
 | `GT3` | WI-GT3 | `- **Dispatch GT3 — symplectic congruence + ion S-adapter.**` | minted, open |
 | `GT4` | WI-GT4 | `- **Dispatch GT4 — arbitrary-cut Gaussian log-negativity + cut semantics.**` | minted, open |
 | `GT5` | WI-GT5 | `- **Dispatch GT5 — effective temperature (neutral T_eff).**` | minted, open |

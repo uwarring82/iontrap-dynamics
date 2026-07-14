@@ -14,7 +14,9 @@ Anchors (per §27):
 - 27.2 ``Ω = ⊕J``, ``[R_i,R_j] = 2iΩ``; physicality is the Hermitian PSD test on
   ``V + iΩ`` (NOT a bare ``ν_i ≥ 1`` check); Williamson ``ν_i = |eig(iΩV)|`` (NOT SVD).
 - 27.3 partial transpose flips ``p̂_B → −p̂_B``; TMSV → smallest PT eigenvalue ``e^{−2r}``.
-- 27.4 first-moment-aware occupation ``n̄ = (tr V + dᵀd − 2)/4`` (NOT ``(ν−1)/2``).
+- 27.4 first-moment-aware occupation ``n̄ = (tr V + dᵀd − 2)/4`` (NOT ``(ν−1)/2``);
+  purity ``μ = ∏ 1/ν_i = 1/√det V``; Gaussian entropy ``S = Σ g(ν_i)`` in bits
+  (matching ``_von_neumann_entropy_bits`` on the truncated density matrix) — GT2.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ import pytest
 import qutip
 
 from iontrap_dynamics import gaussian
+from iontrap_dynamics.information._common import _von_neumann_entropy_bits
 from iontrap_dynamics.states import squeezed_coherent_mode, two_mode_squeezed_vacuum
 
 FOCK = 24
@@ -142,3 +145,33 @@ def test_occupation_is_first_moment_aware_not_nu() -> None:
     assert nbar > nu_core + 0.1, (
         "the thermal-core (ν−1)/2 undercounts a squeezed+displaced marginal"
     )
+
+
+# --- 27.4 purity + Gaussian entropy (GT2) ---------------------------------------
+
+
+def test_purity_is_product_of_reciprocal_symplectic_eigenvalues() -> None:
+    # μ = ∏ 1/ν_i = 1/√det V. Vacuum → 1; a two-mode thermal product → 1/((2n̄+1)²).
+    vac, _ = gaussian.covariance_matrix(_two_mode(qutip.basis(FOCK, 0), qutip.basis(FOCK, 0)))
+    assert gaussian.purity(vac) == pytest.approx(1.0, abs=1e-6), "pure state → μ = 1 (§27.4)"
+
+    nbar = 0.7
+    cov, _ = gaussian.covariance_matrix(
+        _two_mode(qutip.thermal_dm(FOCK, nbar), qutip.thermal_dm(FOCK, nbar))
+    )
+    mu = gaussian.purity(cov)
+    assert mu == pytest.approx(1.0 / (2 * nbar + 1) ** 2, rel=1e-3), "μ = ∏ 1/ν_i"
+    assert mu == pytest.approx(1.0 / np.sqrt(np.linalg.det(cov)), rel=1e-6), "μ = 1/√det V"
+
+
+def test_gaussian_entropy_bits_matches_von_neumann() -> None:
+    # S = Σ g(ν_i) in bits equals the exact −Σλ log₂λ of the truncated thermal ρ.
+    vac, _ = gaussian.covariance_matrix(_two_mode(qutip.basis(FOCK, 0), qutip.basis(FOCK, 0)))
+    assert gaussian.gaussian_entropy_bits(vac) == pytest.approx(0.0, abs=1e-9), "pure → S = 0"
+
+    nbar = 0.7
+    rho = qutip.thermal_dm(FOCK, nbar)
+    cov, _ = gaussian.covariance_matrix(rho)
+    assert gaussian.gaussian_entropy_bits(cov) == pytest.approx(
+        _von_neumann_entropy_bits(rho), rel=1e-3
+    ), "S = Σ g(ν_i) [bits] matches the von Neumann entropy of the thermal ρ (§27.4)"

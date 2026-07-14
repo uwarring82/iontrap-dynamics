@@ -42,6 +42,17 @@ placeholder-only and did not follow semver.
   by `tests/conventions/test_gaussian_conventions.py`. **CONVENTIONS §27 is sealed and
   `CONVENTION_VERSION` bumped 0.5 → 0.6.** (WP-07; dispatch family `GT` minted
   2026-07-14.)
+- **Dispatch GT2 — Gaussian purity and von-Neumann entropy.** `gaussian.purity(V) =
+  ∏ 1/ν_i = 1/√det V` and `gaussian.gaussian_entropy_bits(V) = Σ g(ν_i)` (bits, with
+  `g(1) = 0`), both over the sealed §27 Williamson spectrum with multiplicity preserved:
+  `μ = 1` / `S = 0` for pure Gaussian states (squeezing and displacement leave both
+  invariant), and for a thermal mode `S` matches the exact density-matrix von Neumann
+  entropy. Both **guard their domain** — a non-real, non-finite, non-symmetric, or
+  unphysical (`V + iΩ ≱ 0`) input raises `ValueError` rather than returning a nonsensical
+  value (`purity > 1`, or an entropy that silently reads a gross violation as pure).
+  Observable-only (§27.4 already sealed the formulas — **no convention bump**;
+  `CONVENTION_VERSION` stays `0.6`). Pinned in `test_gaussian_conventions.py` and the new
+  `tests/unit/test_gaussian_toolbox.py`. (WP-07 GT2.)
 
 ## [0.7.0] — 2026-07-14
 

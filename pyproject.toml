@@ -232,6 +232,7 @@ ignore = [
 "tests/conventions/test_static_conventions.py" = ["RUF002"]
 "tests/conventions/test_squeezing_conventions.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/conventions/test_gaussian_conventions.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/unit/test_gaussian_toolbox.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/benchmarks/test_performance_smoke.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/regression/analytic/test_analytic.py" = ["RUF002", "RUF003"]
 "tests/regression/analytic/test_cfi_linear_gaussian.py" = ["RUF001", "RUF002", "RUF003"]
