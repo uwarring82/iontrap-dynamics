@@ -8,7 +8,28 @@ placeholder-only and did not follow semver.
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- **WP-05 dispatch SQ6 — forced displacement + purifying echo (optional A3 tail;
+  additive, no convention bump).** `hamiltonians.displacement_force_hamiltonian` —
+  a time-dependent linear force `H_force/ℏ = f(t)·x̂` on a motional mode, seeding
+  the parasitic coherent displacement (`dα/dt = −i f`, §26.4/§7) that the
+  parity-preserving squeezing generator cannot produce — and
+  `waveforms.down_up_pulse`, a down/up trap-frequency pulse whose squeezing
+  oscillates with the hold time (WKB phase) and peaks at ≈ twice a one-way ramp.
+  Compute-only benchmark `tools/run_benchmark_squeezing_echo.py` →
+  `benchmarks/data/squeezing_echo/` reproduces the Wittemer-2020 forced-displacement,
+  single-pulse-optimisation, and two-pulse purifying-echo physics; regression +
+  conventions coverage in `tests/regression/analytic/test_nonadiabatic_squeezing.py`
+  and `tests/conventions/test_squeezing_conventions.py`. **No new convention symbol;
+  `CONVENTION_VERSION` unchanged (`0.5`)** — the force sign/coefficient is fixed by
+  the sealed §26.2 `x̂` plus §7. Tutorials 19–20 gain the SQ6 physics (single-pulse
+  optimisation; the parasitic displacement and its purifying echo).
+- **WP-06 newcomer rail extended to Tutorials 19–20** (the original rail pilot),
+  completing the tutorial-accessibility pass across the full track (00–20):
+  New-here boxes, symbols tables, Common-confusion callouts, figure Takeaways, and
+  explanatory asserts now cover the two squeezing tutorials that `v0.7.0` shipped
+  badged-but-unrailed.
 
 ## [0.7.0] — 2026-07-14
 

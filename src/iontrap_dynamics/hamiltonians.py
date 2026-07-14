@@ -1813,6 +1813,60 @@ def nonadiabatic_squeezing_hamiltonian(
     return [[h_free, _omega_coeff], [h_sq, _sq_coeff]]
 
 
+def displacement_force_hamiltonian(
+    hilbert: HilbertSpace,
+    mode_label: str,
+    force: Callable[[float], float],
+    *,
+    backend: str = "qutip",
+) -> list[object]:
+    r"""Return a time-dependent linear **displacement force** term on a motional mode.
+
+    .. math::
+        H_\text{force}(t)/\hbar = f(t)\,(\hat a + \hat a^\dagger) = f(t)\,\hat x
+
+    a real force ``f(t)`` (rad·s⁻¹) on the §26.2 position quadrature ``x̂ = â + â†``. It
+    seeds a coherent displacement (``dα/dt = −i f``, the §26.4 / §7 sign) — the parasitic
+    off-RF-null effect that the parity-preserving squeezing generator (§26.1,
+    ``⟨â⟩ = 0`` from vacuum) cannot produce, used to build the two-pulse purifying echo.
+
+    **Additive — no new convention symbol** (CONVENTIONS §26.4 / MCF·ND precedent): the
+    operator is the already-sealed §26.2 quadrature ``x̂`` and the coefficient is a
+    user-supplied physical waveform, so there is no free sign/coefficient to pin (unlike
+    the squeezing generator's ``−i/4`` on the anti-Hermitian ``â†²−â²``).
+
+    Returns the QuTiP time-dependent list **entry** ``[[x̂, f(t)]]`` — concatenate it with
+    the squeezing list to drive both together::
+
+        H = nonadiabatic_squeezing_hamiltonian(hilbert, "m", waveform) \
+            + displacement_force_hamiltonian(hilbert, "m", force)
+
+    Parameters
+    ----------
+    hilbert, mode_label
+        The Hilbert space and the mode the force acts on.
+    force
+        Callable ``t -> float``: the force amplitude ``f(t)`` in rad·s⁻¹.
+    backend
+        Only ``"qutip"`` is supported (the echo protocol is QuTiP-side).
+
+    Returns
+    -------
+    list[object]
+        A one-element QuTiP time-dependent list ``[[x̂_embedded, coeff]]``.
+    """
+    if backend != "qutip":
+        raise ConventionError(
+            f"displacement_force_hamiltonian(backend={backend!r}): only 'qutip' is supported."
+        )
+    x_quadrature = hilbert.creation_for_mode(mode_label) + hilbert.annihilation_for_mode(mode_label)
+
+    def _force_coeff(t: float, args: Any) -> float:
+        return float(force(t))
+
+    return [[x_quadrature, _force_coeff]]
+
+
 __all__ = [
     "beamsplitter_hamiltonian",
     "blue_sideband_hamiltonian",
@@ -1822,6 +1876,7 @@ __all__ = [
     "detuned_carrier_hamiltonian",
     "detuned_ms_gate_hamiltonian",
     "detuned_red_sideband_hamiltonian",
+    "displacement_force_hamiltonian",
     "modulated_carrier_hamiltonian",
     "ms_gate_hamiltonian",
     "nonadiabatic_squeezing_hamiltonian",
