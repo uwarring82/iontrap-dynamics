@@ -1,0 +1,10 @@
+<!-- Single source for the five-box pipeline diagram (WP-06 TA6). Included via
+     pymdownx.snippets (`--8<--`) in docs/getting-started.md and docs/tutorials/index.md.
+     Tutorial 0 (docs/tutorials/00_mental_model.md) inlines a byte-identical copy because
+     the notebook builder does not resolve snippets — keep the two in sync. -->
+```
+IonSystem ──► HilbertSpace ──► Hamiltonian ──► solve ──► readout
+    │              │               │             │          │
+  species       Fock dim       operators      backend    observable
+  modes         truncation     + waveform     + times    sampling
+```

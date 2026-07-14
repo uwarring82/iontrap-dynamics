@@ -29,6 +29,10 @@ tutorial below is tagged `intro` (no prerequisites), `core` (the standard toolki
 `advanced`. Unfamiliar with a term? The **[Glossary](../glossary.md)** defines the
 recurring vocabulary once.
 
+Every tutorial is a variation on the same five-box pipeline:
+
+--8<-- "docs/_snippets/pipeline.txt"
+
 ## Available
 
 - `[intro]` [**Tutorial 0 — The 30-second mental model**](00_mental_model.md).

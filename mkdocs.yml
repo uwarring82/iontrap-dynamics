@@ -58,6 +58,11 @@ markdown_extensions:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
+# Shared Markdown snippets (pymdownx.snippets sources) — read from docs/ at build
+# time but not published as standalone site files.
+exclude_docs: |
+  _snippets/
+
 nav:
   - Welcome: index.md
   - Overview: overview.md
