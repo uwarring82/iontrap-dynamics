@@ -44,6 +44,29 @@ level of [`CONVENTIONS.md`](../conventions.md) §9 and §10.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - Two ions share **one** motional mode (the centre-of-mass, or COM, mode); the gate uses that shared **motion** as a temporary bus to entangle the two **spins** — there is no direct spin–spin term in the Hamiltonian.
+    - A **bichromatic** drive (two tones) straddles the mode's red and blue sidebands; the two tones sit symmetrically offset from the first-order sideband by `δ`.
+    - During the gate the motion traces a loop in phase space. That loop **must close** at the gate time `t_gate` — `⟨n̂⟩` returns to `0` — or leftover spin–motion entanglement spoils the gate.
+    - Nothing here is a magic number: `δ` and `t_gate` are **derived** from the physics inputs `Ω`, `η`, `K` through the `ms_gate_closing_*` helpers.
+    - At closure the state is a **Bell state** — equal populations `P(|↓↓⟩) = P(|↑↑⟩) = 1/2` and zero odd-parity leakage.
+    - Same four-step skeleton as Tutorials 1–3 (configure → build → solve → read out), now scaled to two ions.
+
+    **In a hurry?** Step 2 derives `(δ, t_gate)` from `(Ω, η)`; Step 3 runs the solve and checks loop closure and the Bell populations — that pair is the core.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `η` | Lamb–Dicke parameter — how strongly the drive couples each spin to the shared COM motion (here `η_COM ≈ 0.1843`). |
+| `Ω` | carrier Rabi frequency — the bare on-resonance drive strength (`Ω/2π = 100 kHz`). |
+| `δ` | symmetric offset of the two drive tones from the first-order sideband; tuned to close the phase-space loop (scales as `√K`). |
+| `t_gate` | gate time — the instant the loop closes and the Bell state is complete (scales as `√K`). |
+| `⟨n̂⟩` | mean phonon number of the COM mode; returns to `0` at `t_gate` when the loop closes. |
+| `P(↓↓), P(↑↑)` | Bell populations — the weights of the two even-parity spin states; each lands at `1/2` at `t_gate`. |
+| `P_flip` | odd-parity population (the two spins pointing oppositely); parity-forbidden here, so pinned at `0`. |
+
 ## The scenario
 
 Two identical ²⁵Mg⁺ ions sharing the axial centre-of-mass (COM)
@@ -95,6 +118,8 @@ from iontrap_dynamics.system import IonSystem
 # House colours — match the reference figure palette.
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# --- The physics that matters: the COM eigenvector. Both ions move in phase,
+#     so each carries a 1/√2 share of the mode — the only new object vs. Tutorial 2. ---
 mode = ModeConfig(
     label="com",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -108,6 +133,8 @@ system = IonSystem(
     modes=(mode,),
 )
 
+# --- Boilerplate: the base drive (carrier Rabi Ω + 280 nm geometry). The two
+#     symmetric ±δ tones that make it an MS drive are added by the builder in Step 2. ---
 drive = DriveConfig(
     k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
     carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,  # Ω/2π = 100 kHz
@@ -205,6 +232,16 @@ argument selects which ions the drive couples to — the same
 builder scales to longer chains by coupling a subset of ions
 while the rest remain spectator to this drive.
 
+!!! warning "Common confusion — the MS gate has no direct spin–spin term"
+
+    The two spins never couple to each other directly. The
+    Hamiltonian couples each **spin** to the shared **motion**; the
+    entangling `σ_x⁽⁰⁾ σ_x⁽¹⁾` interaction only appears at *second*
+    order, after both spins have pushed on — and been pushed back by —
+    the same motional mode. Think of the motion as a temporary bus: it
+    must be handed back clean at `t_gate` (next step), otherwise the
+    correlation you are left with is spin–motion, not spin–spin.
+
 !!! tip "Fock truncation choice for MS gates"
 
     During the gate the motional coherent state excursion peaks at
@@ -226,6 +263,16 @@ projectors: `P(|↓↓⟩)`, `P(|↑↑⟩)`, and odd-parity
 throughout because the MS Hamiltonian conserves total parity. On
 top of these, we watch `⟨n̂⟩` for the phase-space loop closure and
 `⟨σ_z⟩` on each ion as an ion-exchange-symmetry cross-check.
+
+!!! warning "Common confusion — the phase-space loop must close"
+
+    `⟨n̂⟩ → 0` at `t_gate` is not a bonus check; it is a
+    *requirement*. If the loop does not close, the motion is still
+    correlated with the spins, so tracing out the motion leaves the
+    two spins in a *mixed* (degraded) state rather than the pure Bell
+    state. A non-zero final `⟨n̂⟩` is the first thing to inspect when
+    an MS gate under-performs — it usually points to a mis-tuned `δ`
+    or a `t_gate` that is not an integer number of loops.
 
 Population projectors aren't in the built-in `observables`
 factory — they're custom to the Bell-state scenario. The
@@ -285,15 +332,15 @@ At `t = t_gate` all four final-state targets land within solver
 tolerance:
 
 ```python
-assert abs(result.expectations["p_dd"][-1]   - 0.5) < 1e-5
+assert abs(result.expectations["p_dd"][-1]   - 0.5) < 1e-5, "Bell state carries equal weight in |↓↓⟩ and |↑↑⟩, so P(|↓↓⟩) lands at exactly 1/2 at t_gate"
 assert abs(result.expectations["p_uu"][-1]   - 0.5) < 1e-5
-assert abs(result.expectations["p_flip"][-1] - 0.0) < 1e-5
-assert abs(result.expectations["n_com"][-1]  - 0.0) < 1e-5
+assert abs(result.expectations["p_flip"][-1] - 0.0) < 1e-5, "total spin parity is conserved, so the odd-parity population P(|↓↑⟩)+P(|↑↓⟩) is forbidden and reads 0 at t_gate"
+assert abs(result.expectations["n_com"][-1]  - 0.0) < 1e-5, "the phase-space loop closes at t_gate — ⟨n̂⟩ returns to 0, leaving no spin-motion entanglement to degrade the Bell state"
 
 # Ion-exchange symmetry — σ_z^(0) and σ_z^(1) trajectories are identical
 sz0 = result.expectations["sigma_z_0"]
 sz1 = result.expectations["sigma_z_1"]
-assert np.max(np.abs(sz0 - sz1)) < 1e-12
+assert np.max(np.abs(sz0 - sz1)) < 1e-12, "ion-exchange symmetry: a symmetric Hamiltonian and symmetric initial state force the two σ_z trajectories to coincide to machine precision"
 
 times_us = times * 1e6  # µs — shared x-axis for all panels
 
@@ -340,6 +387,8 @@ plt.show()
 
 print(f"Step 4 — ion-exchange symmetry: max |σ_z⁽⁰⁾ − σ_z⁽¹⁾| = {float(np.max(np.abs(sz0_arr - sz1_arr))):.2e}")
 ```
+
+**Takeaway.** Loop closure (`⟨n̂⟩ → 0`) and equal populations `P(|↓↓⟩) = P(|↑↑⟩) = 1/2` are *necessary but not sufficient* for a Bell state — the classical mixture `½|↓↓⟩⟨↓↓| + ½|↑↑⟩⟨↑↑|` gives the *same final-time readouts* in all three panels. It is the *coherence* between `|↓↓⟩` and `|↑↑⟩` — exposed by a parity scan (introduced in Step 4, run in [Tutorial 12](12_bell_entanglement.md)) — that certifies the entanglement.
 
 The ion-exchange-symmetry check is the strongest of the four —
 the two `σ_z` trajectories agree to machine precision because the

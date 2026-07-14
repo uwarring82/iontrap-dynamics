@@ -35,6 +35,28 @@ with the interaction-picture carrier Hamiltonian at the level of
 
 ---
 
+!!! note "New here? Read this first"
+
+    - Tutorials 1–2 drove the spin with a *constant* carrier; here the drive amplitude follows a shaped envelope `f(t)` — a smooth Gaussian bump that ramps the laser on and back off.
+    - What sets the spin rotation is the **pulse area** `θ = ∫ Ω·f(t) dt`, *not* the peak height — you normalise the envelope so the area comes out to exactly `π`.
+    - Area `π` means a `π`-pulse: it carries `|↓⟩` all the way to `|↑⟩` (a half-turn of the Bloch vector).
+    - A time-dependent Hamiltonian is handed to `solve()` in the `[operator, coefficient-function]` list form, not as one fixed operator — the builder does that wrapping for you.
+    - With zero laser phase the Bloch vector traces a clean meridian in the `y–z` plane: `⟨σ_x⟩ = 0`, `⟨σ_y⟩ = sin θ`, `⟨σ_z⟩ = −cos θ`.
+    - Same four-step skeleton as Tutorials 1–2 (configure → build → solve → read out); only the Hamiltonian builder changes to `modulated_carrier_hamiltonian`.
+    - **In a hurry?** Step 2 builds the envelope and normalises its area to `π`; Step 3 runs the shaped pulse and traces the meridian — that pair is the core.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `Ω` | reference (full-drive) Rabi rate — the rate at `f = 1`; the area-normalised envelope peaks at `A ≈ 0.4`, so the instantaneous `Ω(t)` never actually reaches `Ω`. |
+| `f(t)` | dimensionless envelope shape (a Gaussian bump); multiplies `Ω`. |
+| `Ω(t) = Ω·f(t)` | instantaneous Rabi rate the spin actually feels at time `t`. |
+| `θ(t) = ∫₀^t Ω·f dt′` | accumulated pulse area — the rotation angle reached so far. |
+| `σ` | Gaussian pulse width — tall-and-narrow (small `σ`) vs short-and-wide (large `σ`). |
+| `A` | envelope amplitude, fixed so the *total* area is exactly `π`. |
+| `π`-pulse | a pulse of total area `π`; rotates the spin \|↓⟩ → \|↑⟩. |
+
 ## The scenario
 
 One ²⁵Mg⁺ ion, same trap as Tutorials 1–2 (axial mode at
@@ -98,6 +120,8 @@ from iontrap_dynamics.system import IonSystem
 # House colours — match the reference figure above.
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# --- Boilerplate: same hardware as Tutorials 1–2 (species, axial mode, geometry).
+#     None of these lines shape the pulse — the envelope arrives in Step 2.
 mode = ModeConfig(
     label="axial",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -105,12 +129,24 @@ mode = ModeConfig(
 )
 system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
 
+# --- The physics that matters here: the drive carries the reference (full-drive) Ω;
+#     the Gaussian envelope (Step 2) scales it in time (its peak is only ~0.4·Ω).
 drive = DriveConfig(
     k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
     carrier_rabi_frequency_rad_s=2 * np.pi * 1.0e6,  # Ω/2π = 1 MHz
     phase_rad=0.0,
 )
 ```
+
+!!! warning "Common confusion — `f(t)` is a shape, `Ω` is the rate"
+
+    Keep `carrier_rabi_frequency_rad_s` equal to the **reference** (full-drive,
+    `f = 1`) Rabi rate `Ω` and let the dimensionless envelope `f(t)` carry the
+    time profile — the two multiply to give `Ω(t) = Ω·f(t)`. Do *not*
+    fold the envelope's peak height into `Ω`: the amplitude `A` you
+    compute in Step 2 is a normalisation of the *shape* fixed by the
+    area target, not a second rate. If a pulse rotates by the wrong
+    angle, first check which of the two you changed.
 
 ## Step 2 — Define the envelope and build the Hamiltonian
 
@@ -188,6 +224,15 @@ hamiltonian = modulated_carrier_hamiltonian(
     the analytic pulse-area formula with a numerical
     `scipy.integrate.quad` over the finite window.
 
+!!! warning "Common confusion — it's the area, not the peak"
+
+    The rotation angle is the *integral* `θ = ∫Ω·f dt`, so any two
+    pulses with the same area rotate the spin by the same amount: a
+    tall-narrow Gaussian and a short-wide one both make a `π`-pulse.
+    That is exactly why `A ≈ 0.399` here even though a naive "amplitude
+    `1`" guess would over-rotate. If you change `σ`, you must rescale
+    `A` to hold the area at `π` — halve `σ` and you double `A`.
+
 ## Step 3 — Solve with three Bloch-component observables
 
 The on-resonance carrier with zero laser phase drives the spin
@@ -241,9 +286,9 @@ max_error = max(
 print(f"Step 3 — final pulse area θ(T) = {theta[-1]:.7f} rad  (target π = {np.pi:.7f})")
 print(f"Step 3 — max |⟨σᵢ⟩_numeric − analytic| = {max_error:.2e}")
 print(f"Step 3 — final ⟨σ_z⟩ = {float(sigma_z[-1]):.8f}  (target +1)")
-assert max_error < 1e-5
-assert abs(theta[-1] - np.pi) < 1e-5   # total pulse area = π
-assert sigma_z[-1] > 0.9999             # ended at the north pole
+assert max_error < 1e-5, "numeric Bloch trajectory must match analytic (0, sin θ, −cos θ) to 1e-5; a larger gap points at the envelope, the area normalisation, or the basis — not at the shaped-pulse physics"
+assert abs(theta[-1] - np.pi) < 1e-5, "accumulated area θ(T) must land on π; this checks the classical envelope integral (the A normalisation), independent of the quantum solve"   # total pulse area = π
+assert sigma_z[-1] > 0.9999, "solved final ⟨σ_z⟩ must sit within 1e-4 of the north pole +1 — a clean π-rotation |↓⟩ → |↑⟩"             # ended at the north pole
 
 # Plot the Bloch-vector trajectory against the analytic prediction.
 t_us = times * 1e6
@@ -263,6 +308,8 @@ ax.set_title("Bloch trajectory — Gaussian π-pulse")
 ax.legend(frameon=False, fontsize=7)
 plt.show()
 ```
+
+**Takeaway.** `⟨σ_y⟩` rises to `+1` and falls back to `0` while `⟨σ_z⟩` sweeps `−1 → +1`: the Bloch vector walks a single clean meridian, crossing the equator (`θ = π/2`) exactly when half the pulse area has accumulated — for a symmetric Gaussian that is the pulse centre `t = 2.5 μs`.
 
 Three independent assertions: the numerical Bloch trajectory
 matches the analytic `(0, sin θ, −cos θ)` curve to better than

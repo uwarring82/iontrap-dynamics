@@ -41,6 +41,29 @@ round-trip (cached results preserve their warnings tuple).
 
 ---
 
+!!! note "New here? Read this first"
+
+    - The cache lets you **write a computed trajectory to disk and reload it later** without re-running the (expensive) `solve`.
+    - Three functions do the work: `compute_request_hash` fingerprints your parameter dict, `save_trajectory` writes the bundle, and `load_trajectory` reads it back — but only if that fingerprint still matches.
+    - A saved **bundle is two files**: `manifest.json` (human-readable metadata + the embedded hash) and `arrays.npz` (the numeric time-series).
+    - The round-trip is **bit-identical** — the reloaded `times`, expectation arrays, and `warnings` equal the originals exactly, so a cache hit is a lossless stand-in for the solve.
+    - The hash is an **integrity guard, not a lookup key**: any mismatch — wrong expected hash, tampered manifest, a missing bundle file, or a missing/extra `.npz` array — raises `IntegrityError` rather than silently handing back a stale or wrong result (an unrelated *extra* file dropped in the cache dir is ignored).
+    - Only `StorageMode.OMITTED` results are cacheable — expectations, `warnings`, and `times` persist; the **full quantum states never do**.
+
+    **In a hurry?** Steps 2 and 4 are the core round-trip (solve + save, then load + verify); Step 5 walks the four ways the loader refuses a bad cache.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `compute_request_hash` | Hashes your (JSON-serialisable) parameter dict into a 64-char SHA-256 fingerprint of the request. |
+| `save_trajectory` | Writes a result to a cache directory as the two-file bundle. |
+| `load_trajectory` | Reads a bundle back — but only if the expected hash matches the manifest's. |
+| `manifest.json` | Human-readable half of the bundle: metadata, expectation labels, and the embedded request hash. |
+| `arrays.npz` | Numeric half of the bundle: `times` plus one `expectation__<label>` array per observable. |
+| `StorageMode.OMITTED` | The only cacheable storage mode — keeps expectations/`times`/`warnings`, drops the full states. |
+| `IntegrityError` | Raised when the cache can't be trusted — wrong or tampered hash, a missing bundle file, or a missing/extra `.npz` array (an unrelated extra file is ignored). |
+
 ## The request-hash contract in one picture
 
 ```
@@ -99,6 +122,7 @@ BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#4
 
 N_FOCK = 30
 
+# --- Boilerplate: rebuild the Tutorial 2 scenario (mode → system → Hilbert → drive). ---
 mode = ModeConfig(
     label="axial",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -123,6 +147,8 @@ eta = lamb_dicke_parameter(
 sideband_rabi_rate = drive.carrier_rabi_frequency_rad_s * eta
 flop_period = 2 * np.pi / sideband_rabi_rate
 
+# --- The physics that matters here: only *primary* inputs go in the hashed dict
+# (derived numbers like eta and flop_period stay out — see the note below). ---
 parameters = {
     "scenario": "tutorial_07_cache_roundtrip",
     "N_fock": N_FOCK,
@@ -189,8 +215,8 @@ print(f"hash stamped on result : {result.metadata.request_hash}")
 print(f"storage_mode           : {result.metadata.storage_mode.value}")
 files_written = sorted(p.name for p in cache_dir.iterdir())
 print(f"files in cache_dir     : {files_written}")
-assert result.metadata.request_hash == request_hash
-assert set(files_written) == {"manifest.json", "arrays.npz"}
+assert result.metadata.request_hash == request_hash, "solve stamps request_hash onto the result — a mismatch here means the stamp was dropped"
+assert set(files_written) == {"manifest.json", "arrays.npz"}, "a saved bundle is exactly two files: manifest.json (metadata + hash) and arrays.npz (numeric payload)"
 ```
 
 !!! warning "`StorageMode.OMITTED` is the only supported cache input"
@@ -255,6 +281,11 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** The `.npz` half is a plain `np.savez` archive — any tool
+that reads `.npz` can consume the raw time-series, but only
+`load_trajectory` enforces the hash and bundle-shape guarantees, so a
+raw read forgoes them.
+
 Bundle shape is strict by design — `load_trajectory` checks that
 every label in `expectation_labels` has a matching npz array and
 rejects both missing and extra arrays.
@@ -285,7 +316,7 @@ print(f"load succeeded — restored.metadata.request_hash = {restored.metadata.r
 # Every numeric array round-trips bit-identical.
 times_match = np.array_equal(restored.times, result.times)
 print(f"times bit-identical    : {times_match}")
-assert times_match
+assert times_match, "the reloaded time grid must be bit-identical — the round-trip is lossless, not a re-computation"
 for label in result.expectations:
     arrays_match = np.array_equal(restored.expectations[label], result.expectations[label])
     print(f"  {label} bit-identical : {arrays_match}")
@@ -304,12 +335,33 @@ assert restored.metadata.storage_mode.value == "omitted"
 assert restored.warnings == ()
 ```
 
+**Takeaway.** Because every array compares bit-identical, a cache hit substitutes
+for recomputing the stored observables *exactly* — no numeric drift to reason about.
+(The full states are not cached, so you still re-run `solve` when you need those.)
+
+!!! warning "Common confusion — a reloaded bundle is a record, not a checkpoint"
+
+    A round-trip restores `times`, `expectations`, `warnings`, and
+    metadata — but **not** the quantum states (only
+    `StorageMode.OMITTED` is cacheable). You can read observables off
+    `restored`, but you cannot resume the evolution from it: there is no
+    stored state to propagate. Re-run `solve` if you need the trajectory
+    itself.
+
 ## Step 5 — The four failure modes
 
 The `IntegrityError` ladder is where the value of hash
 verification actually shows up. Each of these scenarios is a
 separate way a cache can go wrong; each produces a distinct
 diagnostic.
+
+!!! warning "Common confusion — the hash guards integrity, not 'closeness'"
+
+    A failing hash never triggers a "load it anyway, the numbers look
+    close" path — `load_trajectory` **raises** `IntegrityError` and
+    returns nothing. So a successful load is a *proof* that the bundle
+    matches the request you passed; an `IntegrityError` is your cue to
+    recompute, never to ignore.
 
 ### Mismatched expected hash
 

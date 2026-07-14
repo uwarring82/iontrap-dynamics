@@ -37,6 +37,28 @@ observable-construction hook.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - The library ships **built-in observable factories** (`spin_z`, `number`, `parity`, …); this tutorial teaches the escape hatch for everything they don't cover.
+    - An `Observable` is just a **label plus a qutip operator** — hand it to `solve()` and it reports `⟨operator⟩` at every requested time, right alongside the built-ins.
+    - The one rule: your operator must act on the **whole Hilbert space** (spins ⊗ modes) in the CONVENTIONS §2 order (spins first, then modes); helper methods do that embedding for you.
+    - Four worked patterns: a **Bell-state projector** (its expectation is the gate fidelity), a **two-ion correlator** `⟨σ_x σ_x⟩`, a **mode Fock projector** giving `P(n = 1)`, and a **non-Hermitian** coherence.
+    - A **Hermitian** operator has a real expectation (a physical observable); a **non-Hermitian** one has a complex expectation — a virtual diagnostic, not a number any single measurement returns.
+    - `StorageMode.EAGER` keeps every state so you can analyse the run afterwards (partial traces, concurrence); the default `OMITTED` throws the states away and keeps only the expectation arrays.
+    - **In a hurry?** *Solve with all four side-by-side* runs everything at once and is the payoff; Patterns A–D just build the four operators it consumes.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `Observable` | a (label, operator) record; hand it to `solve()` to stream `⟨operator⟩` over time next to the built-ins. |
+| \|Φ⁻⟩ | the target Bell state (\|↓↓⟩ − i\|↑↑⟩)/√2 that this MS gate produces. |
+| \|ψ⟩⟨ψ\| | projector; its expectation is the population in that state (the fidelity, when it is the target) — a number in [0, 1]. |
+| `⟨σ_x σ_x⟩` | two-ion x–x spin correlator; the MS-gate fringe observable, equal to 0 for the ideal target state. |
+| \|1⟩⟨1\| | mode Fock projector; its expectation is `P(n = 1)`, the one-phonon population. |
+| \|↓↓⟩⟨↑↑\| | off-diagonal virtual operator; its complex expectation reports the Bell coherence phase, not a physical measurement. |
+| `StorageMode.EAGER` | tell `solve()` to keep every state for post-hoc analysis; the default `OMITTED` discards them. |
+
 ## The one-line rule
 
 An `Observable` is a two-field frozen dataclass:
@@ -96,6 +118,7 @@ from iontrap_dynamics.system import IonSystem
 # House colours — shared across all figures in this tutorial.
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# --- Boilerplate: two ²⁵Mg⁺ ions sharing one axial COM mode, Fock-truncated at N_FOCK. ---
 N_FOCK = 12
 mode = ModeConfig(
     label="com",
@@ -107,6 +130,8 @@ mode = ModeConfig(
 system = IonSystem(species_per_ion=(mg25_plus(), mg25_plus()), modes=(mode,))
 hilbert = HilbertSpace(system=system, fock_truncations={"com": N_FOCK})
 
+# --- The physics that matters: the drive sets η, from which the MS-gate closing
+#     detuning δ and gate time t_gate are derived (exactly as in Tutorial 4). ---
 drive = DriveConfig(
     k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
     carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,
@@ -325,9 +350,21 @@ print(f"  P(n_com = 1)               = {p1_final:.2e}  (target 0.0)")
 print(f"  coherence Im[⟨↓↓|ρ|↑↑⟩]   = {final_coherence.imag:.5f}  (target −0.5)")
 print(f"  coherence Re[⟨↓↓|ρ|↑↑⟩]   = {final_coherence.real:.2e}  (target 0.0)")
 
-assert abs(result.expectations["bell_fidelity"][-1] - 1.0) < 1e-4
-assert abs(result.expectations["sigma_xx"][-1] - 0.0) < 1e-4
-assert abs(result.expectations["p_fock1_com"][-1] - 0.0) < 1e-4
+assert abs(result.expectations["bell_fidelity"][-1] - 1.0) < 1e-4, (
+    "Bell fidelity must reach 1 at t_gate: this solve is a closed-system unitary "
+    "(no decoherence), so the state should land exactly on |Φ⁻⟩ — a shortfall "
+    "points to a wrong δ/t_gate or an N_FOCK too small to hold the mid-gate motion"
+)
+assert abs(result.expectations["sigma_xx"][-1] - 0.0) < 1e-4, (
+    "⟨σ_x σ_x⟩ must return to 0 at t_gate: the |↓↓⟩ and |↑↑⟩ components of |Φ⁻⟩ carry a "
+    "−i (quadrature, 90°) relative phase, so the x–x cross-term is purely imaginary and "
+    "⟨σ_x σ_x⟩ vanishes; a nonzero value means the gate has not closed onto |Φ⁻⟩"
+)
+assert abs(result.expectations["p_fock1_com"][-1] - 0.0) < 1e-4, (
+    "P(n=1) must return to 0 at t_gate: loop closure disentangles the motion from "
+    "the spin and returns it to the vacuum — residual one-phonon population is the "
+    "signature of an unclosed phase-space loop"
+)
 
 # Non-Hermitian result is complex; inspect imag / real separately.
 assert abs(final_coherence.imag - (-0.5)) < 1e-4
@@ -353,6 +390,13 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** `⟨σ_x σ_x⟩ → 0` and `P(n = 1) → 0` are *necessary*
+fingerprints of a closed gate but not *sufficient* to prove the
+target — a fully mixed spin state gives `⟨σ_x σ_x⟩ = 0` too, so only
+the Bell fidelity (Pattern A) certifies the state is actually `|Φ⁻⟩`;
+the concurrence (below) certifies only that it is *maximally entangled*,
+not *which* Bell state it is.
+
 All four land on their expected Bell-gate targets at `t_gate`.
 The Bell fidelity saturates at 1; the σ_x σ_x correlator stays at 0
 (`|Φ⁻⟩ = (|↓↓⟩ − i|↑↑⟩)/√2` has equal-weight computational-basis
@@ -360,6 +404,16 @@ components with opposite phases, so `⟨σ_x σ_x⟩` averages to zero);
 the Fock-1 population returns to 0 (loop closure); and the coherence
 `⟨↓↓|ρ|↑↑⟩` acquires its full `−i / 2` phase (the `−i` amplitude on
 `|↑↑⟩` in `|Φ⁻⟩` contributes a negative imaginary part).
+
+!!! warning "Common confusion — this fidelity is the ideal, not a measured one"
+
+    The solve above is a **closed-system unitary** — no spontaneous
+    emission, no motional heating, no readout error — so
+    `bell_fidelity → 1` is the *ceiling* this model can reach, not
+    what a lab reads off a real gate. Measured Bell-gate fidelities
+    sit below 1, bounded by decoherence and readout infidelity. Read
+    `1.0` here as "the model closed on its target," not "the physical
+    gate is perfect."
 
 ## When to build a brand-new factory vs. a one-off `Observable`
 
@@ -411,7 +465,11 @@ c_traj = concurrence_trajectory(
 )
 
 print(f"Concurrence at t_gate: C = {c_traj[-1]:.5f}  (target 1.0)")
-assert abs(c_traj[-1] - 1.0) < 1e-3  # maximally entangled at t_gate
+assert abs(c_traj[-1] - 1.0) < 1e-3, (
+    "concurrence must reach 1 at t_gate: while the fidelity pins the state to |Φ⁻⟩, "
+    "C = 1 independently certifies it is maximally entangled — the two together "
+    "confirm the gate, not just one of them"
+)  # maximally entangled at t_gate
 
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
 ax.plot(times * 1e6, c_traj, color=BLUE)
@@ -423,11 +481,27 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** Concurrence certifies *entanglement* without naming a
+target state, so `C → 1` and `bell_fidelity → 1` together say more
+than either alone — fidelity pins *which* state you made, concurrence
+independently confirms it is maximally entangled.
+
 For a two-ion Bell gate `c_traj` should reach `1.0` at `t_gate`.
 `storage_mode=EAGER` trades memory for flexibility — fine for
 single-gate trajectories, expensive for long ensemble sweeps.
 The default `StorageMode.OMITTED` keeps only the expectation
 arrays and is what you want for parameter scans.
+
+!!! warning "Common confusion — an OMITTED solve throws the states away for good"
+
+    `StorageMode.OMITTED` (the default) keeps only the expectation
+    arrays; `result.states` comes back empty. Anything that needs the
+    full states after the fact — `concurrence_trajectory`, a partial
+    trace, or evaluating a non-Hermitian operator like `coherence_op`
+    from the trajectory — is then impossible without re-solving.
+    Decide up front: pass `StorageMode.EAGER` before you solve if you
+    will want any post-hoc analysis, because the states cannot be
+    recovered later.
 
 ## Where to next
 

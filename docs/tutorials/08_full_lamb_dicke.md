@@ -44,6 +44,28 @@ for why the default is leading-order.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - The **red sideband** couples a spin flip to removing one phonon; how fast it flops depends on which motional Fock level `n` the ion sits in.
+    - Deep in the Lamb–Dicke regime that rate follows the simple `Ω·η·√n` law — but that law is only the *leading-order* term in `η`.
+    - For hotter motion (higher `n`) the **exact** Wineland–Itano rate carries a Laguerre polynomial and runs *below* the `√n` estimate — leading-order over-predicts the coupling.
+    - Rule of thumb: the simple law holds while the confinement `η²(2n+1) ≲ 0.1` (the library's "deep" regime, used in Step 4); past that, set `full_lamb_dicke=True` on the sideband builder to get the exact rate.
+    - This tutorial makes the gap concrete — the shortfall grows `3% → 16% → 30%` as `n` climbs `1 → 5 → 10` at `η = 0.26`.
+    - Switching the flag is free at solve time — it only changes how the coupling operator is *built*, not the cost of the ODE the solver runs.
+    - **In a hurry?** Step 1 tabulates and plots leading-order vs full rate against `n`; Step 2 runs the three flops so you watch them desynchronise — those two steps are the core.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `η` | Lamb–Dicke parameter — how strongly the laser reaches the motion (dimensionless). |
+| `Ω` | carrier Rabi frequency — the bare on-resonance drive strength. |
+| `Ω_{n,n−1}` | red-sideband Rabi rate out of Fock level `n` — the quantity that differs between the two flavours. |
+| `η²(2n+1)` | the Lamb–Dicke confinement — the library's regime parameter (`lamb_dicke_regime`); `≲ 0.1` is "deep", where leading-order holds. |
+| `full_lamb_dicke` | the builder flag: `False` → leading-order `η·a`; `True` → exact Wineland–Itano coupling. |
+| `L_{n−1}^{(1)}` | generalised Laguerre polynomial — carries the exact `n`-dependence the `√n` law drops. |
+| `e^(−η²/2)` | the vacuum (`n̄=0`) Debye–Waller factor — the n-independent prefactor of the sideband rate. |
+
 ## The Wineland–Itano closed form, and when you need it
 
 The exact `|n⟩ → |n − 1⟩` red-sideband Rabi rate is
@@ -130,6 +152,7 @@ from iontrap_dynamics.system import IonSystem
 # House colours — used throughout this tutorial.
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# --- Boilerplate: one Mg-25 ion carrying a single axial mode, Fock-truncated at N_FOCK. ---
 N_FOCK = 30
 mode = ModeConfig(
     label="axial",
@@ -145,6 +168,8 @@ drive = DriveConfig(
     phase_rad=0.0,
 )
 
+# --- The physics that matters: derive η from the geometry, then build the SAME red sideband
+#     two ways — leading-order (η·a) vs the full Wineland–Itano coupling. ---
 eta = lamb_dicke_parameter(
     k_vec=drive.k_vector_m_inv,
     mode_eigenvector=mode.eigenvector_at_ion(0),
@@ -201,6 +226,12 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** The shortfall is not a fixed offset — it widens with `n` (`3.3%` at `n = 1`, `16.0%` at `n = 5`, `30.3%` at `n = 10`), and here the full-LD rate stays *below* the leading-order estimate at every `n`, so leading-order never under-runs the true coupling.
+
+!!! warning "Common confusion — the exact rate does not keep climbing like `√n`"
+
+    The leading-order curve rises as `√n` without bound, but the full Lamb–Dicke rate carries the Laguerre factor `L_{n−1}^{(1)}(η²)`: it flattens and turns over — in this figure it peaks near `n ≈ 12` and then declines. At larger `n` or stronger `η` the same structure produces genuine nulls and revivals. Never extrapolate a hot-ion sideband rate from the `√n` trend.
+
 ## Step 2 — Run the three scenarios, overlay the trajectories
 
 Three starting Fock levels, same drive, same total duration
@@ -256,6 +287,10 @@ ax.set_xlabel("time (µs)")
 fig.tight_layout()
 plt.show()
 ```
+
+!!! warning "Common confusion — leading-order times hot-ion pulses too short"
+
+    In the Lamb–Dicke and near-LD regime the `√n` rate *over-estimates* the true coupling (the Debye–Waller factor alone guarantees it), so a π-time computed from `Ω·η·√n` is *too short* — the slower real ion **under-rotates**, falling short of the flip. That is why, on the schedule below (durations *defined* as two leading-order periods), the leading-order curves land at `⟨σ_z⟩ = −1` on cue while the full-LD curves lag further behind at every higher `n`. Once the confinement `η²(2n+1) ≳ 0.1`, calibrate timings with `full_lamb_dicke=True`.
 
 ### What the numbers show
 
@@ -369,6 +404,8 @@ ax.set_title(rf"Regime map at $n = {n_sweep}$")
 ax.legend(frameon=False, fontsize=8)
 plt.show()
 ```
+
+**Takeaway.** You can read the flag decision straight off the regime axis: under `η²(2n+1) ≲ 0.1` (deep) leading-order is within a few percent, but by `η²(2n+1) ≳ 1` (beyond) it over-predicts the coupling by a third or more — where the shortfall is that large, full Lamb–Dicke is not optional.
 
 The Mølmer–Sørensen gate Hamiltonian (from
 [Tutorial 4](04_ms_gate_bell.md)) is a composition of red and
