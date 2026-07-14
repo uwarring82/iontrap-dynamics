@@ -75,9 +75,9 @@ ion at `(0, 0, 1/√2)` — both ions move in phase with equal
 amplitude, and the per-ion participation factor picks up a `1/√2`
 relative to the single-ion limit. A 280 nm bichromatic drive
 addresses both ions at carrier Rabi frequency
-`Ω / 2π = 100 kHz`; the two tones sit **symmetrically** above and
-below the carrier at detuning `±δ`, so the drive couples only to
-the first-order sidebands of the COM mode.
+`Ω / 2π = 100 kHz`; the two tones sit **symmetrically** offset from
+the COM mode's red and blue first-order sidebands by `δ` (not from
+the carrier), so the drive couples only to those first-order sidebands.
 
 The Bell-closing condition fixes `δ` and the gate time `t_gate`
 simultaneously. For a single loop `K = 1`:

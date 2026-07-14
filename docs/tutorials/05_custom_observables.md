@@ -400,7 +400,8 @@ not *which* Bell state it is.
 All four land on their expected Bell-gate targets at `t_gate`.
 The Bell fidelity saturates at 1; the σ_x σ_x correlator stays at 0
 (`|Φ⁻⟩ = (|↓↓⟩ − i|↑↑⟩)/√2` has equal-weight computational-basis
-components with opposite phases, so `⟨σ_x σ_x⟩` averages to zero);
+components in **quadrature** — a `−i` (90°) relative phase — so the
+x–x cross-term is purely imaginary and `⟨σ_x σ_x⟩` vanishes);
 the Fock-1 population returns to 0 (loop closure); and the coherence
 `⟨↓↓|ρ|↑↑⟩` acquires its full `−i / 2` phase (the `−i` amplitude on
 `|↑↑⟩` in `|Φ⁻⟩` contributes a negative imaginary part).
