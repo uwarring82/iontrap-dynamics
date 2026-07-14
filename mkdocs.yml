@@ -64,6 +64,7 @@ nav:
   - Getting Started: getting-started.md
   - Project Framework: framework.md
   - Conventions: conventions.md
+  - Glossary: glossary.md
   - Phase 1 Architecture: phase-1-architecture.md
   - Benchmarks: benchmarks.md
   - "Literature Review — Estimation & Darwinism": estimation-darwinism-review.md
@@ -71,6 +72,7 @@ nav:
   - "Model Hierarchy — JC / AJC & Quantum Rabi": models-hierarchy.md
   - Tutorials:
       - Overview: tutorials/index.md
+      - "0. The 30-second mental model": tutorials/00_mental_model.md
       - "1. Carrier Rabi with shot-noise readout": tutorials/01_first_rabi_readout.md
       - "2. Red-sideband flopping from Fock |1⟩": tutorials/02_red_sideband_fock1.md
       - "3. Gaussian π-pulse with modulated_carrier": tutorials/03_gaussian_pi_pulse.md

@@ -21,8 +21,18 @@ and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.
 
+**New here?** Start with **[Tutorial 0](00_mental_model.md)** for the 30-second mental
+model and your first runnable result, then follow the newcomer path **0 → 1 → 2 → 6**.
+Unfamiliar with a term? The **[Glossary](../glossary.md)** defines the recurring vocabulary
+once.
+
 ## Available
 
+- [**Tutorial 0 — The 30-second mental model**](00_mental_model.md).
+  The whole library in one breath: the physics‖code pipeline
+  (`IonSystem → HilbertSpace → Hamiltonian → solve → readout`) and a single runnable cell
+  that flops a spin and prints `⟨σ_z⟩` — a first result before Fock truncation, storage
+  modes, or warnings. The on-ramp to the whole track.
 - [**Tutorial 1 — Carrier Rabi flopping with finite-shot readout**](01_first_rabi_readout.md).
   End-to-end pipeline exercising every architectural layer through
   v0.2: configuration (`IonSystem`, `DriveConfig`, `ModeConfig`),
@@ -236,6 +246,7 @@ parameter choices, not coastline constraints. Licensed under
 ## Complementary references
 
 - **Install + first run** — [Getting Started](../getting-started.md).
+- **Vocabulary** — [Glossary](../glossary.md) (plain-language definitions of the recurring terms).
 - **Architectural overview** — [Phase 1 Architecture](../phase-1-architecture.md).
 - **Binding physics conventions** — [Conventions](../conventions.md) (rendered live from the repo root `CONVENTIONS.md`).
 - **Performance baselines** — [Benchmarks](../benchmarks.md).
