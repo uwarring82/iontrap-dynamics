@@ -2,7 +2,7 @@
 
 **Repository for open-system quantum dynamics of trapped-ion spin–motion systems**
 
-Version 0.3.10 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional · §5.6 reduced light–matter models · §5.7 non-Markovianity & spectral density · **§5.8 non-adiabatic squeezing**) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 reduced models seal CONVENTIONS §25 + §5 scope and bump `CONVENTION_VERSION` 0.3 → 0.4 (§5.6), staged for `v0.6.0`**; **WP-05 non-adiabatic squeezing seals CONVENTIONS §26 + `CONVENTION_VERSION` 0.4 → 0.5 (§5.8), 2026-07-10**; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
+Version 0.3.11 (amended §4.0 repo-hosting · §5.0 release-mapping · §5.1 v0.2 release · §5.2 post-v0.2 on-`main` · §5.3 β.4 as v0.3.x follow-up · §5.4 estimation/Darwinism · §5.5 two-mode/motional · §5.6 reduced light–matter models · §5.7 non-Markovianity & spectral density · §5.8 non-adiabatic squeezing · **§5.9 tutorial-track accessibility**) · Drafted 2026-04-17 · Status: v0.2.0 tagged 2026-04-21; Phase 2 JAX-backend time-independent surface on `main`; the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 (§5.4/§5.5) and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 reduced models seal CONVENTIONS §25 + §5 scope and bump `CONVENTION_VERSION` 0.3 → 0.4 (§5.6), staged for `v0.6.0`**; **WP-05 non-adiabatic squeezing seals CONVENTIONS §26 + `CONVENTION_VERSION` 0.4 → 0.5 (§5.8), 2026-07-10**; **WP-06 tutorial-track accessibility is Sail-only and requires no convention bump (§5.9), 2026-07-14**; β.4 time-dependent extension scoped as v0.3.x follow-up; see §5.3
 Supersedes v0.2.1. Changes vs v0.2.1 summarised in Appendix B (CD integration).
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
@@ -626,6 +626,42 @@ surfaces; lands additively toward a future minor release.
 
 ---
 
+### 5.9 — Tutorial-track accessibility as Sail-only docs pass (2026-07-14) *(Coastline, new in v0.3.11)*
+
+Added as a **Sail-only** tutorial-accessibility pass (card: roll the proven T19/T20
+newcomer rail across the whole tutorial track, add Tutorial 0 as a 30-second mental
+model, add a cross-linked glossary, and give the index a navigable difficulty map).
+Ratified and executed via `WP/WP-06-tutorial-accessibility.md`; dispatch family `TA`.
+
+**Scope.** Docs-layer only; no new physics symbol, no public API surface, no
+`CONVENTIONS.md` edit. The work splits into TA1–TA7:
+- **TA1** — newcomer rail (New-here box, symbols table, Common-confusion callouts,
+  figure Takeaways, boilerplate/physics comments, explanatory `assert` messages)
+  across tutorials 01–18; T19/T20 already carry the rail as the pilot;
+- **TA2** — Tutorial 0 (`docs/tutorials/00_mental_model.md`): the physics‖code spine
+  plus one runnable spin-flop cell;
+- **TA3** — Glossary (`docs/glossary.md`): plain-language definitions with
+  cross-links;
+- **TA4** — Index "First time?" path + `intro/core/advanced` difficulty tags;
+- **TA5** — Runnable physics example in `docs/getting-started.md`;
+- **TA6** — Reusable ASCII pipeline diagram;
+- **TA7** — Collapsed `???` setup blocks; prerequisite notebook-builder extension
+  so `???` admonitions render correctly in Colab.
+
+**No convention bump.** This WP is entirely Sail (adaptive guidance) plus one
+optional tooling fix in `tools/build_tutorial_notebooks.py`. It defines no physics
+convention and leaves `CONVENTION_VERSION` at 0.5.
+
+**Seal posture.** Ratified 2026-07-14; TA2 and TA3 drafts already landed on
+`wp-06-tutorial-accessibility`. The `TA` dispatch family is collision-clear and is
+recorded in `WP/LOGBOOK.md` at ratification.
+
+**Consequence for §5 above.** No re-scoping of Phase 2's target or of the
+WP-02/WP-03/WP-04/WP-05 surfaces; lands additively toward a future docs/accessibility
+minor or patch release.
+
+---
+
 ### Phase 0 — Foundations (target: v0.1-alpha, 4–6 weeks)
 
 **Deliverable:** repository skeleton with conventions, regression harness, canonical result schema, corporate-design bootstrap, one end-to-end example.
@@ -897,4 +933,4 @@ Only then does implementation of `IonSpecies`, `DriveConfig`, `ModeConfig`, `Ion
 
 **Convention version:** references `CONVENTIONS.md` **v0.4** (the v0.2 freeze 2026-04-21 closed §17 measurement layer and §18 systematics layer; the **v0.3 freeze 2026-06-03** closes §19–22 estimation/Darwinism and §23–24 two-mode/motional, per §5.4/§5.5; **WP-03 seals §25 reduced light–matter models + the §5 scope note 2026-06-04, bumping `CONVENTION_VERSION` 0.3 → 0.4 per §5.6**; §1–16 carry through unchanged from the v0.1 draft).
 **Corporate design version:** `cd-v1.7.1` (decision D2 closed 2026-04-23). Upstream `threehouse-plus-ec/cd-rules` cut `cd-v1.7.0` (at commit `8671c933`) and `cd-v1.7.1` (at commit `ee01c803`) on 2026-04-23, executing the "Tag repo" step of the upstream §15.4 deprecation protocol retroactively against the Version History entries in `blueprint-threehouse-CD.md` §16. `assets/SOURCE.md` now pins to `cd-v1.7.1`; the checksum table carries over unchanged from the provisional pin because the six asset files are byte-identical between 1.7.0 and 1.7.1. The CI hash-drift check (`cd-local-integrity`) is a permanent gate. References to `cd-v1.7.0` elsewhere in this document predate the tag-cutting action and remain the literal target-version language of the plan; the operational pin is one minor version ahead.
-**Workplan version:** 0.3.10 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03, §5.6 reduced light–matter models 2026-06-04, §5.7 non-Markovianity & spectral density 2026-06-17, **§5.8 non-adiabatic squeezing 2026-07-10**) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 seals §25 + §5 scope, bumping `CONVENTION_VERSION` 0.3 → 0.4, staged for `v0.6.0` (§5.6)**; **WP-05 seals §26 + `CONVENTION_VERSION` 0.4 → 0.5 (§5.8), 2026-07-10**; Phase 2 JAX-backend time-independent surface and tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.
+**Workplan version:** 0.3.11 (amended §4.0 repo-hosting, §5.0 release-mapping 2026-04-19, §5.1 v0.2 release 2026-04-21, §5.2 post-v0.2 on-`main` 2026-04-21, §5.3 β.4 as v0.3.x follow-up 2026-04-22, §5.4 estimation/Darwinism 2026-06-02, §5.5 two-mode/motional 2026-06-03, §5.6 reduced light–matter models 2026-06-04, §5.7 non-Markovianity & spectral density 2026-06-17, §5.8 non-adiabatic squeezing 2026-07-10, **§5.9 tutorial-track accessibility 2026-07-14**) · `v0.2.0` tagged 2026-04-21 covering Phase 0 foundations plus the full Phase 1 deliverable (dynamics core, measurement layer, systematics layer, registered entanglement observables); the **v0.3 Convention Freeze** seals CONVENTIONS §19–24 and bumps `CONVENTION_VERSION` 0.2 → 0.3; **WP-03 seals §25 + §5 scope, bumping `CONVENTION_VERSION` 0.3 → 0.4, staged for `v0.6.0` (§5.6)**; **WP-05 seals §26 + `CONVENTION_VERSION` 0.4 → 0.5 (§5.8), 2026-07-10**; **WP-06 is Sail-only and requires no convention bump (§5.9), 2026-07-14**; Phase 2 JAX-backend time-independent surface and tutorials on `main` under `[Unreleased]`; β.4 time-dependent extension scoped as v0.3.x follow-up per §5.3.

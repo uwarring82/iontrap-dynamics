@@ -2,7 +2,7 @@
 
 **Roll the proven T19/T20 newcomer rail across the whole tutorial track, add an on-ramp (Tutorial 0) and a glossary, and give the index a navigable difficulty map — Sail-only, no convention touched.**
 
-Version 0.1 · Drafted 2026-07-14 · Status: Drafted
+Version 0.2 · Ratified 2026-07-14 · Status: Ratified
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document itself is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: the tutorials, glossary, diagram, and index prose are Sail / CC BY-NC-SA 4.0; the one *optional* code item (a notebook-builder `???` extension under TA7, and any helper) is MIT (`tools/`, `src/`). No `CONVENTIONS.md` / spec edit — this WP introduces no convention.
@@ -70,19 +70,19 @@ This WP feeds a new dispatch track to be recorded in `WORKPLAN_v0.3.md` as the n
 - [ ] **Accuracy review** — every simplified newcomer-facing claim adversarially reviewed (the pilot's three slips are the precedent).
 - [ ] **SPDX + CHANGELOG** — only if code changes (TA7 builder edit); docs-only WIs need no SPDX. A dispatch-keyed `[Unreleased]` bullet per landed dispatch.
 
-## 6. Dispatch register *(Sail — proposed, not minted)*
+## 6. Dispatch register *(Sail — minted at ratification)*
 
-Family **`TA`** (Tutorial Accessibility) — collision-checked clear against `WP/LOGBOOK.md`, `WORKPLAN_v0.3.md`, and `CHANGELOG.md` (taken families: single/double letters, `ED*`, `MC*`, `RL*`, `ND*`, `SQ*`, `AAG/AAH`; `TA*` has zero hits). **Codes mint at ratification** (maintainer act), then mirror into the `WP/LOGBOOK.md` registry.
+Family **`TA`** (Tutorial Accessibility) — collision-checked clear against `WP/LOGBOOK.md`, `WORKPLAN_v0.3.md`, and `CHANGELOG.md` (taken families: single/double letters, `ED*`, `MC*`, `RL*`, `ND*`, `SQ*`, `AAG/AAH`; `TA*` has zero hits). **Codes minted 2026-07-14** and mirrored into `WP/LOGBOOK.md`.
 
 | Dispatch | Maps to | CHANGELOG bullet | Status |
 |---|---|---|---|
-| `TA1` | WI-TA1 | `- **Dispatch TA1 — newcomer rail across tutorials 01–18.**` | proposed |
-| `TA2` | WI-TA2 | `- **Dispatch TA2 — Tutorial 0: the 30-second mental model.**` | proposed |
-| `TA3` | WI-TA3 | `- **Dispatch TA3 — docs glossary.**` | proposed |
-| `TA4` | WI-TA4 | `- **Dispatch TA4 — index "First time?" path + difficulty tags.**` | proposed |
-| `TA5` | WI-TA5 | `- **Dispatch TA5 — runnable getting-started example.**` | proposed |
-| `TA6` | WI-TA6 | `- **Dispatch TA6 — pipeline diagram.**` | proposed |
-| `TA7` | WI-TA7 | `- **Dispatch TA7 — collapsed setup blocks + notebook-builder `???` support.**` | proposed |
+| `TA1` | WI-TA1 | `- **Dispatch TA1 — newcomer rail across tutorials 01–18.**` | minted |
+| `TA2` | WI-TA2 | `- **Dispatch TA2 — Tutorial 0: the 30-second mental model.**` | minted; draft landed |
+| `TA3` | WI-TA3 | `- **Dispatch TA3 — docs glossary.**` | minted; draft landed |
+| `TA4` | WI-TA4 | `- **Dispatch TA4 — index "First time?" path + difficulty tags.**` | minted |
+| `TA5` | WI-TA5 | `- **Dispatch TA5 — runnable getting-started example.**` | minted |
+| `TA6` | WI-TA6 | `- **Dispatch TA6 — pipeline diagram.**` | minted |
+| `TA7` | WI-TA7 | `- **Dispatch TA7 — collapsed setup blocks + notebook-builder `???` support.**` | minted |
 
 ## 7. Release plan *(Coastline gate)*
 
@@ -90,10 +90,10 @@ Target: a **docs/accessibility minor or patch** — nothing here changes a defau
 
 ## 8. Logbook hooks *(Sail)*
 
-Entries this WP has generated / will generate in `WP/LOGBOOK.md`:
+Entries this WP has generated in `WP/LOGBOOK.md`:
 
-- 2026-07-14 — WP-06 drafted against TC-tutorial-accessibility (v0.2, decisions ratified); `TA` family proposed (collision-checked, not minted); TA2 + TA3 drafts landed on `wp-06-tutorial-accessibility` off `main`.
-- (at ratification) — mint `TA1–TA7`, paste WORKPLAN §5.9, bump v0.3.11.
+- 2026-07-14 — WP-06 drafted against TC-tutorial-accessibility (v0.2, decisions ratified); `TA` family proposed.
+- 2026-07-14 — WP-06 ratified; `TA1–TA7` minted; WORKPLAN §5.9 pasted; `WORKPLAN_v0.3.md` bumped to v0.3.11; TA2 + TA3 drafts landed on `wp-06-tutorial-accessibility` off `main`.
 
 ---
 
@@ -101,8 +101,8 @@ Entries this WP has generated / will generate in `WP/LOGBOOK.md`:
 
 **Local candidate framework under active stewardship.** No parity implied with externally validated laws. This Work-Plan is a Sail execution document within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg), under the Coastline gates of `WORKPLAN_v0.3.md` and `CONVENTIONS.md`. Lock–Key rule applies: this WP is a key built on the stable locks those documents specify; it opens no new lock (Sail-only, no convention).
 
-**Council status:** Guardian <pending: confirm no oracle/`assert` weakened, no convention touched, every simplification accuracy-reviewed>. Architect <pending: confirm TA7 stays Option B (no new public API), TA8 deferred, TA6 diagram single-sourced>. Scout <horizon: rebase TA1 over the SQ6 tutorial content once that merges; whether the rail should reach `benchmarks/` demo tools>. Integrator <sequenced subset-first per §5; branch off `main`, separate from the SQ6 PR; release is a docs/accessibility minor>.
+**Council status:** Guardian <closed: no oracle/`assert` weakened; no convention touched; every simplification in TA2/TA3 accuracy-reviewed; future TA1 additions carry the same adversarial gate>. Architect <closed: TA7 Option B (no new public API), TA8 deferred, TA6 diagram single-sourced>. Scout <horizon: rebase TA1 over the SQ6 tutorial content once that merges; whether the rail should reach `benchmarks/` demo tools>. Integrator <closed: sequenced subset-first per §5; branch off `main`, separate from the SQ6 PR; release is a docs/accessibility minor>.
 
 **Convention version:** references `CONVENTIONS.md` v0.5 (frozen, §26 sealed). This WP introduces no convention and bumps no `CONVENTION_VERSION`.
 **Corporate design version:** `cd-v1.7.1` (consumed via Model B).
-**Workplan reference:** `WORKPLAN_v0.3.md` v0.3.10; this WP's track lands as amendment §5.9 (`new in v0.3.11`), pending maintainer seal.
+**Workplan reference:** `WORKPLAN_v0.3.md` v0.3.11; this WP's track lands as amendment §5.9 (`new in v0.3.11`), ratified and sealed.
