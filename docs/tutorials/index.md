@@ -21,32 +21,35 @@ and their committed output bundles under
 [`benchmarks/data/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/benchmarks/data)
 cover the same ground for users who prefer reading code to prose.
 
-**New here?** Start with **[Tutorial 0](00_mental_model.md)** for the 30-second mental
-model and your first runnable result, then follow the newcomer path **0 → 1 → 2 → 6**.
-Unfamiliar with a term? The **[Glossary](../glossary.md)** defines the recurring vocabulary
-once.
+**First time?** Start with **[Tutorial 0](00_mental_model.md)** for the 30-second mental
+model and your first runnable result, then follow the newcomer path **0 → 1 → 2 → 6** —
+stop when you can build a Hamiltonian, read it out, and diagnose Fock truncation. Each
+tutorial below is tagged `intro` (no prerequisites), `core` (the standard toolkit), or
+`advanced` (a specialised or research-grade surface); do the `core` before diving into
+`advanced`. Unfamiliar with a term? The **[Glossary](../glossary.md)** defines the
+recurring vocabulary once.
 
 ## Available
 
-- [**Tutorial 0 — The 30-second mental model**](00_mental_model.md).
+- `[intro]` [**Tutorial 0 — The 30-second mental model**](00_mental_model.md).
   The whole library in one breath: the physics‖code pipeline
   (`IonSystem → HilbertSpace → Hamiltonian → solve → readout`) and a single runnable cell
   that flops a spin and prints `⟨σ_z⟩` — a first result before Fock truncation, storage
   modes, or warnings. The on-ramp to the whole track.
-- [**Tutorial 1 — Carrier Rabi flopping with finite-shot readout**](01_first_rabi_readout.md).
+- `[intro]` [**Tutorial 1 — Carrier Rabi flopping with finite-shot readout**](01_first_rabi_readout.md).
   End-to-end pipeline exercising every architectural layer through
   v0.2: configuration (`IonSystem`, `DriveConfig`, `ModeConfig`),
   `HilbertSpace`, `carrier_hamiltonian`, `sequences.solve`,
   `SpinReadout`, `binomial_summary`. Written as the canonical "Hello
   world" for the library post-v0.2 Convention Freeze.
-- [**Tutorial 2 — Red-sideband flopping from Fock ∣1⟩**](02_red_sideband_fock1.md).
+- `[core]` [**Tutorial 2 — Red-sideband flopping from Fock ∣1⟩**](02_red_sideband_fock1.md).
   The four-step pattern from Tutorial 1 with the carrier swapped for
   the leading-order red-sideband Hamiltonian and motion initialised
   in `|n = 1⟩`. Introduces the `lamb_dicke_parameter` analytic helper,
   the `number` observable factory, and the `⟨σ_z⟩ + 2⟨n̂⟩ = 1`
   single-phonon-manifold conservation law as a sanity check.
   Parallels `tools/run_benchmark_sideband.py`.
-- [**Tutorial 3 — Gaussian π-pulse with `modulated_carrier_hamiltonian`**](03_gaussian_pi_pulse.md).
+- `[core]` [**Tutorial 3 — Gaussian π-pulse with `modulated_carrier_hamiltonian`**](03_gaussian_pi_pulse.md).
   First time-dependent Hamiltonian in the series. Swap the static
   carrier for a Gaussian-enveloped drive, normalise the envelope
   amplitude so the pulse area integrates to exactly π, and watch
@@ -56,7 +59,7 @@ once.
   `θ(t) = ∫₀^t Ω · f(t') dt'`. Closes with Blackman / stroboscopic
   / adiabatic-ramp envelope extensions. Parallels
   `tools/run_demo_gaussian_pulse.py`.
-- [**Tutorial 4 — Mølmer–Sørensen Bell gate**](04_ms_gate_bell.md).
+- `[core]` [**Tutorial 4 — Mølmer–Sørensen Bell gate**](04_ms_gate_bell.md).
   First two-ion scenario. Builds a two-²⁵Mg⁺ system sharing an
   axial COM mode, derives the Bell-closing detuning `δ = 2|Ωη|√K`
   and gate time `t_gate = π√K / |Ωη|` from physics inputs via the
@@ -66,7 +69,7 @@ once.
   1/2`, odd-parity `P_flip ≡ 0`, ion-exchange symmetry). First
   tutorial to wrap custom `qutip.Qobj` population projectors as
   `Observable` records. Parallels `tools/run_demo_ms_gate.py`.
-- [**Tutorial 5 — Custom observables**](05_custom_observables.md).
+- `[core]` [**Tutorial 5 — Custom observables**](05_custom_observables.md).
   Generalises Tutorial 4's `Observable`-record foothold into the
   full construction hook. Four patterns, one per case you'll
   actually hit: multi-subsystem Bell-fidelity projector
@@ -77,7 +80,7 @@ once.
   factory-vs-inline guidance and the `StorageMode.EAGER`
   post-hoc-analysis route (reduced-state partial traces, the
   registered `concurrence_trajectory` evaluator).
-- [**Tutorial 6 — Fock truncation diagnosis**](06_fock_truncation.md).
+- `[core]` [**Tutorial 6 — Fock truncation diagnosis**](06_fock_truncation.md).
   First diagnostic-layer tutorial. Walks a single scenario
   (thermal initial state `n̄ = 0.5`, static carrier) through all
   four CONVENTIONS §15 statuses — silent OK, Level 1
@@ -88,7 +91,7 @@ once.
   tighten ε via the `fock_tolerance` override for
   publication-grade runs; and a diagnosis recipe for a
   `ConvergenceError` from its message.
-- [**Tutorial 7 — Hash-verified cache round-trip**](07_cache_round_trip.md).
+- `[core]` [**Tutorial 7 — Hash-verified cache round-trip**](07_cache_round_trip.md).
   End-to-end walk through the persistence layer over the
   Tutorial 2 RSB scenario. Covers the three cache functions —
   `compute_request_hash`, `save_trajectory`, `load_trajectory` —
@@ -101,7 +104,7 @@ once.
   skip-recompute, committed reference results, cross-process
   sharing) and the "don't commit 1000-trial sweep bundles"
   caveat.
-- [**Tutorial 8 — Full Lamb–Dicke for hot-ion regimes**](08_full_lamb_dicke.md).
+- `[advanced]` [**Tutorial 8 — Full Lamb–Dicke for hot-ion regimes**](08_full_lamb_dicke.md).
   When the `full_lamb_dicke=True` flag on the sideband builders
   matters. Covers the Wineland–Itano closed form
   `Ω_{n,n−1}^full = Ω·|η|·e^(−η²/2)·√((n−1)!/n!)·L_{n−1}^(1)(η²)`,
@@ -111,7 +114,7 @@ once.
   Closes with a when-to-flip decision tree covering
   thermal-start scenarios, MS-gate tuning, and sideband
   cooling cascades.
-- [**Tutorial 9 — Squeezed / coherent state preparation**](09_squeezed_coherent_prep.md).
+- `[core]` [**Tutorial 9 — Squeezed / coherent state preparation**](09_squeezed_coherent_prep.md).
   Move past `qutip.basis` and `qutip.thermal_dm` for the motional
   initial state. Walks through the three named factories —
   `coherent_mode`, `squeezed_vacuum_mode`,
@@ -123,7 +126,7 @@ once.
   a red-sideband collapse scenario from `|↓, α = 2⟩` that
   exhibits the canonical Rabi-rate dephasing invisible from a
   pure-Fock start.
-- [**Tutorial 10 — Finite-shot statistics**](10_finite_shot_statistics.md).
+- `[core]` [**Tutorial 10 — Finite-shot statistics**](10_finite_shot_statistics.md).
   Deep dive on the three statistics functions —
   `wilson_interval`, `clopper_pearson_interval`,
   `binomial_summary` — and the `BinomialSummary` dataclass. A
@@ -136,7 +139,7 @@ once.
   `n_required ≥ z²·p(1−p) / Δ²` shot-budget sizing formula.
   Expands Tutorial 1's single-CI step into the full
   finite-shot reporting surface.
-- [**Tutorial 11 — Systematics: jitter ensembles**](11_jitter_ensembles.md).
+- `[core]` [**Tutorial 11 — Systematics: jitter ensembles**](11_jitter_ensembles.md).
   First systematics-layer tutorial. Layers a `RabiJitter(σ=3%)`
   onto the Tutorial 1 carrier-Rabi scenario and runs a
   200-trial ensemble through `solve_ensemble`. Verifies the
@@ -147,7 +150,7 @@ once.
   illustrates the `n_jobs=1` default with a performance note
   and a DetuningJitter variation for the Lorentzian-dephasing
   analogue.
-- [**Tutorial 12 — Two-ion Bell-state entanglement**](12_bell_entanglement.md).
+- `[advanced]` [**Tutorial 12 — Two-ion Bell-state entanglement**](12_bell_entanglement.md).
   Closes the tutorials track. Takes the Tutorial 4 MS-gate
   scenario and reads it out through both the `ParityScan`
   protocol (finite-shot parity estimator with explicit
@@ -162,7 +165,7 @@ once.
   `OMITTED` vs `EAGER` storage-mode split required by the
   two surfaces and points the reader at the remaining
   library-surface learning paths beyond the tutorial track.
-- [**Tutorial 13 — Reproducing Clos 2016 (PRL 117, 170401)**](13_reproducing_clos_2016.md).
+- `[advanced]` [**Tutorial 13 — Reproducing Clos 2016 (PRL 117, 170401)**](13_reproducing_clos_2016.md).
   End-to-end reproduction of a publication dataset against the
   legacy MATLAB bundle under
   [`legacy/clos 2016 prl/`](https://github.com/uwarring82/iontrap-dynamics/tree/main/legacy/clos%202016%20prl).
@@ -180,7 +183,7 @@ once.
   ~6 % and ~4 % respectively. Closes with the dense-eigh
   envelope table that motivates the AAG / AAH benchmark
   dispatches.
-- [**Tutorial 14 — Quantum metrology: the Fisher-information limit**](14_quantum_metrology_qfi.md).
+- `[advanced]` [**Tutorial 14 — Quantum metrology: the Fisher-information limit**](14_quantum_metrology_qfi.md).
   First tutorial on the `iontrap_dynamics.information` estimation surface.
   Encodes a parameter unitarily and reads the precision ceiling with
   `quantum_fisher_information_trajectory`: the pure-state identity
@@ -190,21 +193,21 @@ once.
   σ_x is phase-blind. Closes on continuous-variable probes (coherent
   `4|α|²`, sub-shot-noise squeezed `2e^{−2r}`). Embeds `qfi_scaling`,
   `cfi_linear_gaussian`, and `probe_qfi`.
-- [**Tutorial 15 — Quantum Darwinism: why the world looks classical**](15_quantum_darwinism.md).
+- `[advanced]` [**Tutorial 15 — Quantum Darwinism: why the world looks classical**](15_quantum_darwinism.md).
   The companion estimation tutorial. Reads the partial-information plateau
   (`partial_information_plot`), the redundancy `R_δ = N`
   (`redundancy`), and the recoverability of quantum information from a
   Werner-mixed Bell pair (`recoverability`) off a GHZ cascade. Distinguishes
   *how much* each fragment knows (plateau height) from *how many* fragments
   know it (redundancy). Embeds `darwinism_redundancy` and `recoverability`.
-- [**Tutorial 16 — Two-mode SU(1,1) squeezing**](16_two_mode_squeezing.md).
+- `[advanced]` [**Tutorial 16 — Two-mode SU(1,1) squeezing**](16_two_mode_squeezing.md).
   First two-mode motional Hilbert space. Builds the
   `two_mode_squeezed_vacuum` (per-mode `n̄ = sinh²|z|`, §23), reproduces it
   dynamically under `two_mode_squeezing_hamiltonian` (`n̄ = sinh²(gτ)`, the
   difference number pinned by the su(1,1) Casimir), and contrasts the SU(2)
   `beamsplitter_hamiltonian` that conserves the sum and swaps excitation
   instead. Heavy on the Fock-truncation gotcha. Embeds `two_mode_squeezing`.
-- [**Tutorial 17 — Motional decoherence and the Lamb–Dicke regime**](17_motional_decoherence_and_lamb_dicke.md).
+- `[advanced]` [**Tutorial 17 — Motional decoherence and the Lamb–Dicke regime**](17_motional_decoherence_and_lamb_dicke.md).
   Bundles four motional-imperfection surfaces into one workflow: typed CPTP
   channels through `solve(channels=…)` (heating / damping / dephasing, with
   a windowed variant), reading the contrast loss off a fringe with
@@ -212,7 +215,7 @@ once.
   (`debye_waller_factor`, `lamb_dicke_regime`, full-LD vs leading-order
   sideband), and budgeting a `ModeFrequencyDrift` (`η → η/√(1+δ)`). Embeds
   `motional_channels` and `lamb_dicke_regime`.
-- [**Tutorial 18 — Reduced models vs full dynamics**](18_reduced_models_vs_full_dynamics.md).
+- `[advanced]` [**Tutorial 18 — Reduced models vs full dynamics**](18_reduced_models_vs_full_dynamics.md).
   Walks the four falsifiable cases of the reduced light–matter hierarchy
   (CONVENTIONS §25): the LOCK-3 identity makes JC and AJC spectra coincide
   (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`,
@@ -221,7 +224,7 @@ once.
   down as `g/ω₀` grows into the `quantum_rabi_hamiltonian`; and the `2g√(n±1)`
   limit ties the reduced coupling back to the apparatus sideband rate. Embeds
   `reduced_models_comparison`.
-- [**Tutorial 19 — Squeezing by quenching the trap frequency**](19_squeezing_by_quenching.md).
+- `[advanced]` [**Tutorial 19 — Squeezing by quenching the trap frequency**](19_squeezing_by_quenching.md).
   Generates motional squeezing from a time-dependent trap frequency `ω(t)` alone
   (CONVENTIONS §26): builds `nonadiabatic_squeezing_hamiltonian` from a
   `FrequencyWaveform`, reads squeezing back from the covariance matrix
@@ -229,7 +232,7 @@ once.
   purity `ν`, `n̄_sq`), checks the sudden kick and cyclic adiabatic limits, and
   shows the Wigner ellipse on the vacuum-variance-1 grid (`phase_space.wigner`, `g = 1`). Embeds
   `nonadiabatic_squeezing`.
-- [**Tutorial 20 — Phonon-pair creation and readout**](20_phonon_pair_creation.md).
+- `[advanced]` [**Tutorial 20 — Phonon-pair creation and readout**](20_phonon_pair_creation.md).
   Reads a squeezed state out as a phonon-number distribution
   (`phonon_number_distribution`) and shows the even-`n`-only pair signature against
   the analytic `pure_squeezed_vacuum_pn`, grows the pairs by parametric modulation,

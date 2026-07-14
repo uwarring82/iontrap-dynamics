@@ -15,6 +15,8 @@ and `tools/run_benchmark_recoverability.py`, with committed plots under
 
 **Expected time.** ~12 min reading; ~1 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 14](14_quantum_metrology_qfi.md) (the
 `iontrap_dynamics.information` module and the GHZ factory) and a working
 notion of von Neumann entropy. CONVENTIONS.md §20 fixes the redundancy and

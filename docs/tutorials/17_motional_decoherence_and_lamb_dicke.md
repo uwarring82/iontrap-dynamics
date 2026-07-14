@@ -15,6 +15,8 @@ drift into the error budget.
 
 **Expected time.** ~15 min reading; ~2 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 9](09_squeezed_coherent_prep.md) (motional
 state prep), [Tutorial 8](08_full_lamb_dicke.md) (the full-Lamb–Dicke
 sideband), and [Tutorial 16](16_two_mode_squeezing.md) (the `ModeConfig`

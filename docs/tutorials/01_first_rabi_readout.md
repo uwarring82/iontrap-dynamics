@@ -23,6 +23,8 @@ re-derive ion physics.
 
 **Expected time.** ~10 min reading; ~1 s runtime.
 
+**Level.** `intro` — no prerequisites; start here.
+
 **Prerequisites.** A working install (`pip install -e ".[dev]"` in
 the repo root) and familiarity with ion-trap terminology at the
 level of [`CONVENTIONS.md`](../conventions.md) §1 and §3. No

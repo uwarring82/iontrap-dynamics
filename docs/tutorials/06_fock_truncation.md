@@ -28,6 +28,8 @@ By the end you will have:
 
 **Expected time.** ~12 min reading; ~2 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 1](01_first_rabi_readout.md) for the
 `solve()` signature and the `result.expectations` access pattern.
 CONVENTIONS [§13 (Fock truncation)](../conventions.md) and §15

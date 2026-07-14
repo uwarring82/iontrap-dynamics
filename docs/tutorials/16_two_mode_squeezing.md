@@ -15,6 +15,8 @@ with the committed plot under
 
 **Expected time.** ~13 min reading; ~2 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 9](09_squeezed_coherent_prep.md) (single-mode
 squeezed/coherent factories) and [Tutorial 6](06_fock_truncation.md)
 (Fock-truncation diagnosis — you will need it here). CONVENTIONS.md §23

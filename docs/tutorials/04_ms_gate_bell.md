@@ -33,6 +33,8 @@ embedded below.
 
 **Expected time.** ~15 min reading; ~1 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 2](02_red_sideband_fock1.md) for the
 Lamb–Dicke parameter helper and sideband physics vocabulary.
 Optionally [Tutorial 3](03_gaussian_pi_pulse.md) for the

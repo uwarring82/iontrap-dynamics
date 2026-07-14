@@ -27,6 +27,8 @@ across a full readout trajectory. By the end you will have:
 
 **Expected time.** ~10 min reading; ~1 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 1](01_first_rabi_readout.md) — we
 reuse its carrier-Rabi scenario and the `SpinReadout` protocol.
 `DetectorConfig` and `BinomialChannel` background at the level

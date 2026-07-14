@@ -34,6 +34,8 @@ By the end you will have:
 
 **Expected time.** ~12 min reading; ~3 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 2](02_red_sideband_fock1.md) — the
 RSB scenario used throughout this tutorial. The Lamb–Dicke
 parameter definition at

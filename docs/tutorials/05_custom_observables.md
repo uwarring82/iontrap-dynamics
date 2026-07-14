@@ -28,6 +28,8 @@ non-Hermitian virtuals. Each slots into the same list-argument of
 
 **Expected time.** ~12 min reading; ~1 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 4](04_ms_gate_bell.md) — we reuse
 its MS-gate scenario verbatim (both ions, COM mode, derived δ
 and `t_gate`). No new physics; this tutorial is about the

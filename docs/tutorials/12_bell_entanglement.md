@@ -25,6 +25,8 @@ returning cleanly to 0 as the motional loop closes.
 
 **Expected time.** ~15 min reading; ~2 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 4](04_ms_gate_bell.md) — the MS-gate
 scenario used verbatim. [Tutorial 10](10_finite_shot_statistics.md)
 for the finite-shot parity-estimator error-bar framing.

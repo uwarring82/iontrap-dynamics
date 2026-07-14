@@ -16,6 +16,8 @@ creation.
 
 **Expected time.** ~11 min reading; ~2 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 19](19_squeezing_by_quenching.md) (the `ω(t)`
 squeezing engine and the covariance readout). CONVENTIONS.md **§26.4** (the
 observable-only readout) and **§13/§15** (the Fock-truncation failure ladder)

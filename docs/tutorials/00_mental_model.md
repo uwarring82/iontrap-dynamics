@@ -9,6 +9,8 @@ spin, so you get a result **before** meeting Fock truncation, storage modes, or 
 
 **Expected time.** ~3 min reading; ~1 s runtime.
 
+**Level.** `intro` — no prerequisites; start here.
+
 **Prerequisites.** None. A working install (`pip install iontrap-dynamics`) — or just press
 **Open in Colab** above.
 

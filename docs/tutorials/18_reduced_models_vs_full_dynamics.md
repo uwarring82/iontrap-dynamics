@@ -8,6 +8,8 @@
 
 **Expected time.** ~12 min reading; ~5 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 8](08_full_lamb_dicke.md) (full Lamb–Dicke sidebands) and [Tutorial 2](02_red_sideband_fock1.md) (red-sideband flopping). The reduced models are governed by `CONVENTIONS.md` §25 (Schrödinger-picture bare-term Hamiltonians, the LOCK-3 identity, the `ω₀` effective-sign semantics) and the §5 scope note that exempts them from the §5 interaction-picture mandate. This is the first tutorial to use the physics-layer `reduced_models` module (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`, `quantum_rabi_hamiltonian`, `model_deviation`) and to compare it, rung by rung, against the apparatus sideband builders.
 
 ---

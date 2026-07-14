@@ -14,6 +14,8 @@ without code changes — only the axial-mode reference and cutoff
 sizing change.
 
 **Expected time.** ~15 min reading; ~3 s runtime for N=1, ~10 s
+
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
 for N=2 + N=3.
 
 **Prerequisites.** [Tutorial 8](08_full_lamb_dicke.md) for the

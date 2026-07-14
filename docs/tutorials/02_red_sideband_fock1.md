@@ -23,6 +23,8 @@ includes the plot embedded below.
 
 **Expected time.** ~10 min reading; ~1 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 1](01_first_rabi_readout.md) — this
 tutorial reuses its four-step skeleton without re-explaining the
 shared bits. Background physics: a passing familiarity with the

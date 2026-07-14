@@ -32,6 +32,8 @@ By the end you will have:
 
 **Expected time.** ~10 min reading; ~1 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 2](02_red_sideband_fock1.md) for the
 scenario used throughout. [Tutorial 6](06_fock_truncation.md) is
 a useful background for how `result.warnings` survives the

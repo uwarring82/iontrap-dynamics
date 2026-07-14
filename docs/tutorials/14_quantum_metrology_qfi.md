@@ -16,6 +16,8 @@ is saturated only in the right measurement basis.
 
 **Expected time.** ~12 min reading; ~1 s runtime.
 
+**Level.** `advanced` — a specialised or research-grade surface; do the core first.
+
 **Prerequisites.** [Tutorial 4](04_ms_gate_bell.md) (two-ion systems) and
 [Tutorial 9](09_squeezed_coherent_prep.md) (motional state factories), plus
 CONVENTIONS.md §19 (the SLD quantum Fisher information convention). No prior

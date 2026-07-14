@@ -27,6 +27,8 @@ By the end you will have:
 
 **Expected time.** ~12 min reading; ~3 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 1](01_first_rabi_readout.md) for the
 single-shot baseline. [Tutorial 10](10_finite_shot_statistics.md)
 is useful background for the "statistical error bar" vs

@@ -25,6 +25,8 @@ full-space initial state. By the end you will:
 
 **Expected time.** ~12 min reading; ~2 s runtime.
 
+**Level.** `core` — assumes the basics (Tutorials 0–1).
+
 **Prerequisites.** [Tutorial 2](02_red_sideband_fock1.md) — the
 RSB dynamics used for the collapse demo. [Tutorial
 8](08_full_lamb_dicke.md) — we use `full_lamb_dicke=True`
