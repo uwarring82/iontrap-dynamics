@@ -2,7 +2,7 @@
 
 **Roll the proven T19/T20 newcomer rail across the whole tutorial track, add an on-ramp (Tutorial 0) and a glossary, and give the index a navigable difficulty map — Sail-only, no convention touched.**
 
-Version 0.2 · Ratified 2026-07-14 · Status: Ratified
+Version 0.3 · Closed 2026-07-14 · Status: Closed
 
 **Classification:** Sail execution under Coastline gates (per T(h)reehouse +EC CD 0.9).
 **Licence:** This WP document itself is CC BY-SA 4.0 (`WP/LICENCE`). Deliverables carry their layer's licence: the tutorials, glossary, diagram, and index prose are Sail / CC BY-NC-SA 4.0; the one *optional* code item (a notebook-builder `???` extension under TA7, and any helper) is MIT (`tools/`, `src/`). No `CONVENTIONS.md` / spec edit — this WP introduces no convention.
@@ -86,7 +86,7 @@ Family **`TA`** (Tutorial Accessibility) — collision-checked clear against `WP
 
 ## 7. Release plan *(Coastline gate)*
 
-Target: a **docs/accessibility minor or patch** — nothing here changes a default, a public API (TA7 stays Option B), or a convention. If TA7 ships the notebook-builder `???` extension, that is the only code change and rides as an additive tooling fix. SemVer per the repo convention; the release theme is *tutorial-track accessibility*. No convention seal, so no freeze coordination.
+Released as **`v0.7.0`** (2026-07-14), a docs/accessibility minor bundling WP-06 with the previously-merged WP-04 and WP-05 work already in `[Unreleased]`. Nothing here changed a default, a public API (TA7 stayed Option B), or a convention. `pyproject.toml` and `CITATION.cff` bumped `0.6.0 → 0.7.0`; `CHANGELOG.md` rolled the `[Unreleased]` section into `[0.7.0]`.
 
 ## 8. Logbook hooks *(Sail)*
 

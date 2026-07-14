@@ -6,7 +6,7 @@ abstract: "Open-system quantum dynamics of trapped-ion spin-motion systems."
 authors:
   - family-names: "Warring"
     given-names: "U."
-version: "0.6.0"
+version: "0.7.0"
 date-released: 2026-06-04
 license: "MIT"
 repository-code: "https://github.com/uwarring82/iontrap-dynamics"

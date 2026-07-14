@@ -536,6 +536,15 @@ Keep entries short and honest. A null result is a first-class entry — label it
 - **Outcome:** WP-06 **Ratified 2026-07-14**. `TA1`–`TA7` registered; `WORKPLAN_v0.3.md` §5.9 applied; version bumped to v0.3.11; TA2 + TA3 landed on `wp-06-tutorial-accessibility`. **Next:** TA7a (`???` builder fix + unit test), then TA1 on the newcomer-critical subset (0, 1, 2, 6, 9), then TA4 path/tags, then TA1 across remaining 03–05, 07–08, 10–18, then TA5/TA6.
 - **Links:** `WP/WP-06-tutorial-accessibility.md` (v0.2, Ratified) · `task cards/TC-tutorial-accessibility.md` (v0.2) · `docs/tutorials/00_mental_model.md` · `docs/glossary.md` · pilot commit `d02ede6` · registry rows `TA1`–`TA7` (below).
 
+### 2026-07-14 — WP-06 closed; `v0.7.0` release cut
+
+- **Refs:** WP-06 (Closed) · `TA1`–`TA7` (all landed) · `v0.7.0` · `CHANGELOG.md` `[0.7.0]`
+- **Stance:** Integrator (land all WIs, cut release, update governed carriers).
+- **What:** Completed the remaining WP-06 dispatches on `wp-06-tutorial-accessibility`: **TA7a** (`tools/build_tutorial_notebooks.py` `???` collapsible support + `tests/docs/test_notebook_builder.py`); **TA1** batch 1 (T03, T04, T05, T07, T08) and batch 2 (T10–T18), completing the rail across the whole track together with the earlier subset (T00/T01/T02/T06/T09) and the SQ6-branch pilot on T19/T20; **TA4** (difficulty badges + "First time?" path); **TA5** (runnable `getting-started.md` example); **TA6** (reusable pipeline diagram). Also fixed four pre-existing physics-wording errors surfaced by adversarial review (T04, T05, T11, T12) in separate additive-only-preserving commits. Cut the release as **`v0.7.0`**: bumped `pyproject.toml` and `CITATION.cff` `0.6.0 → 0.7.0`; rolled `CHANGELOG.md` `[Unreleased]` into `[0.7.0]`; updated WP-06 status to **Closed**.
+- **Why (worth recording):** WP-06 is a rare Sail-only WP that touches no convention and no public API (TA7 stayed Option B), yet changes the first-contact experience for every newcomer. Releasing it as a minor bundles the previously-merged WP-04 and WP-05 `[Unreleased]` work rather than leaving it indefinitely unreleased.
+- **Outcome:** WP-06 **Closed 2026-07-14**; `v0.7.0` tagged on `wp-06-tutorial-accessibility`. **Next:** merge `wp-06-tutorial-accessibility` to `main` (ff-merge recommended), then merge the SQ6 branch once ready; the T19/T20 rail from the SQ6 pilot and the TA4 badges from this branch are additive and merge cleanly.
+- **Links:** `WP/WP-06-tutorial-accessibility.md` (v0.3, Closed) · `CHANGELOG.md` `[0.7.0]` · `pyproject.toml` · `CITATION.cff`.
+
 ---
 
 ## Dispatch-code registry *(Sail)*
@@ -569,13 +578,13 @@ The **forward** registry of dispatch codes minted under this framework (from 202
 | **ND4** | WI-4 (+WI-2) Wittemer-2018 single-mode benchmark | WP-04 | CHANGELOG `[Unreleased]` · WORKPLAN §5.7 | **landed 2026-06-18** (`clos2016_spin_boson_hamiltonian` single mode → reduced Bloch → ND1/ND3; spin Γ_dec benchmark-local `c_ops`; provenance-stamped artifact + qualitative oracle; D_min(δ=0)=0.83, 𝒩(δ=0)=0.148, ℬ_QPN→0, 𝒩→0 with Γ_dec) |
 | **ND5** | WI-5 tutorials A & B | WP-04 | CHANGELOG `[Unreleased]` · WORKPLAN §5.7 | **reserved 2026-06-17** |
 | **SQ1–SQ7** | WP-05 Phase A WIs (A1 squeezing H; A2 covariance/readout; A3 force+echo; benchmark; tutorials) | WP-05 | CHANGELOG `[Unreleased]` · WORKPLAN §5.8 | **registered 2026-07-10** (dispatch family `SQ` minted; §26 + `CONVENTION_VERSION` 0.4→0.5 sealed; no WIs landed yet) |
-| **TA1** | WI-1 newcomer rail across tutorials 01–18 | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **minted 2026-07-14** (T19/T20 pilot already landed on SQ6 branch as commit `d02ede6`) |
-| **TA2** | WI-2 Tutorial 0: the 30-second mental model | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **landed 2026-07-14** (`docs/tutorials/00_mental_model.md` + notebook; nav/index-registered) |
-| **TA3** | WI-3 docs glossary | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **landed 2026-07-14** (`docs/glossary.md`; 20 terms; cross-links; nav-registered) |
-| **TA4** | WI-4 index "First time?" path + `intro/core/advanced` tags | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **minted 2026-07-14** |
-| **TA5** | WI-5 runnable getting-started example | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **minted 2026-07-14** |
-| **TA6** | WI-6 reusable ASCII pipeline diagram | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **minted 2026-07-14** |
-| **TA7** | WI-7 collapsed setup blocks + notebook-builder `???` support | WP-06 | CHANGELOG `[Unreleased]` · WORKPLAN §5.9 | **minted 2026-07-14** (prerequisite TA7a: extend `transform_admonitions` for `???` collapsibles) |
+| **TA1** | WI-1 newcomer rail across tutorials 01–18 | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** (subset T00/T01/T02/T06/T09 + batch 1 T03/T04/T05/T07/T08 + batch 2 T10–T18; T19/T20 rail ships with SQ6 branch) |
+| **TA2** | WI-2 Tutorial 0: the 30-second mental model | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** (`docs/tutorials/00_mental_model.md` + notebook; nav/index-registered) |
+| **TA3** | WI-3 docs glossary | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** (`docs/glossary.md`; 20 terms; cross-links; nav-registered) |
+| **TA4** | WI-4 index "First time?" path + `intro/core/advanced` tags | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** |
+| **TA5** | WI-5 runnable getting-started example | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** |
+| **TA6** | WI-6 reusable ASCII pipeline diagram | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** |
+| **TA7** | WI-7 collapsed setup blocks + notebook-builder `???` support | WP-06 | CHANGELOG `[0.7.0]` · WORKPLAN §5.9 | **landed 2026-07-14** (prerequisite TA7a: builder `???` support + unit test) |
 
 **This registry is forward-only; it does not catalogue history — that is the CHANGELOG's job.** Many families are already taken by pre-framework dispatches and reservations, and a new code must avoid all of them. **Minting rule:** before minting, grep `CHANGELOG.md`, `WORKPLAN_v0.3.md`, `WP/LOGBOOK.md`, `docs/gpu-dispatch-design.md`, and `src/` for the candidate family (`WP/LOGBOOK.md` is this forward registry — a family can be minted-but-unshipped, appearing here before any CHANGELOG bullet; `src/` catches code-symbol collisions, as the `MC` grep did for `mcsolve`). This five-source list is the one WP-03's `RL` grep actually used. Known-taken / reserved as of 2026-06-04 (**non-exhaustive** — the grep is authoritative): single letters `A`–`Z`; doubles `AA`–`WW` (incl. tutorial `AA`–`LL`, Phase-2 `OO`, `QQ`–`ZZ`); triples `BBA` / `BBB` landed and `BBC`–`BBE` reserved for the GPU track (`docs/gpu-dispatch-design.md`); sub-coded `RR.1`, `P.*`; Greek `β.1`–`β.4`; **WP families `ED` (WP-01, `EDA`–`EDF`), `MC` (WP-02, `MCA`–`MCG`), `RL` (WP-03, `RLA`–`RLG`, minted 2026-06-04), `ND` (WP-04, `ND1`/`ND3`/`ND4`/`ND5`, minted 2026-06-17), and `SQ` (WP-05, `SQ1`–`SQ7`, minted 2026-07-10)**. Note `RL` is a *dispatch* family distinct from the WP-03 card's `RM0`–`RM6` *feature* labels — they are different namespaces. A new WP mints from a clearly-fresh family chosen *after* that grep — not merely "anything but `BBA` / `BBB`".
 
