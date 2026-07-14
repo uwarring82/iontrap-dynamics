@@ -6,7 +6,8 @@ Guards against a silent bump-skip: the ``tests/unit`` references import
 the literal value — so a freeze that forgot to bump the constant would pass
 unnoticed. This pins it. Added by the shared v0.3 seal (``WP/FREEZE-v0.3.md`` §3);
 bumped to 0.4 at the WP-03 RLA seal (§25 reduced-model conventions + §5 scope);
-bumped to 0.5 at the WP-05 SQ1 seal (§26 non-adiabatic squeezing).
+bumped to 0.5 at the WP-05 SQ1 seal (§26 non-adiabatic squeezing), then to 0.6
+at the WP-07 GT1 seal (§27 multimode Gaussian toolbox).
 """
 
 from __future__ import annotations
@@ -18,5 +19,5 @@ from iontrap_dynamics.conventions import CONVENTION_VERSION
 pytestmark = pytest.mark.convention
 
 
-def test_convention_version_is_v0_5() -> None:
-    assert CONVENTION_VERSION == "0.5"
+def test_convention_version_is_v0_6() -> None:
+    assert CONVENTION_VERSION == "0.6"

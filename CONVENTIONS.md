@@ -2,11 +2,11 @@
 
 **Physical, numerical, and notational conventions for `iontrap-dynamics`**
 
-Version 0.5 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · v0.4 frozen 2026-06-04 · v0.5 frozen 2026-07-10 · Status: v0.5 Convention amendment (§26 non-adiabatic squeezing)
+Version 0.6 · Drafted 2026-04-17 · v0.2 frozen 2026-04-21 · v0.3 frozen 2026-06-03 · v0.4 frozen 2026-06-04 · v0.5 frozen 2026-07-10 · v0.6 frozen 2026-07-14 · Status: v0.6 Convention amendment (§27 multimode Gaussian toolbox)
 
 **Classification:** Coastline (hard constraints per T(h)reehouse +EC CD 0.9).
 **Licence:** CC BY-SA 4.0.
-**Scope:** Conventions covering §1–26. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC); the **v0.4 amendment** adds §25 (reduced light–matter models, dispatches RLA–RLB) and re-scopes §5 (the interaction-picture mandate now names builders derived from an atomic transition, so the pure-motional §23/§24 objects and the Schrödinger-picture §25 models fall outside it); the **v0.5 amendment** adds §26 (non-adiabatic squeezing, dispatch SQ1). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
+**Scope:** Conventions covering §1–27. Phase 0 (v0.1-alpha) shipped §1–16; the v0.2 Convention Freeze added §17 (measurement layer — closed at Dispatch P) and §18 (systematics layer — closed at Dispatch U); the **v0.3 Convention Freeze** adds §19–22 (estimation / Darwinism, dispatches EDA–EDD) and §23–24 (two-mode squeezing / SU(1,1) and motional CPTP channels, dispatches MCA–MCC); the **v0.4 amendment** adds §25 (reduced light–matter models, dispatches RLA–RLB) and re-scopes §5; the **v0.5 amendment** adds §26 (non-adiabatic squeezing, dispatch SQ1); the **v0.6 amendment** adds §27 (multimode Gaussian ordering, symplectic form, and partial transpose, dispatch GT1). Post-freeze additions require a CONVENTIONS.md version bump per the Endorsement Marker below.
 **Endorsement Marker:** Local candidate framework. No external endorsement implied.
 
 This document is authoritative. Every `IonSystem` records the `CONVENTIONS.md` version it was built against; every `TrajectoryResult` carries that version in its metadata. When code and this document disagree, this document wins and the code is the bug.
@@ -800,9 +800,64 @@ The squeezing/displacement readout derived from the covariance matrix — the sy
 
 ---
 
+## 27. Multimode Gaussian states: quadrature ordering, symplectic form, partial transpose
+
+**Status:** sealed at Dispatch GT1 (WP-07). Definitions below anchor the multimode covariance/symplectic primitives and the derived Gaussian functionals that consume them (Dispatches GT1–GT6). Sealed under the v0.6 convention gate.
+
+Multimode Gaussian objects are **pure-motional** (mode-only phase-space functionals on `N` motional modes): a `2N × 2N` covariance matrix `V` and its symplectic invariants, outside the §5 interaction picture (see the §5 scope note). §27 **reuses §26.2** (the vacuum-variance-1 single-mode quadratures `x̂ = â + â†`, `p̂ = i(â† − â)`, `[x̂, p̂] = 2i`) and fixes the multimode extension: the ordering, the symplectic form, and the partial-transpose sign map.
+
+### 27.1 Quadrature ordering and covariance
+
+For `N` modes with §26.2 quadratures, the phase-space vector is ordered **per mode**:
+
+    R = (x̂₁, p̂₁, x̂₂, p̂₂, …, x̂_N, p̂_N)
+
+This is not the position-block layout `(x̂₁ … x̂_N, p̂₁ … p̂_N)`. The covariance matrix and first moments are
+
+    V_ij = ½⟨{ΔR_i, ΔR_j}⟩,     d_i = ⟨R_i⟩,     ΔR = R − d,
+
+so that vacuum `V = 𝟙_{2N}`. The single-mode covariance is the `N = 1` limit of the shared `gaussian.py` surface; the multimode implementation generalises the §26.4 core and does not fork a parallel path.
+
+### 27.2 Symplectic form and physicality
+
+The canonical commutation relations are `[R_i, R_j] = 2i Ω_ij`, with
+
+    Ω = ⊕_{k=1}^{N} J,     J = [[0, 1], [−1, 0]].
+
+Bona-fide physicality is **`V + iΩ ≥ 0`**: the Hermitian matrix `V + iΩ` is positive semidefinite. This is checked directly, not through a bare symplectic-eigenvalue condition. The symplectic (Williamson) eigenvalues `ν_i` are the moduli of the eigenvalues of `iΩV`, occurring in `±ν_i` pairs and counted once per pair. They are computed from `|eig(iΩV)|`, with multiplicity preserved, not from singular values or the matrix absolute value `√(M†M)`.
+
+For a **real, symmetric, positive-semidefinite** covariance candidate, physicality is equivalent to `ν_i ≥ 1`. This condition is not sufficient for a general indefinite matrix, which can have `|eig(iΩV)| ≥ 1` while failing `V + iΩ ≥ 0`; the implementation therefore always uses the direct Hermitian PSD guard. Vacuum has `ν = 1`, and a thermal mode has `ν = 2n̄ + 1`.
+
+### 27.3 Partial transpose (sign map)
+
+For a bipartition `A | B`, where `B` is a subset of modes, partial transpose flips the momenta of the `B` modes:
+
+    T_B : p̂_b → −p̂_b  for b ∈ B;     Ṽ = T_B V T_B.
+
+Positions remain unchanged. The PT symplectic eigenvalues `ν̃_k` are the symplectic eigenvalues of `Ṽ`. Flipping the `B` positions instead is an equivalent convention, but §27 pins the momentum flip.
+
+### 27.4 Derived Gaussian functionals are observable-only
+
+The functionals built from 27.1–27.3 are standard derived quantities rather than new convention symbols. Their pinned formulas are:
+
+- **Purity and entropy:** `μ = Tr(ρ²) = ∏_i 1/ν_i = 1/√det V`. In bits, `S = Σ_i g(ν_i)`, where `g(ν) = (ν+1)/2·log₂((ν+1)/2) − (ν−1)/2·log₂((ν−1)/2)` for `ν ≥ 1`, with `g(1) = 0`.
+- **Logarithmic negativity:** `E_N = Σ_k max(0, −log₂ ν̃_k)`, summed over all PT symplectic eigenvalues. The smallest-only form holds only for two-mode and `1×N` cuts. PPT certifies separability only for `1×N` Gaussian cuts; for `M×N` with `M,N ≥ 2`, `E_N = 0` is not a separability certificate and `E_N` is only an NPT witness. For a two-mode squeezed vacuum, `ν̃₋ = e^{−2r}` and `E_N = 2r/ln 2`.
+- **Occupation and effective temperature:** for a one-mode reduction, `n̄ = (tr V_red + dᵀd − 2)/4`, followed by `T_eff = ℏω_loc/[k_B ln(1 + 1/n̄)]` for an explicit local frequency `ω_loc`. Set `T_eff(0) = 0` by continuity and reject `n̄ < 0`. This is energy-equivalent and is not the thermal-core occupation `(ν−1)/2`.
+- **Locally symmetric Gaussian `E_F` (optional):** for `ν̃₋ < 1`, `E_F = c₊ log₂ c₊ − c₋ log₂ c₋`, with `c_± = (ν̃₋ ± 1)²/(4ν̃₋)`; for `ν̃₋ ≥ 1`, `E_F = 0`. A guarded local-symmetry precondition is required. General non-symmetric two-mode `E_F` is deferred.
+- **Gaussianity precondition:** `V` and `d` exist for any state, but covariance-derived purity, entropy, and logarithmic negativity equal the quantum-state quantities only for Gaussian states. For non-Gaussian states they describe the Gaussian-equivalent second moments; `V` alone cannot certify Gaussianity.
+- **Symplectic congruence:** a canonical map `R_local = S R_normal`, with `SΩSᵀ = Ω`, acts as `V_local = S V Sᵀ`. The ion-specific normal-to-local `S` construction is an application adapter, not a §27 symbol.
+
+**Convention.** Multimode Gaussian objects use per-mode ordering `R = (x̂₁,p̂₁,…,x̂_N,p̂_N)`, `Ω = ⊕J` with `[R_i,R_j] = 2iΩ_ij`, and partial-transpose momentum flips `p̂_B → −p̂_B`. Derived functionals are observable-only with the formulas above and require the stated Gaussianity/domain conditions. The quadratures and vacuum-variance-1 normalization are reused from §26.2, not redefined.
+**Cross-refs.** §26.2 (single-mode quadrature normalization), §2 (tensor order), §6/§7 (squeezing and displacement), §11 (eigenvector normalization), §23 (TMSV occupation oracle; cross-reference only), §25 §5-scope note (pure-motional exemption).
+**Test.** `tests/conventions/test_gaussian_conventions.py` — per-mode vacuum covariance and ordering; direct `V+iΩ` physicality; thermal and TMSV symplectic spectra; partial-transpose momentum flip; first-moment-aware occupation; `|eig(iΩV)|` rather than SVD.
+
+**§27 freeze.** Sections 27.1–27.4 received a complete read-through for the v0.6 convention gate. Post-v0.6 additions require a further version bump.
+
+---
+
 ## Endorsement Marker
 
-**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17 (measurement layer) and §18 (systematics layer) are closed under the v0.2 Convention Freeze; §19–22 (estimation / Darwinism: Fisher information, redundancy & recoverability, GHZ/cat states, common-mode channel) and §23–24 (two-mode squeezing / SU(1,1); motional CPTP channels) are closed under the v0.3 Convention Freeze; §25 (reduced light–matter models) is added under the **v0.4 amendment** (2026-06-04, dispatches RLA–RLB), which also re-scopes §5 (the only change to a §1–16 section); §26 (non-adiabatic squeezing) is added under the **v0.5 amendment** (2026-07-10, dispatch SQ1); §1–16 otherwise carry forward from the Phase 0 draft unchanged. Post-freeze additions to any section require a new CONVENTIONS.md version bump with an explicit Convention Freeze gate.
+**Local candidate framework under active stewardship.** No parity implied with externally validated laws. This document is a Coastline draft within the Open-Science Harbour, stewarded by U. Warring (AG Schätz, Albert-Ludwigs-Universität Freiburg). Conventions herein are binding within `iontrap-dynamics` at this version. §17–18 are closed under the v0.2 Convention Freeze; §19–24 are closed under the v0.3 Convention Freeze; §25 is added under the v0.4 amendment; §26 is added under the v0.5 amendment; §27 is added under the **v0.6 amendment** (2026-07-14, dispatch GT1); §1–16 otherwise carry forward unchanged. Post-freeze additions require a new version bump with an explicit Convention Freeze gate.
 
-**Convention version:** 0.5 · 2026-07-10 · v0.5 amendment (§26 non-adiabatic squeezing).
-**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional), §5.6 (reduced light–matter models), §5.7 (non-Markovianity), §5.8 (non-adiabatic squeezing).
+**Convention version:** 0.6 · 2026-07-14 · multimode Gaussian toolbox (§27).
+**Workplan reference:** `WORKPLAN_v0.3.md` §0.A, §5.4 (estimation/Darwinism), §5.5 (two-mode/motional), §5.6 (reduced light–matter models), §5.7 (non-Markovianity), §5.8 (non-adiabatic squeezing), §5.10 (multimode Gaussian toolbox).

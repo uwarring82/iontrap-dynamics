@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""Single-mode Gaussian phase-space readout (the ``N = 1`` covariance core).
+"""Multimode Gaussian phase-space toolbox (the covariance / symplectic core).
 
-CONVENTIONS.md §26.2 / §26.4. This module owns the **general** covariance /
-symplectic core; WP-05 (SQ1/SQ2) creates only the single-mode (``N = 1``) case
-it needs for the non-adiabatic-squeezing readout, and ``phase_space.py`` holds
-the Wigner / readout façades over it (WP-05 R4, no-fork rule). The multimode
-generalisation (quadrature ordering, the symplectic form ``Ω``, partial
-transpose, Gaussian log-negativity, ``E_F``) is the Gaussian-toolbox card's
-§27 extension of this module — a pure extension, never a refactor.
+CONVENTIONS.md §26.2 / §26.4 / §27. This module owns the **general** covariance /
+symplectic core; WP-05 (SQ1/SQ2) created the single-mode (``N = 1``) case for the
+non-adiabatic-squeezing readout, and ``phase_space.py`` holds the Wigner / readout
+façades over it (WP-05 R4, no-fork rule). WP-07 GT1 lands the §27 multimode
+primitives — the per-mode quadrature ordering, the symplectic form ``Ω = ⊕J``, the
+``V + iΩ ≥ 0`` physicality guard, the Williamson symplectic spectrum, and the
+partial transpose — as a **pure extension** of this module, never a refactor: the
+``N = 1`` call and return contract of :func:`covariance_matrix` is unchanged.
 
 Convention (§26.2). Dimensionless quadratures ``x̂ = â + â†``, ``p̂ = i(â† − â)``,
 so the **vacuum quadrature variance is 1** and ``[x̂, p̂] = 2i``. The covariance
@@ -34,6 +35,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -60,6 +62,18 @@ def quadrature_operators(fock_dim: int) -> tuple[qutip.Qobj, qutip.Qobj]:
     return a + ad, 1j * (ad - a)
 
 
+def symplectic_form(n_modes: int) -> np.ndarray:
+    """The multimode symplectic form ``Ω = ⊕_k J``, ``J = [[0, 1], [−1, 0]]`` (§27.2).
+
+    Per-mode ``J``-blocks matching the §27.1 ordering ``R = (x̂₁, p̂₁, …, x̂_N, p̂_N)``,
+    so ``[R_i, R_j] = 2i Ω_ij`` (the vacuum-variance-1 ``2i`` scaling). Shape ``(2N, 2N)``.
+    """
+    if n_modes < 1:
+        raise ValueError(f"symplectic_form: n_modes ({n_modes}) must be ≥ 1.")
+    j = np.array([[0.0, 1.0], [-1.0, 0.0]])
+    return np.kron(np.eye(n_modes), j)
+
+
 def reduced_single_mode(state: qutip.Qobj, hilbert: HilbertSpace, mode_label: str) -> qutip.Qobj:
     """Partial-trace a full spin⊗mode ``state`` down to the named mode.
 
@@ -75,28 +89,38 @@ def reduced_single_mode(state: qutip.Qobj, hilbert: HilbertSpace, mode_label: st
 
 
 def covariance_matrix(state: qutip.Qobj) -> tuple[np.ndarray, np.ndarray]:
-    """Return ``(V, d)`` for a **single-mode** state (ket or density matrix).
+    """Return ``(V, d)`` for an ``N``-mode Gaussian state (ket or density matrix).
 
-    ``V`` is the 2×2 covariance ``V_ij = ½⟨{ΔR_i, ΔR_j}⟩`` (incl. the ``x̂p̂``
-    cross term) and ``d = (⟨x̂⟩, ⟨p̂⟩)`` the first moments (CONVENTIONS.md §26.2).
-    Vacuum → ``V = 𝟙₂``, ``d = 0``.
+    ``V`` is the ``2N×2N`` covariance ``V_ij = ½⟨{ΔR_i, ΔR_j}⟩`` in the §27.1
+    per-mode ordering ``R = (x̂₁, p̂₁, …, x̂_N, p̂_N)``, and ``d = ⟨R⟩`` the first
+    moments; ``N`` is inferred from ``state.dims`` (mode ``k`` = subsystem ``k``).
+    **Single-mode (``N = 1``) returns the 2×2 ``V`` and length-2 ``d`` unchanged**
+    (CONVENTIONS.md §26.2 / §27.1); vacuum → ``V = 𝟙_{2N}``, ``d = 0``.
     """
-    if len(state.dims[0]) != 1:
-        raise ValueError(
-            f"covariance_matrix expects a single-mode state; got dims {state.dims}. "
-            "Partial-trace to one mode first (see reduced_single_mode)."
-        )
-    fock_dim = state.shape[0]
-    x, p = quadrature_operators(fock_dim)
-    ex = float(np.real(qutip.expect(x, state)))
-    ep = float(np.real(qutip.expect(p, state)))
-    exx = float(np.real(qutip.expect(x * x, state)))
-    epp = float(np.real(qutip.expect(p * p, state)))
-    exp_sym = 0.5 * float(np.real(qutip.expect(x * p + p * x, state)))
-    v_xx = exx - ex * ex
-    v_pp = epp - ep * ep
-    v_xp = exp_sym - ex * ep
-    return np.array([[v_xx, v_xp], [v_xp, v_pp]], dtype=float), np.array([ex, ep], dtype=float)
+    dims = state.dims[0]
+    n_modes = len(dims)
+    if n_modes < 1:
+        raise ValueError(f"covariance_matrix: state has no modes (dims {state.dims!r}).")
+    # Embedded Hermitian quadratures R = (x̂₁, p̂₁, …, x̂_N, p̂_N) in §27.1 per-mode order.
+    ops: list[qutip.Qobj] = []
+    for k in range(n_modes):
+        x_k, p_k = quadrature_operators(dims[k])
+        for local in (x_k, p_k):
+            if n_modes == 1:
+                ops.append(local)
+            else:
+                factors: list[qutip.Qobj] = [qutip.qeye(d) for d in dims]
+                factors[k] = local
+                ops.append(qutip.tensor(factors))
+    dim2 = 2 * n_modes
+    means = np.array([float(np.real(qutip.expect(op, state))) for op in ops], dtype=float)
+    cov = np.empty((dim2, dim2), dtype=float)
+    for i in range(dim2):
+        for jx in range(i, dim2):
+            anticomm = ops[i] * ops[jx] + ops[jx] * ops[i]
+            sym = 0.5 * float(np.real(qutip.expect(anticomm, state)))
+            cov[i, jx] = cov[jx, i] = sym - means[i] * means[jx]
+    return cov, means
 
 
 def symplectic_eigenvalue(cov: np.ndarray) -> float:
@@ -107,6 +131,70 @@ def symplectic_eigenvalue(cov: np.ndarray) -> float:
     symplectic squeeze).
     """
     return float(np.sqrt(max(np.linalg.det(cov), 0.0)))
+
+
+def _check_square_even(cov: np.ndarray, name: str) -> int:
+    """Validate a ``2N×2N`` covariance array and return its mode count ``N``."""
+    arr = np.asarray(cov)
+    if arr.ndim != 2 or arr.shape[0] != arr.shape[1] or arr.shape[0] % 2 != 0:
+        raise ValueError(
+            f"{name}: expected a square 2N×2N covariance matrix; got shape {arr.shape}."
+        )
+    return int(arr.shape[0] // 2)
+
+
+def symplectic_eigenvalues(cov: np.ndarray) -> np.ndarray:
+    """The Williamson symplectic eigenvalues ``ν_i`` of a ``2N×2N`` ``V`` (§27.2).
+
+    The moduli of the eigenvalues of ``iΩV`` — which come in real ``±ν`` pairs — taken
+    as the positive half, **one per mode with multiplicity preserved**. A genuine
+    symplectic diagonalisation: **not** the SVD of ``iΩV``, and **not** a tolerance-based
+    deduplication (which would wrongly merge genuinely degenerate modes). For a physical
+    ``V`` every ``ν_i ≥ 1``. Returned ascending.
+    """
+    n_modes = _check_square_even(cov, "symplectic_eigenvalues")
+    omega = symplectic_form(n_modes)
+    evals = np.linalg.eigvals(1j * omega @ cov)
+    # eig(iΩV) = ±ν_k (real ± pairs); the N largest are the positive half = the moduli ν_k.
+    ordered = np.sort(evals.real)
+    return np.asarray(ordered[n_modes:], dtype=float)
+
+
+def is_physical(cov: np.ndarray, *, tol: float = 1e-9) -> bool:
+    """Bona-fide covariance test: ``V + iΩ ≥ 0`` (Robertson–Schrödinger; §27.2).
+
+    The direct Hermitian positive-semidefinite test on ``V + iΩ``, evaluated as
+    ``min eig_h(V + iΩ) ≥ −tol``. This is the physicality guard — **not** a bare
+    ``ν_i ≥ 1`` check: an indefinite ``V`` can have ``|eig(iΩV)| ≥ 1`` while failing
+    ``V + iΩ ≥ 0``, so physicality is certified on the PSD test, never on the spectrum.
+    """
+    n_modes = _check_square_even(cov, "is_physical")
+    omega = symplectic_form(n_modes)
+    lam_min = float(np.min(np.linalg.eigvalsh(np.asarray(cov) + 1j * omega)))
+    return lam_min >= -tol
+
+
+def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarray:
+    """Partial transpose ``Ṽ = T V T`` over the modes in ``mode_indices`` (§27.3).
+
+    Time-reversal on subsystem ``B``: ``p̂_b → −p̂_b`` for each ``b`` in ``mode_indices``
+    (``x̂`` and the untouched modes unchanged), i.e. ``T`` flips the momentum row/column
+    of each named mode. Returns a new ``2N×2N`` array; ``mode_indices`` must be distinct
+    and in ``[0, N)``.
+    """
+    n_modes = _check_square_even(cov, "partial_transpose")
+    signs = np.ones(2 * n_modes)
+    seen: set[int] = set()
+    for raw in mode_indices:
+        b = int(raw)
+        if not 0 <= b < n_modes:
+            raise ValueError(f"partial_transpose: mode index {b} out of range [0, {n_modes}).")
+        if b in seen:
+            raise ValueError(f"partial_transpose: duplicate mode index {b}.")
+        seen.add(b)
+        signs[2 * b + 1] = -1.0  # flip p̂_b (the momentum row/column of mode b)
+    t = np.diag(signs)
+    return np.asarray(t @ np.asarray(cov) @ t, dtype=float)
 
 
 def squeezing_parameter(cov: np.ndarray) -> float:
@@ -327,12 +415,16 @@ __all__ = [
     "coherent_amplitude",
     "covariance_matrix",
     "gaussian_readout",
+    "is_physical",
     "mean_occupation",
     "mean_squeezed_occupation",
+    "partial_transpose",
     "phonon_number_distribution",
     "pure_squeezed_vacuum_pn",
     "quadrature_operators",
     "reduced_single_mode",
     "squeezing_parameter",
     "symplectic_eigenvalue",
+    "symplectic_eigenvalues",
+    "symplectic_form",
 ]

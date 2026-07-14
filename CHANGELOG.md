@@ -30,6 +30,18 @@ placeholder-only and did not follow semver.
   New-here boxes, symbols tables, Common-confusion callouts, figure Takeaways, and
   explanatory asserts now cover the two squeezing tutorials that `v0.7.0` shipped
   badged-but-unrailed.
+- **Dispatch GT1 — the multimode Gaussian convention primitives (§27).**
+  `gaussian.py` grows from its single-mode (`N = 1`) covariance core to the general
+  `N`-mode surface, a strict extension: `symplectic_form(N) = ⊕J`; `covariance_matrix`
+  now returns the `2N×2N` covariance `V` + first moments `d` in the per-mode ordering
+  `R = (x̂₁, p̂₁, …, x̂_N, p̂_N)` (the `N = 1` call and return contract is unchanged);
+  `symplectic_eigenvalues(V)` = the Williamson spectrum via the moduli of `eig(iΩV)`
+  (one per mode, multiplicity preserved — not the SVD, not a tolerance dedup);
+  `is_physical(V)` = the `V + iΩ ≥ 0` Hermitian-PSD guard (not a bare `ν ≥ 1` check);
+  and `partial_transpose(V, mode_indices)` = the `p̂_B → −p̂_B` momentum flip. Pinned
+  by `tests/conventions/test_gaussian_conventions.py`. **CONVENTIONS §27 is sealed and
+  `CONVENTION_VERSION` bumped 0.5 → 0.6.** (WP-07; dispatch family `GT` minted
+  2026-07-14.)
 
 ## [0.7.0] — 2026-07-14
 
