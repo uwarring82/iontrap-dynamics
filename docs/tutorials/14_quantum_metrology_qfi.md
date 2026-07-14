@@ -25,6 +25,43 @@ estimation theory is assumed — the relevant formulas are introduced inline.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - **Fisher information = precision.** It sets the tightest error bar you
+      can put on an estimated parameter `θ`. The Cramér–Rao bound reads
+      `Δθ ≥ 1/√F` — more information means a smaller uncertainty.
+    - **`F_Q` is the ceiling.** The *quantum* Fisher information is the best
+      precision **any** measurement could reach. For a pure probe it is just
+      `F_Q = 4·Var(G)`, the variance of the generator `G` that encodes `θ`.
+    - **`F_C` is your actual readout.** The *classical* Fisher information of
+      the measurement you really perform obeys `F_C ≤ F_Q`; you reach the
+      ceiling only in the matching basis.
+    - **More ions, two scalings.** `N` **independent** probes give
+      `F_Q ∝ N` (the standard quantum limit, SQL); an **entangled** GHZ probe
+      gives `F_Q ∝ N²` (the Heisenberg limit) — a quadratic gain that
+      entanglement pays for.
+    - **Modes too (Step 4).** A squeezed motional probe pushes `F_Q` below the
+      shot-noise floor along its squeezed quadrature — the CV echo of the GHZ
+      gain.
+    - **Every number is one call.** `F_Q` and `F_C` each come from a single
+      library function and are checked against the closed-form value.
+
+    **In a hurry?** Step 1 computes `F_Q` on one qubit; Step 2 watches a GHZ
+    probe reach Heisenberg `N²`; Step 3 shows which measurement actually
+    reaches the ceiling.
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+| --- | --- |
+| `θ` | the parameter being estimated (a phase here), read out at `θ = 0` |
+| `G` | Hermitian generator: `ρ(θ) = e^{−iθG} ρ e^{+iθG}` (e.g. `J_z = ½σ_z`) |
+| `Var(G)` | variance of the generator in the probe state |
+| `F_Q` | quantum Fisher information — ceiling over **all** measurements; `4·Var(G)` when pure |
+| `F_C` | classical Fisher information of the **one** measurement you pick; `F_C ≤ F_Q` |
+| `N` | number of ions — SQL `F_Q ∝ N` vs Heisenberg `F_Q ∝ N²` |
+| `r` | squeezing parameter of the CV probe (Step 4) |
+
 ## The scenario
 
 A *metrology* problem has three parts: a probe state `ρ`, a parameter `θ`
@@ -69,10 +106,12 @@ from iontrap_dynamics.information import quantum_fisher_information_trajectory
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
 
+# Reusable helper (boilerplate): build an N-ion spin-only Hilbert space.
 def spin_hilbert(n_ions):
     system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
     return HilbertSpace(system=system, fock_truncations={})
 
+# --- Physics starts here: the |+⟩ probe and the phase generator G = J_z = ½σ_z. ---
 h1 = spin_hilbert(1)
 jz = 0.5 * h1.spin_op_for_ion(sigma_z_ion(), 0)         # generator on the FULL space
 plus = (spin_up() + spin_down()).unit()
@@ -112,6 +151,16 @@ Now scale up. With `N` independent probes the variance of the collective
 concentrates the variance and reaches `F_Q = N²` — the **Heisenberg
 limit**, a quadratic metrological gain.
 
+!!! warning "Common confusion — Heisenberg needs entanglement"
+
+    The `N²` speed-up is not a free reward for using more ions — it is bought
+    entirely by entanglement. `N` **independent** probes (each in the optimal
+    `|+⟩` state) add their variances linearly and stay pinned to the SQL
+    `F_Q = N`, no matter how cleverly you measure them. Only the
+    maximally-entangled GHZ probe concentrates the variance to reach
+    `F_Q = N²`. Take the entanglement away and you fall back onto the dashed
+    `N` line.
+
 ```python
 from iontrap_dynamics.states import ghz_state
 
@@ -131,7 +180,7 @@ for N in ns:
     h = spin_hilbert(N); jz = collective_jz(h)
     qfi_ghz = quantum_fisher_information_trajectory([ghz_state(h)], hilbert=h, generator=jz)[0]
     qfi_prod = quantum_fisher_information_trajectory([product_plus(h)], hilbert=h, generator=jz)[0]
-    assert abs(qfi_ghz - N**2) < 1e-9 and abs(qfi_prod - N) < 1e-9
+    assert abs(qfi_ghz - N**2) < 1e-9 and abs(qfi_prod - N) < 1e-9, "GHZ reaches the Heisenberg limit F_Q=N² while the product probe stays at the SQL F_Q=N"
     qfi_ghz_vals.append(qfi_ghz)
     qfi_prod_vals.append(qfi_prod)
 # F_Q(GHZ) = [1, 4, 9, 16, 25, 36];  F_Q(product) = [1, 2, 3, 4, 5, 6]
@@ -163,6 +212,11 @@ slope 1 (`N`); the numerical points sit exactly on the textbook lines. The
 widening gap is the metrological payoff of entanglement — at `N = 6` the
 GHZ probe is six times more informative per shot.
 
+**Takeaway.** Read the scaling back as precision: since `Δθ ≥ 1/√F_Q`, the
+SQL `F_Q ∝ N` tightens the phase error only as `1/√N`, whereas the Heisenberg
+`F_Q ∝ N²` tightens it as `1/N` — the entangled probe's advantage compounds
+with every added ion, it is not a fixed head start.
+
 ## Step 3 — The Cramér–Rao bound and the *optimal* measurement
 
 The QFI is a ceiling. A real experiment measures something, and the
@@ -176,6 +230,15 @@ easy to get wrong: `|+⟩` is a σ_x eigenstate, so a σ_x measurement is
 *phase-blind* — to first order in `θ` the outcome probabilities do not
 move, and `F_C = 0`. We compute both, deriving the probabilities and their
 derivatives from the actual operators rather than hand-typing them.
+
+!!! warning "Common confusion — `F_Q` is a ceiling, not a guarantee"
+
+    `F_Q` is the best precision over **all** measurements; `F_C` is the
+    precision of the **one** measurement you actually run, and `F_C ≤ F_Q`
+    always. A well-matched readout (`σ_y` here) saturates it, `F_C = F_Q`; a
+    phase-blind one (`σ_x`, along which `|+⟩` is an eigenstate) gives
+    `F_C = 0` and throws the whole state away. A large `F_Q` buys nothing
+    until you pick the basis that reaches it.
 
 ```python
 from iontrap_dynamics.operators import sigma_x_ion, sigma_y_ion
@@ -197,8 +260,8 @@ print(f"Step 3 — F_Q         = {qfi:.6f}  (the ceiling)")
 print(f"Step 3 — F_C(σ_y)   = {cfi_y:.6f}  (saturates: optimal basis)")
 print(f"Step 3 — F_C(σ_x)   = {cfi_x:.6f}  (phase-blind: F_C = 0)")
 print(f"Step 3 — CRB 1/F_Q  = {crb:.6f}  → σ_θ ≥ {crb**0.5:.6f} rad")
-assert abs(cfi_y - qfi) < 1e-12   # σ_y SATURATES: F_C = F_Q = 1
-assert abs(cfi_x - 0.0) < 1e-12   # σ_x is phase-blind: F_C = 0
+assert abs(cfi_y - qfi) < 1e-12, "σ_y is the optimal basis — it saturates the Cramér–Rao bound, F_C = F_Q"   # σ_y SATURATES: F_C = F_Q = 1
+assert abs(cfi_x - 0.0) < 1e-12, "σ_x is phase-blind: the outcome distribution is flat to first order in θ, so F_C = 0"   # σ_x is phase-blind: F_C = 0
 assert abs(crb - 1.0) < 1e-12     # Var(θ̂) ≥ 1/F_Q = 1
 
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
@@ -217,6 +280,12 @@ plt.show()
 The lesson is operational: **the QFI is only useful if you measure in the
 right basis.** A perfectly good probe read out the wrong way carries zero
 information about `θ`.
+
+**Takeaway.** `F_C(σ_x) = 0` sends the Cramér–Rao variance `1/F_C → ∞`, so a
+phase-blind readout cannot estimate `θ` at all — and no number of extra shots
+rescues it, because averaging a measurement whose distribution does not move
+with `θ` adds nothing. Switching basis, not collecting more data, is what
+recovers the information.
 
 ## Step 4 — Continuous-variable probes (optional)
 
@@ -301,7 +370,7 @@ for r, fs, fa in zip(r_vals, qfi_sq, qfi_antisq):
 print(f"    sub-shot-noise at r=1.0: F_Q = {qfi_sq[-1]:.4f} < 2.0 = floor")
 
 # The squeezed quadrature must be sub-shot-noise for r > 0.
-assert qfi_sq[-1] < 1.0          # deep sub-shot-noise at r = 1.0  (2e^{-2} ≈ 0.27)
+assert qfi_sq[-1] < 1.0, "squeezed quadrature is sub-shot-noise: F_Q drops below 1, under the shot-noise floor of 2"          # deep sub-shot-noise at r = 1.0  (2e^{-2} ≈ 0.27)
 assert qfi_antisq[-1] > 10.0     # anti-squeezed quadrature: 2e^{+2} ≈ 14.8 >> floor
 
 fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.2))

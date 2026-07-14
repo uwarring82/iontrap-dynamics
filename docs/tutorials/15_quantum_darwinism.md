@@ -24,6 +24,29 @@ recoverability definitions. No prior decoherence theory is assumed.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - **The puzzle.** Quantum states are fragile and can't be cloned, yet the everyday world looks solid and objective. Quantum Darwinism explains the gap.
+    - **The mechanism.** A system does not "collapse" on its own — its environment (photons, phonons, stray qubits) keeps many *independent copies* of one preferred (pointer) observable.
+    - **Objectivity = redundancy.** Because the record is copied many times, many observers can each grab a *different* fragment and all read the same fact, without disturbing the system or each other.
+    - **The plot.** `partial_information_plot` gives `I(S:F)` — how much a growing environment fragment `F` tells you about the system `S`. A redundant world shows a flat **plateau** at `H_S`: one small fragment already carries the whole classical bit.
+    - **The count.** The redundancy `R_δ` counts *how many* such independent fragments exist (`= N` for the ideal GHZ cascade). Plateau *height* and redundancy `R_δ` are two different axes of the same plot.
+    - **The catch.** Only the *classical* information is copied this way; the *quantum* (coherent) information is monogamous and can't be redundant — Step 3's `recoverability` measures that quantum information directly.
+
+    **In a hurry?** Step 1 (the plateau, `I(S:F) = H_S`) is the whole idea; Step 2 just counts the copies (`R_δ = N`).
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+| --- | --- |
+| `S`, `F` | the system (qubit 0) and an accessible fragment of the environment |
+| `I(S:F)` | partial information — mutual information `F` holds about `S`; the y-axis of the plateau plot |
+| `H_S` | von Neumann entropy of `S` (1 bit for a GHZ qubit) — the classical information on offer |
+| plateau | the flat height of `I(S:F)`, equal to `H_S`, that *every* non-empty fragment already reaches |
+| `R_δ` | redundancy — how many independent fragments each carry `(1 − δ)·H_S`; `R_δ = N / N_δ` |
+| `N`, `N_δ` | environment size, and the smallest fragment size reaching the `(1 − δ)` threshold |
+| recoverability | clamped coherent information `max(0, S(ρ_A) − S(ρ_{S∪A}))` — the *quantum* info one fragment returns |
+
 ## The scenario
 
 A classical fact is *objective* because many observers can read it
@@ -56,6 +79,7 @@ classical objectivity — only doubling to two bits when the whole
 environment (which restores the global quantum coherence) is included.
 
 ```python
+# --- setup (boilerplate): plotting libs, house colours, and a helper that builds an N-qubit spin register ---
 import matplotlib.pyplot as plt
 import numpy as np
 import qutip
@@ -72,6 +96,7 @@ def spin_hilbert(n_ions):
     system = IonSystem(species_per_ion=tuple(mg25_plus() for _ in range(n_ions)))
     return HilbertSpace(system=system, fock_truncations={})
 
+# --- the physics: a 6-qubit GHZ state = 1 system qubit + 5 redundant environment records ---
 hilbert = spin_hilbert(6)                     # 1 system + 5 environment qubits
 state = ghz_state(hilbert)
 pip = partial_information_plot(
@@ -82,7 +107,7 @@ print(f"Step 1 — partial-information plot (bits):  {[round(float(v), 6) for v 
 print(f"  plateau value pip[1..4] = {[round(float(v), 6) for v in pip[1:-1]]}  (expect all 1.0)")
 print(f"  full-environment value pip[-1] = {float(pip[-1]):.6f}  (expect 2.0)")
 assert pip[0] == 0.0
-assert np.allclose(pip[1:-1], 1.0)            # every proper fragment: the plateau
+assert np.allclose(pip[1:-1], 1.0), "the plateau: every non-empty proper fragment already carries the full system bit H_S = 1"            # every proper fragment: the plateau
 assert abs(pip[-1] - 2.0) < 1e-9              # full environment restores global coherence
 
 # Fragment sizes: 0 env qubits → 5 env qubits (i.e. fragment = 0..5 out of 5)
@@ -98,12 +123,23 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** Because the curve is *flat*, it does not matter which fragment an observer intercepts — every independent observer reads the same one-bit fact and none disturbs the others, which is the operational meaning of an objective outcome.
+
 ![Quantum-Darwinism partial-information plot rising to a one-bit plateau, and redundancy growing linearly with environment size](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/darwinism_redundancy/plot.png)
 
 The left panel is this plot: a sharp rise to the one-bit plateau, flat
 across every proper fragment (the system fact is *out there*, many times
 over), then the jump to two bits. A plateau at `H_S` is the quantitative
 definition of an objective, redundantly-recorded observable.
+
+!!! warning "Common confusion — the 2-bit endpoint is not extra redundancy"
+
+    Read only the **plateau** (`= H_S = 1` bit) as the redundant, objective
+    classical information. The final rise to 2 bits happens *only* at the last
+    point, where the fragment is the *entire* environment — that excess is
+    quantum mutual information (the global coherence of the pure GHZ state)
+    and no small fragment, hence no realistic observer, can access it.
+    Objectivity lives in the flat part of the curve, not its endpoint.
 
 ## Step 2 — Counting the records: redundancy `R_δ`
 
@@ -126,7 +162,7 @@ for n_env in n_env_values:
         environment_indices=list(range(1, n_env + 1)), delta=0.1,
     )
     r_values.append(float(r))
-    assert abs(r - n_env) < 1e-9              # R_δ = N: one independent record per qubit
+    assert abs(r - n_env) < 1e-9, "R_δ = N here because one qubit (N_δ = 1) already carries the full system bit"              # R_δ = N: one independent record per qubit
 # redundancy = [1, 2, 3, 4, 5, 6]
 
 print(f"Step 2 — redundancy R_δ (δ=0.1) vs environment size:")
@@ -144,6 +180,8 @@ ax.set_title(r"$R_\delta = N$: every qubit is an independent record")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** For a perfect GHZ record a single qubit already holds the *entire* bit, so `R_δ = N` holds for *any* deficit `δ ∈ (0, 1)` — the redundancy of an ideal record is insensitive to how strict you set the tolerance, and `R_δ = N` is the ceiling any `N`-qubit environment can reach.
 
 The right panel of the figure above is `R_δ` versus environment size — a
 straight line `R_δ = N`. The more redundant the encoding, the more robust
@@ -167,6 +205,15 @@ exactly zero for a classically-correlated record and rises to `H_S` as the
 shared state is purified. We sweep a Werner-mixed Bell pair from fully
 decohered to pure.
 
+!!! warning "Common confusion — only classical information is copied"
+
+    Do not expect the recoverability of a *quantum* record to be redundant the
+    way `I(S:F)` is. Only *classical* information can be stamped into many
+    fragments at once — that redundancy is exactly what makes an outcome
+    objective. The *coherent* (quantum) information is monogamous: a system can
+    be maximally entangled with at most one party, so at most one fragment can
+    return `H_S`, and it can never be read off many fragments independently.
+
 ```python
 from iontrap_dynamics.information import recoverability
 
@@ -184,8 +231,8 @@ for p in p_values:
 print("Step 3 — recoverability (bits) vs Werner mixing parameter p:")
 for p, r in zip(p_values, rec_values):
     print(f"  p = {p:.2f}  →  recoverability = {r:.4f} bits")
-assert abs(recoverability(bell, hilbert=pair, system_indices=[0], accessible_indices=[1]) - 1.0) < 1e-9
-assert recoverability(maximally_mixed, hilbert=pair, system_indices=[0], accessible_indices=[1]) == 0.0
+assert abs(recoverability(bell, hilbert=pair, system_indices=[0], accessible_indices=[1]) - 1.0) < 1e-9, "a pure Bell pair returns the full one-bit H_S of quantum (coherent) information"
+assert recoverability(maximally_mixed, hilbert=pair, system_indices=[0], accessible_indices=[1]) == 0.0, "a fully decohered (maximally mixed) record returns zero recoverable quantum information"
 
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
 ax.plot(p_values, rec_values, color=RED, marker="o", markersize=5, linewidth=1.4,

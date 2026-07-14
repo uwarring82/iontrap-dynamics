@@ -36,6 +36,29 @@ is useful background for the "statistical error bar" vs
 
 ---
 
+!!! note "New here? Read this first"
+
+    - Every real apparatus parameter — laser intensity, detuning, phase — **jitters shot to shot**: two "identical" experimental runs use slightly different numbers.
+    - You model that by running an **ensemble** of trials, each with one parameter randomly perturbed, then averaging across the trials.
+    - Each individual trial is a **perfectly unitary flop** — nothing decoheres *within* a shot; the randomness lives only *between* shots.
+    - The ensemble **average** loses contrast as the trials fall out of step with one another — that decay is *inhomogeneous dephasing*, and here it follows `⟨σ_z⟩(t) = −cos(Ω̄t)·exp(−(σΩ̄t)²/2)`.
+    - **Mean**, **std** (spread of trials), and **SEM = std/√N** (error on the mean) are three different numbers — this tutorial keeps them apart on purpose.
+    - `RabiJitter` is only a *spec* (it holds `σ`); the paired `perturb_carrier_rabi` does the sampling and hands `solve_ensemble` one perturbed drive per shot.
+
+    **In a hurry?** The two load-bearing steps are **Step 3** (`solve_ensemble`) and **Step 4** (stack the trials → mean/std/SEM → compare to the analytic envelope).
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|--------|---------|
+| `RabiJitter(σ)` | Jitter spec — each shot scales `Ω` by `(1+ε)`, `ε ~ Normal(0, σ)`; here `σ = 0.03` (3 %). |
+| `perturb_carrier_rabi` | Materialiser — turns one drive + jitter + seed into `N` perturbed `DriveConfig`s. |
+| `solve_ensemble` | Batch solver — runs one independent (unitary) trajectory per perturbed drive. |
+| `N_SHOTS` | Number of ensemble trials (200 here). |
+| `ensemble_mean` | Shot-averaged `⟨σ_z⟩(t)` — the flopping contrast that dephases away. |
+| `ensemble_std` | Spread of trials at each time — the *physical* dispersion, independent of `N`. |
+| `SEM` | `ensemble_std/√N_SHOTS` — statistical error on the *mean*, shrinks as `1/√N`. |
+
 ## The three jitter primitives
 
 `iontrap_dynamics.systematics` ships three parameter-jitter
@@ -91,6 +114,7 @@ from iontrap_dynamics.systematics import RabiJitter, perturb_carrier_rabi
 
 N_SHOTS = 200
 
+# --- Boilerplate: the exact single-ion, one-axial-mode scenario from Tutorial 1 ---
 mode = ModeConfig(
     label="axial",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -105,6 +129,7 @@ drive = DriveConfig(
     phase_rad=0.0,
 )
 
+# --- The one new physics line: declare the shot-to-shot amplitude noise ---
 jitter = RabiJitter(sigma=0.03)   # 3 % relative amplitude noise
 ```
 
@@ -121,7 +146,7 @@ perturbed_drives = perturb_carrier_rabi(
 )
 # Each drive is a DriveConfig with carrier_rabi scaled by an
 # independent (1 + ε_i), ε_i ~ Normal(0, 0.03).
-assert len(perturbed_drives) == N_SHOTS
+assert len(perturbed_drives) == N_SHOTS, "perturb_carrier_rabi must return exactly one perturbed DriveConfig per shot"
 
 # Sanity check on the empirical mean and std of the Rabi samples:
 omega_samples = np.array(
@@ -167,6 +192,10 @@ results = solve_ensemble(
 assert len(results) == N_SHOTS
 ```
 
+!!! warning "Common confusion — dephasing here is not decoherence"
+
+    The contrast loss you are about to see is decay of the **average**, caused by parameter spread *between* shots — **every trajectory in this ensemble stays perfectly unitary** and, on its own, flops undamped forever. This is *inhomogeneous* dephasing (a `T₂*`-type effect from static shot-to-shot variation), not single-shot decoherence: there are no collapse operators anywhere in this solve. Only the *ensemble* decays; no individual trial does.
+
 !!! note "`n_jobs=1` is the right default"
 
     The carrier-Rabi single-solve is ~1 ms on modern hardware —
@@ -188,7 +217,7 @@ ensemble mean and dispersion:
 sz_stack = np.stack(
     [r.expectations["sigma_z_0"] for r in results], axis=0
 )
-assert sz_stack.shape == (N_SHOTS, 400)
+assert sz_stack.shape == (N_SHOTS, 400), "expected one σ_z trajectory per trial, stacked as (trials, times) = (N_SHOTS, 400)"
 
 ensemble_mean = sz_stack.mean(axis=0)
 ensemble_std = sz_stack.std(axis=0)        # spread across trials
@@ -217,8 +246,14 @@ print(f"Snapshot t=10 µs — ensemble mean: {ensemble_mean[idx_10us]:.3f}, "
 max_abs_deviation = float(np.max(np.abs(ensemble_mean - predicted)))
 print(f"Max |ensemble mean − analytic| over all times: {max_abs_deviation:.4f}")
 # The ensemble mean should track the analytic dephasing curve to within ~3 SEM at all times.
-assert max_abs_deviation < 0.15  # within ~3 SEM for N=200 — expected statistical noise
+assert max_abs_deviation < 0.15, "ensemble mean departs from the analytic dephasing law by more than statistical noise — check σ, seed, and N_SHOTS"  # within ~3 SEM for N=200 — expected statistical noise
 ```
+
+**Takeaway.** That `0.15` tolerance is a Monte-Carlo band, not a physics margin — it shrinks as `1/√N_SHOTS`, so you sharpen the mean-vs-theory test by taking more shots, never by narrowing `σ`.
+
+!!! warning "Common confusion — `ensemble_std` vs `SEM`"
+
+    `ensemble_std` is the **physical spread** of the trials at a given time — how far individual trajectories wander from the mean. `SEM = ensemble_std/√N_SHOTS` is the **statistical uncertainty on your estimate of the mean**. They answer different questions, so never plot one where you meant the other. Rule: when the claim is "the ensemble-*averaged* `⟨σ_z⟩` matches theory", the error band is the **SEM**; `ensemble_std` describes trial-to-trial dispersion, not confidence in the mean.
 
 ### What the numbers look like
 
@@ -276,6 +311,8 @@ plt.legend(loc="lower right")
 plt.tight_layout()
 plt.show()
 ```
+
+**Takeaway.** The SEM band and the dephasing envelope respond oppositely to more shots — the SEM narrows toward zero while the envelope stays put — so extra shots buy sharper *knowledge* of the mean but never buy back the *contrast* the ensemble lost to jitter.
 
 The ensemble-mean curve hugs the analytic dashed line; the
 inner SEM band is narrow even at 10 µs (it would continue to

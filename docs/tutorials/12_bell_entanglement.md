@@ -35,6 +35,41 @@ pattern that the entanglement evaluators require.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - This tutorial runs **no new physics** — it re-runs the Tutorial 4
+      MS gate and reads its gate-closing Bell state out **three ways**.
+    - Populations alone are blind here: at `t_gate` each ion on its own
+      reads 50/50 (`⟨σ_z⟩ = 0`). Only **joint** measurements — the
+      two-body parity `⟨σ_z σ_z⟩` and the entanglement measures —
+      reveal the Bell state.
+    - Parity gives the z-basis **correlation** (are the two spins the
+      same or different?); the concurrence gives the **coherence** an
+      incoherent even-parity mixture would lack. You need both.
+    - Entanglement **moves** during the gate: mid-gate the spins entangle
+      with the **motion** (log-negativity crests near `1.31`), then the
+      motional loop closes at `t_gate` and hands all of it to the spin
+      pair (concurrence `0 → 1`).
+    - Two solves, two storage modes: parity needs only expectations
+      (`StorageMode.OMITTED`); the entanglement measures need **every**
+      density matrix (`StorageMode.EAGER`).
+
+    **In a hurry?** Step 2 (parity readout) plus Steps 3–4 (concurrence
+    and log-negativity) are the core; the rest is cost-accounting and
+    interpretation.
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|--------|---------|
+| `ParityScan` | Protocol that reconstructs the joint `P(s₀,s₁)` outcome distribution from the three σ_z expectations (including `⟨σ_z σ_z⟩`), then adds a detector envelope and a finite-shot estimate. |
+| `⟨σ_z σ_z⟩` (parity) | Two-body z-correlation: `+1` both spins the same, `−1` different. Necessary but not sufficient for the Bell state. |
+| `C` (concurrence) | Wootters spin–spin entanglement of the two-ion reduced state; `0` separable → `1` maximal. |
+| `E_F` (entanglement of formation) | A fixed monotone function of `C` — same `0`/`1` endpoints, different curve between. |
+| `E_N` (log-negativity) | Spin↔motion entanglement across the spin/mode cut, `log₂‖ρ^{T_A}‖₁`; a mixed-state measure concurrence cannot give. |
+| `t_gate` | MS-gate closing time — the motional loop closes and the spins are left in a pure Bell state. |
+| `StorageMode` | `OMITTED` keeps expectations only (enough for parity); `EAGER` keeps every density matrix (required by the entanglement evaluators). |
+
 ## The two measurement surfaces
 
 Most of what we've covered so far composes at the
@@ -90,8 +125,11 @@ from iontrap_dynamics.system import IonSystem
 # House colours
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# Motional Fock-space truncation — a sizing choice, not physics.
 N_FOCK = 12
 
+# --- Physics: two 25Mg+ ions on one shared COM mode; the MS gate below is
+# --- tuned (δ, t_gate) to close its phase-space loop in exactly one loop.
 mode = ModeConfig(
     label="com",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -210,6 +248,13 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** Parity `⟨σ_z σ_z⟩ → +1` at `t_gate` proves the two spins
+are perfectly z-correlated (never one bright and one dark) — but a
+*classical* mixture `½|↓↓⟩⟨↓↓| + ½|↑↑⟩⟨↑↑|` gives the identical `+1`
+and identical single-ion marginals, so `ParityScan` cannot tell them
+apart. That is precisely why Steps 3–4 add entanglement witnesses a
+mixture cannot fake.
+
 Two series are interesting side-by-side:
 
 - **`parity_envelope`** — what the estimator converges to at
@@ -260,8 +305,8 @@ eof_trajectory = entanglement_of_formation_trajectory(
 
 print(f"Concurrence: C(0) = {c_trajectory[0]:.4f}  →  C(t_gate) = {c_trajectory[-1]:.4f}")
 print(f"EoF:         EoF(0) = {eof_trajectory[0]:.4f}  →  EoF(t_gate) = {eof_trajectory[-1]:.4f}")
-assert c_trajectory[0] == 0.0               # starts separable
-assert abs(c_trajectory[-1] - 1.0) < 1e-4   # Bell state at t_gate
+assert c_trajectory[0] == 0.0, "initial product state |↓↓, 0⟩ is fully separable, so spin-spin concurrence must be exactly 0"               # starts separable
+assert abs(c_trajectory[-1] - 1.0) < 1e-4, "concurrence must reach its maximum of 1 at t_gate — the gate has produced a maximally-entangled Bell state"   # Bell state at t_gate
 
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
 ax.plot(times * 1e6, c_trajectory, color=BLUE, label="concurrence $C$")
@@ -280,6 +325,16 @@ states, so its trajectory is a monotonic function of
 `c_trajectory` with the same zeros and ones but a different
 shape in between.
 
+!!! warning "Common confusion — `C = 1` certifies *maximal*, not *which*"
+
+    Concurrence hitting `1.0` certifies the spins are **maximally
+    entangled** — it does **not** name the state. `|Φ⁻⟩`, `|Φ⁺⟩`, and
+    `|Ψ±⟩` all have `C = 1`. Only a **fidelity** against a named target
+    names the state: [Tutorial 5](05_custom_observables.md) does exactly
+    that with the `|Φ⁻⟩⟨Φ⁻|` projector. The `|Φ⁻⟩` label on this
+    tutorial's plots is knowledge of the MS-gate physics, not something
+    `C` measured.
+
 ## Step 4 — Log-negativity (spin-vs-motion entanglement)
 
 `log_negativity_trajectory` uses a different bipartition —
@@ -288,6 +343,15 @@ shape in between.
 how much the spins are **entangled with the motion** mid-gate
 (as opposed to the concurrence's between-spin entanglement
 after the motion has been traced out):
+
+!!! warning "Common confusion — the mid-gate `E_N` crest is *not* the gate's output"
+
+    `E_N` measures **spin↔motion** entanglement, and it **must** fall
+    back to `0` at `t_gate`. A residual `E_N > 0` there means the
+    phase-space loop has **not** closed — the motion is still entangled
+    with the spins, which is a gate *error*, not a product. The gate's
+    deliverable is the spin↔spin **concurrence → 1**; the mid-gate
+    `E_N ≈ 1.31` crest is a transient you want gone by the end.
 
 ```python
 ln_trajectory = log_negativity_trajectory(
@@ -311,6 +375,12 @@ ax.set_title("Three witnesses — Bell entanglement via MS gate")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** The three curves never crest together: log-negativity
+peaks mid-gate exactly where concurrence is still suppressed. The
+motion is acting as an **entangling bus** — its mid-gate spin↔motion
+entanglement is transient, and closing the phase-space loop converts
+it into the spin↔spin entanglement the gate is built to deliver.
 
 !!! note "Log-negativity's `partition` argument, not `ion_indices`"
 

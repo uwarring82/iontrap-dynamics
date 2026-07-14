@@ -26,6 +26,28 @@ Lamb–Dicke parameter. This tutorial bundles four small surfaces into one
 
 ---
 
+!!! note "New here? Read this first"
+
+    - The three **channel** dataclasses (`Heating`, `AmplitudeDamping`, `Dephasing`) are the canonical motional baths; handing any of them to `solve(channels=…)` puts the mode in contact with an environment.
+    - Adding a dissipative channel flips the solver — a closed run takes the fast unitary path, but a channel routes `solve` onto the Lindblad master equation (`qutip-mesolve`, density matrices).
+    - A bath that scrambles the motional phase shows up as lost **contrast** on an interference fringe; `fringe_visibility` (quick) and `fit_fringe` (report-grade) read that contrast off a phase scan.
+    - The **Lamb–Dicke regime map** answers "can I still trust the leading-order sideband formula?" — it keys on the confinement `η²(2n̄+1)`, not `η` alone.
+    - The **Debye–Waller factor** `e^{−η²(2n̄+1)/2}` is the thermal carrier suppression the map tracks; even the vacuum (`n̄=0`) sits below 1 because of zero-point motion.
+    - A slow **trap-frequency drift** `δ` rescales `η → η/√(1+δ)` (since `η ∝ ω_m^{−1/2}`), so it shifts *every* sideband rate — not just a detuning.
+    - **In a hurry?** Step 1 injects the noise via `solve(channels=…)` and Step 2 shows how the resulting contrast loss is read off a fringe — those two are the open-system core; Steps 3–4 add the trust map and the drift budget.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `solve(channels=…)` | the entry point that switches onto the open-system master-equation path when handed dissipative channels. |
+| `Heating` / `AmplitudeDamping` / `Dephasing` | the three CPTP motional baths — relax up to `n̄_bath`, down to the ground, or kill coherence at fixed energy. |
+| `fringe_visibility` / `fit_fringe` | contrast estimators — model-free from the extrema vs a robust `A + B·cos(θ − φ)` least-squares fit. |
+| `η` | Lamb–Dicke parameter — how strongly the laser reaches the motion (dimensionless). |
+| `η²(2n̄+1)` | Lamb–Dicke confinement — the regime parameter `lamb_dicke_regime` classifies as deep / intermediate / beyond. |
+| Debye–Waller factor | `e^{−η²(2n̄+1)/2}` — thermal suppression of the carrier Rabi amplitude; `< 1` even at `n̄=0`. |
+| `ModeFrequencyDrift` (`δ`) | multiplicative, dimensionless trap-frequency systematic; `ω_m → ω_m(1+δ)`, rescaling `η → η/√(1+δ)`. |
+
 ## The scenario
 
 The earlier tutorials evolve a *closed* system. Real ion motion is open: it
@@ -70,6 +92,7 @@ def single_mode_hilbert(fock_dim):
     system = IonSystem(species_per_ion=(mg25_plus(),), modes=(mode,))
     return HilbertSpace(system=system, fock_truncations={"b": fock_dim})
 
+# --- Setup below is boilerplate (Hilbert space, operators, zero drift H0); the physics is in the solve() calls ---
 fock = 30
 h = single_mode_hilbert(fock)
 n_op = h.number_for_mode("b")
@@ -85,7 +108,7 @@ res_h = solve(hilbert=h, hamiltonian=H0, initial_state=ground, times=times,
 n_t = np.asarray(res_h.expectations["n"])
 print(f"Step 1 — backend: {res_h.metadata.backend_name}")
 print(f"Step 1 — Heating: ⟨n⟩(t_end) = {n_t[-1]:.4f}  (analytic n̄(1−e^{{−κt}}) = {2.0 * (1 - np.exp(-3000.0 * times[-1])):.4f})")
-assert res_h.metadata.backend_name == "qutip-mesolve"     # channels FORCE the master equation
+assert res_h.metadata.backend_name == "qutip-mesolve", "a dissipative channel routes solve onto the master-equation (mesolve) backend, not the unitary path"     # channels FORCE the master equation
 assert abs(n_t[-1] - 2.0 * (1 - np.exp(-3000.0 * times[-1]))) < 5e-3   # n̄(1 − e^{−κt})
 
 # Dephasing: coherence ⟨x⟩ of a coherent state decays as e^{−γt/2}; ⟨n⟩ is untouched
@@ -98,7 +121,7 @@ x_t = np.asarray(res_d.expectations["x"]); n_t2 = np.asarray(res_d.expectations[
 print(f"Step 1 — Dephasing: ⟨x⟩(t_end) = {x_t[-1]:.4f}  (analytic e^{{−γt/2}}⟨x⟩₀ = {x_t[0] * np.exp(-4000.0 * times[-1] / 2):.4f})")
 print(f"Step 1 — Dephasing: |Δ⟨n⟩| = {abs(n_t2[-1] - n_t2[0]):.2e}  (energy preserved)")
 assert abs(x_t[-1] - x_t[0] * np.exp(-4000.0 * times[-1] / 2)) < 5e-3   # coherence decay
-assert abs(n_t2[-1] - n_t2[0]) < 1e-6                                    # energy preserved
+assert abs(n_t2[-1] - n_t2[0]) < 1e-6, "dephasing kills the coherence quadrature but leaves the phonon number ⟨n⟩ untouched"                                    # energy preserved
 
 # Plot: occupation decay (heating) and coherence decay (dephasing) vs time.
 t_ms = times * 1e3  # milliseconds
@@ -141,6 +164,17 @@ coherence decays while energy does not.
     step so a short window can never be stepped over. Channel *order* in the
     list is irrelevant — only the temporal schedule of windows matters (the
     R8 boundary the library refuses to assume away).
+
+!!! warning "Common confusion — `channels=` chooses the solver, not just the physics"
+
+    Handing `solve` a dissipative channel does more than add noise to the
+    model — it re-routes the whole integration from the unitary Schrödinger
+    path (`qutip-sesolve`, kets) onto the Lindblad master equation
+    (`qutip-mesolve`, density matrices). An empty `channels=()` keeps the fast
+    unitary path byte-for-byte. And you cannot force one while asking for the
+    other: `solver="sesolve"` together with a dissipative channel *raises*
+    (sesolve carries no collapse operators) rather than silently dropping the
+    bath — so let the solver auto-dispatch, or force `"mesolve"` explicitly.
 
 ## Step 2 — Reading decoherence as contrast loss
 
@@ -222,7 +256,7 @@ assert lamb_dicke_regime(lamb_dicke_parameter=0.15, mean_phonon_number=0.0) is L
 # ground-state cooled, and a few phonons push it BEYOND — the classifier keys on
 # η²(2n̄+1), not η alone
 assert lamb_dicke_regime(lamb_dicke_parameter=eta, mean_phonon_number=0.0) is LambDickeRegime.INTERMEDIATE
-assert lamb_dicke_regime(lamb_dicke_parameter=eta, mean_phonon_number=5.0) is LambDickeRegime.BEYOND
+assert lamb_dicke_regime(lamb_dicke_parameter=eta, mean_phonon_number=5.0) is LambDickeRegime.BEYOND, "the same η that is only INTERMEDIATE at n̄=0 is pushed BEYOND by a few phonons — the classifier keys on η²(2n̄+1), not η alone"
 # the vacuum is already suppressed below 1 — the zero-point term in the exponent
 assert debye_waller_factor(lamb_dicke_parameter=eta, mean_phonon_number=0.0) < 1.0
 
@@ -268,6 +302,8 @@ ax2.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** The left band boundary and the right-panel divergence are the same physics seen twice — as a mode climbs out of the deep band the Debye–Waller carrier is suppressed *and* the leading-order `|η|√(n+1)` rate starts over-predicting, so one regime call gates both your fringe contrast and your sideband pulse timing.
+
 ![Debye–Waller factor versus the regime parameter with the deep, intermediate and beyond bands, and the sideband Rabi frequency where the leading-order form diverges from the exact all-orders curve](https://raw.githubusercontent.com/uwarring82/iontrap-dynamics/main/benchmarks/data/lamb_dicke_regime/plot.png)
 
 The left panel is the map: the Debye–Waller suppression versus
@@ -311,7 +347,7 @@ for delta in deltas:
     eta_drifted_vals.append(eta_d)
     frac = (eta_d / eta0) - 1.0
     print(f"{delta:>+8.2f}  {eta_d:>10.4f}  {frac:>+10.4f}  {-delta/2:>+16.4f}")
-    assert np.isclose(eta_d, eta0 / np.sqrt(1.0 + delta))   # η rescales as 1/√(1+δ)
+    assert np.isclose(eta_d, eta0 / np.sqrt(1.0 + delta)), "a fractional frequency drift δ rescales η by exactly 1/√(1+δ) (η ∝ ω_m^{−1/2}), not by 1+δ"   # η rescales as 1/√(1+δ)
 # the fractional η change is ≈ −δ/2, NOT −δ — half as sensitive as a naive estimate
 
 # Plot: fractional η change vs trap-frequency drift — error budget bar chart.
@@ -332,6 +368,8 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** The `−δ/2` rule is only the linear term: because `1/√(1+δ)` is convex, the budget is *asymmetric* — a `−10 %` trap softening moves `η` by `+5.4 %` while a `+10 %` stiffening moves it only `−4.7 %`, so a drift that lowers the trap frequency is the worse case at equal magnitude.
+
 !!! tip "Half the sensitivity you'd guess"
 
     Because `η ∝ ω_m^{−1/2}` is sub-linear, a fractional frequency drift `δ`
@@ -341,6 +379,16 @@ plt.show()
     and dimensionless (contrast `DetuningDrift`/`PhaseDrift`, which are
     additive with SI units); `apply_mode_frequency_drift` only updates the
     frequency, so always re-derive `η` from the returned mode.
+
+!!! warning "Common confusion — a mode-frequency drift is not just a detuning"
+
+    It is tempting to fold a trap-frequency wobble in as a shift of the
+    sideband *resonance* alone. But `η ∝ ω_m^{−1/2}` (the zero-point
+    wavepacket shrinks as the trap stiffens), so a drift `δ` also rescales
+    `η → η/√(1+δ)` — and that multiplies *every* carrier and sideband Rabi
+    rate, and the Debye–Waller factor from Step 3, not only the detuning.
+    Always re-derive `η` from the returned `ModeConfig` and propagate it
+    downstream; stopping at the resonance condition undercounts the error.
 
 ## Where to next
 

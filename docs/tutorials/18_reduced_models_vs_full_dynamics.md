@@ -14,6 +14,28 @@
 
 ---
 
+!!! note "New here? Read this first"
+    - A **reduced model** is idealised qubit + oscillator physics; a **sideband Hamiltonian** is how a real ion realises it. This tutorial builds both, side by side, and asks how faithfully the ion matches the model.
+    - Three reduced models: the **quantum Rabi model (QRM)** is the full qubit–oscillator coupling; **Jaynes–Cummings (JC)** and **anti-JC (AJC)** are its two rotating-wave halves.
+    - **In isolation** JC and AJC are one Hamiltonian up to a `σ_x` relabelling (with `ω₀ → −ω₀`) — the LOCK-3 identity — so their spectra coincide (Case A).
+    - **On the ion** that relabelling becomes a physical choice of tone: the **red** sideband realises JC (from `|↓,0⟩` nothing flops — dark), the **blue** sideband realises AJC (`|↓,0⟩` flops fully — bright). Same algebra, different apparatus knob (Case B).
+    - **The "only a label" story fails** once `g/ω₀` is no longer small: the RWA that defines JC breaks down, the QRM ground state fills with virtual phonons, and `model_deviation` measures the gap (Case C).
+    - **The bridge back:** in the Lamb–Dicke limit the reduced coupling is `g = ηΩ/2`, so the blue-sideband rate is exactly `2g√(n+1)`; beyond that limit the all-orders rate bends away (Case D).
+
+    **In a hurry?** Run Step 2 (Case B — red-dark vs blue-bright, the label becomes a knob) and Step 3 (Case C — `model_deviation` catches the RWA breaking down).
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|---|---|
+| JC / AJC | Jaynes–Cummings / anti-JC — the two rotating-wave halves; on the ion, the red / blue sideband |
+| QRM | quantum Rabi model — the full non-RWA qubit–oscillator coupling |
+| `g/ω₀` | dimensionless coupling ratio; the RWA (hence JC) holds only while it is small |
+| RWA | rotating-wave approximation — dropping the counter-rotating terms |
+| `model_deviation` | worst-case state infidelity between two matched trajectories (`0` = identical) |
+| `η²(2n+1)` | Lamb–Dicke confinement — the knob for Case D's deep → beyond bands |
+| LOCK-3 | the identity `H_AJC(ω₀) = σ_x H_JC(−ω₀) σ_x` (Case A) |
+
 ## The scenario
 
 A reduced light–matter model is a piece of *physics* — what a trapped ion approximates — while a sideband Hamiltonian is a piece of *apparatus* — how a real ion realises it. Keeping those two layers apart is the whole point: it lets us ask whether the reduction is faithful and, where it is not, measure by how much it fails. The [model-hierarchy note](../models-hierarchy.md) (now vendored; cited by section below) lays out four falsifiable cases, and this tutorial walks all four against the shipped library. They span the claim "the Jaynes–Cummings and anti-Jaynes–Cummings models are merely relabelled" from **true in isolation** (Case A), to **a physical knob** (Case B), to **false under strong coupling** (Case C), with the Lamb–Dicke reduction itself put to the test in Case D.
@@ -27,6 +49,7 @@ Each step below **prints its key numbers and redraws its panel of this figure li
 In isolation the anti-Jaynes–Cummings model is the Jaynes–Cummings model conjugated by `σ_x` with the qubit splitting flipped — the LOCK-3 identity `H_AJC(ω₀) = σ_x H_JC(−ω₀) σ_x` (`jaynes_cummings_hamiltonian`, `anti_jaynes_cummings_hamiltonian`). A unitary conjugation cannot move eigenvalues, so the two spectra coincide. This is the [model-hierarchy note](../models-hierarchy.md)'s §6 (LOCK-3) / §8 regime 1.
 
 ```python
+# Boilerplate — imports, the model scale ω₀ = ω_f, and a one-ion + one-mode space builder.
 import matplotlib.pyplot as plt
 import numpy as np
 import qutip
@@ -56,6 +79,7 @@ def single_mode(fock_dim: int) -> HilbertSpace:
     return HilbertSpace(system=system, fock_truncations={"m": fock_dim})
 
 
+# Physics — build AJC(+ω₀) and JC(−ω₀), then diagonalise both to compare spectra.
 h = single_mode(FOCK)
 g = 0.4 * OMEGA
 ajc = anti_jaynes_cummings_hamiltonian(h, "m", ion_index=0, omega_0=OMEGA, omega_f=OMEGA, g=g)
@@ -66,7 +90,7 @@ eig_ajc = solve_spectrum(ajc).eigenvalues[:24] / OMEGA  # lowest 24, in units of
 eig_jc = solve_spectrum(jc_negative).eigenvalues[:24] / OMEGA
 max_gap = float(np.max(np.abs(eig_ajc - eig_jc)))
 print(f"Case A — largest |E_AJC(+ω₀) − E_JC(−ω₀)| / ω₀ = {max_gap:.2e}")
-assert max_gap < 1e-6  # spec(H_AJC(ω₀)) = spec(H_JC(−ω₀))
+assert max_gap < 1e-6, "AJC(+ω₀) and JC(−ω₀) share a spectrum to numerical zero — a unitary σ_x conjugation cannot move eigenvalues (LOCK-3)"  # spec(H_AJC(ω₀)) = spec(H_JC(−ω₀))
 
 idx = np.arange(eig_jc.size)
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
@@ -78,6 +102,8 @@ ax.set_title("A · LOCK-3: spectra coincide")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** Because LOCK-3 makes JC and AJC unitarily equivalent, this panel can only test *eigenvalues* — it confirms the spectra coincide but says nothing about how differently the two behave once a real initial state and drive pick a direction on the ion (that is Case B).
 
 !!! note "The −ω₀ is a model sign, not a negative ion"
     The identity needs the qubit splitting *flipped* (`omega_0=-OMEGA` on the JC side). That negative `ω₀` is an effective/model parameter — the relabelling that turns a red-sideband image into a blue-sideband image — **not** a physically negative ion splitting. For a real ion `ω₀ > 0` and `(ω₀/2)σ_z` keeps `|↑⟩` above `|↓⟩` (CONVENTIONS.md §3, §25.2).
@@ -122,7 +148,7 @@ analytic_blue = np.sin(blue_rate * times / 2.0) ** 2  # ideal two-level flop at 
 print(f"Case B — η = {eta:.3f};  blue max ⟨P↑⟩ = {pop_blue.max():.3f} (bright),  "
       f"red max ⟨P↑⟩ = {pop_red.max():.1e} (dark)")
 assert np.max(pop_red) < 1e-4   # |↓,0⟩ is DARK under the red sideband (→ JC, a|0⟩ = 0)
-assert np.max(pop_blue) > 0.99  # |↓,0⟩ is BRIGHT under the blue sideband (→ AJC, |↓,0⟩↔|↑,1⟩)
+assert np.max(pop_blue) > 0.99, "the blue sideband flops |↓,0⟩ to near-full spin-up — the AJC image is bright, unlike the dark red sideband above"  # |↓,0⟩ is BRIGHT under the blue sideband (→ AJC, |↓,0⟩↔|↑,1⟩)
 
 tau = times * blue_rate / (2.0 * np.pi)  # phase in units of the blue flop period
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
@@ -138,6 +164,9 @@ plt.show()
 
 !!! tip "Dark is not the same as decoupled"
     `|↓,0⟩` is dark under the *red* sideband only because it sits at the bottom of the ladder. `|↓,1⟩` flops freely under the red sideband — the darkness is a property of the state, not of the JC coupling.
+
+!!! warning "Common confusion — a label in theory, a knob on the ion"
+    In isolation JC and AJC are one Hamiltonian up to a `σ_x` relabelling (LOCK-3), so it is tempting to read "red vs blue" as bookkeeping. On the ion it is not: red and blue are *different tones you physically choose to drive*, and from `|↓,0⟩` they give opposite outcomes — dark (red) versus a full flop (blue). Same algebra, but the choice is an apparatus knob, not a change of notation.
 
 ## Step 3 — Case C: "only a label" is false (RWA breakdown)
 
@@ -173,7 +202,7 @@ strong = model_deviation(trajectory(jaynes_cummings_hamiltonian, 0.5 * OMEGA),
 
 assert weak.method == "state_fidelity"  # materialised states → 1 − qutip.fidelity per step
 assert weak.value < 1e-2                # common regime: JC ≈ QRM
-assert strong.value > 10 * weak.value   # breakdown: the counter-rotating terms separate them
+assert strong.value > 10 * weak.value, "at g/ω₀ = 0.5 the JC and QRM trajectories part by >10× the weak-coupling infidelity — the counter-rotating terms the RWA drops now bite"   # breakdown: the counter-rotating terms separate them
 
 # Sweep the dimensionless coupling g/ω₀ from weak to ultra-strong, tracking two
 # probes: the JC↔QRM ground-energy gap, and the QRM virtual-phonon number.
@@ -205,6 +234,11 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** The energy gap and the virtual-phonon number climb *together* as `g/ω₀` grows — the same counter-rotating terms deform the QRM ground state, so the JC↔QRM disagreement is real physics. (That `FOCK = 30` still resolves that deformed ground state — not a truncation artefact — is the point of the box below.)
+
+!!! warning "Common confusion — the RWA is not free"
+    JC ≈ QRM only while `g/ω₀ ≪ 1`. Push into ultra-strong coupling and the counter-rotating terms JC discards stop being negligible: the QRM ground state is no longer the dark `|↓,0⟩` but carries virtual phonons (`⟨a†a⟩ > 0`), and `model_deviation` lifts off its floor. Do not read a small weak-coupling deviation as a licence to use JC at any coupling.
+
 !!! warning "Fock truncation is the trap in the strong-coupling panel"
     The QRM ground state spreads over many phonons at `g/ω₀ ≈ 1`, so a small `fock_truncations` silently under-resolves it and `solve` will raise the §13 convergence error. The benchmark uses `FOCK = 30`; do not shrink it when you push `g/ω₀` past `~0.5`.
 
@@ -225,7 +259,7 @@ eta_d = 0.1
 g_effective = eta_d * drive_rabi / 2  # the reduction g = ηΩ/2
 for n in (0, 1, 2, 3):
     rate = blue_sideband_rabi_frequency(carrier_rabi_frequency=drive_rabi, lamb_dicke_parameter=eta_d, n_initial=n)
-    assert np.isclose(rate, 2 * g_effective * np.sqrt(n + 1))  # Ω|η|√(n+1) = 2g√(n+1)
+    assert np.isclose(rate, 2 * g_effective * np.sqrt(n + 1)), "leading-order blue-sideband rate equals the reduced AJC block element 2g√(n+1), with g = ηΩ/2"  # Ω|η|√(n+1) = 2g√(n+1)
 
 # Deep regime: the all-orders rate matches leading order to the zero-point factor.
 assert lamb_dicke_regime(lamb_dicke_parameter=0.05, mean_phonon_number=1) == "deep"

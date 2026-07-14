@@ -26,6 +26,29 @@ motional modes.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - A **two-mode squeezer** creates and destroys quanta in *pairs* — one in mode `a` and one in mode `b` at a time — so both modes' occupation grows *together*, never one without the other.
+    - The growth is exponential (parametric gain): per-mode `⟨n̂⟩ = sinh²|z|` for the static factory state, and `sinh²(gτ)` as you evolve the vacuum for a time `τ`.
+    - Because quanta arrive in balanced pairs, the **difference** `n̂_a − n̂_b` is conserved — it stays `0` from the vacuum — the SU(1,1) Casimir. That perfect number correlation is the entanglement resource.
+    - Either mode *on its own* is just a thermal state with that `n̄`; the squeezing lives only in the `a`–`b` correlation, invisible mode-by-mode.
+    - The **beamsplitter** (Step 3) is the opposite generator: SU(2) rotates one quantum between the modes and conserves the **sum** `n̂_a + n̂_b` — do not conflate the two conservation laws.
+    - Both modes climb the Fock ladder fast, so size the per-mode truncation generously ([Tutorial 6](06_fock_truncation.md)) or the occupation readout is biased.
+
+    **In a hurry?** Step 1 *declares* the state from the factory; Step 2 *rebuilds* it dynamically and shows the `sinh²(gτ)` growth with the difference pinned — that pair is the core. Step 3 contrasts the beamsplitter.
+
+**Symbols in this tutorial**
+
+| symbol | plain meaning |
+| --- | --- |
+| `z` | two-mode squeeze parameter (real here, so it equals `r`); a complex phase would set the squeezing axis `φ` |
+| `r` | magnitude of the squeeze parameter — set directly as the factory `z` in Step 1, built up as `r = gτ` (coupling `g`, time `τ`) in Step 2 |
+| `n̄ = sinh²(r)` | per-mode mean phonon number — grows exponentially in `r` |
+| `g` | parametric coupling rate of the two-mode squeezing Hamiltonian |
+| `n̂_a − n̂_b` | difference number — the SU(1,1) Casimir; conserved, stays `0` from the vacuum |
+| `n̂_a + n̂_b` | sum number — conserved instead by the SU(2) beamsplitter |
+| `J` | beamsplitter coupling rate (Step 3); a full a→b swap takes `π/(2J)` (`n_a` oscillates with period `π/J`) |
+
 ## The scenario
 
 A single-mode squeezer reshapes one oscillator's quadratures. A *two-mode*
@@ -67,7 +90,7 @@ for r in factory_r:
     nbar = float(qutip.expect(n_a, tmsv))
     factory_nbar.append(nbar)
     print(f"Step 1 — r = {r:.1f}:  ⟨n̂⟩ (factory) = {nbar:.4f},  sinh²(r) = {np.sinh(r)**2:.4f}")
-    assert abs(nbar - np.sinh(r) ** 2) < 1e-3   # ⟨n̂⟩ = sinh²|z|
+    assert abs(nbar - np.sinh(r) ** 2) < 1e-3, "factory ⟨n̂⟩ must equal sinh²|z| — the §23 two-mode occupation convention"   # ⟨n̂⟩ = sinh²|z|
 # the reduced single-mode state is thermal with this n̄ — squeezing you can only see in the pair
 ```
 
@@ -95,6 +118,7 @@ from iontrap_dynamics.hamiltonians import two_mode_squeezing_hamiltonian
 from iontrap_dynamics.observables import Observable
 from iontrap_dynamics.sequences import solve
 
+# Plumbing — build a two-mode Hilbert space: spin ⊗ mode a ⊗ mode b.
 def two_mode_hilbert(fock_dim):
     ev = np.array([[0.0, 0.0, 1.0]])
     modes = (ModeConfig(label="a", frequency_rad_s=2 * np.pi * 1.0e6, eigenvector_per_ion=ev),
@@ -102,6 +126,7 @@ def two_mode_hilbert(fock_dim):
     system = IonSystem(species_per_ion=(mg25_plus(),), modes=modes)
     return HilbertSpace(system=system, fock_truncations={"a": fock_dim, "b": fock_dim})
 
+# The physics — evolve the two-mode vacuum under the squeezing H for a growing time τ (r = g·τ).
 FOCK = 50                                       # generous: n̄ reaches ≈ 2.3 at r = 1.2
 g = 2 * np.pi * 2.0e3
 h = two_mode_hilbert(FOCK)
@@ -120,8 +145,8 @@ max_diff = float(np.max(np.abs(n_a - n_b)))
 print(f"Step 2 — max |⟨n̂_a⟩ − sinh²(gτ)| = {max_err_occ:.2e}  (oracle < 1e-4)")
 print(f"Step 2 — max |⟨n̂_a⟩ − ⟨n̂_b⟩|    = {max_diff:.2e}  (oracle < 1e-9, SU(1,1) Casimir)")
 print(f"Step 2 — final n̄ at r = {r_t[-1]:.2f}:  ⟨n̂_a⟩ = {n_a[-1]:.4f},  sinh²(r) = {nbar_analytic[-1]:.4f}")
-assert np.max(np.abs(n_a - nbar_analytic)) < 1e-4   # ⟨n̂_a⟩ = sinh²(gτ)
-assert np.max(np.abs(n_a - n_b)) < 1e-9             # difference number ≡ 0 (the su(1,1) Casimir)
+assert np.max(np.abs(n_a - nbar_analytic)) < 1e-4, "evolved occupation must trace the analytic sinh²(gτ) curve"   # ⟨n̂_a⟩ = sinh²(gτ)
+assert np.max(np.abs(n_a - n_b)) < 1e-9, "⟨n̂_a⟩ and ⟨n̂_b⟩ must stay equal — pairs are created one per mode, so the difference is conserved"             # difference number ≡ 0 (the su(1,1) Casimir)
 
 # Plot 1 — parametric growth: dynamics, factory anchors, analytic curve.
 fig, axes = plt.subplots(1, 2, figsize=(10.0, 3.2))
@@ -152,6 +177,12 @@ parametric gain. The right panel is the conserved difference number, flat
 at zero across the whole evolution: every photon created in mode `a` has a
 partner in mode `b`.
 
+**Takeaway.** The green factory anchors landing exactly on the blue and red
+dynamical curves is this tutorial's whole claim made visible — the *declared*
+state (Step 1) and the *evolved* state (Step 2) are one and the same object,
+and the flat right panel is that state's `|n, n⟩`-only amplitude structure
+seen unfolding in real time.
+
 !!! warning "Fock truncation is the trap here"
 
     `n̄ = sinh²(r)` blows up fast — `r = 1.5` already means `n̄ ≈ 4.6`, with
@@ -170,6 +201,16 @@ The two-mode squeezer's algebraic sibling is the **beamsplitter**,
 opposite conservation law. Start with a single phonon in mode `a` and watch
 it slosh into mode `b` and back.
 
+!!! warning "Common confusion — opposite conservation laws"
+
+    Do not swap the two conservation laws. The **SU(1,1) squeezer**
+    (`â†b̂† + âb̂`) creates quanta in balanced pairs, so it conserves the
+    **difference** `n̂_a − n̂_b` while the **sum** grows without bound. The
+    **SU(2) beamsplitter** (`â†b̂ + âb̂†`) only relocates existing quanta, so it
+    conserves the **sum** `n̂_a + n̂_b` while the difference oscillates.
+    Growth-with-correlation versus mixing-at-fixed-total: one generator
+    amplifies, the other rotates.
+
 ```python
 from iontrap_dynamics.hamiltonians import beamsplitter_hamiltonian
 
@@ -184,7 +225,7 @@ na = np.asarray(res_bs.expectations["n_a"]); nb = np.asarray(res_bs.expectations
 max_sum_err = float(np.max(np.abs((na + nb) - 1.0)))
 print(f"Step 3 — max |⟨n̂_a + n̂_b⟩ − 1| = {max_sum_err:.2e}  (oracle < 1e-6, SU(2) total conserved)")
 print(f"Step 3 — at t = π/(2J):  ⟨n̂_a⟩ = {na[-1]:.2e} (→ 0),  ⟨n̂_b⟩ = {nb[-1]:.4f} (→ 1)  [full swap]")
-assert np.max(np.abs((na + nb) - 1.0)) < 1e-6           # n̂_a + n̂_b conserved (SU(2))
+assert np.max(np.abs((na + nb) - 1.0)) < 1e-6, "beamsplitter must conserve the total ⟨n̂_a + n̂_b⟩ = 1 — it moves the one phonon, never makes a pair"           # n̂_a + n̂_b conserved (SU(2))
 assert abs(na[-1]) < 1e-6 and abs(nb[-1] - 1.0) < 1e-6  # a full swap a → b at t = π/(2J)
 
 # Plot — SU(2) beamsplitter: phonon hopping between the two modes.
@@ -202,6 +243,11 @@ ax.set_title(r"SU(2) beamsplitter: $|1\rangle_a|0\rangle_b \to |0\rangle_a|1\ran
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** The seed matters: from the *vacuum* the beamsplitter would sit
+frozen — `â†b̂ + âb̂†` annihilates `|0, 0⟩`, so with nothing to move it does
+nothing — which is exactly why Step 3 starts from `|1⟩_a`, whereas the
+squeezer makes its own pairs and could start from the vacuum.
 
 The contrast is the whole point: the **squeezer** conserves the difference
 and grows the sum (entanglement generation); the **beamsplitter** conserves

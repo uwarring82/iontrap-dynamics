@@ -36,6 +36,29 @@ of [`CONVENTIONS.md`](../conventions.md) §17.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - You ran `n` shots and `k` came up bright, so your best guess for the true bright probability is `p̂ = k/n` — but with finite shots that guess needs an error bar.
+    - A **confidence interval** (CI) is that error bar: a `[lower, upper]` range reported at a stated coverage (here 95 %).
+    - Two recipes ship here — **Wilson** (tighter, closed-form, the default) and **Clopper–Pearson** (wider, "exact", *guarantees* at least the stated coverage).
+    - Wider is not "better": Clopper–Pearson trades tightness for a coverage guarantee. Reach for it only when under-reporting uncertainty is unacceptable; otherwise Wilson.
+    - Intervals shrink like `1/√n` — quadruple the shots to halve the width. There is no cheaper way to sharpen a fraction.
+    - A 95 % CI describes the *procedure over repeated experiments*, not "95 % odds the true `p` sits in this one interval."
+
+    **In a hurry?** Jump to *Vectorised across a full trajectory* — one `binomial_summary(k, n, confidence=0.95)` call returns the point estimate and CI over an entire scan.
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|--------|---------|
+| `k` | number of bright (success) outcomes in a shot batch |
+| `n` | number of shots — the Bernoulli trial count |
+| `p̂ = k/n` | point estimate of the bright probability |
+| Wilson CI | tighter score interval; the default `method="wilson"` |
+| Clopper–Pearson CI | exact interval, conservative (coverage ≥ nominal), hence wider |
+| `z` | confidence z-score `Φ⁻¹((1+confidence)/2)`; `z ≈ 1.96` at 95 % |
+| `Δ` | target CI half-width — what sets the shot budget |
+
 ## The three functions and when to call each
 
 | Function                     | Purpose                                          | Typical caller             |
@@ -103,6 +126,15 @@ Three observations worth taking from the table:
    exactly; `k = n` gives `upper = 1` exactly. No degenerate
    zero-width intervals.
 
+!!! warning "Common confusion — wider is not more accurate"
+
+    Clopper–Pearson's extra width is *conservatism*, not *quality*: it
+    guarantees actual coverage `≥ 95 %` and pays for that guarantee in
+    span. Wilson sits close to the nominal 95 % and is the right
+    default. Switch to Clopper–Pearson only when under-reporting
+    uncertainty is unacceptable (publication worst-case, small `n`) —
+    never because "wider looks safer".
+
 ## Vectorised across a full trajectory
 
 The idiomatic way to get CIs over a whole `result.times` axis
@@ -127,6 +159,7 @@ from iontrap_dynamics.sequences import solve
 from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.system import IonSystem
 
+# --- Setup (boilerplate): rebuild Tutorial 1's carrier-Rabi run — mode, system, drive, solve. ---
 mode = ModeConfig(
     label="axial",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -150,6 +183,7 @@ result = solve(
     times=times, observables=[spin_z(hilbert, 0)],
 )
 
+# --- The step that matters: finite-shot readout, then vectorised CIs just below. ---
 detector = DetectorConfig(efficiency=0.5, dark_count_rate=0.3, threshold=3)
 readout = SpinReadout(
     ion_index=0, detector=detector, lambda_bright=20.0, lambda_dark=0.0,
@@ -167,15 +201,21 @@ summary = binomial_summary(
     bright_counts, shots, confidence=0.95, method="wilson",
 )
 
-assert summary.point_estimate.shape == times.shape
-assert summary.lower.shape == times.shape
-assert summary.upper.shape == times.shape
+assert summary.point_estimate.shape == times.shape, "binomial_summary broadcast one p̂ per time step — the vectorised call did not collapse the trajectory to a scalar"
+assert summary.lower.shape == times.shape, "the lower CI bound is shape-aligned with the trajectory: one bound per time step, not a single number"
+assert summary.upper.shape == times.shape, "the upper bound matches too — BinomialSummary is shape-preserving across all its numerical fields"
 
 ci_width = summary.upper - summary.lower
 print(f"Trajectory: {shots} shots, {len(times)} time steps")
 print(f"Point estimate range: [{summary.point_estimate.min():.3f}, {summary.point_estimate.max():.3f}]")
 print(f"95 % Wilson CI width — min: {ci_width.min():.4f}, mean: {ci_width.mean():.4f}, max: {ci_width.max():.4f}")
 ```
+
+**Takeaway.** CI width follows the Bernoulli standard error `√(p̂(1−p̂)/n)`, so at these 80 shots the
+half-max fringe *crossings* are the noisiest points (~0.21 wide) and
+the crests and troughs the best-measured (~0.05) — worth remembering
+when a slope-based calibration wants its precision exactly where the
+shot noise is largest.
 
 `summary.point_estimate` is the per-time-step
 `bright_count / shots` estimator. `summary.lower` and
@@ -202,6 +242,15 @@ The CI band widens where the fringe is near `0.5` (maximum
 Bernoulli variance) and narrows at the extremes — a direct
 visual of the Wilson interval's shape dependence on the point
 estimate.
+
+!!! warning "Common confusion — what the 95 % refers to"
+
+    A 95 % CI is a statement about the *estimator across many
+    repeats*: rerun this experiment many times and ~95 % of the
+    intervals so constructed would cover the true `p`. It is **not**
+    "a 95 % probability the true `p` lies in *this* band" — `p` is
+    fixed; the interval is the random object. Report it as a "95 %
+    CI", not a "95 % chance `p` is here".
 
 ## Choosing Wilson vs Clopper–Pearson
 
@@ -241,6 +290,11 @@ z = 1.96
 n_required = (z ** 2) * p_max_var * (1 - p_max_var) / (target_half_width ** 2)
 print(f"n ≥ {int(np.ceil(n_required))}")  # n ≥ 2401
 ```
+
+**Takeaway.** Because `n ∝ 1/Δ²`, precision gets expensive fast at the
+margin: halving the band to ±1 % needs ~4× the shots (≈9600), not 2× —
+settle on the coarsest `Δ` your physics can tolerate before committing
+the budget.
 
 At `p̂ = 0.5` the answer is about 2400 shots for a ±2 % band.
 For smaller `p̂` the required shot count drops (variance is

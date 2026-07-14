@@ -27,6 +27,29 @@ trajectory-evolution surface.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - **The point is reproduction.** You are re-deriving numbers that already exist in the shipped `theo_dim_N_*.dat` tables and checking that they match — not discovering new physics.
+    - **This uses exact diagonalisation, not time evolution.** For each detuning we build one Hamiltonian and read its *entire* eigenspectrum with `solve_spectrum`; there is no trajectory to propagate.
+    - **The Hamiltonian is the non-RWA, full-displacement spin–boson model.** The spin couples to each mode through the whole exponential `exp(η(a−a†))`, so off-diagonal Fock couplings survive — genuinely different physics from the leading-order RWA carrier/sideband of earlier tutorials.
+    - **`IPR_av` is one number, not a curve.** It measures how many energy eigenstates the initial state spreads over (a `ρ₀`-weighted average across the thermal mixture) — not a population and not an expectation value.
+    - **Wavelength provenance matters.** The coupling uses the effective two-photon Raman wavelength ≈ 197.7 nm (`CLOS2016_LEGACY_WAVELENGTH_M`) — the value the shipped tables were computed with — not a single-photon reference.
+    - **One pipeline, many N.** The same loop runs N = 1, 2, 3 ions; only the axial-mode list and the Fock cutoff change.
+
+    **In a hurry?** Step 2 builds and diagonalises the Hamiltonian; Step 3 compares the result against the published table. Those two are the core.
+
+**Symbols in this tutorial**
+
+| Symbol | Meaning |
+|---|---|
+| `solve_spectrum` | Dense exact-diagonalisation entry point (`scipy.linalg.eigh`); returns the full eigendecomposition — no time evolution. |
+| `clos2016_spin_boson_hamiltonian` | The non-RWA, full-displacement one-spin + N-mode Hamiltonian `(Ω/2)σ₊ e^(η(a−a†)) + h.c.` |
+| `clos2016_averaged_effective_dimension` (`IPR_av`) | The paper's quantity — a `ρ₀`-eigenvalue-weighted average of pure-state effective dimensions, distinct from the textbook `effective_dimension`. |
+| `η₀` | Axial-reference Lamb–Dicke parameter (`η₀ = 2π·x₀/λ`); sets the displacement strength and scales *inversely* with the laser wavelength. |
+| `n_c` (cutoff) | Max phonons kept per mode; Fock dimension is `n_c + 1`, total Hilbert dimension `2·(n_c + 1)^N`. |
+| `N` | Ion count (this tutorial runs N = 1, 2, 3). |
+| `CLOS2016_LEGACY_WAVELENGTH_M` | Effective two-photon Raman wavelength ≈ 197.7 nm — the value the shipped tables were computed with. |
+
 ## Three things to know before the code
 
 The library carries two distinct full-Lamb–Dicke surfaces because
@@ -87,6 +110,9 @@ from iontrap_dynamics.clos2016_references import (
     load_clos2016_theory_dimension_surface,
 )
 
+# Everything above is boilerplate; the `surface` below is the physics anchor —
+# it bundles the published IPR_av grid with the exact parameters Porras used
+# (axial/Rabi frequency, mean occupation), so the reproduction is provenance-pinned.
 surface = load_clos2016_theory_dimension_surface(1)
 print(surface.cutoffs)                       # [0, 1, …, 20]
 print(surface.detunings_legacy_units)        # [0.0, 0.2, …, 3.0]
@@ -115,6 +141,10 @@ row-vs-row.
 For N=1 there is one axial mode at the trap frequency with full
 participation by the (single) ion. The carrier sweep iterates
 over the published detuning column:
+
+!!! warning "Common confusion — this is NOT the RWA carrier of earlier tutorials"
+
+    `clos2016_spin_boson_hamiltonian` keeps the *full* displacement operator `exp(η(a−a†))`, so the off-diagonal (Δn ≠ 0) Fock couplings survive. Do **not** reach for the RWA builder `carrier_hamiltonian_full_ld` instead: its carrier projection `e^(−η²/2) Lₙ(η²)` discards exactly those non-secular terms — the mixing that drives the ergodicity Clos 2016 reports. Different Hamiltonian, different physics; that is why we diagonalise exactly rather than propagate a trajectory.
 
 ```python
 from iontrap_dynamics import (
@@ -176,6 +206,10 @@ helper. It re-eigendecomposes the (mixed) initial state, computes
 a pure-state effective dimension for each $|\psi_j\rangle$, and
 returns the $\lambda_j$-weighted sum.
 
+!!! warning "Common confusion — `IPR_av` is not `effective_dimension`"
+
+    On a **mixed** initial state the two disagree. The textbook `effective_dimension` uses the diagonal populations `p_α = ⟨E_α|ρ₀|E_α⟩` (it returns `1/Σ p_α²`), whereas `clos2016_averaged_effective_dimension` first re-eigendecomposes `ρ₀` and averages the *pure-state* effective dimension of each component. They coincide only when `ρ₀` is pure; here `ρ₀` carries a thermal phonon bath, so use the `clos2016_…` helper to match the table — the textbook one returns a different number.
+
 ## Step 3 — Compare against the published table
 
 ```python
@@ -184,6 +218,8 @@ rel_err = abs_err / np.abs(reference)
 print(f"max relative error : {rel_err.max():.3f}")  # ~0.088
 print(f"max absolute error : {abs_err.max():.3f}")  # ~0.16
 ```
+
+**Takeaway.** The disagreement concentrates where the `IPR_av` curve is *steepest* — the `det ≈ 1.0, 2.0` transition regions — not where it is highest: the carrier peak at `det = 0`, the largest value in the sweep, matches to ~2 %. The residual is a reference-rounding and near-degenerate tie-breaking signature, not a modelling error.
 
 The achieved tolerance is ~9 % at the worst point, which lands
 near the steep mid-resonance peaks at `det ≈ 1.0, 2.0` legacy
@@ -264,6 +300,8 @@ for n_ions, cutoff in [(2, 8), (3, 6)]:
     print(f"N={n_ions}: max |Δ|/|ref| = "
           f"{(np.abs(calculated - reference) / np.abs(reference)).max():.3f}")
 ```
+
+**Takeaway.** `IPR_av` is a sum over the *whole* eigenbasis, so it needs the full dense spectrum — and the Hilbert dimension `2·(n_c + 1)^N` multiplies by `(n_c + 1)` for every ion added. That compute wall, not any change in the method, is why the reproduction stops at N = 3.
 
 The `clos2016_axial_mode_reference` table currently covers N=2
 and N=3 — the AAA dispatch's regression anchor. For N=2 the
