@@ -34,6 +34,28 @@ already off by > 10 %.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - This tutorial builds *motional* initial states beyond a pure Fock `|n⟩` or a thermal mixture: three named factories make coherent, squeezed-vacuum, and squeezed-coherent kets.
+    - A **coherent** state `|α⟩` is the vacuum pushed off-centre in phase space — same round shape, just displaced; `⟨n̂⟩ = |α|²`.
+    - A **squeezed vacuum** `|ξ⟩` stays centred at the origin but narrows one quadrature, widens the other, and fills *only even* Fock levels (it makes phonon pairs); `⟨n̂⟩ = sinh²r`.
+    - A **squeezed-coherent** state does both — and the order is fixed by convention (squeeze first, then displace) because `D` and `S` do not commute.
+    - `compose_density` glues a per-ion spin state and a per-mode motional state into the full-space initial density matrix `rho_0`.
+    - Driving the red sideband from a coherent (not Fock) start makes `⟨σ_z⟩` oscillations **collapse**, because many Fock levels flop at different Rabi rates at once.
+    - **In a hurry?** The three factory cells under *The three factories* are the core; the collapse scenario is the payoff demo.
+
+**Symbols in this tutorial**
+
+| symbol | plain meaning |
+| --- | --- |
+| `r` | squeeze strength; the quadrature *widths* scale by `e^(∓r)` |
+| `α` | coherent (displacement) amplitude, complex; sets `⟨n̂⟩ = |α|²` |
+| `φ` | squeeze angle; picks which quadrature is narrowed |
+| `ξ = r·e^(2iφ)` | complex squeeze parameter (`z` in code); bundles `r` and `φ` |
+| `n̄ = ⟨n̂⟩` | mean phonon number of the prepared state |
+| `X, Y` | the two motional quadratures; squeezing compresses one, stretches the other |
+| `η` | Lamb–Dicke parameter; sets the red-sideband Rabi coupling |
+
 ## The three factories
 
 `iontrap_dynamics.states` exposes three helpers for non-Fock
@@ -67,7 +89,7 @@ N = 40
 psi_coh = coherent_mode(N, alpha=2.0)
 n_mean_coh = float(qutip.expect(qutip.num(N), psi_coh))
 print(f"Coherent |α=2⟩  ⟨n̂⟩ = {n_mean_coh:.6f}  (expected 4.000000)")
-assert abs(n_mean_coh - 4.0) < 1e-10
+assert abs(n_mean_coh - 4.0) < 1e-10, "coherent <n> = |alpha|^2 = 2^2 = 4 exactly (up to Fock truncation)"
 # |α=2⟩ carries ⟨n̂⟩ = 4 exactly (within Fock truncation).
 
 psi_rotated = coherent_mode(N, alpha=2.0 * np.exp(1j * np.pi / 2))
@@ -133,7 +155,7 @@ print(f"  Var(X) = {var_x:.5f}  (expected {np.exp(-2*r)/2:.5f},  compressed)")
 print(f"  Var(Y) = {var_y:.5f}  (expected {np.exp(+2*r)/2:.5f},  stretched)")
 assert abs(var_x - np.exp(-2 * r) / 2) < 1e-3  # 0.068
 assert abs(var_y - np.exp(+2 * r) / 2) < 1e-3  # 3.695
-assert abs(n_mean_sq - np.sinh(r) ** 2) < 1e-4  # 1.381 (Fock-truncation tolerance)
+assert abs(n_mean_sq - np.sinh(r) ** 2) < 1e-4, "squeezed-vacuum <n> = sinh^2(r) — squeezing raises the phonon number above the vacuum"  # 1.381 (Fock-truncation tolerance)
 
 pn_sq = np.abs(psi_sq.full().flatten()) ** 2
 
@@ -146,6 +168,8 @@ ax.set_xlim(-0.5, 20.5)
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** Real `r` compresses `Var(X)` to `e^(−2r)/2` and stretches `Var(Y)` to `e^(+2r)/2`, but their product stays pinned at the vacuum's minimum-uncertainty floor `1/4` — squeezing *reshapes* the noise (rather than adding noise), even as it does raise the energy `⟨n̂⟩` to `sinh²r`.
 
 Even with `⟨n̂⟩ = 1.38`, the state is **pure** (it's a ket). The
 non-trivial motional character comes from the quadrature
@@ -160,6 +184,17 @@ asymmetry, not from a classical Fock mixture.
 Squeeze first, then displace. Mean phonon number
 `⟨n̂⟩ = |α|² + sinh²(|ξ|)`.
 
+!!! warning "Common confusion — squeezing vs displacement"
+
+    These are two *different* operations. **Displacement** `D(α)`
+    slides the state's centre through phase space (`⟨x̂⟩, ⟨p̂⟩`
+    shift) while leaving its shape and quadrature widths
+    untouched. **Squeezing** `S(ξ)` keeps the centre at the
+    origin but reshapes the noise — narrowing one quadrature,
+    widening the other, and populating even Fock pairs. A
+    squeezed-coherent state does both: `α` slides the blob, `r`
+    squashes it.
+
 ```python
 from iontrap_dynamics.states import squeezed_coherent_mode
 
@@ -167,7 +202,7 @@ psi_sc = squeezed_coherent_mode(N, z=1.0, alpha=2.0)
 # ⟨n̂⟩ = |α|² + sinh²(|ξ|) = 4 + 1.381 = 5.381
 n_mean_sc = float(qutip.expect(qutip.num(N), psi_sc))
 print(f"Squeezed-coherent |α=2, r=1⟩  ⟨n̂⟩ = {n_mean_sc:.6f}  (expected {4.0 + np.sinh(1.0)**2:.6f})")
-assert abs(n_mean_sc - 5.381) < 1e-3
+assert abs(n_mean_sc - 5.381) < 1e-3, "squeezed-coherent <n> = |alpha|^2 + sinh^2(r) = 4 + 1.381 (displacement and squeezing energies add)"
 
 pn_sc = np.abs(psi_sc.full().flatten()) ** 2
 
@@ -185,6 +220,8 @@ ax.set_xlim(-0.5, 18.5)
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** Side by side, the three `P(n)` distributions show the division of labour — displacement lifts the coherent peak toward `n ≈ |α|²`, squeezing thins population onto even levels only, and the squeezed-coherent state shifts that rippled distribution up toward `n ≈ |α|²`, now filling the odd levels too.
 
 !!! note "Why squeeze-then-displace, not the other way"
 
@@ -216,6 +253,7 @@ from iontrap_dynamics.species import mg25_plus
 from iontrap_dynamics.states import compose_density
 from iontrap_dynamics.system import IonSystem
 
+# --- Boilerplate: one axial mode on a single Mg-25 ion, Fock-truncated Hilbert space ---
 mode = ModeConfig(
     label="axial",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -224,6 +262,7 @@ mode = ModeConfig(
 system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
 hilbert = HilbertSpace(system=system, fock_truncations={"axial": N})
 
+# --- The physics that matters: compose spin-down ⊗ coherent-axial into rho_0 ---
 rho_0 = compose_density(
     hilbert,
     spin_states_per_ion=[spin_down()],               # ket — auto-promoted
@@ -324,6 +363,17 @@ axes[1].set_xlabel(r"time (μs)")
 plt.tight_layout()
 plt.show()
 ```
+
+!!! warning "Common confusion — collapse is not decoherence"
+
+    No collapse operators are passed to `solve` here, so the
+    evolution is fully **unitary**. The decaying `⟨σ_z⟩` is
+    *reversible dephasing* — the spin entangles with the
+    motional Fock level and the many Rabi rates fall out of
+    step. The information lives in spin–motion correlations
+    rather than being lost; an ideal Jaynes–Cummings spectrum
+    would even show a partial revival. A `c_ops` decoherence
+    channel, by contrast, is irreversible.
 
 What you see:
 

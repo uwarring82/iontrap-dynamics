@@ -123,16 +123,19 @@ def segment(markdown: str) -> list[tuple[str, str]]:
 # Markdown transforms (applied to "md" segments only)
 # -----------------------------------------------------------------------------
 def transform_admonitions(text: str) -> str:
-    """Rewrite mkdocs-material ``!!! kind "title"`` blocks as blockquotes.
+    """Rewrite mkdocs-material ``!!!`` / ``???`` / ``???+`` blocks as blockquotes.
 
     Colab has no admonition support; a blockquote with a bold label is the
-    portable equivalent. Indented (4-space) admonition bodies are dedented.
+    portable equivalent. Collapsible blocks (``???`` collapsed, ``???+`` open —
+    ``pymdownx.details``) degrade to the same static blockquote as the always-open
+    ``!!!`` form, since a notebook cell has no collapse affordance. Indented
+    (4-space) admonition bodies are dedented.
     """
     lines = text.split("\n")
     out: list[str] = []
     i = 0
     while i < len(lines):
-        m = re.match(r'^!!!\s+(\w+)(?:\s+"([^"]*)")?\s*$', lines[i])
+        m = re.match(r'^(?:!!!|\?\?\?\+?)\s+(\w+)(?:\s+"([^"]*)")?\s*$', lines[i])
         if not m:
             out.append(lines[i])
             i += 1

@@ -31,6 +31,28 @@ Lamb–Dicke regime at the level of
 
 ---
 
+!!! note "New here? Read this first"
+
+    - A **carrier** drive (Tutorial 1) flips only the spin; a **red-sideband** drive couples the spin to the motion.
+    - On the red sideband, flipping `|↓⟩ → |↑⟩` removes exactly one phonon — the coupled transition is `|↓, n⟩ ↔ |↑, n−1⟩`.
+    - Start in `|↓, 1⟩` (one phonon) and the ion flops between `|↓, 1⟩` and `|↑, 0⟩`: the spin flips up while the motion is cooled to its ground state.
+    - The Lamb–Dicke parameter `η` sets how strongly the laser reaches the motion, so the flop runs at the reduced rate `Ω_RSB = Ω · η · √n`.
+    - Only two states are ever populated here, so `⟨σ_z⟩` and `⟨n̂⟩` move in lockstep — the invariant `⟨σ_z⟩ + 2⟨n̂⟩ = 1` holds for the whole trajectory.
+    - Same four-step skeleton as Tutorial 1 (configure → build → solve → read out); only the Hamiltonian builder and the initial state change.
+    - **In a hurry?** Step 2 derives `η` and the flop rate; Step 3 runs the coupled spin–motion flop and is the heart of the tutorial.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `η` | Lamb–Dicke parameter — how strongly the laser couples spin to motion (dimensionless). |
+| `Ω` | carrier Rabi frequency — the bare on-resonance drive strength. |
+| `Ω_RSB = Ω·η·√n` | red-sideband Rabi rate — the η-suppressed flop rate out of Fock `|n⟩`. |
+| `|↓, n⟩` | joint spin–motion state: spin down (`↓`) with `n` motional phonons. |
+| `⟨n̂⟩` | mean phonon number (the motional energy is `ℏω(n̂+½)`) |
+| `⟨σ_z⟩` | spin population difference: `+1` for `|↑⟩`, `−1` for `|↓⟩`. |
+| `⟨σ_z⟩ + 2⟨n̂⟩ = 1` | conservation law locking spin and motion together in the one-phonon manifold. |
+
 ## The scenario
 
 One ²⁵Mg⁺ ion in a trap with an axial mode at `ω_mode / 2π = 1.5 MHz`.
@@ -72,6 +94,7 @@ from iontrap_dynamics.system import IonSystem
 # House colours — shared across all figures in this tutorial.
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# --- Boilerplate: one Mg-25 ion carrying a single axial motional mode. ---
 mode = ModeConfig(
     label="axial",
     frequency_rad_s=2 * np.pi * 1.5e6,
@@ -79,6 +102,8 @@ mode = ModeConfig(
 )
 system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
 
+# --- The physics that matters: k ∥ b (aligned with the mode axis) maximises η,
+#     and the carrier Ω is turned down 10x so the η-suppressed flop stays a few tens of μs.
 drive = DriveConfig(
     k_vector_m_inv=[0.0, 0.0, 2 * np.pi / 280e-9],
     carrier_rabi_frequency_rad_s=2 * np.pi * 0.1e6,  # Ω/2π = 100 kHz
@@ -145,6 +170,14 @@ off-resonant (detuned) sideband dynamics, swap in
 `detuned_red_sideband_hamiltonian` — same signature plus a
 `detuning_rad_s` argument.
 
+!!! warning "Common confusion — carrier flips spin, the sideband moves both"
+
+    The carrier Hamiltonian (Tutorial 1) changes **only** the spin and
+    leaves the motion untouched. The red-sideband Hamiltonian cannot do
+    that: every spin flip it drives adds or removes exactly one phonon.
+    If you need a spin-only rotation, reach for the carrier builder — no
+    argument to `red_sideband_hamiltonian` will decouple the motion.
+
 !!! tip "Fock truncation choice"
 
     `N_Fock = 30` is the workplan §0.F gate for this scenario; for
@@ -206,6 +239,10 @@ ax.legend(frameon=False)
 plt.show()
 ```
 
+**Takeaway.** The phonon is removed at the very instant the spin flips
+up — `⟨n̂⟩ → 0` exactly when `⟨σ_z⟩ → +1` — which is the elementary step
+of resolved-sideband cooling.
+
 Two observables, one solve. At half the flop period `t = π / Ω_RSB`
 the ion has completed a `|↓, 1⟩ → |↑, 0⟩` π-pulse: `⟨σ_z⟩ = +1`
 (spin flipped) and `⟨n̂⟩ = 0` (phonon absorbed). At the full flop
@@ -216,8 +253,23 @@ out a useful sanity check on your setup:
 
 ```python
 print(f"Conservation law  max |⟨σ_z⟩ − (1 − 2⟨n̂⟩)| = {np.max(np.abs(sigma_z - (1 - 2 * n_mode))):.2e}")
-assert np.max(np.abs(sigma_z - (1 - 2 * n_mode))) < 1e-6
+assert np.max(np.abs(sigma_z - (1 - 2 * n_mode))) < 1e-6, (
+    "conservation law ⟨σ_z⟩ = 1 − 2⟨n̂⟩ violated: in the single-phonon "
+    "manifold every spin flip must swap one phonon, so a breach here means "
+    "population has leaked outside {|↓,1⟩, |↑,0⟩} — check the initial state and N_Fock"
+)
 ```
+
+!!! warning "Common confusion — the ground state |↓, 0⟩ is *dark*"
+
+    On the red sideband a spin flip `|↓⟩ → |↑⟩` must remove one phonon.
+    From `|↓, 0⟩` there is no phonon to remove, so the drive has nothing
+    to act on and the state simply does not evolve. If a `|↓, 0⟩` start
+    gives you a flat line, that is physics, not a broken solve — and it is
+    exactly the dark state that resolved-sideband cooling drives toward. (Cooling
+    needs more than these coherent pulses: each red-sideband π-pulse is interleaved
+    with an incoherent optical-pumping step that resets the spin, so the motion
+    walks down one phonon per cycle until it reaches `|↓, 0⟩` and stops.)
 
 ## Step 4 — Read out spin and motion independently
 
@@ -252,6 +304,11 @@ ax.set_title("Step 4 · sampled readout vs exact trajectory")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** The finite-shot bright fraction traces the `⟨P_↑⟩` curve to
+within sampling noise (up to the small detector-fidelity offset Tutorial 1 makes
+explicit) — the readout layer neither knows nor cares that a sideband, not the
+carrier, produced the trajectory.
 
 A complementary "motional thermometry" step — reading out the
 phonon number — uses the Dispatch O

@@ -35,6 +35,28 @@ CONVENTIONS [§13 (Fock truncation)](../conventions.md) and §15
 
 ---
 
+!!! note "New here? Read this first"
+
+    - A trapped-ion motional mode lives on a **finite ladder** of Fock states `|0⟩, |1⟩, … |N_Fock−1⟩` — you choose the height `N_Fock`.
+    - If the state's population climbs to the top rung `|N_Fock−1⟩`, everything above it is dropped. The result is then **silently biased**, even though the state's norm stays exactly `1`.
+    - Because the norm can't reveal this, the library grades every `solve` by the **top-rung population** `p_top` against a tolerance `ε`.
+    - Four graded outcomes: **silent OK** → **Level 1** (a gentle convergence nudge) → **Level 2** (quality warning — result still returned) → **Level 3** (`ConvergenceError` — result refused).
+    - You clear a flagged solve by raising `N_Fock` (more rungs); you can also *tighten* `ε` to demand a stricter envelope for publication-grade work.
+
+    **In a hurry?** The four level sections (`N_Fock` = 5, 7, 11, 13) walk one scenario down the ladder; the sweep under *Reading `result.warnings`* ties measured `p_top` back to the thresholds.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+|--------|---------------|
+| `N_Fock` | Fock truncation — how many ladder rungs the mode keeps, i.e. states `0 … N_Fock−1` (you set this). |
+| `n̄` | mean phonon number of the motional state; sets how far up the ladder its population reaches. |
+| `p_top` | top-rung population — the population of `|N_Fock−1⟩`, maximised over the trajectory; the number that gets graded. |
+| `ε` | `FOCK_CONVERGENCE_TOLERANCE` — the tolerance `p_top` is compared against (library default `1e-4`). |
+| Level 1 | `FockConvergenceWarning` — `ε/10 ≤ p_top < ε`; converged, but tighten for publication. |
+| Level 2 | `FockQualityWarning` — `ε ≤ p_top < 10·ε`; result returned, quality flagged. |
+| Level 3 | `ConvergenceError` — `p_top ≥ 10·ε`; result refused, nothing returned. |
+
 ## The three-level ladder in one picture
 
 For each mode `m`, the solver computes the **top-Fock
@@ -94,6 +116,9 @@ N_BAR = 0.5
 EPSILON = 1e-4  # library default FOCK_CONVERGENCE_TOLERANCE
 
 def build_scenario(n_fock: int):
+    # --- boilerplate below: ion + axial mode + Hilbert space. The one knob under
+    # test is fock_truncations={"axial": n_fock} — the ladder height (a convergence
+    # parameter, not physics: the converged result is invariant to it). ---
     mode = ModeConfig(
         label="axial",
         frequency_rad_s=2 * np.pi * 1.5e6,
@@ -109,6 +134,8 @@ def build_scenario(n_fock: int):
     )
     hamiltonian = carrier_hamiltonian(hilbert, drive, ion_index=0)
 
+    # The physics that matters: a thermal state whose n̄=0.5 tail is exactly
+    # what p_top measures against the top rung (Fock index n_fock-1).
     spin = qutip.ket2dm(spin_down())
     motion = qutip.thermal_dm(n_fock, N_BAR)
     rho_0 = qutip.tensor(spin, motion)
@@ -137,6 +164,10 @@ ax.set_title(r"Thermal tail vs truncation ($\bar{n}=0.5$, $\varepsilon=10^{-4}$)
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** With the carrier held on resonance the Fock distribution never
+moves, so `p_top` is a fixed, geometrically-falling function of `N_Fock` alone —
+crossing each dashed line drops the solve one level down the ladder.
 
 A thermal initial state is a **density matrix**, not a ket —
 solvers will dispatch to `qutip.mesolve` rather than `sesolve`,
@@ -178,6 +209,14 @@ degraded trajectory that looks fine in a headline plot but is
 wrong by a few percent in a publication table is the pathology
 the ladder is designed to prevent.
 
+!!! warning "Common confusion — a norm of 1 is *not* a convergence check"
+
+    An under-truncated state stays perfectly normalised. The mode is
+    represented on the finite ladder `|0⟩…|N_Fock−1⟩`; population that should
+    sit above the top rung is simply absent, yet `Tr ρ = 1` holds throughout
+    the trajectory. So the norm can never reveal a chopped tail — read
+    `p_top` (the guard), never the norm, to judge truncation.
+
 ## Level 2 — `FockQualityWarning`
 
 `N_Fock = 7` brings `p_top` into the `[ε, 10·ε)` band:
@@ -209,6 +248,14 @@ The result **is** returned — Level 2 degrades quality but the
 trajectory is deliverable. The signal is that if you are
 generating this for a publication-grade figure, you should widen
 `N_Fock` before the result ships.
+
+!!! warning "Common confusion — a Warning is flagged, an Error is refused"
+
+    Level 1 and Level 2 emit *warnings*: the `result` object is returned and
+    usable — it just carries a `result.warnings` record you must read before
+    publishing. Level 3 raises `ConvergenceError`, so there is **no result** to
+    catch. "Warned" means usable-but-flagged; "raised" means the answer was
+    withheld until you widen `N_Fock`.
 
 ## Level 1 — `FockConvergenceWarning`
 
@@ -253,7 +300,11 @@ result = solve(
 )
 _p_top_ok = (N_BAR / (1 + N_BAR)) ** (13 - 1) / (1 + N_BAR)
 print(f"Silent OK — N_Fock=13: theoretical p_top = {_p_top_ok:.3e}  (< ε/10={EPSILON/10:.1e}); result.warnings = {result.warnings}")
-assert result.warnings == ()
+assert result.warnings == (), (
+    "Silent OK means p_top < ε/10, so the solver attaches no per-mode record: "
+    "an empty result.warnings tuple is the positive all-clear, not evidence "
+    "that the Fock check was skipped."
+)
 ```
 
 The empty `result.warnings` tuple is the positive affirmation —
@@ -328,6 +379,12 @@ ax.set_title("Convergence ladder: measured vs threshold")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** Where a rung is flagged, the reported `p_top_max` — from
+`result.warnings` for Levels 1–2, from the `ConvergenceError` message for Level 3 —
+matches the theoretical thermal tail and trips each level at its `ε` threshold. The
+silent-OK rungs report no value (they sit at the plot floor): an empty
+`result.warnings` is the all-clear, not a measured zero.
 
 The `diagnostics` dict is the preferred hook for automated CI
 gates — read `p_top_max` and decide programmatically whether to

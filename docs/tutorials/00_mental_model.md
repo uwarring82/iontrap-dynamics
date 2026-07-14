@@ -14,6 +14,15 @@ spin, so you get a result **before** meeting Fock truncation, storage modes, or 
 
 ---
 
+**Symbols in this tutorial.**
+
+| Symbol | Plain meaning |
+|---|---|
+| `⟨σ_z⟩` | Expectation value of Pauli-`z`: the spin population difference — `−1` is spin-down, `+1` is spin-up |
+| `Ω` | Carrier Rabi frequency — how fast a resonant drive flops the spin; one down→up→down cycle takes `2π/Ω` |
+| \|↓⟩, \|↑⟩ | The two qubit basis states: spin-down and spin-up |
+| `fock` | The motional number-state (Fock) basis \|n⟩, truncated to a finite dimension via `fock_truncations` (here `3`) |
+
 ## The one idea
 
 Every simulation in this library is the same five-step pipeline. The **physics** and the
@@ -43,6 +52,12 @@ never change.
 Here is the whole pipeline in one cell. It drives a single ²⁵Mg⁺ ion on resonance and
 watches its spin flop from down (`⟨σ_z⟩ = −1`) to up (`+1`) and back — the "hello world"
 of trapped-ion dynamics. Run it and you have your first result.
+
+!!! warning "Common confusion — ⟨σ_z⟩ is a population difference, not a negative spin"
+    `⟨σ_z⟩` is an *expectation value* in `[−1, +1]` — it is `P↑ − P↓`, not a spin that has
+    gone negative. So `⟨σ_z⟩ = 0` means equal down/up *populations*, which could be an equal
+    superposition *or* a 50/50 mixture — `⟨σ_z⟩` alone cannot tell the two apart. The sign
+    just says which state dominates.
 
 ```python
 import numpy as np

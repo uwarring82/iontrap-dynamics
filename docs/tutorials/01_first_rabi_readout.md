@@ -31,6 +31,27 @@ orientation.
 
 ---
 
+!!! note "New here? Read this first"
+
+    - One ion, one laser tuned exactly to the `|↓⟩ ↔ |↑⟩` transition — nothing else is driven.
+    - The laser flops the spin back and forth between `|↓⟩` and `|↑⟩` at the Rabi frequency `Ω`; one full round trip takes the Rabi period `T_Ω = 2π / Ω`.
+    - The smooth, noise-free prediction is `⟨σ_z⟩(t) = −cos(Ω t)` — the *ideal* curve every step is measured against.
+    - A real detector never hands you `⟨σ_z⟩`; it takes a finite number of `shots` per time point and each shot lands bright or dark, so the estimate *scatters* around the ideal curve.
+    - A Wilson confidence interval turns that scatter into an honest error bar that shrinks as you take more shots.
+    - **In a hurry?** Steps 3 (ideal flop) and 5 (finite-shot error bars) are the core; Steps 1–2 are setup and Step 4 wires up the detector.
+
+**Symbols in this tutorial**
+
+| Symbol | Plain meaning |
+| --- | --- |
+| `Ω` | Rabi frequency — the *rate* at which the laser flops the spin |
+| `T_Ω = 2π/Ω` | Rabi period — the *time* for one full `|↓⟩→|↑⟩→|↓⟩` cycle |
+| `⟨σ_z⟩` | spin projection: `−1` is fully down, `+1` is fully up; ideal curve is `−cos(Ω t)` |
+| `p_↑ = (1+⟨σ_z⟩)/2` | ideal projection probability onto `|↑⟩` (bright), before detector infidelity — what a shot is *classified* bright follows the fidelity-limited envelope of Step 5 |
+| `shots` | number of projective measurements taken per time point |
+| Wilson CI | confidence interval on the bright fraction from finite shots |
+| detuning | laser frequency minus transition frequency; `0` here (on resonance) |
+
 ## The scenario
 
 One ²⁵Mg⁺ ion held in a Paul trap with an axial motional mode at
@@ -68,6 +89,8 @@ from iontrap_dynamics.system import IonSystem
 # House colours — match the reference Wilson-CI figure above.
 BLUE, RED, GREEN, PURPLE, GREY = "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#444444"
 
+# --- Boilerplate: describe the hardware (species, motional mode, geometry).
+#     None of these lines set the flop rate — they just say what is in the trap.
 # Single axial mode along +z. Eigenvector is per-ion; for a single
 # ion this is just one row of shape (3,).
 mode = ModeConfig(
@@ -80,6 +103,7 @@ mode = ModeConfig(
 # with the 280 nm cycling-transition metadata.
 system = IonSystem.homogeneous(species=mg25_plus(), n_ions=1, modes=(mode,))
 
+# --- The physics that matters here: the drive sets Ω and sits on resonance.
 # Carrier drive: on-resonance (no detuning field), zero phase. The
 # wavevector magnitude comes from the 280 nm laser wavelength.
 drive = DriveConfig(
@@ -98,6 +122,15 @@ print(f"Ω / 2π = {drive.carrier_rabi_frequency_rad_s / (2 * np.pi) * 1e-6:.1f}
     eigenvector at ion `i`. Here both vectors point along `+z` so
     the coupling is maximal. `CONVENTIONS.md` §10 nails down the
     sign convention so your dynamics reproduces exactly.
+
+!!! warning "Common confusion — `Ω` is a rate, `T_Ω` is a time"
+
+    The print line above shows both faces of the same drive:
+    `Ω / 2π = 1 MHz` is the flop *rate*, while
+    `T_Ω = 2π / Ω = 1 µs` is the *time* for one full cycle. They are
+    reciprocals — a *higher* `Ω` means a *shorter* period. Whenever a
+    step asks for a duration (a time grid, a pulse length) reach for
+    `T_Ω`, not `Ω`.
 
 ## Step 2 — Build the Hilbert space and Hamiltonian
 
@@ -154,7 +187,10 @@ analytic_sz = -np.cos(drive.carrier_rabi_frequency_rad_s * times)
 max_residual = float(np.max(np.abs(np.array(sigma_z_trajectory) - analytic_sz)))
 print(f"Step 3 — backend: {result.metadata.backend_name};  "
       f"max |⟨σ_z⟩ − (−cos Ωt)| = {max_residual:.2e}")
-assert max_residual < 1e-3  # Rabi flop matches the textbook cosine
+assert max_residual < 1e-3, (
+    "solved ⟨σ_z⟩ must track −cos(Ω t) to 1e-3; a larger gap means the "
+    "drive, basis, or Fock truncation is off, not that the physics changed"
+)  # Rabi flop matches the textbook cosine
 
 times_us = times * 1e6  # convert to µs for the axis label
 fig, ax = plt.subplots(figsize=(5.0, 3.2))
@@ -167,6 +203,10 @@ ax.set_title("Step 3 · ideal carrier Rabi flop")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** The dashed `sesolve` curve lies on top of the analytic
+`−cos(Ω t)` to within `1e-3` — the solver reproduces the textbook
+carrier flop with no fitting and no free parameters.
 
 At this point `sigma_z_trajectory` is the **ideal** (noise-free)
 expectation-value curve, matching the textbook cosine `−cos(Ω t)`. The `result.metadata.backend_name` is
@@ -187,6 +227,15 @@ pipeline:
    Poisson(`η · λ_dark + γ_d`).
 3. **Threshold** the count against `N̂` to classify each shot as
    bright (1) or dark (0).
+
+!!! warning "Common confusion — the noise is in the *estimate*, not the *dynamics*"
+
+    The finite-shot readout *samples* the ideal `⟨σ_z⟩(t)` you
+    computed in Step 3; it does not perturb or change the trajectory.
+    The `sesolve` curve stays exactly as it was — the scatter you are
+    about to see lives entirely in the finite-shot estimate, not in
+    the physics. Taking more `shots` sharpens the estimate; it never
+    alters the underlying flop.
 
 ```python
 from iontrap_dynamics import DetectorConfig, SpinReadout
@@ -259,6 +308,12 @@ ax.set_title("Step 5 · Wilson CI on finite-shot Rabi readout")
 ax.legend(frameon=False)
 plt.show()
 ```
+
+**Takeaway.** The 80-shot point estimates scatter around the
+fidelity-limited envelope (what infinite shots would give for this
+detector), and the Wilson band brackets it close to the nominal 95 %
+of the time — raise `shots` and the band tightens roughly as `1/√n`
+while the markers settle onto the curve.
 
 The `summary` record names its method and confidence level so
 downstream code or a plot caption can tag the CI correctly:
