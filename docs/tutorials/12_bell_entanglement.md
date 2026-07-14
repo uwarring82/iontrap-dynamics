@@ -18,8 +18,9 @@ provides for two-ion entangling gates:
    linear-expectation observable surface cannot.
 
 By the end you will have verified the gate-closing Bell state
-against **three independent witnesses**: parity swinging from
-+1 → −1 → +1 (with explicit detector envelope), spin-spin
+against **three independent witnesses**: parity dipping from
++1 toward ~+0.57 mid-gate and back to +1 (with explicit detector
+envelope), spin-spin
 concurrence reaching 1.0, and spin-vs-motion log-negativity
 returning cleanly to 0 as the motional loop closes.
 

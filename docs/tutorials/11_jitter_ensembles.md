@@ -303,7 +303,7 @@ plt.fill_between(
 )
 plt.fill_between(
     t_us, predicted - np.abs(envelope), predicted + np.abs(envelope),
-    color="black", alpha=0.07, label="±|envelope| (spread)",
+    color="black", alpha=0.07, label="±|envelope| (dephasing bound)",
 )
 plt.xlabel("time (µs)")
 plt.ylabel(r"$\langle \sigma_z \rangle$")
@@ -316,8 +316,9 @@ plt.show()
 
 The ensemble-mean curve hugs the analytic dashed line; the
 inner SEM band is narrow even at 10 µs (it would continue to
-shrink as `1/√N_SHOTS`), while the outer "spread" band marks
-the region individual trials still fluctuate within.
+shrink as `1/√N_SHOTS`), while the outer band (`±|envelope|`)
+traces the dephasing envelope — the collapsing *contrast* bound,
+not the trial-to-trial spread (which is `ensemble_std`).
 
 ## Variation — detuning jitter
 
