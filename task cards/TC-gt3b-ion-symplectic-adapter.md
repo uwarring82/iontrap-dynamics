@@ -58,15 +58,20 @@ The exchange object is a **new, versioned, serialization-neutral basis payload**
 
 | Field | Shape / units | Meaning |
 |---|---|---|
-| `schema_version` | int/str | loud mismatch, not silent misread |
+| `schema_version` | int | loud mismatch, not silent misread |
 | `frequencies_rad_s` | `(3N,)` rad·s⁻¹ | mode frequencies `ω_m` |
 | `mass_weighted_eigenvectors` | `(3N, 3N)` | `B`, with **explicit row (coordinate = ion×axis) / column (mode) ordering** |
 | `masses_kg` | `(N,)` | `m_j` |
-| `coordinate_frame` | tag | trap-frame axis order + handedness + ion index order |
+| `coordinate_frame` | str tag | trap-frame axis order + handedness + ion index order (exact-match wire invariant) |
 | `local_reference_frequencies_rad_s` | `(3N,)` | `ω_local,j` (tagged gauge, **D3**) |
 | `normalization_weighting_tags` | tags | mass-symmetrised / per-mode-unit-norm, etc. |
 
-**Wire invariants** the payload must fix **explicitly** (so producer and consumer agree bit-for-bit): exact **axis ordering** + per-ion coordinate labels; trap-frame **orientation and handedness**; **frequency↔column alignment** (column `m` of `B` ↔ `frequencies_rad_s[m]`); **mode ordering**; the **`schema_version`** identifier; and the treatment of the residual **eigenvector-sign** and **degenerate-subspace rotation** freedom (canonicalised or explicitly tagged).
+**Exact consumer-enforced values (byte-for-byte).** The consumer rejects any payload that does not match these exactly:
+- `schema_version == 1` (consumer constant `ION_MODE_BASIS_SCHEMA_VERSION = 1`).
+- `coordinate_frame == "ion-major-axis-minor;row=axes_per_ion*i+c;col=mode"`.
+  This means row index `r = 3*i + c`, where `i` is the ion index (major), `c ∈ {0,1,2}` is the trap-frame Cartesian axis (minor), and columns are normal-mode indices. Any other ordering must use a different `schema_version`/tag; it cannot be silently reinterpreted.
+
+**Wire invariants** the payload must fix **explicitly** (so producer and consumer agree bit-for-bit): exact **axis ordering** + per-ion coordinate labels; trap-frame **orientation and handedness**; **frequency↔column alignment** (column `m` of `B` ↔ `frequencies_rad_s[m]`); **mode ordering**; the **`schema_version`** identifier; the exact **`coordinate_frame`** string; and the treatment of the residual **eigenvector-sign** and **degenerate-subspace rotation** freedom (canonicalised or explicitly tagged). Emit `B` at full `float64` precision — the consumer validates `‖BᵀB − 𝟙‖ ≤ 1e-13`; a genuine eigenbasis sits at ~1e-15, so only lossy/truncated wires trip the guard.
 
 - **Producer guarantees** (`iontrap-structure` CI, independent): stable-equilibrium modes; the arrays above with their tested normalisation/orthonormality; conventions named in the tags — i.e. the **physical meaning and correctness** of the exported fields.
 - **Consumer materializes its own immutable record.** `iontrap-dynamics` **validates** the payload (shapes, `ω>0`, Gram `= I`, tag + wire-invariant match) and builds a local frozen object — **no import of a producer class**. The `to_mode_configs()` / importable-`ModeConfig` seam **remains for legacy per-mode consumers**, not the GT3b handshake.
