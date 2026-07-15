@@ -279,15 +279,15 @@ def test_log_negativity_symmetric_in_bipartition() -> None:
 
 
 def test_log_negativity_multimode_1x2_cut() -> None:
-    # TMSV on modes {0,1} ⊗ vacuum mode 2. Cutting off the separable mode 2 → 0; cutting a
-    # member of the entangled pair (mode 0 vs {1,2}) → 2r/ln2. Uses the FULL PT spectrum sum.
+    # TMSV on modes {0,1} ⊗ vacuum mode 2 (analytic, exact — no truncation). Cutting off the
+    # separable mode 2 → 0 (certified separable); cutting a member of the entangled pair
+    # (mode 0 vs {1,2}) → 2r/ln2. Uses the FULL PT spectrum sum.
     r = 0.6
-    fock = 16  # a 3-mode Hilbert space — keep the cutoff modest (16³), still well-truncated
-    state = qutip.tensor(two_mode_squeezed_vacuum(fock, z=r), qutip.basis(fock, 0))
-    cov, _ = gaussian.covariance_matrix(state)
-    assert gaussian.log_negativity(cov, [2]) == pytest.approx(0.0, abs=1e-6)
-    assert gaussian.log_negativity(cov, [0]) == pytest.approx(2 * r / np.log(2), rel=1e-2)
-    assert gaussian.is_separable(cov, [2])  # 1×2 cut: mode 2 separable from the pair
+    cov = np.zeros((6, 6))
+    cov[:4, :4], cov[4:, 4:] = _tmsv_cov(r), np.eye(2)
+    assert gaussian.log_negativity(cov, [2]) == pytest.approx(0.0, abs=1e-12)
+    assert gaussian.log_negativity(cov, [0]) == pytest.approx(2 * r / np.log(2), rel=1e-9)
+    assert gaussian.is_separable(cov, [2])  # 1×2 cut: mode 2 separable from the entangled pair
 
 
 def test_is_separable_scoping_and_guards() -> None:
@@ -302,17 +302,53 @@ def test_is_separable_scoping_and_guards() -> None:
         gaussian.is_separable(np.eye(8), [0, 1])  # 2×2
 
 
-def test_is_separable_absorbs_displaced_truncation_floor() -> None:
-    # Regression: a well-truncated separable coherent⊗coherent product at moderate
-    # displacement pushes PT eigenvalues ~1e-6 below 1 (displaced-state Fock-tail artifact).
-    # log_negativity treats those near-1 ν̃ as separable directions → E_N = 0 exactly, so the
-    # product is not falsely reported entangled (the 1e-6 floor once exceeded a tight tol).
-    for fock, alpha in ((30, 3.0), (26, 2.8), (32, 3.2)):
-        cov, _ = gaussian.covariance_matrix(
-            _two_mode(coherent_mode(fock, alpha), coherent_mode(fock, alpha))
-        )
-        assert gaussian.log_negativity(cov, [1]) == pytest.approx(0.0, abs=1e-12)
-        assert gaussian.is_separable(cov, [1])
+def _tmsv_cov(r: float) -> np.ndarray:
+    # Analytic two-mode-squeezed-vacuum covariance (vacuum-variance-1, per-mode ordering).
+    c, s = np.cosh(2 * r), np.sinh(2 * r)
+    return np.array([[c, 0, s, 0], [0, c, 0, -s], [s, 0, c, 0], [0, -s, 0, c]])
+
+
+def test_is_separable_is_a_one_sided_certificate() -> None:
+    # NEVER a false certificate: a weakly-entangled TMSV (E_N ~ 2.9e-5) must return False —
+    # log_negativity stays faithful (no clamp) and is_separable's tight tol keeps True a real
+    # certificate. (A 1e-4 clamp once wrongly reported this state separable.)
+    cov_weak, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=1e-5))
+    assert gaussian.log_negativity(cov_weak, [1]) == pytest.approx(2e-5 / np.log(2), rel=1e-2)
+    assert not gaussian.is_separable(cov_weak, [1])  # entangled → not certified separable
+    # A well-truncated separable product gives E_N = 0 exactly → certified separable.
+    cov_ok, _ = gaussian.covariance_matrix(
+        _two_mode(coherent_mode(60, 3.0), coherent_mode(60, 3.0))
+    )
+    assert gaussian.log_negativity(cov_ok, [1]) == 0.0
+    assert gaussian.is_separable(cov_ok, [1])
+    # An UNDER-truncated displaced separable has a finite-Fock floor (~1e-6) indistinguishable
+    # from weak entanglement; is_separable honestly returns False (not certified) — never a
+    # false True — and log_negativity reports the honest non-zero floor (not clamped to 0).
+    cov_coarse, _ = gaussian.covariance_matrix(
+        _two_mode(coherent_mode(30, 3.0), coherent_mode(30, 3.0))
+    )
+    assert gaussian.log_negativity(cov_coarse, [1]) > 1e-9
+    assert not gaussian.is_separable(cov_coarse, [1])
+
+
+def test_log_negativity_full_sum_two_entangled_blocks() -> None:
+    # Two independent TMSV pairs straddling one cut → TWO PT eigenvalues < 1. The FULL sum
+    # gives E_N = (2r1 + 2r2)/ln2; a smallest-only form would report only the larger block.
+    r1, r2 = 0.5, 0.8
+    cov = np.zeros((8, 8))  # modes (a1,b1,a2,b2); analytic, exact (no truncation)
+    cov[:4, :4], cov[4:, 4:] = _tmsv_cov(r1), _tmsv_cov(r2)
+    assert gaussian.log_negativity(cov, [1, 3]) == pytest.approx(
+        2 * (r1 + r2) / np.log(2), rel=1e-9
+    )
+    nu_tilde = gaussian.symplectic_eigenvalues(gaussian.partial_transpose(cov, [1, 3]))
+    assert int(np.sum(nu_tilde < 1.0)) == 2  # genuinely two sub-unity PT eigenvalues
+
+
+def test_gt4_rejects_non_integral_mode_index() -> None:
+    cov = _tmsv_cov(0.5)
+    for func in (gaussian.log_negativity, gaussian.is_separable, gaussian.partial_transpose):
+        with pytest.raises(ValueError, match="not an integer"):
+            func(cov, [0.5])  # type: ignore[list-item]
 
 
 def test_log_negativity_rejects_improper_cut_and_unphysical() -> None:

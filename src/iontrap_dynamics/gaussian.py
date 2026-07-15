@@ -346,6 +346,8 @@ def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarra
     seen: set[int] = set()
     for raw in mode_indices:
         b = int(raw)
+        if b != raw:
+            raise ValueError(f"partial_transpose: mode index {raw!r} is not an integer.")
         if not 0 <= b < n_modes:
             raise ValueError(f"partial_transpose: mode index {b} out of range [0, {n_modes}).")
         if b in seen:
@@ -357,8 +359,16 @@ def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarra
 
 
 def _validate_cut(mode_indices: Sequence[int], n_modes: int, name: str) -> set[int]:
-    """Validate ``mode_indices`` as a proper bipartition ``1 ≤ |cut| ≤ N − 1``; return the set."""
-    cut = {int(b) for b in mode_indices}
+    """Validate ``mode_indices`` as a proper bipartition ``1 ≤ |cut| ≤ N − 1``; return the set.
+
+    Rejects non-integral indices (e.g. ``0.5``) rather than silently coercing them.
+    """
+    cut: set[int] = set()
+    for raw in mode_indices:
+        b = int(raw)
+        if b != raw:
+            raise ValueError(f"{name}: mode index {raw!r} is not an integer.")
+        cut.add(b)
     if not 0 < len(cut) < n_modes:
         raise ValueError(
             f"{name}: the cut must name a proper bipartition (1 ≤ |cut| ≤ {n_modes - 1}); "
@@ -373,38 +383,44 @@ def log_negativity(cov: np.ndarray, mode_indices: Sequence[int]) -> float:
     ``ν̃_k`` are the symplectic eigenvalues of the partial transpose ``Ṽ = T_B V T_B`` over
     the modes in ``mode_indices`` (subsystem ``B``). The **full sum** over the PT symplectic
     eigenvalues is taken — **not** the smallest-only form, which holds only for two-mode /
-    ``1×N`` cuts. ``E_N > 0`` witnesses NPT entanglement across the cut; ``E_N = 0`` (PPT)
-    certifies separability **only for a ``1×N`` cut** (see :func:`is_separable`) — for an
-    ``M×N`` cut with ``M, N ≥ 2`` PPT-bound-entangled Gaussian states exist, so it is only an
-    NPT witness there. ``mode_indices`` must be a proper bipartition (``1 ≤ |cut| ≤ N − 1``)
-    and ``V`` a physical Gaussian covariance (the value equals the true state's only for a
-    Gaussian state, §27.4). Oracle: a two-mode squeezed vacuum with squeezing ``r`` gives
-    ``E_N = 2r / ln 2``.
+    ``1×N`` cuts. Faithful to the sealed §27.4 formula (no clamp). ``E_N > 0`` witnesses NPT
+    entanglement across the cut; ``E_N = 0`` (PPT) certifies separability **only for a ``1×N``
+    cut** (see :func:`is_separable`) — for an ``M×N`` cut with ``M, N ≥ 2`` PPT-bound-entangled
+    Gaussian states exist, so it is only an NPT witness there. ``mode_indices`` must be a proper
+    bipartition (``1 ≤ |cut| ≤ N − 1``) and ``V`` a physical Gaussian covariance (the value
+    equals the true state's only for a Gaussian state, §27.4). Oracle: a two-mode squeezed
+    vacuum with squeezing ``r`` gives ``E_N = 2r / ln 2``.
 
-    A ``ν̃`` within the physicality tolerance (:data:`_SYMPLECTIC_UNIT_TOL`) of 1 is treated as
-    a **separable direction** and does not contribute — finite-Fock truncation of a *displaced*
-    state pushes an otherwise-``≥ 1`` PT eigenvalue just below 1, so this keeps a bona-fide
-    separable state at exactly ``E_N = 0`` (as :func:`gaussian_entropy_bits` clamps ``ν ≈ 1``).
-    Genuine entanglement sits far below the threshold (TMSV: ``ν̃ = e^{−2r}``), so the oracle is
-    unchanged. Entanglement below that resolution (``≲ 1e-4`` bits) is not certifiable here.
+    .. note::
+        A **well-truncated** separable state gives exactly ``E_N = 0`` (its PT eigenvalues are
+        ``≥ 1``). An **under-truncated** *displaced* state has a small finite-Fock floor (a top-
+        Fock-level artifact pushes a PT eigenvalue just below 1); that floor is a covariance-
+        estimation error, indistinguishable from genuine weak entanglement of the same size, so
+        it is **not** clamped away here — it is the honest value. :func:`is_separable` guards
+        against reading such a floor as a certificate.
     """
     n_modes = _check_square_even(cov, "log_negativity")
     _validate_cut(mode_indices, n_modes, "log_negativity")
     _require_physical_covariance(cov, "log_negativity")  # the state must be a bona-fide covariance
     nu_tilde = symplectic_eigenvalues(partial_transpose(cov, mode_indices))
-    return float(sum(-math.log2(nu) for nu in nu_tilde if nu < 1.0 - _SYMPLECTIC_UNIT_TOL))
+    return float(sum(max(0.0, -math.log2(nu)) for nu in nu_tilde))
 
 
 def is_separable(cov: np.ndarray, mode_indices: Sequence[int], *, tol: float = 1e-9) -> bool:
     r"""Certify Gaussian separability across a **``1×N``** cut via PPT (GT4; §27.4).
 
-    Returns ``True`` iff ``E_N ≤ tol`` (PPT), which for a ``1×N`` Gaussian cut (one side is a
-    single mode) is equivalent to separability (Werner–Wolf / Simon). **Raises**
-    :class:`ValueError` for an ``M×N`` cut with ``M, N ≥ 2``: PPT-bound-entangled Gaussian
-    states exist there, so ``E_N = 0`` does **not** certify separability — use
-    :func:`log_negativity` as an NPT witness instead. :func:`log_negativity` already returns
-    exactly 0 for a separable state (its near-1 ``ν̃`` are not counted), so ``tol`` only guards
-    residual float noise, not a finite-Fock floor.
+    A **one-sided** certificate: returns ``True`` **only** when ``E_N ≤ tol`` — for a ``1×N``
+    Gaussian cut (one side is a single mode) that certifies separability (Werner–Wolf / Simon).
+    ``tol`` is a **dedicated, tight** negativity resolution (default ``1e-9``, *not* the coarser
+    physicality tolerance): a well-truncated separable state has ``E_N = 0`` exactly, so ``tol``
+    only guards float noise. ``False`` means **separability is not certified** — the state is
+    entangled, *or* its covariance is too coarsely Fock-truncated to resolve ``E_N`` below
+    ``tol`` (a displaced state's finite-Fock floor can exceed ``tol``). **Do not read ``False``
+    as "entangled"**; use :func:`log_negativity` for the witness value, and truncate adequately
+    before certifying. Uncertainty is never converted to ``True``: a weakly entangled state
+    (``E_N > tol``) returns ``False``, never a false certificate. **Raises** :class:`ValueError`
+    for an ``M×N`` cut with ``M, N ≥ 2`` — PPT-bound-entangled Gaussian states exist there, so
+    ``E_N = 0`` does not certify separability; use :func:`log_negativity` as an NPT witness.
     """
     n_modes = _check_square_even(cov, "is_separable")
     cut = _validate_cut(mode_indices, n_modes, "is_separable")
