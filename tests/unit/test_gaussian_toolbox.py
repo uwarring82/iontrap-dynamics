@@ -557,20 +557,21 @@ def test_congruence_accepts_strong_squeeze_no_absolute_false_reject() -> None:
     assert gaussian.symplectic_eigenvalues(out2) == pytest.approx(np.ones(2), abs=1e-5)
 
 
-def test_congruence_relative_nu_preservation_is_safe_in_physical_regime() -> None:
-    # Regression (adversarial round 4): a relative symplecticity gate guarantees RELATIVE
-    # ν-preservation (the physically meaningful invariant — purity/entropy/physicality turn on ν
-    # relative to the vacuum floor 1). A near-symplectic uniform dilation S = s·𝟙 with det = 1+9e-12
-    # is within the 1e-11 relative gate and shifts ν by only a RELATIVE ~9e-12. The *absolute*
-    # shift = (rel)·ν scales with ν, so it stays ≪ the 1e-4 physicality tolerance throughout the
-    # trapped-ion regime (ν ≲ 1e4); only a physically-unreachable ν ≳ 1e7 makes it reach 1e-4, and
-    # even then relative preservation and physicality (ν ≥ 1) still hold.
+def test_congruence_relative_nu_preservation_is_safe_in_operating_range() -> None:
+    # Regression (adversarial round 4): over this WP's certified domain a relative symplecticity
+    # gate preserves ν *relatively* (the physically meaningful invariant — purity/entropy/physicality
+    # turn on ν relative to the vacuum floor 1). A near-symplectic uniform dilation S = s·𝟙 with
+    # det = 1+9e-12 is within the 1e-11 relative gate and shifts ν by only a RELATIVE ~9e-12. The
+    # *absolute* shift = (rel)·ν scales with ν, so it stays ≪ the 1e-4 physicality tolerance
+    # throughout the validated trapped-ion operating range (ν ≲ 1e4); only ν ≳ 1e7 (a valid thermal
+    # V = 1e7·𝟙, merely outside that range — the module is application-agnostic) makes it reach 1e-4,
+    # and even then relative preservation and physicality (ν ≥ 1) still hold.
     s = np.sqrt(1.0 + 9e-12)  # det(s·𝟙) = 1 + 9e-12: inside the relative gate
-    for nu_in in (1.0, 100.0, 1.0e4):  # vacuum … hot thermal, spanning the physical range
+    for nu_in in (1.0, 100.0, 1.0e4):  # vacuum … hot thermal, spanning the operating range
         out = gaussian.congruence(s * np.eye(2), nu_in * np.eye(2))
         nu_out = gaussian.symplectic_eigenvalues(out)[0]
-        assert abs(nu_out - nu_in) / nu_in < 1e-10  # RELATIVE ν preserved (the real guarantee)
-        assert abs(nu_out - nu_in) < 1e-4  # ABSOLUTE ν preserved in the physical regime
+        assert abs(nu_out - nu_in) / nu_in < 1e-10  # RELATIVE ν preserved (the observed bound)
+        assert abs(nu_out - nu_in) < 1e-4  # ABSOLUTE ν preserved within the operating range
         assert nu_out >= 1.0  # output stays physical
 
 

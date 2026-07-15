@@ -389,14 +389,18 @@ def congruence(symplectic: np.ndarray, cov: np.ndarray) -> np.ndarray:
     certification guard, which backstops the residual ``√cond(V)`` ν-amplification a
     just-sub-threshold near-symplectic ``S`` could otherwise exert on a strongly-squeezed ``V``.
 
-    A relative gate delivers **relative** ν-preservation (``|Δν_i| / ν_i ≲ 1e-11``) — the
-    physically meaningful invariant, since purity, entropy, and physicality all turn on ``ν``
-    *relative* to the vacuum floor ``1``. The *absolute* shift ``|Δν_i|`` a just-sub-threshold
-    near-symplectic ``S`` can inflict scales with ``ν_i`` itself, so it stays ``≪ 1e-4`` throughout
-    the trapped-ion regime (``ν ≲ 1e4`` even for the strongest squeeze / hottest thermal state) and
-    would reach ``1e-4`` only for an unreachable ``ν ≳ 1e7`` (``n̄ ≳ 5e6`` quanta) — where relative
-    preservation and physicality nonetheless still hold. Callers needing an *absolute* per-call
-    spectrum guarantee should compare :func:`symplectic_eigenvalues` before and after.
+    The gate directly guarantees only **approximate preservation of** ``Ω``; the output validation
+    adds certifiability and physicality, *not* closeness to the input spectrum. Empirically, over
+    this WP's certified test domain, an accepted ``S`` preserves the Williamson spectrum *relatively*
+    to ``|Δν_i| / ν_i ≲ 1e-11`` — the physically meaningful invariant, since purity, entropy, and
+    physicality all turn on ``ν`` *relative* to the vacuum floor ``1``. This is an **observed,
+    validated numerical bound, not a proven per-call guarantee.** The *absolute* shift ``|Δν_i|``
+    scales with ``ν_i`` itself, so it stays ``≪ 1e-4`` throughout the validated trapped-ion operating
+    range used by this WP (``ν ≲ 1e4``) and would reach ``1e-4`` only for ``ν ≳ 1e7`` (e.g. a thermal
+    ``V = 1e7·𝟙`` — a perfectly valid covariance, merely **outside** that operating range, since this
+    module is application-agnostic), where the *relative* preservation still holds. A caller needing a
+    formal *absolute* per-call spectrum guarantee should compare :func:`symplectic_eigenvalues` before
+    and after (optionally behind a separate relative tolerance).
 
     This is the **application-agnostic** congruence (**GT3a**). The ion-specific normal→local
     ``S`` — built from mode eigenvectors, ion masses, and local frequencies — is a separate
