@@ -45,9 +45,11 @@ placeholder-only and did not follow semver.
   `is_physical` realises §27.2's "PSD candidate ⇒ `ν_i ≥ 1`" equivalence (`V ⪰ 0` plus
   `ν_i ≥ 1 − tol`), which is scale- and correlation-invariant where a direct
   `min eig(V + iΩ)` tolerance is not, and `symplectic_eigenvalues` uses the SPD-stable
-  similar-Hermitian form `eigvalsh(i V^{1/2} Ω V^{1/2})` (no silent `.real` discard),
-  raising on an uncertifiably ill-conditioned `V` — a realisation bug-fix only, not a
-  change to the sealed §27.2 mathematics (`CONVENTION_VERSION` unchanged).
+  similar-Hermitian form `eigvalsh(i V^{1/2} Ω V^{1/2})` (no silent `.real` discard). A `V`
+  outside the certified numerical range (`cond ≳ 1e12` — physical or not; an analytic pure
+  squeeze `diag(1e6, 1e-6)` reaches it) raises an explicit certification error rather than
+  a wrong value or an "unphysical" verdict. A realisation bug-fix only, not a change to the
+  sealed §27.2 mathematics (`CONVENTION_VERSION` unchanged).
 - **Dispatch GT2 — Gaussian purity and von-Neumann entropy.** `gaussian.purity(V) =
   ∏ 1/ν_i = 1/√det V` and `gaussian.gaussian_entropy_bits(V) = Σ g(ν_i)` (bits, with
   `g(1) = 0`), both over the sealed §27 Williamson spectrum with multiplicity preserved:

@@ -158,31 +158,34 @@ _COVARIANCE_TOL = 1e-9
 #: tests use the invariant Williamson spectrum / an equilibrated ``V + iΩ`` instead.
 _SYMPLECTIC_UNIT_TOL = 1e-4
 
-#: Reciprocal-condition-number floor below which the symplectic spectrum is dominated by
-#: rounding and cannot be certified. ``cond(V) ≳ 1e12`` (~120 dB of quadrature dynamic
-#: range) is unreachable by any physical state or by :func:`covariance_matrix` (even
-#: extreme squeezing ``z = 5`` gives ``cond ~ 5e8``); only hand-crafted near-singular or
-#: absurdly scale-asymmetric inputs trip it.
+#: Reciprocal-condition-number floor below which the SPD-stable symplectic spectrum is
+#: dominated by rounding and lies **outside the currently certified numerical range**.
+#: ``cond(V) ≳ 1e12`` is *not physically unreachable* — an analytic pure squeeze
+#: ``diag(1e6, 1e-6)`` is physical (``det V = 1``, ``ν = 1``) at ``cond = 1e12``, and
+#: stronger squeezing goes higher — only outside what float64 certifies here; the
+#: repository's finite-Fock construction stays far below it (even ``z = 5`` gives
+#: ``cond ~ 5e8``). A caller supplying such an analytic ``V`` gets an explicit certification
+#: error, not a wrong value or an "unphysical" verdict.
 _MIN_RECIPROCAL_CONDITION = 1e-12
 
 
 def symplectic_eigenvalues(cov: np.ndarray) -> np.ndarray:
     """The Williamson symplectic eigenvalues ``ν_i`` of a ``2N×2N`` ``V`` (§27.2).
 
-    The moduli of the eigenvalues of ``iΩV`` — real ``±ν`` pairs — taken as the positive
-    half, **one per mode with multiplicity preserved** (**not** the SVD of ``iΩV`` and
-    **not** a tolerance-based deduplication that would merge degenerate modes). For a
-    physical ``V`` every ``ν_i ≥ 1``. Returned ascending.
+    The moduli of the eigenvalues of ``iΩV`` — real ``±ν`` pairs — taken **one per pair
+    with multiplicity preserved** (**not** the SVD of ``iΩV`` and **not** a tolerance-based
+    deduplication that would merge degenerate modes). For a physical ``V`` every
+    ``ν_i ≥ 1``. Returned ascending.
 
     **Numerically stable realisation.** For a positive-semidefinite ``V`` (every physical
     covariance) ``iΩV`` is *similar* to the Hermitian ``M = i V^{1/2} Ω V^{1/2}``, so its
     eigenvalues are ``eigvalsh(M)`` — real by construction (no imaginary parts silently
     discarded via ``.real``) and stable for the ill-conditioned ``V`` a squeezed state
-    produces. An **uncertifiably ill-conditioned** ``V`` (``cond ≳ 1e12``, unreachable by
-    any physical state) raises :class:`ValueError`: the spectrum would be dominated by
-    rounding (§15 honesty; this spectrum feeds GT4 log-negativity). An indefinite ``V``
-    (not a bona-fide covariance, whose SPD square root does not exist) falls back to the
-    direct ``|eig(iΩV)|`` definition.
+    produces. A ``V`` **outside the currently certified numerical range** (``cond ≳ 1e12`` —
+    not physically unreachable, but the spectrum would be rounding-dominated) raises
+    :class:`ValueError` (§15 honesty; this spectrum feeds GT4 log-negativity). An indefinite
+    ``V`` (not a bona-fide covariance, whose SPD square root does not exist) falls back to
+    the direct ``|eig(iΩV)|`` definition.
     """
     n_modes = _check_square_even(cov, "symplectic_eigenvalues")
     arr = np.asarray(cov, dtype=float)
@@ -190,13 +193,15 @@ def symplectic_eigenvalues(cov: np.ndarray) -> np.ndarray:
     eigvals_v, basis = np.linalg.eigh(arr)
     if eigvals_v[0] < -_COVARIANCE_TOL:
         # Indefinite V: direct §27.2 definition |eig(iΩV)| (best effort; physical inputs
-        # never reach here — the guard's PSD check rejects them first).
+        # never reach here — the guard's PSD check rejects them first). The 2N moduli come
+        # in equal adjacent pairs (|+ν_k| = |−ν_k|); ``[::2]`` takes one per pair keeping
+        # multiplicity — NOT ``[n:]`` (the N largest), which would drop a distinct small ν.
         evals = np.linalg.eigvals(1j * omega @ arr)
-        return np.sort(np.abs(evals))[n_modes:]
+        return np.sort(np.abs(evals))[::2]
     if eigvals_v[0] <= eigvals_v[-1] * _MIN_RECIPROCAL_CONDITION:
         raise ValueError(
-            "symplectic_eigenvalues: covariance matrix is too ill-conditioned to certify "
-            f"(condition number ≳ {1 / _MIN_RECIPROCAL_CONDITION:.0e}); the symplectic "
+            "symplectic_eigenvalues: covariance matrix is outside the certified numerical "
+            f"range (condition number ≳ {1 / _MIN_RECIPROCAL_CONDITION:.0e}); the symplectic "
             "spectrum would be dominated by rounding."
         )
     v_half = (basis * np.sqrt(eigvals_v)) @ basis.T
@@ -307,8 +312,10 @@ def is_physical(cov: np.ndarray, *, tol: float = _SYMPLECTIC_UNIT_TOL) -> bool:
     ``V`` — the case §27.2 warns a *bare* ``ν ≥ 1`` misses — so this is §27.2's own
     "PSD candidate ⇒ ``ν_i ≥ 1``" equivalence, not a shortcut, and needs no convention
     change. ``tol`` absorbs finite-Fock truncation artifacts. Returns ``False`` for a
-    non-real / non-finite / non-symmetric / unphysical ``V`` and, conservatively, for an
-    uncertifiably ill-conditioned ``V`` on which :func:`symplectic_eigenvalues` refuses.
+    non-real / non-finite / non-symmetric / unphysical ``V``. For a ``V`` outside the
+    certified numerical range (``cond ≳ 1e12``) it **raises** (via
+    :func:`symplectic_eigenvalues`) rather than returning ``False`` — a physical-but-
+    uncertifiable ``V`` such as ``diag(1e6, 1e-6)`` must not be mislabelled unphysical.
     """
     _check_square_even(cov, "is_physical")
     arr = np.asarray(cov)
@@ -321,11 +328,9 @@ def is_physical(cov: np.ndarray, *, tol: float = _SYMPLECTIC_UNIT_TOL) -> bool:
         return False
     if float(np.min(np.linalg.eigvalsh(arr))) < -_COVARIANCE_TOL:
         return False  # indefinite V — the case a bare ν ≥ 1 would miss (§27.2)
-    try:
-        nus = symplectic_eigenvalues(arr)
-    except ValueError:
-        return False  # uncertifiably ill-conditioned: cannot certify as physical
-    return bool(np.min(nus) >= 1.0 - tol)
+    # symplectic_eigenvalues raises for an uncertifiably ill-conditioned V; let that
+    # propagate rather than mislabel a physical-but-uncertifiable V as unphysical.
+    return bool(np.min(symplectic_eigenvalues(arr)) >= 1.0 - tol)
 
 
 def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarray:

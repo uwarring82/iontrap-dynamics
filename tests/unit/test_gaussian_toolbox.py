@@ -142,7 +142,7 @@ def test_functionals_reject_sub_uncertainty_covariance(func: _Functional) -> Non
     # Scale-asymmetric but well-conditioned covariances that violate the uncertainty bound
     # (ν < 1) must be rejected by the squeezing-invariant Williamson (ν ≥ 1) test — an
     # absolute min-eig(V+iΩ) tol is not squeezing-invariant and would miss them. The
-    # invariant ν is the tell; is_physical (equilibrated) rejects them too.
+    # invariant ν is the tell; is_physical (Williamson) rejects them too.
     for v_bad, nu in ((np.diag([4.0, 0.0625]), 0.5), (np.diag([2.7, 0.3]), 0.9)):
         assert not gaussian.is_physical(v_bad)
         assert gaussian.symplectic_eigenvalues(v_bad)[0] == pytest.approx(nu, rel=1e-6)
@@ -152,11 +152,10 @@ def test_functionals_reject_sub_uncertainty_covariance(func: _Functional) -> Non
 
 @pytest.mark.parametrize("func", _FUNCTIONALS)
 def test_functionals_reject_ill_conditioned_covariance(func: _Functional) -> None:
-    # cond(V) ≳ 1e12 is unreachable by any physical state, so the symplectic spectrum would
-    # be rounding-dominated and symplectic_eigenvalues refuses to certify (§15). Both an
-    # extremely scale-asymmetric diagonal (cond 4e18, ν nominally 0.5) and a near-singular
-    # V ≈ 2.5e10·[[1,−1],[−1,1]] (cond ≈ 1.5e16, where the naive eig(iΩV) returned a spurious
-    # ν ≈ 152) must raise rather than return a silently-wrong value.
+    # cond(V) ≳ 1e12 is outside the certified numerical range (the spectrum would be
+    # rounding-dominated), so symplectic_eigenvalues refuses (§15). An extremely
+    # scale-asymmetric diagonal (cond 4e18) and a near-singular V ≈ 2.5e10·[[1,−1],[−1,1]]
+    # (cond ≈ 1.5e16, where the naive eig(iΩV) returned a spurious ν ≈ 152) must raise.
     v_singular = np.array(
         [
             [24999999999.999996, -24999999999.999992],
@@ -164,23 +163,46 @@ def test_functionals_reject_ill_conditioned_covariance(func: _Functional) -> Non
         ]
     )
     for bad in (np.diag([1e9, 2.5e-10]), v_singular):
-        with pytest.raises(ValueError, match="ill-conditioned"):
+        with pytest.raises(ValueError, match="condition number"):
             gaussian.symplectic_eigenvalues(bad)
-        with pytest.raises(ValueError, match="ill-conditioned"):
+        with pytest.raises(ValueError, match="condition number"):
             func(bad)
+
+
+def test_physical_but_uncertifiable_raises_not_unphysical() -> None:
+    # An analytic PURE squeeze diag(1e6, 1e-6) is physical (det V = 1, ν = 1) yet has
+    # cond = 1e12 — outside the certified numerical range. It must raise a certification
+    # error, NOT be mislabelled unphysical (is_physical False / a "ν < 1" verdict).
+    v_phys_uncert = np.diag([1e6, 1e-6])
+    assert np.linalg.det(v_phys_uncert) == pytest.approx(1.0)  # genuinely physical, ν = 1
+    with pytest.raises(ValueError, match="condition number"):
+        gaussian.symplectic_eigenvalues(v_phys_uncert)
+    with pytest.raises(ValueError, match="condition number"):
+        gaussian.is_physical(v_phys_uncert)  # raises, not False
+    with pytest.raises(ValueError, match="condition number"):
+        gaussian.purity(v_phys_uncert)
+
+
+def test_symplectic_eigenvalues_indefinite_keeps_distinct_pairs() -> None:
+    # The indefinite fallback must return one ν per ±pair, keeping DISTINCT values — not the
+    # N largest moduli. diag(3,3,−4,−4) has |eig(iΩV)| = [3,3,4,4]; the answer is [3, 4]
+    # (the earlier [n:] slice would drop the ν = 3 and return [4, 4]).
+    nus = gaussian.symplectic_eigenvalues(np.diag([3.0, 3.0, -4.0, -4.0]))
+    assert np.allclose(np.sort(nus), [3.0, 4.0])
+    # A degenerate indefinite block keeps multiplicity: diag(3,3,−3,−3) → [3, 3].
+    assert np.allclose(gaussian.symplectic_eigenvalues(np.diag([3.0, 3.0, -3.0, -3.0])), [3.0, 3.0])
 
 
 def test_is_physical_is_scale_and_correlation_invariant() -> None:
     # is_physical realises §27.2's "PSD candidate ⇒ ν_i ≥ 1" equivalence (Williamson form),
     # which is scale- AND correlation-invariant. Physical states → True; an indefinite V and
-    # every ν = 0.5 violation → False, including the two forms that defeat a direct
-    # min-eig(V+iΩ) test: extreme diagonal scale, and strong off-diagonal correlation (whose
-    # V+iΩ violation shrinks below an absolute tol even after diagonal equilibration).
+    # every well-conditioned ν = 0.5 violation → False, including the two forms that defeat a
+    # direct min-eig(V+iΩ) test: diagonal scale asymmetry, and strong off-diagonal correlation
+    # (whose V+iΩ violation shrinks below an absolute tol even after diagonal equilibration).
     assert gaussian.is_physical(np.eye(4))
     assert gaussian.is_physical(gaussian.covariance_matrix(coherent_mode(20, 2.0))[0])
     assert not gaussian.is_physical(np.diag([3.0, 3.0, -3.0, -3.0]))  # indefinite
-    assert not gaussian.is_physical(np.diag([1e9, 2.5e-10]))  # ν = 0.5, extreme scale
-    assert not gaussian.is_physical(np.diag([4.0, 0.0625]))  # ν = 0.5, moderate scale
+    assert not gaussian.is_physical(np.diag([4.0, 0.0625]))  # ν = 0.5, scale asymmetry
     d = 100.0  # strongly correlated [[c, d], [d, c]] with c² − d² = ¼ ⇒ ν = 0.5
     correlated = np.array([[np.sqrt(d * d + 0.25), d], [d, np.sqrt(d * d + 0.25)]])
     assert gaussian.symplectic_eigenvalues(correlated)[0] == pytest.approx(0.5, rel=1e-4)
