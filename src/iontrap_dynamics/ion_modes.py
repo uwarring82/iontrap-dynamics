@@ -31,7 +31,9 @@ but **not** ion-cut ``E_N`` (invariant under local symplectics; card D3).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 import numpy as np
 
@@ -89,6 +91,9 @@ class IonModeBasis:
     #: but the *length* ``N`` is load-bearing: it sets ``n_ions`` and hence the ``ion_mode_indices`` partition.
     local_reference_frequencies_rad_s: np.ndarray  #: (n,) local gauge ``ω_local,j > 0``
     coordinate_frame: str  #: wire-ordering tag (see :data:`_CANONICAL_COORDINATE_FRAME`)
+    normalization_weighting_tags: Mapping[str, object] | None = None  #: retained producer metadata
+    #: (e.g. ``mass_symmetrised``, the local-reference gauge), read-only; documents the producer's
+    #: declared conventions. Trusted, not enforced — like ``coordinate_frame`` (card D2).
 
     @property
     def n_coords(self) -> int:
@@ -111,6 +116,7 @@ def materialize_ion_mode_basis(
     masses_kg: np.ndarray,
     local_reference_frequencies_rad_s: np.ndarray,
     coordinate_frame: str,
+    normalization_weighting_tags: Mapping[str, object] | None = None,
 ) -> IonModeBasis:
     """Validate a producer ``IonModeBasis`` payload and materialize an immutable record.
 
@@ -142,6 +148,13 @@ def materialize_ion_mode_basis(
             f"{_CANONICAL_COORDINATE_FRAME!r}. The row/mode ordering is a pinned wire invariant "
             f"that ion_mode_indices depends on; a mismatch is a loud error, not a silent misread "
             f"(a non-canonical ordering yields a wrong-but-symplectic S that congruence cannot catch)."
+        )
+    if normalization_weighting_tags is not None and not isinstance(
+        normalization_weighting_tags, Mapping
+    ):
+        raise ValueError(
+            "IonModeBasis: normalization_weighting_tags must be a mapping (or None); "
+            f"got {type(normalization_weighting_tags).__name__}."
         )
 
     raw = {
@@ -224,12 +237,18 @@ def materialize_ion_mode_basis(
         out.flags.writeable = False
         return out
 
+    tags = (
+        MappingProxyType(dict(normalization_weighting_tags))  # read-only, detached copy
+        if normalization_weighting_tags is not None
+        else None
+    )
     return IonModeBasis(
         frequencies_rad_s=_frozen(freqs),
         mass_weighted_eigenvectors=_frozen(basis),
         masses_kg=_frozen(masses),
         local_reference_frequencies_rad_s=_frozen(local),
         coordinate_frame=coordinate_frame,
+        normalization_weighting_tags=tags,
     )
 
 

@@ -136,6 +136,62 @@ def test_materialize_rejects_malformed_boundary_inputs() -> None:
         im.materialize_ion_mode_basis(**{**good, "masses_kg": np.array([1.0])})  # type: ignore[arg-type]
 
 
+def test_full_seven_field_payload_materializes_and_retains_tags() -> None:
+    # Regression (integration): the real producer's asdict() emits SEVEN keys including
+    # normalization_weighting_tags — materialize(**payload) must accept the full field set (the
+    # earlier hand-built 6-key dict missed this and the natural handshake broke), and retain the
+    # tags read-only.
+    b = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2.0)
+    payload = {
+        "schema_version": im.ION_MODE_BASIS_SCHEMA_VERSION,
+        "frequencies_rad_s": np.array([1.0, np.sqrt(3.0)]),
+        "mass_weighted_eigenvectors": b,
+        "masses_kg": np.array([1.0, 1.0]),
+        "local_reference_frequencies_rad_s": np.array([1.0, 1.0]),
+        "coordinate_frame": _FRAME,
+        "normalization_weighting_tags": {
+            "mass_symmetrised": True,
+            "local_reference": "trap_curvature",
+        },
+    }
+    basis = im.materialize_ion_mode_basis(**payload)  # type: ignore[arg-type]
+    assert basis.normalization_weighting_tags is not None
+    assert basis.normalization_weighting_tags["mass_symmetrised"] is True
+    with pytest.raises(TypeError):  # retained tags are a read-only mapping
+        basis.normalization_weighting_tags["x"] = 1  # type: ignore[index]
+    with pytest.raises(ValueError, match="must be a mapping"):  # non-mapping tags rejected
+        im.materialize_ion_mode_basis(**{**payload, "normalization_weighting_tags": [1, 2]})  # type: ignore[arg-type]
+    # and the 6-field payload (no tags) still materializes — tags default to None
+    assert (
+        im.materialize_ion_mode_basis(  # type: ignore[arg-type]
+            **{k: v for k, v in payload.items() if k != "normalization_weighting_tags"}
+        ).normalization_weighting_tags
+        is None
+    )
+
+
+def test_end_to_end_handshake_with_real_producer() -> None:
+    # Capstone: the genuine cross-repo handshake — the iontrap-structure producer's asdict() feeds
+    # materialize directly (no hand-built dict). importorskip keeps the repos decoupled (this skips
+    # in CI, where iontrap-structure is not installed; runs wherever both are available).
+    st = pytest.importorskip("iontrap_structure")
+    from scipy.constants import atomic_mass, elementary_charge
+
+    trap = st.HarmonicTrap(wx=2 * np.pi * 3e6, wy=2 * np.pi * 3e6, wz=2 * np.pi * 1e6)
+    masses = np.full(2, 25.0 * atomic_mass)
+    charges = np.full(2, elementary_charge)
+    modes = st.normal_modes(st.equilibrium(trap=trap, masses=masses, charges=charges))
+    payload = st.ion_mode_basis(modes, trap)
+
+    basis = im.materialize_ion_mode_basis(**payload.asdict())  # the natural handshake must work
+    assert (basis.n_ions, basis.axes_per_ion) == (2, 3)
+    s = im.normal_to_local_symplectic(basis)
+    omega = g.symplectic_form(basis.n_coords)
+    assert np.max(np.abs(s @ omega @ s.T - omega)) < 1e-9  # symplectic
+    v_local = im.to_local_covariance(basis, np.eye(2 * basis.n_coords))  # map the normal vacuum
+    assert g.log_negativity(v_local, im.ion_mode_indices(basis, 0)) > 0.0  # ground state entangled
+
+
 def test_non_canonical_coordinate_frame_is_rejected() -> None:
     # Regression (adversarial): the coordinate_frame is a pinned wire invariant that
     # ion_mode_indices depends on — a mislabelled/different ordering yields a wrong-but-symplectic
