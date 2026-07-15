@@ -98,6 +98,44 @@ def test_materialize_validates_the_contract() -> None:
         im.materialize_ion_mode_basis(**{**good, "coordinate_frame": ""})  # type: ignore[arg-type]
 
 
+def test_materialized_record_is_immutable() -> None:
+    # Regression (adversarial): the "immutable" record must own read-only copies — a caller must not
+    # be able to mutate B after validation and bypass the Gram guarantee, nor reach in through the
+    # original payload arrays.
+    b = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2.0)
+    freqs = np.array([1.0, np.sqrt(3.0)])
+    basis = _make_basis(b, freqs, np.array([1.0, 1.0]), np.ones(2))
+    with pytest.raises(ValueError, match="read-only"):
+        basis.mass_weighted_eigenvectors[0, 0] = 99.0  # the record's arrays are read-only
+    b[0, 0] = 99.0  # mutating the caller's originals after materialize …
+    freqs[0] = 42.0
+    assert basis.mass_weighted_eigenvectors[0, 0] == pytest.approx(
+        1.0 / np.sqrt(2.0)
+    )  # … no effect
+    assert basis.frequencies_rad_s[0] == pytest.approx(1.0)
+
+
+def test_materialize_rejects_malformed_boundary_inputs() -> None:
+    b = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2.0)
+    good = dict(
+        schema_version=im.ION_MODE_BASIS_SCHEMA_VERSION,
+        frequencies_rad_s=np.array([1.0, np.sqrt(3.0)]),
+        mass_weighted_eigenvectors=b,
+        masses_kg=np.array([1.0, 1.0]),
+        local_reference_frequencies_rad_s=np.array([1.0, 1.0]),
+        coordinate_frame=_FRAME,
+    )
+    for bad_version in (True, 1.0):  # exact int — bool/float that == 1 are still rejected
+        with pytest.raises(ValueError, match="schema_version"):
+            im.materialize_ion_mode_basis(**{**good, "schema_version": bad_version})  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="complex"):  # complex not silently cast to real
+        im.materialize_ion_mode_basis(**{**good, "mass_weighted_eigenvectors": b.astype(complex)})  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="1-D"):  # (n, 1) column frequencies rejected
+        im.materialize_ion_mode_basis(**{**good, "frequencies_rad_s": np.array([[1.0], [2.0]])})  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="axes_per_ion"):  # n=2, N=1 → axes_per_ion=2 rejected
+        im.materialize_ion_mode_basis(**{**good, "masses_kg": np.array([1.0])})  # type: ignore[arg-type]
+
+
 def test_non_canonical_coordinate_frame_is_rejected() -> None:
     # Regression (adversarial): the coordinate_frame is a pinned wire invariant that
     # ion_mode_indices depends on — a mislabelled/different ordering yields a wrong-but-symplectic

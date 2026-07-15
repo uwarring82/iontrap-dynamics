@@ -98,8 +98,9 @@ placeholder-only and did not follow semver.
   the ion-specific `S` that re-expresses a Gaussian covariance from the normal-mode basis into the
   local-ion cut for entanglement read-out — the consumer side of the ratified cross-repo handshake
   (`task cards/TC-gt3b-ion-symplectic-adapter.md`). `materialize_ion_mode_basis` validates a
-  serialization-neutral `IonModeBasis` payload (consumer-owned schema/version, canonical wire
-  ordering, orthonormal basis) into an immutable record — no shared runtime class with the producer
+  serialization-neutral `IonModeBasis` payload (consumer-owned exact-int schema/version, canonical
+  wire ordering, real orthonormal basis, `axes_per_ion ∈ {1,3}`) into a **genuinely immutable record
+  (private read-only array copies)** — no shared runtime class with the producer
   (`iontrap-structure`); `normal_to_local_symplectic` builds `S = diag(X, P)` with
   `X = B√(ω_loc/ω)`, `P = B√(ω/ω_loc)` (mass **cancels**), symplectic since `X Pᵀ = 𝟙`;
   `to_local_covariance` feeds it through GT3a `congruence`; `ion_mode_indices` gives the ion-cut for

@@ -115,20 +115,26 @@ def materialize_ion_mode_basis(
     """Validate a producer ``IonModeBasis`` payload and materialize an immutable record.
 
     Enforces the consumer contract (card §4): matching :data:`ION_MODE_BASIS_SCHEMA_VERSION`;
-    real, finite arrays of consistent shape; positive mode and local frequencies; and an
-    orthonormal basis ``B`` (``‖BᵀB − 𝟙‖ ≤`` :data:`_GRAM_TOL`). The definitive symplecticity
-    of the built ``S`` is still enforced downstream by :func:`gaussian.congruence`.
+    real (not complex), finite arrays of consistent shape (``frequencies_rad_s`` a 1-D ``(n,)``,
+    ``B`` a square ``(n, n)``, ``n = N`` or ``3N``); positive mode/local frequencies and masses;
+    and an orthonormal basis ``B`` (``‖BᵀB − 𝟙‖ ≤`` :data:`_GRAM_TOL`). Returns a record whose arrays
+    are **private copies, marked read-only** — the materialized record is genuinely immutable. The
+    definitive symplecticity of the built ``S`` is still enforced downstream by
+    :func:`gaussian.congruence`.
 
     Raises
     ------
     ValueError
-        On schema mismatch, wrong/inconsistent shapes, non-finite entries, non-positive
-        frequencies, a non-orthonormal basis, or an empty coordinate-frame tag.
+        On schema mismatch (``schema_version`` must be exactly the bound int), a non-canonical
+        ``coordinate_frame``, complex arrays, wrong/inconsistent shapes (scalar or ``(n, 1)``
+        frequencies; ``axes_per_ion`` outside ``{1, 3}``), non-finite entries, non-positive
+        frequencies/masses, or a non-orthonormal basis.
     """
-    if schema_version != ION_MODE_BASIS_SCHEMA_VERSION:
+    if type(schema_version) is not int or schema_version != ION_MODE_BASIS_SCHEMA_VERSION:
         raise ValueError(
-            f"IonModeBasis: schema_version {schema_version!r} ≠ the consumer-owned "
-            f"{ION_MODE_BASIS_SCHEMA_VERSION!r}; producer/consumer contract mismatch."
+            f"IonModeBasis: schema_version {schema_version!r} ≠ the consumer-owned int "
+            f"{ION_MODE_BASIS_SCHEMA_VERSION!r}; producer/consumer contract mismatch (the wire type "
+            f"is a bound int — ``True``/``1.0`` are not accepted)."
         )
     if coordinate_frame != _CANONICAL_COORDINATE_FRAME:
         raise ValueError(
@@ -137,6 +143,19 @@ def materialize_ion_mode_basis(
             f"that ion_mode_indices depends on; a mismatch is a loud error, not a silent misread "
             f"(a non-canonical ordering yields a wrong-but-symplectic S that congruence cannot catch)."
         )
+
+    raw = {
+        "frequencies_rad_s": frequencies_rad_s,
+        "mass_weighted_eigenvectors": mass_weighted_eigenvectors,
+        "masses_kg": masses_kg,
+        "local_reference_frequencies_rad_s": local_reference_frequencies_rad_s,
+    }
+    for name, value in raw.items():
+        if np.iscomplexobj(np.asarray(value)):
+            raise ValueError(
+                f"IonModeBasis: {name} is complex — emit real float64 arrays; casting to float "
+                f"would silently discard the imaginary part."
+            )
 
     freqs = np.asarray(frequencies_rad_s, dtype=float)
     basis = np.asarray(mass_weighted_eigenvectors, dtype=float)
@@ -152,6 +171,11 @@ def materialize_ion_mode_basis(
         if not np.all(np.isfinite(arr)):
             raise ValueError(f"IonModeBasis: {name} has non-finite entries (NaN/inf).")
 
+    if freqs.ndim != 1 or freqs.shape[0] == 0:
+        raise ValueError(
+            f"IonModeBasis: frequencies_rad_s must be a 1-D (n,) array with n > 0; got shape "
+            f"{freqs.shape} (a scalar or (n, 1) column is rejected)."
+        )
     n = freqs.shape[0]
     if basis.shape != (n, n):
         raise ValueError(
@@ -167,6 +191,12 @@ def materialize_ion_mode_basis(
         raise ValueError(
             f"IonModeBasis: masses_kg must be (N,) with n_coords ({n}) a positive multiple of "
             f"N; got shape {masses.shape}."
+        )
+    axes_per_ion = n // masses.shape[0]
+    if axes_per_ion not in (1, 3):
+        raise ValueError(
+            f"IonModeBasis: n_coords ({n}) must be N (axial reduction) or 3N (full trap) for "
+            f"N = {masses.shape[0]} ions — axes_per_ion ∈ {{1, 3}}; got {axes_per_ion}."
         )
     if not np.all(freqs > 0.0):
         raise ValueError("IonModeBasis: mode frequencies_rad_s must be strictly positive.")
@@ -186,11 +216,19 @@ def materialize_ion_mode_basis(
             f"wire (too few significant figures) — emit B at full float64 precision."
         )
 
+    # Materialize a genuinely immutable record: own a private copy of each array (so later mutation
+    # of the caller's payload cannot reach in) and mark it read-only (so the record's own arrays
+    # cannot be mutated to bypass the validated Gram / positivity guarantees).
+    def _frozen(arr: np.ndarray) -> np.ndarray:
+        out = np.array(arr, dtype=float, copy=True)
+        out.flags.writeable = False
+        return out
+
     return IonModeBasis(
-        frequencies_rad_s=freqs,
-        mass_weighted_eigenvectors=basis,
-        masses_kg=masses,
-        local_reference_frequencies_rad_s=local,
+        frequencies_rad_s=_frozen(freqs),
+        mass_weighted_eigenvectors=_frozen(basis),
+        masses_kg=_frozen(masses),
+        local_reference_frequencies_rad_s=_frozen(local),
         coordinate_frame=coordinate_frame,
     )
 

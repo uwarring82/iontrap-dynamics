@@ -66,6 +66,8 @@ The exchange object is a **new, versioned, serialization-neutral basis payload**
 | `local_reference_frequencies_rad_s` | `(3N,)` | `ω_local,j` (tagged gauge, **D3**) |
 | `normalization_weighting_tags` | tags | mass-symmetrised / per-mode-unit-norm, etc. |
 
+**Coordinate count.** `n = d·N` with `d = axes_per_ion ∈ {1, 3}`: the **full trap** (`d = 3`, `n = 3N`, the shapes above) or an **axial reduction** (`d = 1`, `n = N`, a linear chain reduced to its axial coordinates). The consumer enforces `axes_per_ion ∈ {1, 3}` and rejects any other value (e.g. an arbitrary 2-axis payload).
+
 **Exact consumer-enforced values (byte-for-byte).** The consumer rejects any payload that does not match these exactly:
 - `schema_version == 1` (consumer constant `ION_MODE_BASIS_SCHEMA_VERSION = 1`).
 - `coordinate_frame == "ion-major-axis-minor;row=axes_per_ion*i+c;col=mode"`.
