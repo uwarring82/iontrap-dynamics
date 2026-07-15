@@ -94,6 +94,21 @@ placeholder-only and did not follow semver.
   guard); rejects any non-symplectic or malformed `S`. Application-agnostic — the ion-specific
   normal→local `S` adapter (GT3b) is a separate scoped decision kept **out** of `gaussian.py`.
   Observable-only (§27.4); `CONVENTION_VERSION` unchanged (`0.6`). (WP-07 GT3a.)
+- **Dispatch GT3b — ion normal→local symplectic adapter (`ion_modes.py`).** New module building
+  the ion-specific `S` that re-expresses a Gaussian covariance from the normal-mode basis into the
+  local-ion cut for entanglement read-out — the consumer side of the ratified cross-repo handshake
+  (`task cards/TC-gt3b-ion-symplectic-adapter.md`). `materialize_ion_mode_basis` validates a
+  serialization-neutral `IonModeBasis` payload (consumer-owned schema/version, canonical wire
+  ordering, orthonormal basis) into an immutable record — no shared runtime class with the producer
+  (`iontrap-structure`); `normal_to_local_symplectic` builds `S = diag(X, P)` with
+  `X = B√(ω_loc/ω)`, `P = B√(ω/ω_loc)` (mass **cancels**), symplectic since `X Pᵀ = 𝟙`;
+  `to_local_covariance` feeds it through GT3a `congruence`; `ion_mode_indices` gives the ion-cut for
+  `log_negativity`. Local reference frequencies are an entanglement-neutral local-coordinate gauge.
+  Validated against an **independent QuTiP ground-state diagonalization** to machine precision
+  (equal + mixed mass), plus COM/stretch `3^{±1/4}` weights, the passive-limit separability, and
+  gauge invariance. Kept **out** of `gaussian.py`; no ion masses/eigenvectors there. Observable-only;
+  `CONVENTION_VERSION` unchanged (`0.6`). The producer `IonModeBasis` emitter is independent
+  `iontrap-structure` work. (WP-07 GT3b.)
 
 ## [0.7.0] — 2026-07-14
 
