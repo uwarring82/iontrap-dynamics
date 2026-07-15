@@ -585,3 +585,95 @@ def test_congruence_rejects_nonsymplectic_and_malformed() -> None:
         gaussian.congruence(np.array([[1.0 + 1j, 0.0], [0.0, 1.0]]), v)  # complex S
     with pytest.raises(ValueError, match="non-finite"):
         gaussian.congruence(np.array([[np.nan, 0.0], [0.0, 1.0]]), v)  # NaN S
+
+
+# --- GT6: entanglement of formation (two-mode, locally symmetric) -----------------
+
+
+def _two_mode_squeeze(r: float) -> np.ndarray:
+    ch, sh = np.cosh(r), np.sinh(r)  # two-mode squeezer, §27 per-mode ordering
+    return np.array([[ch, 0, sh, 0], [0, ch, 0, -sh], [sh, 0, ch, 0], [0, -sh, 0, ch]])
+
+
+def _eof_of_nu_minus(nu_minus: float) -> float:
+    # The Giedke-et-al. closed form written directly from ν̃₋: g((ν̃₋ + 1/ν̃₋)/2).
+    if nu_minus >= 1.0:
+        return 0.0
+    half = 0.5 * (nu_minus + 1.0 / nu_minus)
+    plus, minus = 0.5 * (half + 1.0), 0.5 * (half - 1.0)
+    return float(plus * np.log2(plus) - minus * np.log2(minus))
+
+
+def test_entanglement_of_formation_tmsv_equals_entropy_of_entanglement() -> None:
+    # A pure TMSV is globally pure, so E_F equals the entropy of entanglement = the von-Neumann
+    # entropy of one reduced arm — an independent oracle (no reference to the E_F closed form).
+    for r in (0.2, 0.5, 1.0, 1.5):
+        cov = _tmsv_cov(r)
+        e_f = gaussian.entanglement_of_formation(cov)
+        s_reduced = gaussian.gaussian_entropy_bits(cov[:2, :2])  # entropy of one arm
+        assert e_f == pytest.approx(s_reduced, abs=1e-9)
+    # a Fock-built TMSV (truncation noise) still passes the det-based local-symmetry guard
+    cov_fock, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=0.6))
+    assert gaussian.entanglement_of_formation(cov_fock) > 0.0
+
+
+def test_entanglement_of_formation_symmetric_mixed_matches_analytic_nu_minus() -> None:
+    # Independent oracle for a *mixed* symmetric state: a two-mode-squeezed thermal ν₀·𝟙 has the
+    # analytically-known PT eigenvalue ν̃₋ = ν₀·e^{-2r}; E_F must equal g((ν̃₋+1/ν̃₋)/2) computed from
+    # that analytic ν̃₋ (the function reaches ν̃₋ by a *different* route — numerical PT eigensolve).
+    for nu0, r in ((1.5, 0.8), (2.0, 1.2), (1.2, 0.4)):
+        s = _two_mode_squeeze(r)
+        cov = s @ (nu0 * np.eye(4)) @ s.T
+        assert gaussian.entanglement_of_formation(cov) == pytest.approx(
+            _eof_of_nu_minus(nu0 * np.exp(-2 * r)), abs=1e-9
+        )
+
+
+def test_entanglement_of_formation_is_faithful_for_weak_entanglement() -> None:
+    # The observable must not clamp weak entanglement to zero (GT4 lesson): every ν̃₋ < 1 gives a
+    # small POSITIVE E_F, down into the band the old ``ν̃₋ ≥ 1 − 1e-9`` gate wrongly suppressed.
+    for r in (0.05, 5e-3, 5e-4, 5e-5):
+        e_f = gaussian.entanglement_of_formation(_tmsv_cov(r))
+        assert e_f > 0.0
+        assert e_f == pytest.approx(_eof_of_nu_minus(np.exp(-2 * r)), rel=1e-9)
+
+
+def test_entanglement_of_formation_separable_symmetric_is_zero() -> None:
+    # Two equal thermal modes (product, symmetric): ν̃₋ ≥ 1 ⇒ the literal ν̃₋ ≥ 1 gate returns 0.
+    assert gaussian.entanglement_of_formation(np.diag([3.0, 3.0, 3.0, 3.0])) == 0.0
+    assert gaussian.entanglement_of_formation(np.eye(4)) == 0.0  # two vacua
+
+
+def test_entanglement_of_formation_admits_locally_equivalent_states() -> None:
+    # det A = det B (equal local symplectic spectra) is the *exact* invariant — it admits states
+    # local-symplectic-equivalent to a symmetric one, not only literal swap-invariant V. A pair of
+    # (different) local single-mode squeezes leaves E_F unchanged (local ops preserve entanglement)
+    # and must still pass the guard — where the old swap-invariance guard would have false-rejected.
+    local = np.diag([np.exp(0.7), np.exp(-0.7), np.exp(-0.4), np.exp(0.4)])  # S_A ⊕ S_B, S_A ≠ S_B
+    cov = local @ _tmsv_cov(0.8) @ local.T
+    assert not np.allclose(cov, _tmsv_cov(0.8))  # genuinely not swap-invariant
+    assert gaussian.entanglement_of_formation(cov) == pytest.approx(
+        gaussian.entanglement_of_formation(_tmsv_cov(0.8)), abs=1e-9
+    )
+
+
+def test_entanglement_of_formation_rejects_asymmetric_and_non_two_mode() -> None:
+    with pytest.raises(ValueError, match="not locally symmetric"):
+        gaussian.entanglement_of_formation(np.diag([1.0, 1.0, 4.0, 4.0]))  # det A = 1 ≠ det B = 16
+    # Regression: a strongly-squeezed asymmetric state whose absolute swap-residual (3e-3) sits
+    # UNDER the old ``1e-4·max|V|`` budget (~7e-3, inflated by the e^{2r} scale) — the old guard
+    # false-accepts it; the scale-free det A ≠ det B check rejects it.
+    asym = _tmsv_cov(2.5).copy()
+    asym[2, 2] += 3e-3
+    asym[3, 3] += 3e-3
+    assert np.max(np.abs(_swap4() @ asym @ _swap4().T - asym)) < 1e-4 * np.max(np.abs(asym))
+    with pytest.raises(ValueError, match="not locally symmetric"):
+        gaussian.entanglement_of_formation(asym)
+    with pytest.raises(ValueError, match="two-mode"):
+        gaussian.entanglement_of_formation(np.eye(6))  # three modes
+    with pytest.raises(ValueError, match="unphysical"):
+        gaussian.entanglement_of_formation(0.5 * np.eye(4))  # sub-vacuum (ν = 0.5), not physical
+
+
+def _swap4() -> np.ndarray:
+    return np.array([[0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 0, 0], [0, 1, 0, 0]], dtype=float)

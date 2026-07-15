@@ -112,6 +112,17 @@ placeholder-only and did not follow semver.
   gauge invariance. Kept **out** of `gaussian.py`; no ion masses/eigenvectors there. Observable-only;
   `CONVENTION_VERSION` unchanged (`0.6`). The producer `IonModeBasis` emitter is independent
   `iontrap-structure` work. (WP-07 GT3b.)
+- **Dispatch GT6 — locally-symmetric Gaussian entanglement of formation.**
+  `gaussian.entanglement_of_formation(V)` for a two-mode, locally-symmetric Gaussian state —
+  the Giedke–Wolf–Krüger–Werner–Cirac (2003) closed form `E_F = g((ν̃₋ + 1/ν̃₋)/2)` for `ν̃₋ < 1`
+  else `0`, where `ν̃₋` is the smaller partial-transpose symplectic eigenvalue and `g` is GT2's
+  bosonic entropy (a pure two-mode squeezed vacuum reduces to the entropy of entanglement). The
+  local-symmetry precondition is the **local invariant `det A = det B`** (equal reduced symplectic
+  spectra, a scale-robust relative check that admits locally-equivalent states); the value is
+  **faithful** — weak entanglement yields a small positive `E_F`, not a clamped zero. Validated
+  against an independent brute-force Gaussian-EoF minimization. Generic (non-symmetric) `E_F` is
+  deferred. Observable-only (§27.4); `CONVENTION_VERSION` unchanged (`0.6`). **Completes WP-07
+  (GT1–GT6).** (WP-07 GT6.)
 
 ## [0.7.0] — 2026-07-14
 

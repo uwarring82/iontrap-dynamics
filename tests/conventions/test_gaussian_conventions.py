@@ -210,6 +210,25 @@ def test_separability_certified_only_for_1xn() -> None:
         gaussian.is_separable(np.eye(8), [0, 1])  # a 2×2 cut
 
 
+# --- 27.4 entanglement of formation (GT6, two-mode locally symmetric) ------------
+
+
+def test_entanglement_of_formation_symmetric_closed_form() -> None:
+    # E_F = g((ν̃₋ + 1/ν̃₋)/2) for ν̃₋ < 1, else 0 (Giedke et al. 2003). A pure TMSV (squeezing r)
+    # reduces to the entropy of entanglement g(cosh 2r); a symmetric separable state → 0.
+    r = 0.55
+    cov, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=r))
+    g_cosh = np.cosh(2 * r)
+    expected = (g_cosh + 1) / 2 * np.log2((g_cosh + 1) / 2) - (g_cosh - 1) / 2 * np.log2(
+        (g_cosh - 1) / 2
+    )
+    assert gaussian.entanglement_of_formation(cov) == pytest.approx(expected, rel=1e-3)
+    assert gaussian.entanglement_of_formation(np.diag([2.0, 2.0, 2.0, 2.0])) == 0.0  # separable
+    # only two-mode locally-symmetric states are in scope
+    with pytest.raises(ValueError, match="not locally symmetric"):
+        gaussian.entanglement_of_formation(np.diag([1.0, 1.0, 4.0, 4.0]))  # unequal local modes
+
+
 # --- 27.4 symplectic congruence (GT3a) ------------------------------------------
 
 

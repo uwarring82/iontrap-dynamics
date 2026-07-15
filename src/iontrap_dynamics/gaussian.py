@@ -158,6 +158,14 @@ _COVARIANCE_TOL = 1e-9
 #: tests use the invariant Williamson spectrum / an equilibrated ``V + iΩ`` instead.
 _SYMPLECTIC_UNIT_TOL = 1e-4
 
+#: Relative tolerance for the ``det A = det B`` local-symmetry precondition of GT6
+#: :func:`entanglement_of_formation`. Genuine symmetric states (analytic, finite-Fock, and locally
+#: transformed) match to ``~machine ε`` (the reduced-block determinant is a local symplectic
+#: invariant); a genuinely asymmetric state differs by ``≳ 1e-3``. This value splits that gap and,
+#: being **relative**, is not defeated by a large squeezing scale — the flaw of an absolute
+#: ``‖ΔV‖ ≤ tol·max|V|`` gate, whose budget grows as ``e^{2r}``.
+_EOF_SYMMETRY_RTOL = 1e-8
+
 #: Threshold for the **per-entry relative** symplecticity test in :func:`congruence`: each
 #: ``|SΩSᵀ − Ω|_ij`` residual is measured against its rounding scale ``‖row_i(S)‖·‖row_j(S)‖``
 #: (the Cauchy–Schwarz bound on ``|(SΩSᵀ)_ij|`` since Ω is orthogonal). A **genuinely** symplectic
@@ -534,6 +542,63 @@ def is_separable(cov: np.ndarray, mode_indices: Sequence[int], *, tol: float = 0
     return log_negativity(cov, mode_indices) <= tol
 
 
+def entanglement_of_formation(cov: np.ndarray) -> float:
+    r"""Gaussian entanglement of formation of a **two-mode, locally-symmetric** state (GT6; §27.4).
+
+    Closed form (Giedke, Wolf, Krüger, Werner & Cirac, *Phys. Rev. Lett.* **91**, 107901 (2003))
+    for a two-mode Gaussian state invariant under swapping its two modes::
+
+        E_F = g((ν̃₋ + 1/ν̃₋) / 2)   for ν̃₋ < 1,   else 0,
+
+    where ``ν̃₋`` is the smaller partial-transpose symplectic eigenvalue and ``g`` is the bosonic
+    entropy (the same ``g`` as :func:`gaussian_entropy_bits`). A separable state has ``ν̃₋ ≥ 1`` ⇒
+    ``E_F = 0`` — the **``ν̃₋ < 1`` gate**, not a ``max(0, ·)`` on a would-be-negative expression.
+    For a pure two-mode squeezed vacuum this reduces to the entropy of entanglement, ``g(cosh 2r)``.
+
+    **Scope.** Two-mode (``4×4`` ``V``) and **locally symmetric** only — the state must be
+    local-symplectic-equivalent to a symmetric one, i.e. its reduced modes have equal local
+    symplectic spectra (``det A = det B`` for the single-mode blocks; the exact invariant, which
+    also admits locally-transformed reductions, not just literal swap-invariant ``V``). Generic
+    (non-symmetric) Gaussian ``E_F`` needs a variational optimisation over Gaussian decompositions
+    and is **deferred**; a non-two-mode or ``det A ≠ det B`` state raises.
+    """
+    arr, nus = _require_physical_covariance(cov, "entanglement_of_formation")
+    if len(nus) != 2:
+        raise ValueError(
+            f"entanglement_of_formation: only a two-mode (4×4) covariance is supported; got "
+            f"{arr.shape}. Reduce to the two-mode marginal of interest first."
+        )
+    # Local-symmetry precondition via the actual **local invariant**: the two reduced states have
+    # equal symplectic spectra, i.e. ``det A = det B`` for the single-mode blocks (both = the local
+    # symplectic eigenvalue²). This characterises the class of states *local-symplectic-equivalent to
+    # a symmetric one* (standard form ``a = b``) — the exact domain of the closed form — and admits
+    # locally-transformed reductions, not only literal swap-invariant ``V``. It is a **relative**
+    # comparison of two invariants, so (unlike a ``‖ΔV‖ ≤ tol·max|V|`` gate) it cannot be defeated by
+    # a large squeezing scale hiding an absolute asymmetry.
+    det_a = float(np.linalg.det(arr[:2, :2]))
+    det_b = float(np.linalg.det(arr[2:, 2:]))
+    if abs(det_a - det_b) > _EOF_SYMMETRY_RTOL * max(det_a, det_b):
+        raise ValueError(
+            f"entanglement_of_formation: the state is not locally symmetric — the reduced modes have "
+            f"unequal local symplectic spectra (det A = {det_a:.6g} ≠ det B = {det_b:.6g}, relative "
+            f"{abs(det_a - det_b) / max(det_a, det_b):.2e} > {_EOF_SYMMETRY_RTOL:.0e}). Only states "
+            f"local-symplectic-equivalent to a symmetric one have this closed-form E_F; the generic "
+            f"case is deferred."
+        )
+    nu_minus = float(np.min(symplectic_eigenvalues(partial_transpose(arr, [1]))))
+    if nu_minus >= 1.0:
+        return (
+            0.0  # ν̃₋ ≥ 1 ⇒ PPT ⇒ separable ⇒ E_F = 0 (the sealed branch, literal — no ν̃₋<1 clamp)
+        )
+    # E_F = g((ν̃₋ + 1/ν̃₋)/2), computed **faithfully**: for an entangled state (ν̃₋ < 1) the argument
+    # is strictly > 1, so — unlike gaussian_entropy_bits, whose g clamps a ``ν ≈ 1`` boundary to
+    # ``0`` to avoid ``log 0`` — no clamp is applied here. Weak entanglement yields a small positive
+    # E_F (an observable, not a certificate), mirroring GT4's faithful log_negativity.
+    half = 0.5 * (nu_minus + 1.0 / nu_minus)  # > 1 strictly since 0 < ν̃₋ < 1
+    plus, minus = 0.5 * (half + 1.0), 0.5 * (half - 1.0)
+    return float(plus * np.log2(plus) - minus * np.log2(minus))
+
+
 def squeezing_parameter(cov: np.ndarray) -> float:
     """Squeezing ``r = ¼·ln(λ_max / λ_min)`` from the eigenvalues of ``V``.
 
@@ -786,6 +851,7 @@ __all__ = [
     "congruence",
     "covariance_matrix",
     "effective_temperature",
+    "entanglement_of_formation",
     "gaussian_entropy_bits",
     "gaussian_readout",
     "is_physical",
