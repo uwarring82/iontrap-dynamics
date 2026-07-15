@@ -373,3 +373,59 @@ def test_log_negativity_rejects_improper_cut_and_unphysical() -> None:
             gaussian.log_negativity(cov, bad_cut)
     with pytest.raises(ValueError, match="unphysical"):
         gaussian.log_negativity(np.diag([4.0, 0.0625, 1.0, 1.0]), [1])  # mode-0 ν = 0.5
+
+
+# --- GT5: effective temperature --------------------------------------------------
+
+_HBAR, _K_B = 1.054571817e-34, 1.380649e-23  # SI (CODATA 2018)
+
+
+def _bose(temp: float, omega: float) -> float:
+    return float(1.0 / np.expm1(_HBAR * omega / (_K_B * temp)))
+
+
+def test_effective_temperature_round_trip_and_monotonic() -> None:
+    omega = 2 * np.pi * 1.5e6
+    temps = [gaussian.effective_temperature(n, omega) for n in (0.05, 0.5, 2.0, 10.0)]
+    for nbar, t in zip((0.05, 0.5, 2.0, 10.0), temps, strict=True):
+        assert _bose(t, omega) == pytest.approx(nbar, rel=1e-9)  # energy-equivalent round-trip
+    assert all(later > earlier for earlier, later in itertools.pairwise(temps))  # increases in n̄
+
+
+def test_effective_temperature_thermal_dm_round_trip() -> None:
+    # Full toolbox round-trip through an actual thermal state: n̄ = mean_occupation(thermal_dm),
+    # then T_eff, then the Bose occupation at T_eff recovers n̄.
+    omega = 2 * np.pi * 1e6
+    for n_set in (0.3, 1.0, 2.5):
+        cov, d = gaussian.covariance_matrix(qutip.thermal_dm(FOCK, n_set))
+        nbar = gaussian.mean_occupation(cov, d)
+        assert nbar == pytest.approx(n_set, rel=1e-3)
+        assert _bose(gaussian.effective_temperature(nbar, omega), omega) == pytest.approx(
+            nbar, rel=1e-3
+        )
+
+
+def test_effective_temperature_continuity_and_quantum_scale() -> None:
+    omega = 2 * np.pi * 1e6
+    assert gaussian.effective_temperature(0.0, omega) == 0.0  # pure mode → 0 K, by continuity
+    # n̄ = 1 → T = (ℏω_loc / k_B) / ln 2 (the mode's quantum-temperature scale over ln 2).
+    assert gaussian.effective_temperature(1.0, omega) == pytest.approx(
+        _HBAR * omega / _K_B / np.log(2), rel=1e-9
+    )
+
+
+def test_effective_temperature_first_moment_aware_marginal() -> None:
+    # A pure squeezed + displaced marginal: thermal-core (ν−1)/2 ≈ 0 but n̄ > 0 ⇒ T_eff > 0.
+    cov, d = gaussian.covariance_matrix(squeezed_coherent_mode(FOCK, z=0.5, alpha=1.2))
+    assert gaussian.effective_temperature(gaussian.mean_occupation(cov, d), 2 * np.pi * 1e6) > 0.0
+
+
+def test_effective_temperature_guards() -> None:
+    omega = 2 * np.pi * 1e6
+    # non-finite n̄ (NaN, +inf) and negative n̄ are rejected (not an opaque ZeroDivisionError).
+    for bad_n in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="n̄ must be"):
+            gaussian.effective_temperature(bad_n, omega)
+    for bad_w in (0.0, -omega, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="omega_loc must be"):
+            gaussian.effective_temperature(0.5, bad_w)

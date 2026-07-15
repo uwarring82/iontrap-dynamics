@@ -75,6 +75,14 @@ placeholder-only and did not follow semver.
   so `E_N = 0` is not a certificate). Validated against the analytic TMSV oracle
   (`E_N = 2r/ln2`) and `qutip.negativity(logarithmic=True)`. Observable-only (§27.4);
   `CONVENTION_VERSION` unchanged (`0.6`). (WP-07 GT4.)
+- **Dispatch GT5 — effective temperature.** `gaussian.effective_temperature(nbar, omega_loc)
+  = ℏ ω_loc / (k_B ln(1 + 1/n̄))` in kelvin, mapping a mode's **first-moment-aware** mean
+  occupation `n̄` (from `mean_occupation`, so a squeezed/displaced marginal reads `T_eff > 0`,
+  not the thermal-core `0`) to the temperature of the thermal state with the same `⟨n̂⟩`
+  (energy-equivalent; the `n̄ → T_eff → n̄` Bose round-trip is exact). `omega_loc` is the local
+  angular frequency (rad/s); `T_eff(0) = 0`; raises on `n̄ < 0`/NaN or `omega_loc ≤ 0`/NaN. A
+  neutral symbol (no application framing). Observable-only (§27.4); `CONVENTION_VERSION`
+  unchanged (`0.6`). (WP-07 GT5.)
 
 ## [0.7.0] — 2026-07-14
 

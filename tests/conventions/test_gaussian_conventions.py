@@ -208,3 +208,34 @@ def test_separability_certified_only_for_1xn() -> None:
     # M×N (M, N ≥ 2): E_N = 0 does NOT certify separability (PPT-bound-entangled) → raises.
     with pytest.raises(ValueError, match="1×N"):
         gaussian.is_separable(np.eye(8), [0, 1])  # a 2×2 cut
+
+
+# --- 27.4 effective temperature (GT5) -------------------------------------------
+
+_HBAR, _K_B = 1.054571817e-34, 1.380649e-23  # SI (CODATA 2018)
+
+
+def test_effective_temperature_round_trips_through_bose() -> None:
+    # T_eff = ℏω_loc/(k_B ln(1 + 1/n̄)) is energy-equivalent: the thermal Bose occupation
+    # 1/(e^{ℏω/k_B T} − 1) at T_eff recovers n̄ exactly.
+    omega = 2 * np.pi * 1e6  # a 1-MHz mode (rad/s)
+    for nbar in (0.1, 1.0, 5.0):
+        t = gaussian.effective_temperature(nbar, omega)
+        assert 1.0 / np.expm1(_HBAR * omega / (_K_B * t)) == pytest.approx(nbar, rel=1e-9)
+
+
+def test_effective_temperature_zero_at_pure_and_rejects_negative() -> None:
+    assert gaussian.effective_temperature(0.0, 2 * np.pi * 1e6) == 0.0  # pure mode → 0 K
+    with pytest.raises(ValueError, match="n̄ must be"):
+        gaussian.effective_temperature(-0.1, 2 * np.pi * 1e6)
+
+
+def test_effective_temperature_is_first_moment_aware() -> None:
+    # A pure squeezed + displaced marginal has thermal-core (ν−1)/2 ≈ 0 but n̄ > 0, so its
+    # effective temperature is > 0 — driven by the first-moment-aware occupation, not the core.
+    cov, d = gaussian.covariance_matrix(squeezed_coherent_mode(FOCK, z=0.5, alpha=1.2))
+    nbar = gaussian.mean_occupation(cov, d)
+    core = (gaussian.symplectic_eigenvalue(cov) - 1.0) / 2.0
+    assert core == pytest.approx(0.0, abs=1e-6)  # pure marginal: thermal core ≈ 0
+    assert nbar > 0.1
+    assert gaussian.effective_temperature(nbar, 2 * np.pi * 1e6) > 0.0

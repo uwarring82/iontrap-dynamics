@@ -478,6 +478,38 @@ def mean_occupation(cov: np.ndarray, mean: np.ndarray) -> float:
     return float((np.trace(cov) + float(mean @ mean) - 2.0) / 4.0)
 
 
+#: Physical constants for the effective-temperature conversion (CODATA 2018, SI); the ``ℏ``
+#: value matches ``clos2016._HBAR``.
+_HBAR_J_S = 1.054571817e-34  # ℏ [J·s]
+_K_B_J_PER_K = 1.380649e-23  # k_B [J/K]
+
+
+def effective_temperature(nbar: float, omega_loc: float) -> float:
+    r"""Effective temperature ``T_eff = ℏ ω_loc / (k_B ln(1 + 1/n̄))`` in kelvin (GT5; §27.4).
+
+    Maps a mode's **first-moment-aware** mean occupation ``n̄`` — from :func:`mean_occupation`,
+    which includes displacement/squeezing energy (**not** the thermal core ``(ν − 1)/2``) — to
+    the temperature of the thermal state with the same ``⟨n̂⟩`` (**energy-equivalent**;
+    ``n̄ → T_eff → n̄`` round-trips exactly). ``omega_loc`` is the mode's local **angular**
+    frequency (rad/s); ``ℏ``, ``k_B`` are SI. ``T_eff = 0`` at ``n̄ = 0`` by continuity (a pure
+    mode is 0 K); a squeezed and/or displaced marginal has ``n̄ > 0`` and hence ``T_eff > 0``,
+    unlike the thermal-core reading. **Neutral** — carries no consuming-application framing
+    (no ``T_H``/"Hawking"; that is owned by the application). Raises for a non-finite or
+    negative ``n̄``, and for a non-finite or non-positive ``omega_loc``.
+    """
+    if not (math.isfinite(nbar) and nbar >= 0.0):  # rejects NaN and ±inf
+        raise ValueError(
+            f"effective_temperature: mean occupation n̄ must be finite and ≥ 0; got {nbar!r}."
+        )
+    if not (math.isfinite(omega_loc) and omega_loc > 0.0):  # rejects NaN and ±inf
+        raise ValueError(
+            f"effective_temperature: omega_loc must be finite and > 0 (rad/s); got {omega_loc!r}."
+        )
+    if nbar == 0.0:
+        return 0.0  # continuity limit: ln(1 + 1/n̄) → ∞ as n̄ → 0⁺
+    return float(_HBAR_J_S * omega_loc / (_K_B_J_PER_K * math.log1p(1.0 / nbar)))
+
+
 def phonon_number_distribution(state: qutip.Qobj) -> np.ndarray:
     """Return the phonon-number diagonals ``Pₙ = ⟨n|ρ|n⟩`` of a single-mode state.
 
@@ -655,6 +687,7 @@ __all__ = [
     "check_fock_truncation",
     "coherent_amplitude",
     "covariance_matrix",
+    "effective_temperature",
     "gaussian_entropy_bits",
     "gaussian_readout",
     "is_physical",
