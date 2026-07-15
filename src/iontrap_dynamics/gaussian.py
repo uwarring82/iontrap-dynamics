@@ -143,23 +143,6 @@ def _check_square_even(cov: np.ndarray, name: str) -> int:
     return int(arr.shape[0] // 2)
 
 
-def symplectic_eigenvalues(cov: np.ndarray) -> np.ndarray:
-    """The Williamson symplectic eigenvalues ``ν_i`` of a ``2N×2N`` ``V`` (§27.2).
-
-    The moduli of the eigenvalues of ``iΩV`` — which come in real ``±ν`` pairs — taken
-    as the positive half, **one per mode with multiplicity preserved**. A genuine
-    symplectic diagonalisation: **not** the SVD of ``iΩV``, and **not** a tolerance-based
-    deduplication (which would wrongly merge genuinely degenerate modes). For a physical
-    ``V`` every ``ν_i ≥ 1``. Returned ascending.
-    """
-    n_modes = _check_square_even(cov, "symplectic_eigenvalues")
-    omega = symplectic_form(n_modes)
-    evals = np.linalg.eigvals(1j * omega @ cov)
-    # eig(iΩV) = ±ν_k (real ± pairs); the N largest are the positive half = the moduli ν_k.
-    ordered = np.sort(evals.real)
-    return np.asarray(ordered[n_modes:], dtype=float)
-
-
 #: Float-noise tolerance for the structural covariance checks (realness, symmetry, the
 #: ``V ⪰ 0`` positive-semidefiniteness that rejects an indefinite ``V``) and the ``ν ≈ 1``
 #: pure-state clamp. Tight: covariance eigenvalues are variances, so a materially negative
@@ -171,9 +154,54 @@ _COVARIANCE_TOL = 1e-9
 #: the top level and pushes a symplectic eigenvalue below 1 by up to ~1e-6, while a genuine
 #: uncertainty violation sits ≥ 1e-2 below 1 — a ~4-order gap this value splits. An absolute
 #: tolerance on ``min eig(V + iΩ)`` is **not** squeezing-invariant and is defeatable (a
-#: scale-asymmetric squeeze hides a ν = 0.5 violation inside 1e-9), so the guard tests the
-#: invariant Williamson spectrum instead.
+#: scale-asymmetric squeeze hides a ν = 0.5 violation inside 1e-9), so the physicality
+#: tests use the invariant Williamson spectrum / an equilibrated ``V + iΩ`` instead.
 _SYMPLECTIC_UNIT_TOL = 1e-4
+
+#: Reciprocal-condition-number floor below which the symplectic spectrum is dominated by
+#: rounding and cannot be certified. ``cond(V) ≳ 1e12`` (~120 dB of quadrature dynamic
+#: range) is unreachable by any physical state or by :func:`covariance_matrix` (even
+#: extreme squeezing ``z = 5`` gives ``cond ~ 5e8``); only hand-crafted near-singular or
+#: absurdly scale-asymmetric inputs trip it.
+_MIN_RECIPROCAL_CONDITION = 1e-12
+
+
+def symplectic_eigenvalues(cov: np.ndarray) -> np.ndarray:
+    """The Williamson symplectic eigenvalues ``ν_i`` of a ``2N×2N`` ``V`` (§27.2).
+
+    The moduli of the eigenvalues of ``iΩV`` — real ``±ν`` pairs — taken as the positive
+    half, **one per mode with multiplicity preserved** (**not** the SVD of ``iΩV`` and
+    **not** a tolerance-based deduplication that would merge degenerate modes). For a
+    physical ``V`` every ``ν_i ≥ 1``. Returned ascending.
+
+    **Numerically stable realisation.** For a positive-semidefinite ``V`` (every physical
+    covariance) ``iΩV`` is *similar* to the Hermitian ``M = i V^{1/2} Ω V^{1/2}``, so its
+    eigenvalues are ``eigvalsh(M)`` — real by construction (no imaginary parts silently
+    discarded via ``.real``) and stable for the ill-conditioned ``V`` a squeezed state
+    produces. An **uncertifiably ill-conditioned** ``V`` (``cond ≳ 1e12``, unreachable by
+    any physical state) raises :class:`ValueError`: the spectrum would be dominated by
+    rounding (§15 honesty; this spectrum feeds GT4 log-negativity). An indefinite ``V``
+    (not a bona-fide covariance, whose SPD square root does not exist) falls back to the
+    direct ``|eig(iΩV)|`` definition.
+    """
+    n_modes = _check_square_even(cov, "symplectic_eigenvalues")
+    arr = np.asarray(cov, dtype=float)
+    omega = symplectic_form(n_modes)
+    eigvals_v, basis = np.linalg.eigh(arr)
+    if eigvals_v[0] < -_COVARIANCE_TOL:
+        # Indefinite V: direct §27.2 definition |eig(iΩV)| (best effort; physical inputs
+        # never reach here — the guard's PSD check rejects them first).
+        evals = np.linalg.eigvals(1j * omega @ arr)
+        return np.sort(np.abs(evals))[n_modes:]
+    if eigvals_v[0] <= eigvals_v[-1] * _MIN_RECIPROCAL_CONDITION:
+        raise ValueError(
+            "symplectic_eigenvalues: covariance matrix is too ill-conditioned to certify "
+            f"(condition number ≳ {1 / _MIN_RECIPROCAL_CONDITION:.0e}); the symplectic "
+            "spectrum would be dominated by rounding."
+        )
+    v_half = (basis * np.sqrt(eigvals_v)) @ basis.T
+    lam = np.linalg.eigvalsh(1j * v_half @ omega @ v_half)
+    return np.sort(lam)[n_modes:]
 
 
 def _require_physical_covariance(cov: np.ndarray, name: str) -> tuple[np.ndarray, np.ndarray]:
@@ -191,10 +219,10 @@ def _require_physical_covariance(cov: np.ndarray, name: str) -> tuple[np.ndarray
     to ν_i ≥ 1"*): ``V`` must be PSD — rejecting an indefinite ``V`` such as
     ``diag(3,3,−3,−3)`` — **and** every ``ν_i ≥ 1``, rejecting a sub-uncertainty ``V`` such
     as ``0.5·𝟙`` or a scale-asymmetric squeeze that an absolute ``min eig(V + iΩ)`` tol
-    would miss. Returns the symplectic spectrum so the caller need not recompute it. The
-    low-level GT1 primitives (:func:`symplectic_eigenvalues`, :func:`is_physical`,
-    :func:`partial_transpose`) stay deliberately **unguarded** — ``is_physical`` must
-    accept an unphysical ``V`` to return ``False``.
+    would miss. Returns the symplectic spectrum so the caller need not recompute it. An
+    extremely ill-conditioned ``V`` raises via :func:`symplectic_eigenvalues` (kept as the
+    single source of that check, so GT4's PT-spectrum consumers inherit it). This
+    Williamson guard is retained as **defence in depth** alongside :func:`is_physical`.
     """
     _check_square_even(cov, name)
     arr = np.asarray(cov)
@@ -209,21 +237,7 @@ def _require_physical_covariance(cov: np.ndarray, name: str) -> tuple[np.ndarray
         raise ValueError(f"{name}: covariance matrix must be symmetric.")
     if float(np.min(np.linalg.eigvalsh(arr))) < -_COVARIANCE_TOL:
         raise ValueError(f"{name}: unphysical covariance matrix (V is not positive semidefinite).")
-    nus = symplectic_eigenvalues(arr)
-    # ``eig(iΩV)`` loses precision for an extremely ill-conditioned ``V`` (cond ≳ 1e15,
-    # ~150 dB of quadrature dynamic range — unreachable by any physical state or by
-    # :func:`covariance_matrix`), returning a spurious spectrum. Cross-check the invariant
-    # ``det V = ∏ν_i²``: they diverge exactly when the eigensolve is corrupted, so a
-    # mismatch means the spectrum cannot be certified — refuse (§15) rather than return a
-    # silently-wrong value. Physical ``V`` has ``det V = ∏ν_i² ≥ 1``, so this never fires
-    # on a well-conditioned state.
-    if not math.isclose(
-        float(np.prod(nus)) ** 2, float(np.linalg.det(arr)), rel_tol=1e-6, abs_tol=1e-9
-    ):
-        raise ValueError(
-            f"{name}: covariance matrix is too ill-conditioned to certify — the symplectic "
-            "spectrum (∏ν²) disagrees with det V; supply a better-conditioned covariance."
-        )
+    nus = symplectic_eigenvalues(arr)  # raises on an uncertifiably ill-conditioned V
     if float(np.min(nus)) < 1.0 - _SYMPLECTIC_UNIT_TOL:
         raise ValueError(
             f"{name}: unphysical covariance matrix (symplectic eigenvalue ν < 1, i.e. "
@@ -280,18 +294,38 @@ def gaussian_entropy_bits(cov: np.ndarray) -> float:
     return float(sum(_entropy_g_bits(float(nu)) for nu in np.maximum(nus, 1.0)))
 
 
-def is_physical(cov: np.ndarray, *, tol: float = 1e-9) -> bool:
+def is_physical(cov: np.ndarray, *, tol: float = _SYMPLECTIC_UNIT_TOL) -> bool:
     """Bona-fide covariance test: ``V + iΩ ≥ 0`` (Robertson–Schrödinger; §27.2).
 
-    The direct Hermitian positive-semidefinite test on ``V + iΩ``, evaluated as
-    ``min eig_h(V + iΩ) ≥ −tol``. This is the physicality guard — **not** a bare
-    ``ν_i ≥ 1`` check: an indefinite ``V`` can have ``|eig(iΩV)| ≥ 1`` while failing
-    ``V + iΩ ≥ 0``, so physicality is certified on the PSD test, never on the spectrum.
+    Realised in the **squeezing-invariant** Williamson form that §27.2 states is equivalent
+    for a covariance candidate: ``V`` positive-semidefinite **and** every symplectic
+    eigenvalue ``ν_i ≥ 1``. This is scale- **and** correlation-invariant, where a direct
+    ``min eig(V + iΩ) ≥ −tol`` is not — even after diagonal equilibration: a strongly
+    correlated (or scale-asymmetric) ``V`` shrinks the ``V + iΩ`` violation below an
+    absolute ``tol`` while the invariant ``ν`` stays ``0.5`` (e.g. ``[[c, d], [d, c]]`` with
+    ``c² − d² = ¼``, or ``diag(1e9, 2.5e-10)``). The ``V ⪰ 0`` check rejects an indefinite
+    ``V`` — the case §27.2 warns a *bare* ``ν ≥ 1`` misses — so this is §27.2's own
+    "PSD candidate ⇒ ``ν_i ≥ 1``" equivalence, not a shortcut, and needs no convention
+    change. ``tol`` absorbs finite-Fock truncation artifacts. Returns ``False`` for a
+    non-real / non-finite / non-symmetric / unphysical ``V`` and, conservatively, for an
+    uncertifiably ill-conditioned ``V`` on which :func:`symplectic_eigenvalues` refuses.
     """
-    n_modes = _check_square_even(cov, "is_physical")
-    omega = symplectic_form(n_modes)
-    lam_min = float(np.min(np.linalg.eigvalsh(np.asarray(cov) + 1j * omega)))
-    return lam_min >= -tol
+    _check_square_even(cov, "is_physical")
+    arr = np.asarray(cov)
+    if np.iscomplexobj(arr):
+        if np.any(np.abs(arr.imag) > _COVARIANCE_TOL):
+            return False
+        arr = arr.real
+    arr = np.asarray(arr, dtype=float)
+    if not np.all(np.isfinite(arr)) or not np.allclose(arr, arr.T, atol=_COVARIANCE_TOL):
+        return False
+    if float(np.min(np.linalg.eigvalsh(arr))) < -_COVARIANCE_TOL:
+        return False  # indefinite V — the case a bare ν ≥ 1 would miss (§27.2)
+    try:
+        nus = symplectic_eigenvalues(arr)
+    except ValueError:
+        return False  # uncertifiably ill-conditioned: cannot certify as physical
+    return bool(np.min(nus) >= 1.0 - tol)
 
 
 def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarray:

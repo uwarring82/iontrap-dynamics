@@ -22,6 +22,7 @@ from iontrap_dynamics import gaussian
 from iontrap_dynamics.states import (
     coherent_mode,
     squeezed_coherent_mode,
+    squeezed_vacuum_mode,
     two_mode_squeezed_vacuum,
 )
 
@@ -137,35 +138,64 @@ def test_functionals_reject_unphysical_covariance(func: _Functional) -> None:
 
 
 @pytest.mark.parametrize("func", _FUNCTIONALS)
-def test_functionals_reject_scale_asymmetric_unphysical(func: _Functional) -> None:
-    # The squeezing-invariance regression: a scale-asymmetric covariance hides a genuine
-    # ν = 0.5 uncertainty violation inside an absolute min-eig(V+iΩ) tolerance (≈ −8.8e-10,
-    # inside 1e-9), so the low-level is_physical primitive WRONGLY returns True — yet the
-    # functionals must still reject it via the squeezing-invariant Williamson (ν ≥ 1) test.
-    v_hidden = np.diag([1e9, 2.5e-10])  # det = 0.25 ⇒ ν = 0.5
-    assert gaussian.is_physical(v_hidden)  # the primitive is fooled (documents the hole)
-    assert gaussian.symplectic_eigenvalues(v_hidden)[0] == pytest.approx(0.5)
-    with pytest.raises(ValueError, match="ν < 1"):
-        func(v_hidden)
-    # A milder 10%-below-unity violation (ν = 0.9) must also go.
-    with pytest.raises(ValueError, match="ν < 1"):
-        func(np.diag([2.7e8, 3e-9]))
+def test_functionals_reject_sub_uncertainty_covariance(func: _Functional) -> None:
+    # Scale-asymmetric but well-conditioned covariances that violate the uncertainty bound
+    # (ν < 1) must be rejected by the squeezing-invariant Williamson (ν ≥ 1) test — an
+    # absolute min-eig(V+iΩ) tol is not squeezing-invariant and would miss them. The
+    # invariant ν is the tell; is_physical (equilibrated) rejects them too.
+    for v_bad, nu in ((np.diag([4.0, 0.0625]), 0.5), (np.diag([2.7, 0.3]), 0.9)):
+        assert not gaussian.is_physical(v_bad)
+        assert gaussian.symplectic_eigenvalues(v_bad)[0] == pytest.approx(nu, rel=1e-6)
+        with pytest.raises(ValueError, match="ν < 1"):
+            func(v_bad)
 
 
 @pytest.mark.parametrize("func", _FUNCTIONALS)
 def test_functionals_reject_ill_conditioned_covariance(func: _Functional) -> None:
-    # An extremely ill-conditioned near-singular V (cond ≈ 1.5e16, unreachable by any
-    # physical state) corrupts eig(iΩV): it returns a spurious ν ≈ 152 that passes the
-    # ν ≥ 1 gate, though det V ≈ 0 (true ν = 0). The ∏ν² vs det V cross-check must catch
-    # this rather than return a silently-wrong value (§15). This V ≈ 2.5e10·[[1,−1],[−1,1]].
+    # cond(V) ≳ 1e12 is unreachable by any physical state, so the symplectic spectrum would
+    # be rounding-dominated and symplectic_eigenvalues refuses to certify (§15). Both an
+    # extremely scale-asymmetric diagonal (cond 4e18, ν nominally 0.5) and a near-singular
+    # V ≈ 2.5e10·[[1,−1],[−1,1]] (cond ≈ 1.5e16, where the naive eig(iΩV) returned a spurious
+    # ν ≈ 152) must raise rather than return a silently-wrong value.
     v_singular = np.array(
         [
             [24999999999.999996, -24999999999.999992],
             [-24999999999.999992, 24999999999.99999],
         ]
     )
-    with pytest.raises(ValueError, match="ill-conditioned"):
-        func(v_singular)
+    for bad in (np.diag([1e9, 2.5e-10]), v_singular):
+        with pytest.raises(ValueError, match="ill-conditioned"):
+            gaussian.symplectic_eigenvalues(bad)
+        with pytest.raises(ValueError, match="ill-conditioned"):
+            func(bad)
+
+
+def test_is_physical_is_scale_and_correlation_invariant() -> None:
+    # is_physical realises §27.2's "PSD candidate ⇒ ν_i ≥ 1" equivalence (Williamson form),
+    # which is scale- AND correlation-invariant. Physical states → True; an indefinite V and
+    # every ν = 0.5 violation → False, including the two forms that defeat a direct
+    # min-eig(V+iΩ) test: extreme diagonal scale, and strong off-diagonal correlation (whose
+    # V+iΩ violation shrinks below an absolute tol even after diagonal equilibration).
+    assert gaussian.is_physical(np.eye(4))
+    assert gaussian.is_physical(gaussian.covariance_matrix(coherent_mode(20, 2.0))[0])
+    assert not gaussian.is_physical(np.diag([3.0, 3.0, -3.0, -3.0]))  # indefinite
+    assert not gaussian.is_physical(np.diag([1e9, 2.5e-10]))  # ν = 0.5, extreme scale
+    assert not gaussian.is_physical(np.diag([4.0, 0.0625]))  # ν = 0.5, moderate scale
+    d = 100.0  # strongly correlated [[c, d], [d, c]] with c² − d² = ¼ ⇒ ν = 0.5
+    correlated = np.array([[np.sqrt(d * d + 0.25), d], [d, np.sqrt(d * d + 0.25)]])
+    assert gaussian.symplectic_eigenvalues(correlated)[0] == pytest.approx(0.5, rel=1e-4)
+    assert not gaussian.is_physical(correlated)
+
+
+def test_symplectic_eigenvalues_stable_under_strong_squeezing() -> None:
+    # The SPD-stable Williamson realisation stays accurate for the ill-conditioned V a
+    # squeezed state produces: it agrees with the exact single-mode ν = √det V, where the
+    # naive eig(iΩV).real drifts. cond(V) here is ~e^{4r}, still far below the 1e12 floor.
+    for z in (0.5, 1.0, 1.5):
+        cov, _ = gaussian.covariance_matrix(squeezed_vacuum_mode(120, z=z))
+        assert gaussian.symplectic_eigenvalues(cov)[0] == pytest.approx(
+            gaussian.symplectic_eigenvalue(cov), rel=1e-6
+        )
 
 
 @pytest.mark.parametrize("func", _FUNCTIONALS)
