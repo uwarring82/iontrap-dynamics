@@ -826,7 +826,18 @@ The canonical commutation relations are `[R_i, R_j] = 2i Ω_ij`, with
 
 Bona-fide physicality is **`V + iΩ ≥ 0`**: the Hermitian matrix `V + iΩ` is positive semidefinite. This is checked directly, not through a bare symplectic-eigenvalue condition. The symplectic (Williamson) eigenvalues `ν_i` are the moduli of the eigenvalues of `iΩV`, occurring in `±ν_i` pairs and counted once per pair. They are computed from `|eig(iΩV)|`, with multiplicity preserved, not from singular values or the matrix absolute value `√(M†M)`.
 
-For a **real, symmetric, positive-semidefinite** covariance candidate, physicality is equivalent to `ν_i ≥ 1`. This condition is not sufficient for a general indefinite matrix, which can have `|eig(iΩV)| ≥ 1` while failing `V + iΩ ≥ 0`; the implementation therefore always uses the direct Hermitian PSD guard. Vacuum has `ν = 1`, and a thermal mode has `ν = 2n̄ + 1`.
+For a **real, symmetric, positive-semidefinite** covariance candidate, physicality is equivalent to `ν_i ≥ 1`. This condition is not sufficient for a general indefinite matrix, which can have `|eig(iΩV)| ≥ 1` while failing `V + iΩ ≥ 0`; the implementation therefore always uses the direct Hermitian PSD guard.
+
+**Implementation note (v0.6 erratum, 2026-07-15).** A direct absolute-tolerance test on the
+entries of `V + iΩ` is not numerically scale- or correlation-invariant: a scale-asymmetric or
+strongly-correlated `V` can shrink a genuine `V + iΩ` violation below any fixed tolerance while
+the symplectic invariant `ν` stays below 1. The physicality predicate (`is_physical`) therefore
+evaluates the **mathematically equivalent** criterion for a covariance candidate — `V ⪰ 0`
+(which rejects the indefinite case a bare `ν ≥ 1` would miss) together with `ν_i ≥ 1` — realising
+the same `V + iΩ ≥ 0` physicality robustly. This is an implementation clarification only; the
+mathematical definition above is unchanged, and no `CONVENTION_VERSION` bump is implied.
+
+Vacuum has `ν = 1`, and a thermal mode has `ν = 2n̄ + 1`.
 
 ### 27.3 Partial transpose (sign map)
 
