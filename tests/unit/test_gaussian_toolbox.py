@@ -287,13 +287,17 @@ def test_log_negativity_multimode_1x2_cut() -> None:
     cov[:4, :4], cov[4:, 4:] = _tmsv_cov(r), np.eye(2)
     assert gaussian.log_negativity(cov, [2]) == pytest.approx(0.0, abs=1e-12)
     assert gaussian.log_negativity(cov, [0]) == pytest.approx(2 * r / np.log(2), rel=1e-9)
-    assert gaussian.is_separable(cov, [2])  # 1×2 cut: mode 2 separable from the entangled pair
+    # mode 2's E_N is zero to float precision (~2e-15 from the eigensolver); certify the 1×2
+    # separability within a small opt-in tolerance (the strict tol=0 conservatively rejects it).
+    assert gaussian.is_separable(cov, [2], tol=1e-12)
 
 
 def test_is_separable_scoping_and_guards() -> None:
     cov_ent, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=0.6))
+    # A thermal product has a diagonal covariance with ν well above 1, so E_N = 0 exactly
+    # (robust at the strict tol = 0, unlike a coherent block whose ν = 1 carries float noise).
     cov_sep, _ = gaussian.covariance_matrix(
-        _two_mode(qutip.coherent_dm(FOCK, 1.0), qutip.thermal_dm(FOCK, 0.5))
+        _two_mode(qutip.thermal_dm(FOCK, 0.4), qutip.thermal_dm(FOCK, 0.9))
     )
     assert not gaussian.is_separable(cov_ent, [1])
     assert gaussian.is_separable(cov_sep, [1])
@@ -308,27 +312,38 @@ def _tmsv_cov(r: float) -> np.ndarray:
     return np.array([[c, 0, s, 0], [0, c, 0, -s], [s, 0, c, 0], [0, -s, 0, c]])
 
 
-def test_is_separable_is_a_one_sided_certificate() -> None:
-    # NEVER a false certificate: a weakly-entangled TMSV (E_N ~ 2.9e-5) must return False —
-    # log_negativity stays faithful (no clamp) and is_separable's tight tol keeps True a real
-    # certificate. (A 1e-4 clamp once wrongly reported this state separable.)
-    cov_weak, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=1e-5))
-    assert gaussian.log_negativity(cov_weak, [1]) == pytest.approx(2e-5 / np.log(2), rel=1e-2)
-    assert not gaussian.is_separable(cov_weak, [1])  # entangled → not certified separable
-    # A well-truncated separable product gives E_N = 0 exactly → certified separable.
-    cov_ok, _ = gaussian.covariance_matrix(
-        _two_mode(coherent_mode(60, 3.0), coherent_mode(60, 3.0))
-    )
-    assert gaussian.log_negativity(cov_ok, [1]) == 0.0
-    assert gaussian.is_separable(cov_ok, [1])
-    # An UNDER-truncated displaced separable has a finite-Fock floor (~1e-6) indistinguishable
-    # from weak entanglement; is_separable honestly returns False (not certified) — never a
-    # false True — and log_negativity reports the honest non-zero floor (not clamped to 0).
+def test_is_separable_is_a_strict_one_sided_certificate() -> None:
+    # STRICT one-sided certificate at the default tol = 0.0: True ⟺ E_N == 0 ⟺ separable.
+    # Entanglement is continuous, so *any* tol > 0 would false-certify a state entangled below
+    # it — even a TMSV as weak as r = 1e-10 (E_N ≈ 2.9e-10 > 0, which the earlier tol = 1e-9
+    # wrongly certified) must return False. Never a false True.
+    for r in (1e-5, 1e-10):
+        cov = _tmsv_cov(r)  # analytic, exact; E_N = 2r/ln2 > 0 for every r > 0
+        assert gaussian.log_negativity(cov, [1]) == pytest.approx(2 * r / np.log(2), rel=1e-9)
+        assert not gaussian.is_separable(cov, [1])
+    # Exactly separable covariances (vacuum; thermal n̄=1 ⊗ n̄=2) → E_N = 0 → certified.
+    for cov_sep in (np.eye(4), np.diag([3.0, 3.0, 5.0, 5.0])):
+        assert gaussian.log_negativity(cov_sep, [1]) == 0.0
+        assert gaussian.is_separable(cov_sep, [1])
+    # An under-truncated displaced separable has a finite-Fock floor > 0 → not certified
+    # (False), never a false True; log_negativity reports the honest floor (no clamp to 0).
     cov_coarse, _ = gaussian.covariance_matrix(
         _two_mode(coherent_mode(30, 3.0), coherent_mode(30, 3.0))
     )
-    assert gaussian.log_negativity(cov_coarse, [1]) > 1e-9
+    assert gaussian.log_negativity(cov_coarse, [1]) > 0.0
     assert not gaussian.is_separable(cov_coarse, [1])
+
+
+def test_is_separable_positive_tol_is_opt_in_not_a_certificate() -> None:
+    # A positive tol is the weaker "PPT within numerical tolerance", not a strict certificate:
+    # a TMSV with r < tol·ln2/2 passes it, whereas the default tol = 0 does not. tol must be
+    # finite and ≥ 0.
+    cov = _tmsv_cov(1e-10)  # E_N ≈ 2.9e-10
+    assert not gaussian.is_separable(cov, [1])  # strict default → not certified
+    assert gaussian.is_separable(cov, [1], tol=1e-9)  # opt-in "PPT within 1e-9" — NOT a certificate
+    for bad_tol in (-1e-9, float("inf"), float("nan")):
+        with pytest.raises(ValueError, match="tol must be finite"):
+            gaussian.is_separable(cov, [1], tol=bad_tol)
 
 
 def test_log_negativity_full_sum_two_entangled_blocks() -> None:

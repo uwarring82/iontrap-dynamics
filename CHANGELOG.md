@@ -65,10 +65,12 @@ placeholder-only and did not follow semver.
   `gaussian.log_negativity(V, mode_indices) = Σ_k max(0, −log₂ ν̃_k)` (bits) — the **full
   sum** over the partial-transpose symplectic eigenvalues across an arbitrary bipartition
   (faithful to §27.4, no clamp), over GT1's `partial_transpose` + `symplectic_eigenvalues`.
-  `gaussian.is_separable(V, mode_indices)` is a **one-sided certificate** for a **`1×N`**
-  Gaussian cut: `True` only when `E_N ≤ tol` (a dedicated tight `1e-9` — a well-truncated
-  separable state gives `E_N = 0` exactly), `False` = not certified (entangled, or too
-  coarsely Fock-truncated to resolve) — uncertainty is never converted to `True`. It
+  `gaussian.is_separable(V, mode_indices)` is a **strict one-sided certificate** for a
+  **`1×N`** Gaussian cut: with the default `tol = 0.0`, `True` ⟺ `E_N == 0` ⟺ separable (a
+  well-truncated separable state gives `E_N = 0` exactly). Because entanglement is continuous,
+  *any* `tol > 0` would falsely certify a state entangled below it, so a positive `tol` is
+  only the weaker "PPT within numerical tolerance", not a certificate. `False` = not certified
+  (entangled, or too coarsely Fock-truncated) — uncertainty is never converted to `True`. It
   **raises** for an `M×N` cut with `M, N ≥ 2` (PPT-bound-entangled Gaussian states exist,
   so `E_N = 0` is not a certificate). Validated against the analytic TMSV oracle
   (`E_N = 2r/ln2`) and `qutip.negativity(logarithmic=True)`. Observable-only (§27.4);

@@ -406,23 +406,27 @@ def log_negativity(cov: np.ndarray, mode_indices: Sequence[int]) -> float:
     return float(sum(max(0.0, -math.log2(nu)) for nu in nu_tilde))
 
 
-def is_separable(cov: np.ndarray, mode_indices: Sequence[int], *, tol: float = 1e-9) -> bool:
+def is_separable(cov: np.ndarray, mode_indices: Sequence[int], *, tol: float = 0.0) -> bool:
     r"""Certify Gaussian separability across a **``1×N``** cut via PPT (GT4; §27.4).
 
-    A **one-sided** certificate: returns ``True`` **only** when ``E_N ≤ tol`` — for a ``1×N``
-    Gaussian cut (one side is a single mode) that certifies separability (Werner–Wolf / Simon).
-    ``tol`` is a **dedicated, tight** negativity resolution (default ``1e-9``, *not* the coarser
-    physicality tolerance): a well-truncated separable state has ``E_N = 0`` exactly, so ``tol``
-    only guards float noise. ``False`` means **separability is not certified** — the state is
-    entangled, *or* its covariance is too coarsely Fock-truncated to resolve ``E_N`` below
-    ``tol`` (a displaced state's finite-Fock floor can exceed ``tol``). **Do not read ``False``
-    as "entangled"**; use :func:`log_negativity` for the witness value, and truncate adequately
-    before certifying. Uncertainty is never converted to ``True``: a weakly entangled state
-    (``E_N > tol``) returns ``False``, never a false certificate. **Raises** :class:`ValueError`
-    for an ``M×N`` cut with ``M, N ≥ 2`` — PPT-bound-entangled Gaussian states exist there, so
-    ``E_N = 0`` does not certify separability; use :func:`log_negativity` as an NPT witness.
+    A **strictly one-sided** certificate: returns ``True`` **only** when ``E_N ≤ tol``. With the
+    default ``tol = 0.0`` this is ``E_N == 0`` ⟺ PPT ⟺ separability (for a ``1×N`` Gaussian cut,
+    one side a single mode; Werner–Wolf / Simon) — a **genuine** certificate. Because
+    entanglement is continuous, *any* ``tol > 0`` would falsely certify a state entangled below
+    it (e.g. a TMSV with ``r < tol·ln 2 / 2``), so a positive ``tol`` yields only *"PPT within
+    numerical tolerance"*, **not** certified separability — pass it only when that weaker
+    statement is what you want. A well-truncated separable state has ``E_N = 0`` exactly, so it
+    certifies at ``tol = 0``; float noise or coarse Fock truncation can push ``E_N`` slightly
+    positive, giving the conservative ``False`` (**not certified** — the state may be entangled
+    *or* merely under-resolved; do **not** read ``False`` as "entangled", use
+    :func:`log_negativity` for the witness). Uncertainty is never converted to ``True``.
+    **Raises** :class:`ValueError` for a non-finite / negative ``tol``, and for an ``M×N`` cut
+    with ``M, N ≥ 2`` — PPT-bound-entangled Gaussian states exist there, so ``E_N = 0`` does not
+    certify separability; use :func:`log_negativity` as an NPT witness.
     """
     n_modes = _check_square_even(cov, "is_separable")
+    if not (math.isfinite(tol) and tol >= 0.0):
+        raise ValueError(f"is_separable: tol must be finite and ≥ 0; got {tol!r}.")
     cut = _validate_cut(mode_indices, n_modes, "is_separable")
     if min(len(cut), n_modes - len(cut)) != 1:
         raise ValueError(
