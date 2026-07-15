@@ -356,6 +356,68 @@ def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarra
     return np.asarray(t @ np.asarray(cov) @ t, dtype=float)
 
 
+def _validate_cut(mode_indices: Sequence[int], n_modes: int, name: str) -> set[int]:
+    """Validate ``mode_indices`` as a proper bipartition ``1 ≤ |cut| ≤ N − 1``; return the set."""
+    cut = {int(b) for b in mode_indices}
+    if not 0 < len(cut) < n_modes:
+        raise ValueError(
+            f"{name}: the cut must name a proper bipartition (1 ≤ |cut| ≤ {n_modes - 1}); "
+            f"got {sorted(cut)} of {n_modes} modes."
+        )
+    return cut
+
+
+def log_negativity(cov: np.ndarray, mode_indices: Sequence[int]) -> float:
+    r"""Gaussian logarithmic negativity ``E_N = Σ_k max(0, −log₂ ν̃_k)`` (bits; GT4; §27.4).
+
+    ``ν̃_k`` are the symplectic eigenvalues of the partial transpose ``Ṽ = T_B V T_B`` over
+    the modes in ``mode_indices`` (subsystem ``B``). The **full sum** over the PT symplectic
+    eigenvalues is taken — **not** the smallest-only form, which holds only for two-mode /
+    ``1×N`` cuts. ``E_N > 0`` witnesses NPT entanglement across the cut; ``E_N = 0`` (PPT)
+    certifies separability **only for a ``1×N`` cut** (see :func:`is_separable`) — for an
+    ``M×N`` cut with ``M, N ≥ 2`` PPT-bound-entangled Gaussian states exist, so it is only an
+    NPT witness there. ``mode_indices`` must be a proper bipartition (``1 ≤ |cut| ≤ N − 1``)
+    and ``V`` a physical Gaussian covariance (the value equals the true state's only for a
+    Gaussian state, §27.4). Oracle: a two-mode squeezed vacuum with squeezing ``r`` gives
+    ``E_N = 2r / ln 2``.
+
+    A ``ν̃`` within the physicality tolerance (:data:`_SYMPLECTIC_UNIT_TOL`) of 1 is treated as
+    a **separable direction** and does not contribute — finite-Fock truncation of a *displaced*
+    state pushes an otherwise-``≥ 1`` PT eigenvalue just below 1, so this keeps a bona-fide
+    separable state at exactly ``E_N = 0`` (as :func:`gaussian_entropy_bits` clamps ``ν ≈ 1``).
+    Genuine entanglement sits far below the threshold (TMSV: ``ν̃ = e^{−2r}``), so the oracle is
+    unchanged. Entanglement below that resolution (``≲ 1e-4`` bits) is not certifiable here.
+    """
+    n_modes = _check_square_even(cov, "log_negativity")
+    _validate_cut(mode_indices, n_modes, "log_negativity")
+    _require_physical_covariance(cov, "log_negativity")  # the state must be a bona-fide covariance
+    nu_tilde = symplectic_eigenvalues(partial_transpose(cov, mode_indices))
+    return float(sum(-math.log2(nu) for nu in nu_tilde if nu < 1.0 - _SYMPLECTIC_UNIT_TOL))
+
+
+def is_separable(cov: np.ndarray, mode_indices: Sequence[int], *, tol: float = 1e-9) -> bool:
+    r"""Certify Gaussian separability across a **``1×N``** cut via PPT (GT4; §27.4).
+
+    Returns ``True`` iff ``E_N ≤ tol`` (PPT), which for a ``1×N`` Gaussian cut (one side is a
+    single mode) is equivalent to separability (Werner–Wolf / Simon). **Raises**
+    :class:`ValueError` for an ``M×N`` cut with ``M, N ≥ 2``: PPT-bound-entangled Gaussian
+    states exist there, so ``E_N = 0`` does **not** certify separability — use
+    :func:`log_negativity` as an NPT witness instead. :func:`log_negativity` already returns
+    exactly 0 for a separable state (its near-1 ``ν̃`` are not counted), so ``tol`` only guards
+    residual float noise, not a finite-Fock floor.
+    """
+    n_modes = _check_square_even(cov, "is_separable")
+    cut = _validate_cut(mode_indices, n_modes, "is_separable")
+    if min(len(cut), n_modes - len(cut)) != 1:
+        raise ValueError(
+            f"is_separable: PPT certifies separability only for a 1×N Gaussian cut; this is a "
+            f"{n_modes - len(cut)}×{len(cut)} cut. For M×N with M, N ≥ 2, PPT-bound-entangled "
+            "Gaussian states exist, so E_N = 0 does not certify separability — use "
+            "log_negativity as an NPT witness."
+        )
+    return log_negativity(cov, mode_indices) <= tol
+
+
 def squeezing_parameter(cov: np.ndarray) -> float:
     """Squeezing ``r = ¼·ln(λ_max / λ_min)`` from the eigenvalues of ``V``.
 
@@ -576,6 +638,8 @@ __all__ = [
     "gaussian_entropy_bits",
     "gaussian_readout",
     "is_physical",
+    "is_separable",
+    "log_negativity",
     "mean_occupation",
     "mean_squeezed_occupation",
     "partial_transpose",

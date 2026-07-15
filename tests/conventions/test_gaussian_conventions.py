@@ -175,3 +175,36 @@ def test_gaussian_entropy_bits_matches_von_neumann() -> None:
     assert gaussian.gaussian_entropy_bits(cov) == pytest.approx(
         _von_neumann_entropy_bits(rho), rel=1e-3
     ), "S = Σ g(ν_i) [bits] matches the von Neumann entropy of the thermal ρ (§27.4)"
+
+
+# --- 27.4 logarithmic negativity + separability scoping (GT4) --------------------
+
+
+def test_log_negativity_is_full_sum_tmsv_oracle() -> None:
+    # E_N = Σ_k max(0, −log₂ ν̃_k) [bits]; a two-mode squeezed vacuum (squeezing r) → 2r/ln2,
+    # and it is symmetric in the bipartition choice.
+    r = 0.6
+    cov, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=r))
+    assert gaussian.log_negativity(cov, [1]) == pytest.approx(2 * r / np.log(2), rel=1e-2)
+    assert gaussian.log_negativity(cov, [0]) == pytest.approx(gaussian.log_negativity(cov, [1]))
+
+
+def test_log_negativity_separable_is_zero() -> None:
+    cov, _ = gaussian.covariance_matrix(
+        _two_mode(qutip.thermal_dm(FOCK, 0.4), qutip.thermal_dm(FOCK, 0.9))
+    )
+    assert gaussian.log_negativity(cov, [1]) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_separability_certified_only_for_1xn() -> None:
+    # 1×N: PPT ⟺ separable, so is_separable certifies. TMSV → entangled (False); thermal
+    # product → separable (True).
+    cov_ent, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=0.6))
+    cov_sep, _ = gaussian.covariance_matrix(
+        _two_mode(qutip.thermal_dm(FOCK, 0.4), qutip.thermal_dm(FOCK, 0.9))
+    )
+    assert not gaussian.is_separable(cov_ent, [1])
+    assert gaussian.is_separable(cov_sep, [1])
+    # M×N (M, N ≥ 2): E_N = 0 does NOT certify separability (PPT-bound-entangled) → raises.
+    with pytest.raises(ValueError, match="1×N"):
+        gaussian.is_separable(np.eye(8), [0, 1])  # a 2×2 cut

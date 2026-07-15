@@ -61,6 +61,15 @@ placeholder-only and did not follow semver.
   Observable-only (§27.4 already sealed the formulas — **no convention bump**;
   `CONVENTION_VERSION` stays `0.6`). Pinned in `test_gaussian_conventions.py` and the new
   `tests/unit/test_gaussian_toolbox.py`. (WP-07 GT2.)
+- **Dispatch GT4 — arbitrary-cut Gaussian logarithmic negativity + separability scoping.**
+  `gaussian.log_negativity(V, mode_indices) = Σ_k max(0, −log₂ ν̃_k)` (bits) — the **full
+  sum** over the partial-transpose symplectic eigenvalues across an arbitrary bipartition,
+  over GT1's `partial_transpose` + `symplectic_eigenvalues`. `gaussian.is_separable(V,
+  mode_indices)` certifies separability for a **`1×N`** Gaussian cut (`E_N ≤ tol`) and
+  **raises** for an `M×N` cut with `M, N ≥ 2` — PPT-bound-entangled Gaussian states exist
+  there, so `E_N = 0` is not a separability certificate. Validated against the analytic
+  TMSV oracle (`E_N = 2r/ln2`) and `qutip.negativity(logarithmic=True)` on the density
+  matrix. Observable-only (§27.4); `CONVENTION_VERSION` unchanged (`0.6`). (WP-07 GT4.)
 
 ## [0.7.0] — 2026-07-14
 

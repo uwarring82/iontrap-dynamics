@@ -250,3 +250,75 @@ def test_functionals_reject_nonfinite_covariance(func: _Functional) -> None:
 def test_functionals_reject_complex_covariance(func: _Functional) -> None:
     with pytest.raises(ValueError, match="real"):
         func(np.array([[1.0 + 0.5j, 0.0], [0.0, 1.0]]))
+
+
+# --- GT4: arbitrary-cut logarithmic negativity + separability scoping -------------
+
+
+def test_log_negativity_tmsv_oracle_over_r() -> None:
+    # E_N(TMSV, r) = 2r/ln2 [bits], the full-sum formula (not smallest-only).
+    for r in (0.3, 0.6, 1.0):
+        cov, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=r))
+        assert gaussian.log_negativity(cov, [1]) == pytest.approx(2 * r / np.log(2), rel=1e-2)
+
+
+@pytest.mark.filterwarnings("ignore:Matrix is ill-conditioned")  # qutip.negativity internal sqrtm
+def test_log_negativity_matches_fock_negativity() -> None:
+    # Independent oracle: the covariance E_N must equal qutip.negativity(logarithmic=True)
+    # (= log₂‖ρ^{T_A}‖₁) computed on the truncated density matrix itself.
+    r = 0.6
+    state = two_mode_squeezed_vacuum(FOCK, z=r)
+    cov, _ = gaussian.covariance_matrix(state)
+    fock_en = float(qutip.negativity(qutip.ket2dm(state), 0, logarithmic=True))
+    assert gaussian.log_negativity(cov, [1]) == pytest.approx(fock_en, rel=1e-3)
+
+
+def test_log_negativity_symmetric_in_bipartition() -> None:
+    cov, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=0.7))
+    assert gaussian.log_negativity(cov, [0]) == pytest.approx(gaussian.log_negativity(cov, [1]))
+
+
+def test_log_negativity_multimode_1x2_cut() -> None:
+    # TMSV on modes {0,1} ⊗ vacuum mode 2. Cutting off the separable mode 2 → 0; cutting a
+    # member of the entangled pair (mode 0 vs {1,2}) → 2r/ln2. Uses the FULL PT spectrum sum.
+    r = 0.6
+    fock = 16  # a 3-mode Hilbert space — keep the cutoff modest (16³), still well-truncated
+    state = qutip.tensor(two_mode_squeezed_vacuum(fock, z=r), qutip.basis(fock, 0))
+    cov, _ = gaussian.covariance_matrix(state)
+    assert gaussian.log_negativity(cov, [2]) == pytest.approx(0.0, abs=1e-6)
+    assert gaussian.log_negativity(cov, [0]) == pytest.approx(2 * r / np.log(2), rel=1e-2)
+    assert gaussian.is_separable(cov, [2])  # 1×2 cut: mode 2 separable from the pair
+
+
+def test_is_separable_scoping_and_guards() -> None:
+    cov_ent, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=0.6))
+    cov_sep, _ = gaussian.covariance_matrix(
+        _two_mode(qutip.coherent_dm(FOCK, 1.0), qutip.thermal_dm(FOCK, 0.5))
+    )
+    assert not gaussian.is_separable(cov_ent, [1])
+    assert gaussian.is_separable(cov_sep, [1])
+    # M×N (M, N ≥ 2) → raises (PPT-bound-entangled caveat surfaced).
+    with pytest.raises(ValueError, match="1×N"):
+        gaussian.is_separable(np.eye(8), [0, 1])  # 2×2
+
+
+def test_is_separable_absorbs_displaced_truncation_floor() -> None:
+    # Regression: a well-truncated separable coherent⊗coherent product at moderate
+    # displacement pushes PT eigenvalues ~1e-6 below 1 (displaced-state Fock-tail artifact).
+    # log_negativity treats those near-1 ν̃ as separable directions → E_N = 0 exactly, so the
+    # product is not falsely reported entangled (the 1e-6 floor once exceeded a tight tol).
+    for fock, alpha in ((30, 3.0), (26, 2.8), (32, 3.2)):
+        cov, _ = gaussian.covariance_matrix(
+            _two_mode(coherent_mode(fock, alpha), coherent_mode(fock, alpha))
+        )
+        assert gaussian.log_negativity(cov, [1]) == pytest.approx(0.0, abs=1e-12)
+        assert gaussian.is_separable(cov, [1])
+
+
+def test_log_negativity_rejects_improper_cut_and_unphysical() -> None:
+    cov, _ = gaussian.covariance_matrix(two_mode_squeezed_vacuum(FOCK, z=0.5))
+    for bad_cut in ([], [0, 1]):  # empty and full — not a proper bipartition
+        with pytest.raises(ValueError, match="proper bipartition"):
+            gaussian.log_negativity(cov, bad_cut)
+    with pytest.raises(ValueError, match="unphysical"):
+        gaussian.log_negativity(np.diag([4.0, 0.0625, 1.0, 1.0]), [1])  # mode-0 ν = 0.5
