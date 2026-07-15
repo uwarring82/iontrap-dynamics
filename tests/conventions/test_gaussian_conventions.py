@@ -210,6 +210,31 @@ def test_separability_certified_only_for_1xn() -> None:
         gaussian.is_separable(np.eye(8), [0, 1])  # a 2×2 cut
 
 
+# --- 27.4 symplectic congruence (GT3a) ------------------------------------------
+
+
+def test_congruence_preserves_symplectic_spectrum() -> None:
+    # V ↦ S V Sᵀ for a symplectic S (S Ω Sᵀ = Ω) is a canonical change of variables: it
+    # leaves the Williamson spectrum ν_i invariant, so purity/entropy/physicality are all
+    # preserved. A single-mode squeeze diag(e^r, e^{-r}) reshapes a thermal V without
+    # changing its ν.
+    r = 0.55
+    cov, _ = gaussian.covariance_matrix(qutip.thermal_dm(FOCK, 0.7))
+    squeeze = np.diag([np.exp(r), np.exp(-r)])
+    out = gaussian.congruence(squeeze, cov)
+    assert not np.allclose(out, cov)  # V genuinely reshaped
+    assert gaussian.symplectic_eigenvalues(out) == pytest.approx(
+        gaussian.symplectic_eigenvalues(cov), rel=1e-9
+    )
+    assert gaussian.purity(out) == pytest.approx(gaussian.purity(cov), rel=1e-9)
+
+
+def test_congruence_enforces_symplecticity() -> None:
+    # A non-symplectic map (S Ω Sᵀ ≠ Ω) is not a canonical transformation and is rejected.
+    with pytest.raises(ValueError, match="not symplectic"):
+        gaussian.congruence(np.diag([2.0, 1.0]), np.eye(2))
+
+
 # --- 27.4 effective temperature (GT5) -------------------------------------------
 
 _HBAR, _K_B = 1.054571817e-34, 1.380649e-23  # SI (CODATA 2018)
@@ -224,8 +249,8 @@ def test_effective_temperature_round_trips_through_bose() -> None:
         assert 1.0 / np.expm1(_HBAR * omega / (_K_B * t)) == pytest.approx(nbar, rel=1e-9)
 
 
-def test_effective_temperature_zero_at_pure_and_rejects_negative() -> None:
-    assert gaussian.effective_temperature(0.0, 2 * np.pi * 1e6) == 0.0  # pure mode → 0 K
+def test_effective_temperature_zero_at_vacuum_and_rejects_negative() -> None:
+    assert gaussian.effective_temperature(0.0, 2 * np.pi * 1e6) == 0.0  # vacuum (n̄=0) → 0 K
     with pytest.raises(ValueError, match="n̄ must be"):
         gaussian.effective_temperature(-0.1, 2 * np.pi * 1e6)
 

@@ -407,7 +407,7 @@ def test_effective_temperature_thermal_dm_round_trip() -> None:
 
 def test_effective_temperature_continuity_and_quantum_scale() -> None:
     omega = 2 * np.pi * 1e6
-    assert gaussian.effective_temperature(0.0, omega) == 0.0  # pure mode → 0 K, by continuity
+    assert gaussian.effective_temperature(0.0, omega) == 0.0  # vacuum / zero occupation → 0 K
     # n̄ = 1 → T = (ℏω_loc / k_B) / ln 2 (the mode's quantum-temperature scale over ln 2).
     assert gaussian.effective_temperature(1.0, omega) == pytest.approx(
         _HBAR * omega / _K_B / np.log(2), rel=1e-9
@@ -429,3 +429,158 @@ def test_effective_temperature_guards() -> None:
     for bad_w in (0.0, -omega, float("nan"), float("inf")):
         with pytest.raises(ValueError, match="omega_loc must be"):
             gaussian.effective_temperature(0.5, bad_w)
+
+
+# --- GT3a: generic symplectic congruence V ↦ S V Sᵀ ------------------------------
+
+
+def _squeeze(r: float) -> np.ndarray:
+    return np.diag([np.exp(r), np.exp(-r)])  # single-mode squeeze (symplectic)
+
+
+def _rotation(theta: float) -> np.ndarray:
+    c, s = np.cos(theta), np.sin(theta)
+    return np.array([[c, s], [-s, c]])  # single-mode phase rotation (symplectic)
+
+
+def test_congruence_identity_and_squeeze() -> None:
+    v = np.diag([2.0, 3.0])  # a physical V (ν = √6)
+    assert np.allclose(gaussian.congruence(np.eye(2), v), v)  # identity leaves V unchanged
+    out = gaussian.congruence(_squeeze(0.4), np.eye(2))  # squeeze the vacuum
+    assert np.allclose(out, np.diag([np.exp(0.8), np.exp(-0.8)]))  # V ↦ diag(e^{2r}, e^{-2r})
+    assert gaussian.symplectic_eigenvalue(out) == pytest.approx(1.0)  # still pure (ν = 1)
+
+
+def test_congruence_preserves_symplectic_spectrum_and_physicality() -> None:
+    # A symplectic map preserves the Williamson spectrum ν_i (hence purity/entropy) and
+    # physicality — squeeze, rotation, and a two-mode beamsplitter.
+    cov, _ = gaussian.covariance_matrix(qutip.thermal_dm(FOCK, 0.8))  # ν = 2.6
+    for s in (_squeeze(0.6), _rotation(0.7)):
+        out = gaussian.congruence(s, cov)
+        assert gaussian.symplectic_eigenvalues(out) == pytest.approx(
+            gaussian.symplectic_eigenvalues(cov), rel=1e-6
+        )
+        assert gaussian.is_physical(out)
+    theta = np.pi / 4  # a 50:50 beamsplitter mixes the two modes (symplectic)
+    c, s = np.cos(theta), np.sin(theta)
+    bs = np.array([[c, 0, s, 0], [0, c, 0, s], [-s, 0, c, 0], [0, -s, 0, c]])
+    cov2, _ = gaussian.covariance_matrix(
+        _two_mode(qutip.thermal_dm(24, 0.3), qutip.thermal_dm(24, 1.0))
+    )
+    assert np.allclose(
+        np.sort(gaussian.symplectic_eigenvalues(gaussian.congruence(bs, cov2))),
+        np.sort(gaussian.symplectic_eigenvalues(cov2)),
+    )
+
+
+def test_congruence_inverse_round_trip() -> None:
+    # S symplectic ⇒ S⁻¹ symplectic; congruence(S⁻¹, congruence(S, V)) = V.
+    s = _squeeze(0.5)
+    v = np.diag([2.0, 3.0])
+    assert np.allclose(gaussian.congruence(np.linalg.inv(s), gaussian.congruence(s, v)), v)
+
+
+def test_congruence_scale_aware_gate_is_block_local() -> None:
+    # Regression (adversarial): a large but genuinely symplectic squeeze block A = diag(λ, 1/λ)
+    # must NOT inflate the symplectic-tolerance budget for a small, genuinely NON-symplectic
+    # block B alongside it. A global 1e-9·‖S‖² tolerance false-accepts B (its 2e-4 Ω-violation
+    # fits inside 1e-9·λ²); the per-entry ‖row_i‖·‖row_j‖ scale rejects it block-locally.
+    lam = 500.0
+    c = np.sqrt(1.0 + 2e-4)  # B Ω Bᵀ = 1.0002·Ω — a real 2e-4 symplecticity violation
+    a = np.diag([lam, 1.0 / lam])  # exactly symplectic, large ‖·‖
+    b = np.diag([c, c])  # non-symplectic
+    s_bad = np.block([[a, np.zeros((2, 2))], [np.zeros((2, 2)), b]])
+    with pytest.raises(ValueError, match="not symplectic"):
+        gaussian.congruence(s_bad, np.eye(4))
+    # …while the SAME large squeeze paired with a genuinely symplectic rotation is accepted and
+    # preserves ν (the fix must not false-reject legitimate large-norm block-diagonal maps).
+    theta = 0.6
+    rot = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
+    s_ok = np.block([[a, np.zeros((2, 2))], [np.zeros((2, 2)), rot]])
+    cov = np.diag([2.0, 2.0, 3.0, 3.0])  # a physical (thermal) V, ν = [2, 3]
+    out = gaussian.congruence(s_ok, cov)
+    assert np.allclose(
+        np.sort(gaussian.symplectic_eigenvalues(out)),
+        np.sort(gaussian.symplectic_eigenvalues(cov)),
+    )
+
+
+def _worst_relative_omega_residual(s: np.ndarray, n_modes: int) -> float:
+    omega = gaussian.symplectic_form(n_modes)
+    residual = np.abs(s @ omega @ s.T - omega)
+    row_norms = np.linalg.norm(s, axis=1)
+    return float(np.max(residual / np.maximum(np.outer(row_norms, row_norms), 1.0)))
+
+
+def test_congruence_relative_gate_rejects_tuned_near_symplectic() -> None:
+    # Regression (adversarial rounds 2–3): a near-symplectic S whose per-entry relative residual
+    # is tuned to sit just under a *looser* 1e-9 budget (but well above the ~2e-15 genuine
+    # rounding floor) is caught by the tightened 1e-11 gate. Two constructions, both silently
+    # corrupting the Williamson spectrum if accepted — an entangling strong two-mode squeezer with
+    # one corrupted entry, and a near-symplectic single-mode S applied to a strongly-squeezed
+    # (ill-conditioned) V where the ν-damage is amplified by ~√cond(V). No *absolute* Ω-residual
+    # bound distinguishes these from genuine strong squeezes; the rounding-referenced relative gate
+    # does, independent of input conditioning.
+    ch, sh = np.cosh(6.0), np.sinh(6.0)
+    s_entangling = np.array([[ch, 0, sh, 0], [0, ch, 0, -sh], [sh, 0, ch, 0], [0, -sh, 0, ch]])
+    s_entangling[2, 0] += 3.63e-7  # non-symplectic (det ≠ 1); relative residual ≈ 9e-10
+    assert 1e-11 < _worst_relative_omega_residual(s_entangling, 2) < 1e-9
+    with pytest.raises(ValueError, match="not symplectic"):
+        gaussian.congruence(s_entangling, np.eye(4))
+
+    sv = 3.0
+    s_near = np.diag([np.exp(sv) + 5e-10 * np.exp(sv), np.exp(-sv)])  # relative residual ≈ 5e-10
+    assert 1e-11 < _worst_relative_omega_residual(s_near, 1) < 1e-9
+    v_squeezed = np.diag([2500.0, 1.0 / 2500.0])  # pure squeezed vacuum, ν = 1, cond 6.25e6
+    assert gaussian.is_physical(v_squeezed)
+    with pytest.raises(ValueError, match="not symplectic"):
+        gaussian.congruence(s_near, v_squeezed)  # rejected regardless of input conditioning
+
+
+def test_congruence_accepts_strong_squeeze_no_absolute_false_reject() -> None:
+    # Regression (adversarial round 3): the gate must be *relative*, not absolute. A genuine strong
+    # squeeze's absolute |SΩSᵀ − Ω| balloons to ~1e-6 from catastrophic e^{2r} cancellation while
+    # the map stays exactly symplectic (relative residual ~1e-16), and its output is still
+    # certifiable (cond < 1e12). An absolute cap would false-reject it; the relative gate accepts.
+    rot = np.array(
+        [[np.cos(np.pi / 4), np.sin(np.pi / 4)], [-np.sin(np.pi / 4), np.cos(np.pi / 4)]]
+    )
+    s = rot @ np.diag([np.exp(12.0), np.exp(-12.0)]) @ rot.T  # exact symplectic; abs residual ~2e-6
+    assert _worst_relative_omega_residual(s, 1) < 1e-13  # genuinely symplectic (rounding only)
+    v = np.linalg.inv(s)  # a physical pure state (ν = 1), cond ≈ 2.6e10 < 1e12 (certifiable)
+    out = gaussian.congruence(s, v)  # accepted, not false-rejected by any absolute cap
+    assert gaussian.symplectic_eigenvalues(out) == pytest.approx(np.ones(1), abs=1e-4)
+    # …and a clean strong two-mode squeezer (r = 6) is likewise accepted, preserving ν.
+    ch, sh = np.cosh(6.0), np.sinh(6.0)
+    s_tms = np.array([[ch, 0, sh, 0], [0, ch, 0, -sh], [sh, 0, ch, 0], [0, -sh, 0, ch]])
+    out2 = gaussian.congruence(s_tms, np.eye(4))
+    assert gaussian.symplectic_eigenvalues(out2) == pytest.approx(np.ones(2), abs=1e-5)
+
+
+def test_congruence_relative_nu_preservation_is_safe_in_physical_regime() -> None:
+    # Regression (adversarial round 4): a relative symplecticity gate guarantees RELATIVE
+    # ν-preservation (the physically meaningful invariant — purity/entropy/physicality turn on ν
+    # relative to the vacuum floor 1). A near-symplectic uniform dilation S = s·𝟙 with det = 1+9e-12
+    # is within the 1e-11 relative gate and shifts ν by only a RELATIVE ~9e-12. The *absolute*
+    # shift = (rel)·ν scales with ν, so it stays ≪ the 1e-4 physicality tolerance throughout the
+    # trapped-ion regime (ν ≲ 1e4); only a physically-unreachable ν ≳ 1e7 makes it reach 1e-4, and
+    # even then relative preservation and physicality (ν ≥ 1) still hold.
+    s = np.sqrt(1.0 + 9e-12)  # det(s·𝟙) = 1 + 9e-12: inside the relative gate
+    for nu_in in (1.0, 100.0, 1.0e4):  # vacuum … hot thermal, spanning the physical range
+        out = gaussian.congruence(s * np.eye(2), nu_in * np.eye(2))
+        nu_out = gaussian.symplectic_eigenvalues(out)[0]
+        assert abs(nu_out - nu_in) / nu_in < 1e-10  # RELATIVE ν preserved (the real guarantee)
+        assert abs(nu_out - nu_in) < 1e-4  # ABSOLUTE ν preserved in the physical regime
+        assert nu_out >= 1.0  # output stays physical
+
+
+def test_congruence_rejects_nonsymplectic_and_malformed() -> None:
+    v = np.eye(2)
+    with pytest.raises(ValueError, match="not symplectic"):
+        gaussian.congruence(np.diag([2.0, 1.0]), v)  # SΩSᵀ ≠ Ω (a non-symplectic scaling)
+    with pytest.raises(ValueError, match="to match V"):
+        gaussian.congruence(np.eye(4), v)  # shape mismatch
+    with pytest.raises(ValueError, match="must be real"):
+        gaussian.congruence(np.array([[1.0 + 1j, 0.0], [0.0, 1.0]]), v)  # complex S
+    with pytest.raises(ValueError, match="non-finite"):
+        gaussian.congruence(np.array([[np.nan, 0.0], [0.0, 1.0]]), v)  # NaN S

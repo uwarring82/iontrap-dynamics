@@ -158,6 +158,21 @@ _COVARIANCE_TOL = 1e-9
 #: tests use the invariant Williamson spectrum / an equilibrated ``V + iΩ`` instead.
 _SYMPLECTIC_UNIT_TOL = 1e-4
 
+#: Threshold for the **per-entry relative** symplecticity test in :func:`congruence`: each
+#: ``|SΩSᵀ − Ω|_ij`` residual is measured against its rounding scale ``‖row_i(S)‖·‖row_j(S)‖``
+#: (the Cauchy–Schwarz bound on ``|(SΩSᵀ)_ij|`` since Ω is orthogonal). A **genuinely** symplectic
+#: map — including a strong ``r = 12`` squeeze or a deep 60-factor product — sits at ``≤ ~2e-15``
+#: (a small multiple of machine ε, independent of ‖S‖), while a *near-symplectic* S tuned just
+#: under a looser ``1e-9`` budget sits at ``~7e-10``. This value splits that ~5-order gap, ~5000×
+#: above the genuine rounding floor and ~70× below the tightest attack. It is deliberately
+#: **relative, not absolute**: a strong squeeze's absolute residual can reach ~1e-6 from
+#: catastrophic ``e^{2r}`` cancellation while the map is exactly symplectic, so an absolute cap
+#: false-rejects it; and the ν-damage a sub-threshold near-symplectic S can inflict on an
+#: ill-conditioned V grows with ``√cond(V)`` (unbounded by any S-only absolute residual), so the
+#: honest ``cond ≳ 1e12`` output guard (:data:`_MIN_RECIPROCAL_CONDITION`) is the amplification
+#: backstop.
+_SYMPLECTIC_RELATIVE_TOL = 1e-11
+
 #: Reciprocal-condition-number floor below which the SPD-stable symplectic spectrum is
 #: dominated by rounding and lies **outside the currently certified numerical range**.
 #: ``cond(V) ≳ 1e12`` is *not physically unreachable* — an analytic pure squeeze
@@ -358,6 +373,83 @@ def partial_transpose(cov: np.ndarray, mode_indices: Sequence[int]) -> np.ndarra
     return np.asarray(t @ np.asarray(cov) @ t, dtype=float)
 
 
+def congruence(symplectic: np.ndarray, cov: np.ndarray) -> np.ndarray:
+    r"""Symplectic congruence ``V ↦ S V Sᵀ`` for a symplectic ``S`` (GT3a; §27).
+
+    Applies a symplectic map ``S`` (``S Ω Sᵀ = Ω``) to a physical covariance ``V``. Because
+    ``S`` is symplectic the Williamson spectrum ``ν_i`` — and hence physicality, purity, and
+    entropy — is **preserved**: a squeeze / rotation / beamsplitter re-shapes ``V`` without
+    adding or removing mixedness. ``S`` must be real, finite, and square ``2N×2N`` matching
+    ``V``; the ``S Ω Sᵀ = Ω`` condition is checked with a **per-entry, scale-aware relative**
+    tolerance — each residual entry against its rounding scale ``‖row_i(S)‖·‖row_j(S)‖``, so a
+    large symplectic block cannot inflate the budget for a small non-symplectic one, and a strong
+    squeeze (whose *absolute* residual balloons from ``e^{2r}`` cancellation while it stays exactly
+    symplectic) is not false-rejected. Both the input ``V`` and the output ``S V Sᵀ`` are validated
+    as bona-fide physical covariances; the output validation also carries the honest ``cond ≳ 1e12``
+    certification guard, which backstops the residual ``√cond(V)`` ν-amplification a
+    just-sub-threshold near-symplectic ``S`` could otherwise exert on a strongly-squeezed ``V``.
+
+    A relative gate delivers **relative** ν-preservation (``|Δν_i| / ν_i ≲ 1e-11``) — the
+    physically meaningful invariant, since purity, entropy, and physicality all turn on ``ν``
+    *relative* to the vacuum floor ``1``. The *absolute* shift ``|Δν_i|`` a just-sub-threshold
+    near-symplectic ``S`` can inflict scales with ``ν_i`` itself, so it stays ``≪ 1e-4`` throughout
+    the trapped-ion regime (``ν ≲ 1e4`` even for the strongest squeeze / hottest thermal state) and
+    would reach ``1e-4`` only for an unreachable ``ν ≳ 1e7`` (``n̄ ≳ 5e6`` quanta) — where relative
+    preservation and physicality nonetheless still hold. Callers needing an *absolute* per-call
+    spectrum guarantee should compare :func:`symplectic_eigenvalues` before and after.
+
+    This is the **application-agnostic** congruence (**GT3a**). The ion-specific normal→local
+    ``S`` — built from mode eigenvectors, ion masses, and local frequencies — is a separate
+    adapter (**GT3b**) kept **out** of this module (near ``iontrap-structure``); none of that
+    machinery lives here.
+    """
+    n_modes = _check_square_even(cov, "congruence")
+    s = np.asarray(symplectic)
+    if s.shape != (2 * n_modes, 2 * n_modes):
+        raise ValueError(
+            f"congruence: symplectic map S must be {2 * n_modes}×{2 * n_modes} to match V; "
+            f"got {s.shape}."
+        )
+    if np.iscomplexobj(s):
+        if np.any(np.abs(s.imag) > _COVARIANCE_TOL):
+            raise ValueError("congruence: symplectic map S must be real; got complex entries.")
+        s = s.real
+    s = np.asarray(s, dtype=float)
+    if not np.all(np.isfinite(s)):
+        raise ValueError("congruence: symplectic map S has non-finite entries (NaN/inf).")
+    omega = symplectic_form(n_modes)
+    residual = np.abs(s @ omega @ s.T - omega)
+    # PER-ENTRY RELATIVE symplecticity gate. Each residual entry is measured against its rounding
+    # scale ‖row_i(S)‖·‖row_j(S)‖ (Cauchy–Schwarz bound on |(SΩSᵀ)_ij|, Ω orthogonal; floored at
+    # 1 = Ω's unit scale). This is:
+    #   • rounding-aware — a genuine symplectic map, however strongly squeezed, sits at ~n·eps
+    #     (≤ ~2e-15), so it is never false-rejected (an *absolute* residual cap would, since a
+    #     strong squeeze's absolute |SΩSᵀ−Ω| reaches ~1e-6 from e^{2r} cancellation while exact);
+    #   • block-local — a large symplectic block cannot inflate the budget for a small
+    #     non-symplectic block beside it (the multimode normal→local regime GT3b targets), which a
+    #     single global ‖S‖² budget would; and
+    #   • tight — the threshold (:data:`_SYMPLECTIC_RELATIVE_TOL`, ~5000× the genuine floor) rejects
+    #     near-symplectic S tuned just under a looser 1e-9 budget. A sub-threshold S can still, in
+    #     principle, drift ν on an ill-conditioned V (the damage grows ~√cond(V), unbounded by any
+    #     S-only residual); the honest cond≳1e12 guard on the OUTPUT below is that backstop.
+    row_norms = np.linalg.norm(s, axis=1)
+    scale = np.maximum(np.outer(row_norms, row_norms), 1.0)
+    relative = residual / scale
+    worst_rel = float(np.max(relative))
+    if worst_rel > _SYMPLECTIC_RELATIVE_TOL:
+        i, j = (int(k) for k in np.unravel_index(int(np.argmax(relative)), relative.shape))
+        raise ValueError(
+            f"congruence: S is not symplectic — relative |SΩSᵀ − Ω| = {worst_rel:.2e} (at entry "
+            f"[{i},{j}]) exceeds the scale-aware tolerance {_SYMPLECTIC_RELATIVE_TOL:.0e}; a "
+            f"congruence must preserve Ω."
+        )
+    _require_physical_covariance(cov, "congruence")  # the input must be a bona-fide covariance
+    transformed = s @ np.asarray(cov, dtype=float) @ s.T
+    result = 0.5 * (transformed + transformed.T)  # symmetrise (S V Sᵀ is symmetric)
+    _require_physical_covariance(result, "congruence output")  # physicality is preserved
+    return np.asarray(result, dtype=float)
+
+
 def _validate_cut(mode_indices: Sequence[int], n_modes: int, name: str) -> set[int]:
     """Validate ``mode_indices`` as a proper bipartition ``1 ≤ |cut| ≤ N − 1``; return the set.
 
@@ -491,9 +583,10 @@ def effective_temperature(nbar: float, omega_loc: float) -> float:
     which includes displacement/squeezing energy (**not** the thermal core ``(ν − 1)/2``) — to
     the temperature of the thermal state with the same ``⟨n̂⟩`` (**energy-equivalent**;
     ``n̄ → T_eff → n̄`` round-trips exactly). ``omega_loc`` is the mode's local **angular**
-    frequency (rad/s); ``ℏ``, ``k_B`` are SI. ``T_eff = 0`` at ``n̄ = 0`` by continuity (a pure
-    mode is 0 K); a squeezed and/or displaced marginal has ``n̄ > 0`` and hence ``T_eff > 0``,
-    unlike the thermal-core reading. **Neutral** — carries no consuming-application framing
+    frequency (rad/s); ``ℏ``, ``k_B`` are SI. ``T_eff = 0`` at ``n̄ = 0`` by continuity — the
+    **vacuum / zero-occupation** limit is 0 K, **not** every pure state: a squeezed and/or
+    displaced pure marginal has ``n̄ > 0`` and hence ``T_eff > 0`` (unlike the thermal-core
+    reading). **Neutral** — carries no consuming-application framing
     (no ``T_H``/"Hawking"; that is owned by the application). Raises for a non-finite or
     negative ``n̄``, and for a non-finite or non-positive ``omega_loc``.
     """
@@ -686,6 +779,7 @@ __all__ = [
     "GaussianReadout",
     "check_fock_truncation",
     "coherent_amplitude",
+    "congruence",
     "covariance_matrix",
     "effective_temperature",
     "gaussian_entropy_bits",

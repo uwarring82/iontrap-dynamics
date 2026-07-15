@@ -83,6 +83,17 @@ placeholder-only and did not follow semver.
   angular frequency (rad/s); `T_eff(0) = 0`; raises on `n̄ < 0`/NaN or `omega_loc ≤ 0`/NaN. A
   neutral symbol (no application framing). Observable-only (§27.4); `CONVENTION_VERSION`
   unchanged (`0.6`). (WP-07 GT5.)
+- **Dispatch GT3a — generic symplectic congruence.** `gaussian.congruence(S, V) = S V Sᵀ`
+  for a symplectic map `S` (`S Ω Sᵀ = Ω`, checked with a **per-entry, scale-aware relative**
+  tolerance — each residual entry against its rounding scale `‖row_i(S)‖·‖row_j(S)‖`, so a large
+  symplectic block cannot inflate the budget for a small non-symplectic one and a strong squeeze
+  is not false-rejected): reshapes a covariance via a squeeze / rotation / beamsplitter while
+  **preserving** the Williamson spectrum `ν_i` (hence purity, entropy, and physicality).
+  Validates `S` as real, finite, and square `2N×2N` matching `V`, and both the input and output
+  as bona-fide physical covariances (the output carrying the honest `cond ≳ 1e12` certification
+  guard); rejects any non-symplectic or malformed `S`. Application-agnostic — the ion-specific
+  normal→local `S` adapter (GT3b) is a separate scoped decision kept **out** of `gaussian.py`.
+  Observable-only (§27.4); `CONVENTION_VERSION` unchanged (`0.6`). (WP-07 GT3a.)
 
 ## [0.7.0] — 2026-07-14
 
