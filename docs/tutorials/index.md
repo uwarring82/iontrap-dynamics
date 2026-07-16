@@ -247,6 +247,14 @@ Every tutorial is a variation on the same five-box pipeline:
   (`displacement_force_hamiltonian`) lifts the parity and how a two-pulse purifying
   echo removes it while amplifying the squeezing. Sketches the two-ion cosmology /
   Hawking analogue as an outlook.
+- `[advanced]` [**Tutorial 21 — Two-ion motional entanglement: normal → local cut**](21_normal_to_local_entanglement.md).
+  Builds the normal→local symplectic map (`ion_modes`, GT3b) from a `ModeConfig`-style
+  basis and transports a Gaussian covariance into the local-ion frame, then reads the
+  ion-cut entanglement with `log_negativity` and `entanglement_of_formation`. Shows
+  that the two-ion motional *ground state* is entangled across the ions, that the
+  Coulomb frequency splitting (`ω_stretch = √3 ω_COM`) is the entangler, and that the
+  local-frequency gauge shifts each ion's effective temperature without touching the
+  entanglement — the whole Gaussian toolbox in one pipeline.
 
 ## Scope and licensing
 
