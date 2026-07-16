@@ -5,10 +5,10 @@
 **Goal.** Two trapped ions share *collective* normal modes (centre-of-mass and
 stretch), but their entanglement lives across the *ion* partition — invisible in
 the mode basis. By the end you will have built the normal→local symplectic map
-from a `ModeConfig`-style basis with the GT3b adapter, transported a Gaussian
+from an `IonModeBasis` payload with the GT3b adapter, transported a Gaussian
 covariance into the local-ion frame, and read out the ion-cut entanglement with
 `log_negativity` and `entanglement_of_formation` — discovering that the two ions'
-*motional ground state* is already entangled, that the entanglement is created by
+*motional ground state* is already entangled, that the entanglement traces back to
 the Coulomb frequency splitting, and that the local-frequency gauge changes each
 ion's apparent temperature without touching the entanglement.
 
@@ -46,9 +46,12 @@ runs from a bare notebook.
       **ion 0 vs ion 1** (a physical partition you could address separately), not
       mode-vs-mode. To see it you must re-express `V` in the **local** basis — one
       oscillator per ion — which is what the GT3b map `S` does: `V_local = S V Sᵀ`.
-    - `S` is **symplectic** (`S Ω Sᵀ = Ω`): it is a legitimate change of canonical
-      coordinates, so it preserves purity and every physical property — it just
-      *reveals* the ion-cut structure the mode basis hides.
+    - `S` is **symplectic** (`S Ω Sᵀ = Ω`): a legitimate change of canonical
+      coordinates. It preserves the *global* state's canonical and symplectic
+      invariants (purity, the global Williamson spectrum) while **exposing its
+      correlations with respect to a different subsystem cut** — the ion partition
+      the mode basis hides. (Entanglement is cut-dependent, so it is *not* one of
+      those preserved invariants — that is the whole point.)
     - Two entanglement measures appear: **log-negativity** `E_N` (an easy-to-compute
       witness, non-zero ⇔ entangled) and **entanglement of formation** `E_F` (the
       cost to create the state; for a pure state it equals the entropy of one side).
@@ -111,6 +114,7 @@ def make_basis(local_reference_rad_s):
         schema_version=im.ION_MODE_BASIS_SCHEMA_VERSION,
         frequencies_rad_s=np.array([w_com, w_stretch]),
         mass_weighted_eigenvectors=B,
+        # ²⁵Mg⁺ (approximate; equal masses, so the value cancels from B — the map is mass-free)
         masses_kg=np.full(2, 25.0 * atomic_mass),
         local_reference_frequencies_rad_s=local_reference_rad_s,
         coordinate_frame=FRAME,
@@ -152,21 +156,27 @@ the local frame.
 
 ### Step 3 — the frequency splitting is what entangles
 
-Why is the ground state entangled? Because the map is **active** — it squeezes.
-If the two modes had the *same* frequency (`ω_stretch = ω_COM`, i.e. no Coulomb
-coupling) the map would be a passive **rotation**, and rotating the vacuum leaves
-it separable. The real `√3` splitting makes `S` a squeeze, and squeezing the
-vacuum across the cut creates entanglement. Sweep the ratio to see it grow.
+Why is the ground state entangled? The **Coulomb coupling** is the physical source
+of the ground-state correlations: it splits the two normal-mode frequencies, and
+that inequality makes the canonical relation between the normal and local
+decompositions **non-passive**. Consequently the normal-mode vacuum — a *product*
+state in the mode factorization — is entangled when expressed across the *ion*
+partition. If the two modes had the *same* frequency (`ω_stretch = ω_COM`, no
+coupling) the normal↔local relation would be a passive **rotation** and the vacuum
+would stay separable. Sweeping the frequency ratio traces this out — but note that
+**each point is a different quadratic Hamiltonian** (a different trap/coupling and
+its own ground state), *not* the time-evolution of one vacuum under `S`, which is a
+static change of coordinates.
 
 ```python
 import matplotlib.pyplot as plt
 
 GREY, BLUE, RED = "#888888", "#1f77b4", "#d62728"
 
-# passive (equal frequencies → rotation) vs active (√3 → squeeze), same vacuum input
+# passive (equal frequencies → rotation) vs active (√3 → non-passive), same vacuum input
 passive = im.materialize_ion_mode_basis(
     schema_version=im.ION_MODE_BASIS_SCHEMA_VERSION,
-    frequencies_rad_s=np.array([w_com, w_com]),  # no splitting: a passive map
+    frequencies_rad_s=np.array([w_com, w_com]),  # no splitting: the normal↔local relation is passive
     mass_weighted_eigenvectors=B,
     masses_kg=np.full(2, 25.0 * atomic_mass),
     local_reference_frequencies_rad_s=np.array([w_com, w_com]),
@@ -174,8 +184,8 @@ passive = im.materialize_ion_mode_basis(
 )
 e_passive = g.log_negativity(im.to_local_covariance(passive, np.eye(4)), [0])
 e_active = g.log_negativity(V_ground, [0])
-print(f"passive (equal ω) ground-state E_N = {e_passive:.4f}  (rotation cannot entangle the vacuum)")
-print(f"active  (√3 ratio) ground-state E_N = {e_active:.4f}  (squeezing does)")
+print(f"passive (equal ω) ground-state E_N = {e_passive:.4f}  (passive relation: vacuum stays separable)")
+print(f"active  (√3 ratio) ground-state E_N = {e_active:.4f}  (non-passive: vacuum entangled across ions)")
 
 # E_N of the ground state vs the mode-frequency ratio ω_stretch / ω_COM
 ratios = np.linspace(1.0, 3.0, 21)
@@ -220,25 +230,33 @@ for label, local in (
 ):
     b = make_basis(local)
     v = im.to_local_covariance(b, np.eye(4))
-    nbar = g.mean_occupation(v[:2, :2], np.zeros(2))  # ion-0 marginal occupation
+    omega_ref = local[0]  # ion 0's OWN reference oscillator — n̄ and T_eff are defined w.r.t. it
+    nbar = g.mean_occupation(v[:2, :2], np.zeros(2))  # ion-0 marginal occupation, in that reference
+    t_eff = g.effective_temperature(nbar, omega_ref)  # matching energy quantum ℏω_ref
     print(
         f"{label:38s}  E_N = {g.log_negativity(v, im.ion_mode_indices(b, 0)):.4f}  "
-        f"ion-0 n̄ = {nbar:.4f}  T_eff = {g.effective_temperature(nbar, w_com) * 1e6:.2f} µK"
+        f"ion-0 n̄ = {nbar:.4f}  T_eff = {t_eff * 1e6:.2f} µK"
     )
 ```
 
-`E_N` is identical in both rows — the entanglement is gauge-invariant — while the
-ion-0 occupation and effective temperature change with the gauge. This is exactly
-why the GT3b card treats `ω_local` as an explicit, tagged *gauge* (decision D3):
-it is a representation choice, not a physical prediction, and it never touches the
-ion-cut entanglement.
+`E_N` is identical in both rows — the entanglement is a genuine gauge invariant.
+The ion-0 occupation `n̄` and effective temperature `T_eff`, by contrast, are each
+defined **relative to the chosen local reference oscillator** `ω_local` — the number
+operator and its energy quantum `ℏω_local` both belong to that reference — so they
+are *not* invariants and shift with the gauge (which is why the calculation above
+must pair each `n̄` with its own `ω_ref`, not a fixed `ω_COM`). This is exactly why
+the GT3b card treats `ω_local` as an explicit, tagged *gauge* (decision D3): the
+occupation and temperature are reference-Hamiltonian-dependent bookkeeping, while
+the ion-cut entanglement is physical and gauge-free.
 
 **Takeaway.** Entanglement is a property of a *cut*, and the physically meaningful
 cut for two trapped ions is ion-vs-ion — which the normal-mode covariance hides.
-The GT3b symplectic map `S` re-expresses the state in the local basis without
-changing any physics (`S Ω Sᵀ = Ω`), and then the Gaussian toolbox reads the cut:
-the ground state is entangled, the Coulomb frequency splitting is the entangler,
-and the local-frequency gauge is invisible to the entanglement. The whole chain —
+The GT3b symplectic map `S` re-expresses the *same global state* in the local basis
+— a canonical change of coordinates (`S Ω Sᵀ = Ω`) that preserves its symplectic
+invariants but reads its correlations against a different subsystem cut — and then
+the Gaussian toolbox reads that cut: the ground state is entangled, the Coulomb
+frequency splitting is the entangler, and the local-frequency gauge is invisible to
+the entanglement. The whole chain —
 `ion_modes.normal_to_local_symplectic` → `gaussian.congruence` →
 `gaussian.log_negativity` / `entanglement_of_formation` — is pure covariance
 algebra over the sealed §27 conventions.
